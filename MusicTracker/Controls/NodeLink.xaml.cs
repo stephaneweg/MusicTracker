@@ -207,6 +207,14 @@ namespace MusicTracker.Controls
             {
                 Editor.EditorControl.AddingLink = null;
             }
+            if (NodeEnd==null)
+            {
+                if (NodeStart!=null)
+                {
+                    NodeStart = null;
+                }
+                (this.Parent as Panel).Children.Remove(this);
+            }
             IsDragging = false;
         }
 

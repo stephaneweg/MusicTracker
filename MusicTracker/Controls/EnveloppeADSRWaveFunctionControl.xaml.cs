@@ -29,13 +29,13 @@ namespace MusicTracker.Controls
                 if (o != null)
                 {
                     Editor.BaseWaveFunctionControl ctrl = o as Editor.BaseWaveFunctionControl;
-                    var srcWaveFunction = ctrl.NodeItem.Item as Engine.WaveFunction;
+                    var srcWaveFunction = ctrl.NodeObject as Engine.WaveFunction;
 
-                    (this.NodeItem.Item as Engine.EnveloppeADSRWaveFunction).WaveFunction = srcWaveFunction;
+                    (this.NodeObject as Engine.EnveloppeADSRWaveFunction).WaveFunction = srcWaveFunction;
                 }
                 else
                 {
-                    (this.NodeItem.Item as Engine.EnveloppeADSRWaveFunction).WaveFunction = null;
+                    (this.NodeObject as Engine.EnveloppeADSRWaveFunction).WaveFunction = null;
                 }
             };
         }
@@ -44,9 +44,9 @@ namespace MusicTracker.Controls
 
         public override void AddPrevControls(Grid gridRoot, int l)
         {
-            if (this.NodeItem != null && this.NodeItem.Item != null)
+            if (this.NodeObject != null)
             {
-                Engine.EnveloppeADSRWaveFunction wv = this.NodeItem.Item as Engine.EnveloppeADSRWaveFunction; 
+                Engine.EnveloppeADSRWaveFunction wv = this.NodeObject as Engine.EnveloppeADSRWaveFunction; 
                 if (wv.WaveFunction!=null)
                 {
                     Editor.NodeControl ctrl = Editor.BaseWaveFunctionControl.Create(wv.WaveFunction);

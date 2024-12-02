@@ -75,7 +75,7 @@ namespace MusicTracker.Screens
                 if (o != null)
                 {
                     Editor.BaseWaveFunctionControl ctrl = o as Editor.BaseWaveFunctionControl;
-                    SetWaveFunction(ctrl.NodeItem.Item as Engine.WaveFunction);
+                    SetWaveFunction(ctrl.NodeObject as Engine.WaveFunction);
                 }
                 else
                 {

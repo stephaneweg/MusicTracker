@@ -140,7 +140,7 @@
     <Compile Include="Controls\FrequencyModulationWaveFunctionControl.xaml.cs">
       <DependentUpon>FrequencyModulationWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Editor\NodeItem.cs" />
+    <Compile Include="Editor\NodeControl.cs" />
     <Compile Include="Converters.cs" />
     <Compile Include="Editor\Instrument.cs" />
     <Compile Include="Engine\AudioPatch.cs" />

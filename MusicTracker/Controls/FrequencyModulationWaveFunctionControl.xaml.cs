@@ -30,13 +30,13 @@ namespace MusicTracker.Controls
                 if (o != null)
                 {
                     Editor.BaseWaveFunctionControl ctrl = o as Editor.BaseWaveFunctionControl;
-                    var srcWaveFunction = ctrl.NodeItem.Item as Engine.WaveFunction;
+                    var srcWaveFunction = ctrl.NodeObject as Engine.WaveFunction;
 
-                    (this.NodeItem.Item as Engine.FrequencyModulationWaveFunction).Carrier = srcWaveFunction;
+                    (this.NodeObject as Engine.FrequencyModulationWaveFunction).Carrier = srcWaveFunction;
                 }
                 else
                 {
-                    (this.NodeItem.Item as Engine.FrequencyModulationWaveFunction).Carrier = null;
+                    (this.NodeObject as Engine.FrequencyModulationWaveFunction).Carrier = null;
                 }
             };
 
@@ -46,22 +46,22 @@ namespace MusicTracker.Controls
                 if (o != null)
                 {
                     Editor.BaseWaveFunctionControl ctrl = o as Editor.BaseWaveFunctionControl;
-                    var srcWaveFunction = ctrl.NodeItem.Item as Engine.WaveFunction;
+                    var srcWaveFunction = ctrl.NodeObject as Engine.WaveFunction;
 
-                    (this.NodeItem.Item as Engine.FrequencyModulationWaveFunction).Modulator = srcWaveFunction;
+                    (this.NodeObject as Engine.FrequencyModulationWaveFunction).Modulator = srcWaveFunction;
                 }
                 else
                 {
-                    (this.NodeItem.Item as Engine.FrequencyModulationWaveFunction).Modulator = null;
+                    (this.NodeObject as Engine.FrequencyModulationWaveFunction).Modulator = null;
                 }
             };
         }
 
         public override void AddPrevControls(Grid gridRoot, int l)
         {
-            if (this.NodeItem != null && this.NodeItem.Item != null)
+            if (this.NodeObject != null)
             {
-                Engine.FrequencyModulationWaveFunction wv = this.NodeItem.Item as Engine.FrequencyModulationWaveFunction;
+                Engine.FrequencyModulationWaveFunction wv = this.NodeObject as Engine.FrequencyModulationWaveFunction;
                 if (wv.Carrier != null)
                 {
                     Editor.NodeControl ctrl = Editor.BaseWaveFunctionControl.Create(wv.Carrier);

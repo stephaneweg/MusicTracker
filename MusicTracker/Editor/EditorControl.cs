@@ -26,10 +26,6 @@ namespace MusicTracker.Editor
         {
             if (control != null)
             {
-                Editor.NodeItem item = new Editor.NodeItem();
-                item = control.NodeItem;
-                item.PositionX = px;
-                item.PositionY = py;
                 control.Margin = new Thickness(px, py, 0, 0);
 
                 control.HorizontalAlignment = HorizontalAlignment.Left;
