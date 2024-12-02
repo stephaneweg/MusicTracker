@@ -192,5 +192,7 @@ namespace MusicTracker.Editor
         }
 
         public virtual void DoRemove() { }
+
+        public virtual double MaxY() { return this.Margin.Top; }
     }
 }

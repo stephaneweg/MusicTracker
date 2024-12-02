@@ -43,20 +43,27 @@ namespace MusicTracker.Controls
         }
 
 
-     
 
+
+        double maxY;
+        public override double MaxY()
+        {
+            return maxY;
+        }
 
         public override void AddPrevControls(Grid gridRoot, int l)
         {
+            maxY = this.Margin.Top;
             if (this.NodeObject != null)
             {
                 Engine.VibratoWaveFunction wv = this.NodeObject as Engine.VibratoWaveFunction;
                 if (wv.WaveFunction != null)
                 {
                     Editor.NodeControl ctrl = Editor.BaseWaveFunctionControl.Create(wv.WaveFunction);
-                    Editor.EditorControl.Instance.AddControl(ctrl, this.Margin.Left - 250, Margin.Top);
+                    Editor.EditorControl.Instance.AddControl(ctrl, this.Margin.Left - 250, maxY);
                     ctrl.LinkOutputToNext(gridRoot, nodePrev);
                     ctrl.AddPrevControls(gridRoot, 1+1);
+                    maxY = ctrl.MaxY();
                 }
             }
         }

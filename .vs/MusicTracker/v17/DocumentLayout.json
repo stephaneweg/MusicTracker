@@ -3,7 +3,87 @@
   "WorkspaceRootPath": "C:\\Users\\swe\\source\\repos\\MusicTracker\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\screens\\trackeditorscreen.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodelink.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\nodelink.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\enveloppeadsrwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\enveloppeadsrwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\vibratowavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\vibratowavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\multiplywavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\multiplywavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\frequencymodulationwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\frequencymodulationwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\frequencymodifierwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\frequencymodifierwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\addwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\addwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\audiopatchwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\audiopatchwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\editor\\nodecontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\editor\\nodecontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\editor\\basewavefunctioncontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\editor\\basewavefunctioncontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\theme\\menu.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\theme\\menu.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodeend.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\nodeend.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\editor\\editorcontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\editor\\editorcontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\trianglewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\trianglewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\squarewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\squarewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\sinewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\sinewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\sawtoothwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\sawtoothwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\noisewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\noisewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodestart.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\nodestart.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\addwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\addwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\screens\\trackeditorscreen.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\screens\\trackeditorscreen.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
@@ -11,31 +91,23 @@
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\engine\\wavefunction.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\engine\\audiopatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\engine\\audiopatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\engine\\audiopatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\controls\\audiopatchwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\audiopatchwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\audiopatchwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\controls\\audiopatchwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\audiopatchwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\screens\\instrumenteditorscreen.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\screens\\instrumenteditorscreen.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\screens\\instrumenteditorscreen.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\screens\\instrumenteditorscreen.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\audiopatch\\oboe.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\audiopatch\\oboe.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\audiopatch\\oboe.txt||{8B382828-6202-11D1-8870-0000F87579D2}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|c:\\users\\swe\\source\\repos\\musictracker\\musictracker\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
@@ -75,76 +147,12 @@
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\enveloppeadsrwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\addwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\addwavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\vibratowavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\vibratowavefunctioncontrol.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\editor\\editorcontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\editor\\editorcontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\vibratowavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\vibratowavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\wavefunctionvisual.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\wavefunctionvisual.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\trianglewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\trianglewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\squarewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\squarewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\sinewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\sinewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\sawtoothwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\sawtoothwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\noisewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\noisewavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodestart.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\nodestart.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodelink.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\nodelink.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodeend.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\nodeend.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\frequencymodifierwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\frequencymodifierwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\frequencymodulationwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\frequencymodulationwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\multiplywavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\multiplywavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\enveloppeadsrwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\enveloppeadsrwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\addwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\addwavefunctioncontrol.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\wavefunctionvisual.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
@@ -173,10 +181,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\editor\\instrument.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\editor\\instrument.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\editor\\nodeitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\editor\\nodeitem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodeend.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
@@ -214,10 +218,6 @@
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\converters.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\theme\\menu.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
-      "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\theme\\menu.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|C:\\Users\\swe\\source\\repos\\MusicTracker\\musictracker\\controls\\nodelink.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
       "RelativeMoniker": "D:0:0:{9B3F5D8F-6385-4132-8EEE-641BA8E68498}|MusicTracker\\MusicTracker.csproj|solutionrelative:musictracker\\controls\\nodelink.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
     },
@@ -233,28 +233,388 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 7,
+          "SelectedChildIndex": 6,
           "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
             },
             {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "EnveloppeADSRWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs*",
+              "RelativeToolTip": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs*",
+              "ViewState": "AQIAACQAAAAAAAAAAAAYwEAAAAAMAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:18:55.563Z",
+              "EditorCaption": ""
+            },
+            {
               "$type": "Document",
               "DocumentIndex": 4,
+              "Title": "FrequencyModulationWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAADgAAAAAAAAAAAAwwFIAAABiAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:21:56.873Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "MultiplyWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAADYAAAAAAAAAAAAmwFQAAAAnAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-28T00:36:40.792Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "VibratoWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAACIAAAAAAAAAAAAgwDcAAAAjAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-27T01:55:32.337Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "NodeLink.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeLink.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeLink.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeLink.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\NodeLink.xaml.cs",
+              "ViewState": "AQIAACEAAAAAAAAAAADgvzAAAAAUAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-23T00:11:58.468Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "AddWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAADMAAAAAAAAAAAAmwFEAAABjAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T23:59:11.892Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "AudioPatchWaveFunctionControl.xaml.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AudioPatchWaveFunctionControl.xaml.cs",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\AudioPatchWaveFunctionControl.xaml.cs",
               "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AudioPatchWaveFunctionControl.xaml.cs",
               "RelativeToolTip": "MusicTracker\\Controls\\AudioPatchWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAAkAAAAAAAAAAAAAABkAAAAMAAAA",
+              "ViewState": "AQIAAAwAAAAAAAAAAAAAABkAAAAMAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-12-02T21:03:12.485Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 5,
+              "Title": "FrequencyModifierWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAACkAAAAAAAAAAAAAAEEAAAAnAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:20:10.509Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "NodeControl.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\NodeControl.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Editor\\NodeControl.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\NodeControl.cs",
+              "RelativeToolTip": "MusicTracker\\Editor\\NodeControl.cs",
+              "ViewState": "AQIAALAAAAAAAAAAAAAswMMAAAA9AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-02T22:49:59.879Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "BaseWaveFunctionControl.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\BaseWaveFunctionControl.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Editor\\BaseWaveFunctionControl.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\BaseWaveFunctionControl.cs",
+              "RelativeToolTip": "MusicTracker\\Editor\\BaseWaveFunctionControl.cs",
+              "ViewState": "AQIAACgAAAAAAAAAAAAwwA4AAAADAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-02T22:39:09.069Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "SawtoothWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAACMAAAAAAAAAAAAwwBQAAAA+AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:17:33.19Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "Menu.xaml",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Theme\\Menu.xaml",
+              "RelativeDocumentMoniker": "MusicTracker\\Theme\\Menu.xaml",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Theme\\Menu.xaml",
+              "RelativeToolTip": "MusicTracker\\Theme\\Menu.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-11-26T21:41:17.696Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "SineWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAABwAAAAAAAAAAAAtwBQAAAA6AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:08:04.16Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "EditorControl.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\EditorControl.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Editor\\EditorControl.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\EditorControl.cs",
+              "RelativeToolTip": "MusicTracker\\Editor\\EditorControl.cs",
+              "ViewState": "AQIAAAkAAAAAAAAAAAAAABkAAAAJAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T15:21:39.819Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "NodeEnd.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeEnd.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeEnd.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeEnd.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\NodeEnd.xaml.cs",
+              "ViewState": "AQIAABwAAAAAAAAAAAAkwCcAAAAMAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:39:36.193Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "TriangleWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAAA8AAAAAAAAAAAAQwBQAAAA+AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:16:47.91Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "SquareWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAAA8AAAAAAAAAAAAqwBQAAAA8AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:15:32.039Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "NoiseWaveFunctionControl.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
+              "ViewState": "AQIAAAQAAAAAAAAAAAAIwBQAAAA7AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:19:24.087Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "NodeStart.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeStart.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeStart.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeStart.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Controls\\NodeStart.xaml.cs",
+              "ViewState": "AQIAABwAAAAAAAAAAAAEwCwAAAAXAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T11:43:42.641Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "AddWaveFunctionControl.xaml",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
+              "RelativeToolTip": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-11-23T00:01:17.565Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "TrackEditorScreen.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
+              "ViewState": "AQIAAOUAAAAAAAAAAADgv/QAAAAMAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-22T21:40:19.707Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "InstrumentEditorScreen.xaml",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
+              "RelativeDocumentMoniker": "MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
+              "RelativeToolTip": "MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-11-27T01:57:16.874Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "InstrumentSelect.xaml",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml",
+              "RelativeDocumentMoniker": "MusicTracker\\Screens\\InstrumentSelect.xaml",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml",
+              "RelativeToolTip": "MusicTracker\\Screens\\InstrumentSelect.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-11-27T23:25:39.266Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "InstrumentSelect.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
+              "RelativeToolTip": "MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
+              "ViewState": "AQIAAAMAAAAAAAAAAAAAACYAAAAMAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-11-27T23:48:50.587Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "FrequencyModulationWaveFunctionControl.xaml",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
+              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-11-22T11:21:42.668Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "FrequencyModifierWaveFunctionControl.xaml",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
+              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-11-22T11:19:55.839Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "EnveloppeADSRWaveFunctionControl.xaml",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
+              "RelativeDocumentMoniker": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
+              "RelativeToolTip": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2024-11-22T11:18:42.899Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "WaveFunction.cs",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Engine\\WaveFunction.cs",
+              "RelativeDocumentMoniker": "MusicTracker\\Engine\\WaveFunction.cs",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Engine\\WaveFunction.cs",
+              "RelativeToolTip": "MusicTracker\\Engine\\WaveFunction.cs",
+              "ViewState": "AQIAAMQAAAAAAAAAAAAYwPQAAAAMAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-12-02T19:23:35.369Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "oboe.txt",
+              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\AudioPatch\\oboe.txt",
+              "RelativeDocumentMoniker": "MusicTracker\\AudioPatch\\oboe.txt",
+              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\AudioPatch\\oboe.txt",
+              "RelativeToolTip": "MusicTracker\\AudioPatch\\oboe.txt",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAEAAABdAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
+              "WhenOpened": "2024-12-02T20:46:00.251Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
               "Title": "AudioPatch.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Engine\\AudioPatch.cs",
               "RelativeDocumentMoniker": "MusicTracker\\Engine\\AudioPatch.cs",
@@ -267,75 +627,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "oboe.txt",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\AudioPatch\\oboe.txt",
-              "RelativeDocumentMoniker": "MusicTracker\\AudioPatch\\oboe.txt",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\AudioPatch\\oboe.txt",
-              "RelativeToolTip": "MusicTracker\\AudioPatch\\oboe.txt",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAEAAABdAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003109|",
-              "WhenOpened": "2024-12-02T20:46:00.251Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "WaveFunction.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Engine\\WaveFunction.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Engine\\WaveFunction.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Engine\\WaveFunction.cs",
-              "RelativeToolTip": "MusicTracker\\Engine\\WaveFunction.cs",
-              "ViewState": "AQIAAMQAAAAAAAAAAAAYwPQAAAAMAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-12-02T19:23:35.369Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "InstrumentEditorScreen.xaml",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
-              "RelativeDocumentMoniker": "MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
-              "RelativeToolTip": "MusicTracker\\Screens\\InstrumentEditorScreen.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-27T01:57:16.874Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "InstrumentEditorScreen.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentEditorScreen.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Screens\\InstrumentEditorScreen.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentEditorScreen.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Screens\\InstrumentEditorScreen.xaml.cs",
-              "ViewState": "AQIAAHYAAAAAAAAAAAAUwIwAAABkAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-27T21:14:42.049Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "TrackEditorScreen.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Screens\\TrackEditorScreen.xaml.cs",
-              "ViewState": "AQIAAOUAAAAAAAAAAADgv/QAAAAMAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T21:40:19.707Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 23,
               "Title": "AudioPatchWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AudioPatchWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\AudioPatchWaveFunctionControl.xaml",
@@ -347,7 +639,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 27,
               "Title": "MusicProject.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\MusicProject.cs",
               "RelativeDocumentMoniker": "MusicTracker\\MusicProject.cs",
@@ -359,7 +651,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 30,
               "Title": "MainWindow.xaml.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\MainWindow.xaml.cs",
               "RelativeDocumentMoniker": "MusicTracker\\MainWindow.xaml.cs",
@@ -371,31 +663,29 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 29,
               "Title": "TrackEditorScreen.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\TrackEditorScreen.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Screens\\TrackEditorScreen.xaml",
               "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\TrackEditorScreen.xaml",
               "RelativeToolTip": "MusicTracker\\Screens\\TrackEditorScreen.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-22T21:07:29.55Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-11-22T21:07:29.55Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 26,
               "Title": "MainWindow.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\MainWindow.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\MainWindow.xaml",
               "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\MainWindow.xaml",
               "RelativeToolTip": "MusicTracker\\MainWindow.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-19T13:52:08.691Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-11-19T13:52:08.691Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 42,
               "Title": "SawtoothWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml",
@@ -406,7 +696,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 43,
               "Title": "NoiseWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml",
@@ -417,7 +707,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 44,
               "Title": "Instrument.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\Instrument.cs",
               "RelativeDocumentMoniker": "MusicTracker\\Editor\\Instrument.cs",
@@ -429,19 +719,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 43,
-              "Title": "NodeItem.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\NodeItem.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Editor\\NodeItem.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\NodeItem.cs",
-              "RelativeToolTip": "MusicTracker\\Editor\\NodeItem.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAYAAAAdAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-28T00:52:02.808Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 44,
+              "DocumentIndex": 45,
               "Title": "NodeEnd.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeEnd.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeEnd.xaml",
@@ -453,7 +731,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 32,
               "Title": "MultiplyWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml",
@@ -464,74 +742,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
-              "Title": "InstrumentSelect.xaml",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml",
-              "RelativeDocumentMoniker": "MusicTracker\\Screens\\InstrumentSelect.xaml",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml",
-              "RelativeToolTip": "MusicTracker\\Screens\\InstrumentSelect.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-27T23:25:39.266Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 13,
-              "Title": "InstrumentSelect.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Screens\\InstrumentSelect.xaml.cs",
-              "ViewState": "AQIAAAMAAAAAAAAAAAAAACYAAAAMAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-27T23:48:50.587Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 15,
-              "Title": "FrequencyModulationWaveFunctionControl.xaml",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
-              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-22T11:21:42.668Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 16,
-              "Title": "FrequencyModifierWaveFunctionControl.xaml",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
-              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-22T11:19:55.839Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 17,
-              "Title": "EnveloppeADSRWaveFunctionControl.xaml",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
-              "RelativeToolTip": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-22T11:18:42.899Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 18,
-              "Title": "AddWaveFunctionControl.xaml",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
-              "RelativeToolTip": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-23T00:01:17.565Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 36,
               "Title": "VibratoWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml",
@@ -542,31 +753,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
-              "Title": "EditorControl.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\EditorControl.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Editor\\EditorControl.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Editor\\EditorControl.cs",
-              "RelativeToolTip": "MusicTracker\\Editor\\EditorControl.cs",
-              "ViewState": "AQIAAA0AAAAAAAAAAAAQwBwAAAAxAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T15:21:39.819Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 21,
-              "Title": "VibratoWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\VibratoWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAABUAAAA9AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-27T01:55:32.337Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 37,
               "Title": "WaveFunctionVisual.xaml.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\WaveFunctionVisual.xaml.cs",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\WaveFunctionVisual.xaml.cs",
@@ -578,175 +765,18 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
-              "Title": "TriangleWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAA8AAAAAAAAAAAAQwBQAAAA+AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:16:47.91Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 24,
-              "Title": "SquareWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\SquareWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAABYAAAAAAAAAAAA1wBQAAAA8AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:15:32.039Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 25,
-              "Title": "SineWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\SineWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAAEAAAAAAAAAAAAEwBQAAAA6AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:08:04.16Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 26,
-              "Title": "SawtoothWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\SawtoothWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAAkAAAAAAAAAAAAAABQAAAA+AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:17:33.19Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 27,
-              "Title": "NoiseWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\NoiseWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAABMAAAAAAAAAAAAIwBQAAAA7AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:19:24.087Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 28,
-              "Title": "NodeStart.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeStart.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeStart.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeStart.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\NodeStart.xaml.cs",
-              "ViewState": "AQIAABQAAAAAAAAAAIA4wCwAAAAXAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:43:42.641Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 29,
-              "Title": "NodeLink.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeLink.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeLink.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeLink.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\NodeLink.xaml.cs",
-              "ViewState": "AQIAALkAAAAAAAAAAAAAANoAAAAXAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-23T00:11:58.468Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 30,
-              "Title": "NodeEnd.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeEnd.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeEnd.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeEnd.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\NodeEnd.xaml.cs",
-              "ViewState": "AQIAABQAAAAAAAAAAIA8wDIAAAAXAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:39:36.193Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 31,
-              "Title": "FrequencyModifierWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModifierWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAAYAAAAAAAAAAAAiwDgAAAAbAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:20:10.509Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 32,
-              "Title": "FrequencyModulationWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\FrequencyModulationWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAAcAAAAAAAAAAAAgwBQAAABJAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:21:56.873Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 33,
-              "Title": "MultiplyWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\MultiplyWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAAA4AAAAAAAAAAAAIwBQAAAA+AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-28T00:36:40.792Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 34,
-              "Title": "EnveloppeADSRWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\EnveloppeADSRWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAABAAAAAAAAAAAAAuwDQAAAAbAAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T11:18:55.563Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 35,
-              "Title": "AddWaveFunctionControl.xaml.cs",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
-              "RelativeDocumentMoniker": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
-              "RelativeToolTip": "MusicTracker\\Controls\\AddWaveFunctionControl.xaml.cs",
-              "ViewState": "AQIAACwAAAAAAAAAAAAuwEkAAAA0AAAA",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-11-22T23:59:11.892Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 38,
               "Title": "WaveFunctionVisual.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\WaveFunctionVisual.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\WaveFunctionVisual.xaml",
               "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\WaveFunctionVisual.xaml",
               "RelativeToolTip": "MusicTracker\\Controls\\WaveFunctionVisual.xaml",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-19T14:31:56.045Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-11-19T14:31:56.045Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 39,
               "Title": "TriangleWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\TriangleWaveFunctionControl.xaml",
@@ -757,7 +787,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 40,
               "Title": "SquareWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SquareWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\SquareWaveFunctionControl.xaml",
@@ -768,7 +798,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 41,
               "Title": "SineWaveFunctionControl.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\SineWaveFunctionControl.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\SineWaveFunctionControl.xaml",
@@ -780,18 +810,6 @@
             {
               "$type": "Document",
               "DocumentIndex": 53,
-              "Title": "Menu.xaml",
-              "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Theme\\Menu.xaml",
-              "RelativeDocumentMoniker": "MusicTracker\\Theme\\Menu.xaml",
-              "ToolTip": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Theme\\Menu.xaml",
-              "RelativeToolTip": "MusicTracker\\Theme\\Menu.xaml",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
-              "WhenOpened": "2024-11-26T21:41:17.696Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 52,
               "Title": "Converters.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Converters.cs",
               "RelativeDocumentMoniker": "MusicTracker\\Converters.cs",
@@ -803,7 +821,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 51,
+              "DocumentIndex": 52,
               "Title": "UIUtils.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\UIUtils.cs",
               "RelativeDocumentMoniker": "MusicTracker\\UIUtils.cs",
@@ -815,7 +833,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 45,
+              "DocumentIndex": 46,
               "Title": "NodeStart.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Controls\\NodeStart.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Controls\\NodeStart.xaml",
@@ -827,7 +845,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 46,
+              "DocumentIndex": 47,
               "Title": "UserData.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\UserData.cs",
               "RelativeDocumentMoniker": "MusicTracker\\UserData.cs",
@@ -839,7 +857,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 47,
+              "DocumentIndex": 48,
               "Title": "TabItem.xaml",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Theme\\TabItem.xaml",
               "RelativeDocumentMoniker": "MusicTracker\\Theme\\TabItem.xaml",
@@ -851,7 +869,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 48,
+              "DocumentIndex": 49,
               "Title": "FMSMusic.cs",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\Engine\\FMSMusic.cs",
               "RelativeDocumentMoniker": "MusicTracker\\Engine\\FMSMusic.cs",
@@ -863,7 +881,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 50,
+              "DocumentIndex": 51,
               "Title": "MusicTracker",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\MusicTracker.csproj",
               "RelativeDocumentMoniker": "MusicTracker\\MusicTracker.csproj",
@@ -874,7 +892,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 49,
+              "DocumentIndex": 50,
               "Title": "App.config",
               "DocumentMoniker": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\App.config",
               "RelativeDocumentMoniker": "MusicTracker\\App.config",
