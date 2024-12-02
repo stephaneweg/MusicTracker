@@ -1,0 +1,157 @@
+﻿<UserControl x:Class="MusicTracker.Screens.TrackEditorScreen"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MusicTracker" SizeChanged="UserControl_SizeChanged"
+             mc:Ignorable="d" PreviewKeyDown="Editor_PreviewKeyDown"
+             d:DesignHeight="450" d:DesignWidth="800" Background="{StaticResource CommonBackground}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+
+            <local:IsFirstItemInContainerConverter x:Key="FirstItemConverter"/>
+            <local:IsLastItemInContainerConverter x:Key="LastItemConverter"/>
+
+            <Style TargetType="ListView" x:Key="toggleList"/>
+            <Style TargetType="ToggleButton">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="border" Width="40" Height="40"  BorderBrush="#666666" CornerRadius="2,2,2,2" BorderThickness="1,1,1,1" Background="#444444" Margin="0">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" OpacityMask="{x:Null}" Margin="0,-20,0,10"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Background" TargetName="border" Value="#224488"/>
+                                    <Setter Property="Foreground" Value="white"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            <Style TargetType="ListViewItem"  x:Key="toggleListItem">
+                <Setter Property="Margin" Value="0"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListViewItem">
+                            <Border x:Name="border" Width="40" Height="40"  BorderBrush="#666666" BorderThickness="0,1,0,1" Background="#444444" Margin="0">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" OpacityMask="{x:Null}" Margin="0,-5,0,0"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" TargetName="border" Value="#224488"/>
+                                    <Setter Property="Foreground" Value="white"/>
+                                </Trigger>
+                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Converter={StaticResource FirstItemConverter}}"
+                       Value="True">
+                                    <Setter Property="CornerRadius" TargetName="border" Value="5,0,0,5"/>
+                                    <Setter Property="BorderThickness" TargetName="border" Value="1,1,0,1"/>
+
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Converter={StaticResource LastItemConverter}}"
+                       Value="True">
+                                    <Setter Property="CornerRadius" TargetName="border" Value="0,5,5,0"/>
+                                    <Setter Property="BorderThickness" TargetName="border" Value="0,1,1,1"/>
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+
+            </Style>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid >
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Menu Grid.Row="0" Margin="5" Background="Transparent">
+            <MenuItem Header="Music">
+                <MenuItem x:Name="menuImportFMS" Header="Import FMS" Click="menuImportFMS_Click"/>
+            </MenuItem>
+            <MenuItem Header="Channels">
+                <MenuItem Name="menuAddChannel" Header="Add" Click="menuAddChannel_Click"/>
+                <MenuItem Name="menuRemoveChannel" Header="RemoveSelected" Click="menuRemoveChannel_Click"/>
+            </MenuItem>
+
+            <MenuItem Name="menuPlay" Header="Play" Click="menuPlay_Click"/>
+        </Menu>
+        <StackPanel Grid.Row="1" Orientation="Horizontal">
+            <TextBlock Text="Duration :" Foreground="#aaaaaa" Margin="10,0,5,0" FontSize="15" VerticalAlignment="Center" />
+            <ListView Name="listDuration" FontSize="30" Margin="0,0,10,0" >
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
+                <ListView.Template>
+                    <ControlTemplate TargetType="ListView">
+                        <StackPanel Orientation="Horizontal" Name="Border" Background="Transparent">
+                            <ItemsPresenter Margin="0" />
+                        </StackPanel>
+                    </ControlTemplate>
+                </ListView.Template>
+                <ListViewItem Style="{StaticResource toggleListItem}" IsSelected="True">&#x1d161;</ListViewItem>
+                <ListViewItem Style="{StaticResource toggleListItem}">&#x1d160;</ListViewItem>
+                <ListViewItem Style="{StaticResource toggleListItem}">&#x1d15f;</ListViewItem>
+                <ListViewItem Style="{StaticResource toggleListItem}">&#x1d15e;</ListViewItem>
+                <ListViewItem Style="{StaticResource toggleListItem}">&#x1d15d;</ListViewItem>
+                <ListViewItem Style="{StaticResource toggleListItem}">&#x1d15c;</ListViewItem>
+            </ListView>
+            <ToggleButton x:Name="toggleDot" Content="." FontWeight="Bold" FontSize="40" Padding="0,-5,0,5"/>
+        </StackPanel>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0" Grid.Column="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Channels : " VerticalAlignment="Center" Foreground="#888888" Margin="10,0,5,0"/>
+                <Button Content="+" Grid.Column="1" Padding="0" FontSize="25"  Name="btnNewChannel" Click="menuAddChannel_Click"  Height="30" Width="30" Margin="5,0,5,0"/>
+            </Grid>
+            <ScrollViewer Name="columnHeaderScroll" Grid.Column="1" Grid.Row="0"  HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" Margin="0,10,0,0">
+                <Grid Margin="0,0,100,0" x:Name="columnHeaderGrid">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="100"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="30"/>
+                    </Grid.RowDefinitions>
+                </Grid>
+            </ScrollViewer>
+            <ScrollViewer Name="rowHeaderScroll" Grid.Column="0" Grid.Row="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" IsEnabled="False">
+                <Grid Name="rowHeaderGrid" Margin="0,0,0,30">
+                    <Grid.RowDefinitions>
+                    </Grid.RowDefinitions>
+                </Grid>
+            </ScrollViewer>
+            <ScrollViewer x:Name="contentScroll" Grid.Column="1" Grid.Row="1" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible" ScrollChanged="contentScroll_ScrollChanged">
+                <Grid Name="contentGrid">
+
+                </Grid>
+            </ScrollViewer>
+
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,399 @@
+﻿<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Resource dictionary entries should be defined here. -->
+
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Colors.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <Style x:Key="ExpanderHeaderFocusVisual">
+        <Setter Property="Control.Template">
+            <Setter.Value>
+                <ControlTemplate>
+                    <Border>
+                        <Rectangle SnapsToDevicePixels="true" Margin="0" Stroke="Black" StrokeDashArray="1 2" StrokeThickness="1"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="ExpanderDownHeaderStyleForDialog" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background" Value="{StaticResource CommonBackground}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource OutlineColorBrush}"/>
+        <Setter Property="Foreground" Value="#cccccc"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="FontSize" Value="8"/>
+        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border SnapsToDevicePixels="true" x:Name="OutterBorder" Background="Transparent" BorderBrush="{StaticResource Expander.Header.Border.Bottom}" BorderThickness="0">
+                        <Border SnapsToDevicePixels="true" x:Name="InnerBorder" Padding="0" Background="{TemplateBinding Background}" BorderBrush="{StaticResource Expander.Header.Border.Top}" BorderThickness="0,1,0,0">
+                            <Grid SnapsToDevicePixels="False" Background="Transparent" Margin="0,5,0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="30"/>
+                                </Grid.ColumnDefinitions>
+                                <Path Grid.Column="1" SnapsToDevicePixels="false" Margin="10,0,10,0" HorizontalAlignment="Center" x:Name="arrow" VerticalAlignment="Center" Stroke="{TemplateBinding Foreground}" StrokeThickness="2" Data="M 0,0  L 5,5  L 10,0"/>
+                                <ContentPresenter Grid.Column="0" SnapsToDevicePixels="True" HorizontalAlignment="Left" Margin="4,0,4,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                            </Grid>
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="true">
+                            <Setter Property="Data" TargetName="arrow" Value="M 0,5 L 5,0 L 10,5"/>
+                            <Setter Property="Foreground" Value="white"/>
+
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Foreground" Value="white"/>
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource HoverButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource Expander.Header.Over.Background}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource PressedButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource DisabledButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource DisabledGroupBoxHeaderOuterBackground}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource DisabledGroupBoxOuterBorder}"/>
+                            <Setter Property="Background" TargetName="InnerBorder" Value="{StaticResource DisabledButtonInnerBackground}"/>
+                            <Setter Property="BorderBrush" TargetName="InnerBorder" Value="{StaticResource DisabledGroupBoxInnerBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ExpanderDownHeaderStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background" Value="{StaticResource CommonBackground}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource OutlineColorBrush}"/>
+        <Setter Property="Foreground" Value="#cccccc"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border SnapsToDevicePixels="true" x:Name="OutterBorder" Background="Transparent" BorderBrush="{StaticResource Expander.Header.Border.Bottom}" BorderThickness="0">
+                        <Border SnapsToDevicePixels="true" x:Name="InnerBorder" Padding="0" Background="{TemplateBinding Background}" BorderBrush="{StaticResource Expander.Header.Border.Top}" BorderThickness="0,1,0,0">
+                            <Grid SnapsToDevicePixels="False" Background="Transparent" Margin="0,5,0,5">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="30"/>
+                                </Grid.ColumnDefinitions>
+                                <Path Grid.Column="1" SnapsToDevicePixels="false" Margin="10" HorizontalAlignment="Center" x:Name="arrow" VerticalAlignment="Center" Stroke="{TemplateBinding Foreground}" StrokeThickness="2" Data="M 0,0  L 5,5  L 10,0"/>
+                                <ContentPresenter Grid.Column="0" SnapsToDevicePixels="True" HorizontalAlignment="Stretch" Margin="4,0,4,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                            </Grid>
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="true">
+                            <Setter Property="Data" TargetName="arrow" Value="M 0,5 L 5,0 L 10,5"/>
+                            <Setter Property="Foreground" Value="white"/>
+                            <Setter Property="Background" Value="{StaticResource CommonBackground}"/>
+
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Foreground" Value="white"/>
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource HoverButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource PressedButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource DisabledButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource DisabledGroupBoxHeaderOuterBackground}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource DisabledGroupBoxOuterBorder}"/>
+                            <Setter Property="Background" TargetName="InnerBorder" Value="{StaticResource DisabledButtonInnerBackground}"/>
+                            <Setter Property="BorderBrush" TargetName="InnerBorder" Value="{StaticResource DisabledGroupBoxInnerBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ExpanderRightHeaderStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background" Value="{StaticResource TabItem.Static.Background}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource ButtonForeground}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="Margin" Value="0,0,0,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border Margin="{TemplateBinding Margin}" SnapsToDevicePixels="true" x:Name="OutterBorder" Background="{StaticResource TabItem.Static.Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0" CornerRadius="0,0,0,0">
+                        <Border.LayoutTransform>
+                            <TransformGroup>
+                                <TransformGroup.Children>
+                                    <TransformCollection>
+                                        <RotateTransform Angle="-90"/>
+                                    </TransformCollection>
+                                </TransformGroup.Children>
+                            </TransformGroup>
+                        </Border.LayoutTransform>
+                        <Border x:Name="InnerBorder" Padding="0" Background="{StaticResource TabItem.Static.Background}" BorderBrush="{StaticResource GroupBoxInnerBorder}" CornerRadius="0,0,0,0" BorderThickness="0">
+                            <Grid SnapsToDevicePixels="False" >
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Path SnapsToDevicePixels="false" HorizontalAlignment="Center" x:Name="arrow" Margin="10" VerticalAlignment="Center" Stroke="{StaticResource ButtonForeground}" StrokeThickness="2" Data="M 1,1 L 8,8 L 15,1"/>
+
+                                <ContentPresenter SnapsToDevicePixels="True" HorizontalAlignment="Center" Margin="0,0,0,0" VerticalAlignment="Top" RecognizesAccessKey="True" Grid.Column="0"/>
+                            </Grid>
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="true">
+                            <Setter Property="Data" TargetName="arrow" Value="M 1,8  L 8,1  L 15,8"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource HoverButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource PressedButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource DisabledButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource DisabledGroupBoxHeaderOuterBackground}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource DisabledGroupBoxOuterBorder}"/>
+                            <Setter Property="Background" TargetName="InnerBorder" Value="{StaticResource DisabledButtonInnerBackground}"/>
+                            <Setter Property="BorderBrush" TargetName="InnerBorder" Value="{StaticResource DisabledGroupBoxInnerBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="ExpanderUpHeaderStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background" Value="#26262b"/>
+        <Setter Property="BorderBrush" Value="{StaticResource GroupBoxOuterBorder}"/>
+        <Setter Property="Foreground" Value="{StaticResource ButtonForeground}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border SnapsToDevicePixels="true" x:Name="OutterBorder" Background="#26262b" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0" CornerRadius="0,0,0,0">
+                        <Border x:Name="InnerBorder" Padding="0" Background="Transparent" BorderBrush="{StaticResource GroupBoxInnerBorder}" CornerRadius="0,0,0,0" BorderThickness="0">
+                            <Grid SnapsToDevicePixels="False" Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Path Stroke="{StaticResource ButtonForeground}"  SnapsToDevicePixels="false" HorizontalAlignment="Center" x:Name="arrow" VerticalAlignment="Center" StrokeThickness="2" Data="M 1,1.5 L 4.5,5 L 8,1.5">
+                                    <Path.LayoutTransform>
+                                        <TransformGroup>
+                                            <TransformGroup.Children>
+                                                <TransformCollection>
+                                                    <RotateTransform Angle="180"/>
+                                                </TransformCollection>
+                                            </TransformGroup.Children>
+                                        </TransformGroup>
+                                    </Path.LayoutTransform>
+                                </Path>
+                                <ContentPresenter SnapsToDevicePixels="True" HorizontalAlignment="Left" Margin="4,0,4,0" VerticalAlignment="Center" RecognizesAccessKey="True" Grid.Column="1"/>
+                            </Grid>
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="true">
+                            <Setter Property="Data" TargetName="arrow" Value="M 1,4.5  L 4.5,1  L 8,4.5"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource HoverButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource PressedButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource DisabledButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource DisabledGroupBoxHeaderOuterBackground}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource DisabledGroupBoxOuterBorder}"/>
+                            <Setter Property="Background" TargetName="InnerBorder" Value="{StaticResource DisabledButtonInnerBackground}"/>
+                            <Setter Property="BorderBrush" TargetName="InnerBorder" Value="{StaticResource DisabledGroupBoxInnerBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="ExpanderLeftHeaderStyle" TargetType="{x:Type ToggleButton}">
+        <Setter Property="Background" Value="#26262b"/>
+        <Setter Property="BorderBrush" Value="{StaticResource GroupBoxOuterBorder}"/>
+        <Setter Property="Foreground" Value="{StaticResource ButtonForeground}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border SnapsToDevicePixels="true" x:Name="OutterBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0" CornerRadius="0,0,0,0">
+                        <Border.LayoutTransform>
+                            <TransformGroup>
+                                <TransformGroup.Children>
+                                    <TransformCollection>
+                                        <RotateTransform Angle="90"/>
+                                    </TransformCollection>
+                                </TransformGroup.Children>
+                            </TransformGroup>
+                        </Border.LayoutTransform>
+                        <Border x:Name="InnerBorder" Padding="0" Background="{StaticResource ButtonInnerBackground}" BorderBrush="{StaticResource GroupBoxInnerBorder}" CornerRadius="0,0,0,0" BorderThickness="0">
+                            <Grid SnapsToDevicePixels="False" Background="Transparent">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <Path  Stroke="{StaticResource ButtonForeground}" Grid.Column="0" SnapsToDevicePixels="false" HorizontalAlignment="Center" x:Name="arrow" VerticalAlignment="Center" StrokeThickness="2" Data="M 1,1.5 L 4.5,5 L 8,1.5"/>
+                                <ContentPresenter SnapsToDevicePixels="True" HorizontalAlignment="Center" Margin="4,0,4,0" VerticalAlignment="Top" RecognizesAccessKey="True" Grid.Column="1"/>
+                            </Grid>
+                        </Border>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="true">
+                            <Setter Property="Data" TargetName="arrow" Value="M 1,4.5  L 4.5,1  L 8,4.5"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource HoverButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource PressedButtonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Stroke" TargetName="arrow" Value="{StaticResource DisabledButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource DisabledGroupBoxHeaderOuterBackground}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource DisabledGroupBoxOuterBorder}"/>
+                            <Setter Property="Background" TargetName="InnerBorder" Value="{StaticResource DisabledButtonInnerBackground}"/>
+                            <Setter Property="BorderBrush" TargetName="InnerBorder" Value="{StaticResource DisabledGroupBoxInnerBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="{x:Type Expander}">
+        <Setter Property="Foreground" Value="#aaaaaa"/>
+        <Setter Property="Background" Value="{StaticResource CommonBackground}"/>
+        <Setter Property="BorderBrush" Value="#000000"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        <Setter Property="BorderThickness" Value="1,0,1,1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Expander}">
+                    <Border Name="border" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                        <DockPanel Margin="0,0,0,0">
+                            <ToggleButton  FontFamily="{TemplateBinding FontFamily}" 
+                                       FontSize="{TemplateBinding FontSize}" 
+                                       FontStretch="{TemplateBinding FontStretch}" 
+                                       FontStyle="{TemplateBinding FontStyle}" 
+                                       FontWeight="{TemplateBinding FontWeight}"  
+                                       HorizontalContentAlignment="Stretch" 
+                                       Padding="{TemplateBinding Padding}" 
+                                       VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                                       FocusVisualStyle="{StaticResource ExpanderHeaderFocusVisual}" 
+                                       Margin="0" MinHeight="0" MinWidth="0" 
+                                       x:Name="HeaderSite" 
+                                       Style="{StaticResource ExpanderDownHeaderStyle}" 
+                                       Content="{TemplateBinding Header}" 
+                                       ContentTemplate="{TemplateBinding HeaderTemplate}" 
+                                       ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" 
+                                       IsChecked="{Binding Path=IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" 
+                                       DockPanel.Dock="Top"/>
+                            <Border SnapsToDevicePixels="true" x:Name="OuterBorder"  Visibility="Collapsed" Background="{TemplateBinding Background}"  CornerRadius="0" Padding="0" Margin="0">
+                                <ContentPresenter Focusable="false" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"  x:Name="ExpandSite" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" DockPanel.Dock="Bottom"  />
+                            </Border>
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="true">
+                            <Setter Property="Visibility" TargetName="OuterBorder" Value="Visible"/>
+
+                        </Trigger>
+                        <Trigger Property="ExpandDirection" Value="Right">
+                            <Setter Property="DockPanel.Dock" TargetName="ExpandSite" Value="Right"/>
+                            <Setter Property="DockPanel.Dock" TargetName="HeaderSite" Value="Left"/>
+                            <Setter Property="Style" TargetName="HeaderSite" Value="{StaticResource ExpanderRightHeaderStyle}"/>
+                            <Setter Property="BorderThickness" TargetName="OuterBorder" Value="0,0,0,0"/>
+                            <Setter Property="CornerRadius" TargetName="OuterBorder" Value="0,0,0,0"/>
+                            <Setter Property="Margin" TargetName="OuterBorder" Value="-1,0,0,0"/>
+                        </Trigger>
+                        <Trigger Property="ExpandDirection" Value="Up">
+                            <Setter Property="DockPanel.Dock" TargetName="ExpandSite" Value="Top"/>
+                            <Setter Property="DockPanel.Dock" TargetName="HeaderSite" Value="Bottom"/>
+                            <Setter Property="Style" TargetName="HeaderSite" Value="{StaticResource ExpanderUpHeaderStyle}"/>
+                            <Setter Property="BorderThickness" TargetName="OuterBorder" Value="0,0,0,0"/>
+                            <Setter Property="CornerRadius" TargetName="OuterBorder" Value="0,0,0,0"/>
+                            <Setter Property="Margin" TargetName="OuterBorder" Value="1,1,1,-1"/>
+                        </Trigger>
+                        <Trigger Property="ExpandDirection" Value="Left">
+                            <Setter Property="DockPanel.Dock" TargetName="ExpandSite" Value="Left"/>
+                            <Setter Property="DockPanel.Dock" TargetName="HeaderSite" Value="Right"/>
+                            <Setter Property="Style" TargetName="HeaderSite" Value="{StaticResource ExpanderLeftHeaderStyle}"/>
+                            <Setter Property="BorderThickness" TargetName="OuterBorder" Value="0,0,0,0"/>
+                            <Setter Property="CornerRadius" TargetName="OuterBorder" Value="0,0,0,0"/>
+                            <Setter Property="Margin" TargetName="OuterBorder" Value="1,0,-1,0"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Foreground" Value="{StaticResource DisabledButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource DisabledGroupBoxOuterBackground}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource DisabledGroupBoxOuterBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type Expander}" x:Key="ExpanderStyleForDialog">
+        <Setter Property="Foreground" Value="{StaticResource ButtonForeground}"/>
+        <Setter Property="Background" Value="#2B2B2B"/>
+        <Setter Property="BorderBrush" Value="#000000"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        <Setter Property="BorderThickness" Value="1,0,1,1"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Expander}">
+                    <Border Name="border" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                        <DockPanel Margin="0,0,0,0">
+                            <ToggleButton  FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}" FontStretch="{TemplateBinding FontStretch}" FontStyle="{TemplateBinding FontStyle}" FontWeight="{TemplateBinding FontWeight}"  HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" Padding="{TemplateBinding Padding}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" FocusVisualStyle="{StaticResource ExpanderHeaderFocusVisual}" Margin="0" MinHeight="0" MinWidth="0" x:Name="HeaderSite" Style="{StaticResource ExpanderDownHeaderStyleForDialog}" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}" ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" IsChecked="{Binding Path=IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" DockPanel.Dock="Top"/>
+                            <Border SnapsToDevicePixels="true" x:Name="OuterBorder"  Visibility="Collapsed" Background="{TemplateBinding Background}"  CornerRadius="0,0,0,0" Margin="0">
+                                <ContentPresenter Focusable="false" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"  x:Name="ExpandSite" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" DockPanel.Dock="Bottom"/>
+                            </Border>
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="true">
+                            <Setter Property="Visibility" TargetName="OuterBorder" Value="Visible"/>
+
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Foreground" Value="{StaticResource DisabledButtonForeground}"/>
+                            <Setter Property="Background" Value="{StaticResource DisabledGroupBoxOuterBackground}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource DisabledGroupBoxOuterBorder}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

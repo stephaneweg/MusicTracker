@@ -1,0 +1,49 @@
+﻿<UserControl x:Class="MusicTracker.Controls.NodeLink"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:MusicTracker.Controls"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <Color x:Key="OutlineColor" R="34" G="68" B="136" A="255"/>
+            <SolidColorBrush x:Key="OutlineColorBrush" Color="{StaticResource OutlineColor}"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid MouseMove="Grid_MouseMove" MouseUp="Grid_MouseUp">
+        <Path Name="nodeLine" StrokeThickness="10" Stroke="{StaticResource OutlineColorBrush}">
+            <Path.Effect>
+                <DropShadowEffect/>
+            </Path.Effect>
+            <Path.Data>
+                <PathGeometry>
+                    <PathFigure StartPoint="0,0" x:Name="figureLine">
+                    </PathFigure>
+                </PathGeometry>
+            </Path.Data>
+        </Path>
+        <Ellipse Name="nodeStart" StrokeThickness="1" Stroke="#555555" Width="20" Height="20" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Offset="0" Color="#555555"/>
+                    <GradientStop Offset="0.7" Color="#666666"/>
+                    <GradientStop Offset="0.9" Color="#777777"/>
+                    <GradientStop Offset="1" Color="#888888"/>
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+        <Ellipse Name="nodeEnd" StrokeThickness="1" Stroke="#555555" Width="20" Height="20" HorizontalAlignment="Left" VerticalAlignment="Top" MouseDown="NodeEnd_MouseDown">
+            <Ellipse.Fill>
+                <RadialGradientBrush>
+                    <GradientStop Offset="0" Color="#555555"/>
+                    <GradientStop Offset="0.7" Color="#666666"/>
+                    <GradientStop Offset="0.9" Color="#777777"/>
+                    <GradientStop Offset="1" Color="#888888"/>
+                </RadialGradientBrush>
+            </Ellipse.Fill>
+        </Ellipse>
+
+    </Grid>
+</UserControl>

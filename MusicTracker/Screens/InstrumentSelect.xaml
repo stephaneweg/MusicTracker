@@ -1,0 +1,54 @@
+﻿<Window x:Class="MusicTracker.Screens.InstrumentSelect"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MusicTracker.Screens"
+        mc:Ignorable="d"
+        Title="Select an instrument" Height="350" Width="400" Background="{StaticResource CommonBackground}"  Foreground="{StaticResource ButtonForeground}">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer Grid.Row="0" Margin="0" VerticalScrollBarVisibility="Auto" >
+            <ListView Name="listInstrument" Grid.Row="1"  Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource LightBackground}" Margin="5" SelectionMode="Single" SelectionChanged="listInstrument_SelectionChanged" >
+                <ListView.Resources>
+                    <Style TargetType="GridViewColumnHeader">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </Style>
+                </ListView.Resources>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Text="{Binding Path=Name,UpdateSourceTrigger=PropertyChanged}" Foreground="White" FontSize="15"/>
+                           
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" >
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="New name : " Name="txtSelect" Margin="5" VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1" x:Name="txtInstrumentName" ToolTip="Enter the instrument name" Text="{Binding Path=Name,Mode=TwoWay}" Margin="5" VerticalAlignment="Center" Style="{StaticResource labelTextBox}"/>
+        </Grid>
+        <StackPanel Grid.Row="2" HorizontalAlignment="Right" Orientation="Horizontal">
+            <Button x:Name="btnOK" Width="75" Content="Select" Click="btnOK_Click"/>
+            <Button x:Name="btnCancel" Width="75" Content="Cancel" Click="btnCancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

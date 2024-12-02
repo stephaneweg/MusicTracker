@@ -1,0 +1,130 @@
+﻿<Window x:Class="MusicTracker.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MusicTracker"
+        xmlns:controls="clr-namespace:MusicTracker.Controls"
+        xmlns:screens="clr-namespace:MusicTracker.Screens"
+        mc:Ignorable="d" WindowState="Maximized"
+        Title="MainWindow" Height="600" Width="800" Loaded="Window_Loaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="auto"/>
+        </Grid.RowDefinitions>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="5" Background="#222222"/>
+            
+            <Grid Grid.Row="1" Name="leftAccordion">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                </Grid.RowDefinitions>
+                <Expander ExpandDirection="Down" IsExpanded="True">
+                    <Expander.Header>
+                        <Grid Margin="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="30"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Tracks" VerticalAlignment="Center"/>
+                            <Button Content="+" Grid.Column="1" Padding="0"  Margin="0" Name="btnNewTrack" Click="btnNewTrack_Click"  Height="20" Width="20"/>
+                        </Grid>
+                    </Expander.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="200"/>
+                            <RowDefinition Height="5"/>
+                            <RowDefinition Height="auto"/>
+                        </Grid.RowDefinitions>
+
+                        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" >
+                            <ListView Name="listTrack" Grid.Row="1" ItemContainerStyle="{StaticResource LeftPanelListStyle}" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource LightBackground}" Margin="5" SelectionMode="Single" >
+                                <ListView.Resources>
+                                    <Style TargetType="GridViewColumnHeader">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="30"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Button HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5" Content="{Binding Path=Name,UpdateSourceTrigger=PropertyChanged}" Foreground="White" FontSize="10" Name="btnTrack" Click="btnTrack_Click"/>
+                                            <Button Grid.Column="1" Content="&#xE107;" FontFamily="Segoe UI Symbol"  Name="btnRemoveTrack" FontSize="12" Click="btnRemoveTrack_Click"  HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Margin="0" Padding="0"/>
+
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                        <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Background="{StaticResource DarkBackground}"/>
+                    </Grid>
+                </Expander>
+
+
+                <Expander ExpandDirection="Down" IsExpanded="True" Grid.Row="1">
+                    <Expander.Header>
+                        <Grid Margin="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="30"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Instruments presets" VerticalAlignment="Center"/>
+                            <Button Content="+" Grid.Column="1" Padding="0"  Margin="0" Name="btnNewInstrument" Click="btnNewInstrument_Click"  Height="20" Width="20"/>
+                        </Grid>
+                    </Expander.Header>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="200"/>
+                            <RowDefinition Height="5"/>
+                            <RowDefinition Height="auto"/>
+                        </Grid.RowDefinitions>
+
+                        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" >
+                            <ListView Name="listInstruments" Grid.Row="1" ItemContainerStyle="{StaticResource LeftPanelListStyle}" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource LightBackground}" Margin="5" SelectionMode="Single" >
+                                <ListView.Resources>
+                                    <Style TargetType="GridViewColumnHeader">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </Style>
+                                </ListView.Resources>
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="30"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Button HorizontalContentAlignment="Left" Background="Transparent" BorderThickness="0" Padding="5" Content="{Binding Path=Name,UpdateSourceTrigger=PropertyChanged}" Foreground="White" FontSize="10" Name="btnInstrument" Click="btnInstrument_Click"/>
+                                            <Button Grid.Column="1" Content="&#xE107;" FontFamily="Segoe UI Symbol"  Name="btnRemoveInstrument" FontSize="12" Click="btnRemoveInstrument_Click"  HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Margin="0" Padding="0"/>
+
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                        </ScrollViewer>
+                        <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Background="{StaticResource DarkBackground}"/>
+                    </Grid>
+                </Expander>
+            </Grid>
+
+            <screens:TrackEditorScreen x:Name="trackEditor" Grid.Column="2"/>
+        </Grid>
+    </Grid>
+</Window>
