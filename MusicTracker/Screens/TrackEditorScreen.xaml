@@ -72,11 +72,20 @@
         </Grid.RowDefinitions>
         <Menu Grid.Row="0" Margin="5" Background="Transparent">
             <MenuItem Header="Music">
+                <MenuItem x:Name="menuNewMusic" Header="New music" Click="menuNewMusic_Click"/>
                 <MenuItem x:Name="menuImportFMS" Header="Import FMS" Click="menuImportFMS_Click"/>
+                <MenuItem x:Name="menuImportMidi" Header="Import MIDI" Click="menuImportMidi_Click"/>
             </MenuItem>
             <MenuItem Header="Channels">
                 <MenuItem Name="menuAddChannel" Header="Add" Click="menuAddChannel_Click"/>
                 <MenuItem Name="menuRemoveChannel" Header="RemoveSelected" Click="menuRemoveChannel_Click"/>
+                <MenuItem Header="Instruments from Presets..." Name="headerPressets" Click="headerPressets_Click">
+                    <MenuItem.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Path=Name}"/>
+                        </DataTemplate>
+                    </MenuItem.ItemTemplate>
+                </MenuItem>
             </MenuItem>
 
             <MenuItem Name="menuPlay" Header="Play" Click="menuPlay_Click"/>
@@ -104,15 +113,19 @@
                 <ListViewItem Style="{StaticResource toggleListItem}">&#x1d15c;</ListViewItem>
             </ListView>
             <ToggleButton x:Name="toggleDot" Content="." FontWeight="Bold" FontSize="40" Padding="0,-5,0,5"/>
+            <TextBlock Text="BPM : "  Foreground="#aaaaaa" Margin="10,0,5,0" FontSize="15" VerticalAlignment="Center" />
+            <ComboBox Name="comboBPM" Margin="0,0,10,0" FontSize="15" SelectedValue="{Binding Path=BPM,Mode=TwoWay}"  Width="80"/>
         </StackPanel>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="120"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="auto"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="auto"/>
             </Grid.RowDefinitions>
             <Grid Grid.Row="0" Grid.Column="0">
                 <Grid.ColumnDefinitions>
@@ -146,11 +159,18 @@
                     </Grid.RowDefinitions>
                 </Grid>
             </ScrollViewer>
-            <ScrollViewer x:Name="contentScroll" Grid.Column="1" Grid.Row="1" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible" ScrollChanged="contentScroll_ScrollChanged">
-                <Grid Name="contentGrid">
-
+            <ScrollViewer x:Name="contentScroll" Grid.Column="1" Grid.Row="1" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Hidden" ScrollChanged="contentScroll_ScrollChanged">
+                <Grid HorizontalAlignment="Left" VerticalAlignment="Stretch" Name="outerGrid">
+                    <Grid Name="contentGrid" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+                        
+                    </Grid>
+                    <Border Height="20" HorizontalAlignment="Stretch" VerticalAlignment="Top" BorderBrush="Yellow" Name="cursor" BorderThickness="1"/>
+    
                 </Grid>
+                
             </ScrollViewer>
+            <Slider Grid.Column="2" Grid.Row="1" Orientation="Vertical" IsDirectionReversed="True" Name="slScroll" ValueChanged="slScroll_ValueChanged" Margin="0,10,0,30">
+            </Slider>
 
         </Grid>
     </Grid>

@@ -111,33 +111,42 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="WriteableBitmapEx.Wpf, Version=1.6.8.0, Culture=neutral, PublicKeyToken=50375ca6144f1c69, processorArchitecture=MSIL">
+      <HintPath>..\packages\WriteableBitmapEx.1.6.8\lib\net40\WriteableBitmapEx.Wpf.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Controls\MultiplyWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\AmplitudeModifierWaveFunctionControl.xaml.cs">
+      <DependentUpon>AmplitudeModifierWaveFunctionControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\InstrumentEditor\MultiplyWaveFunctionControl.xaml.cs">
       <DependentUpon>MultiplyWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\AudioPatchWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\AudioPatchWaveFunctionControl.xaml.cs">
       <DependentUpon>AudioPatchWaveFunctionControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TrackChannelView.xaml.cs">
+      <DependentUpon>TrackChannelView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Editor\BaseWaveFunctionControl.cs" />
     <Compile Include="Editor\EditorControl.cs" />
-    <Compile Include="Controls\AddWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\AddWaveFunctionControl.xaml.cs">
       <DependentUpon>AddWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\EnveloppeADSRWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\EnveloppeADSRWaveFunctionControl.xaml.cs">
       <DependentUpon>EnveloppeADSRWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\VibratoWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\VibratoWaveFunctionControl.xaml.cs">
       <DependentUpon>VibratoWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\FrequencyModifierWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\FrequencyModifierWaveFunctionControl.xaml.cs">
       <DependentUpon>FrequencyModifierWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\FrequencyModulationWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\FrequencyModulationWaveFunctionControl.xaml.cs">
       <DependentUpon>FrequencyModulationWaveFunctionControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="Editor\NodeControl.cs" />
@@ -145,6 +154,15 @@
     <Compile Include="Editor\Instrument.cs" />
     <Compile Include="Engine\AudioPatch.cs" />
     <Compile Include="Engine\FMSMusic.cs" />
+    <Compile Include="Engine\InstrumentWaveProvider.cs" />
+    <Compile Include="Engine\MidiFile.cs" />
+    <Compile Include="Engine\TrackWaveProvider.cs" />
+    <Compile Include="FontResources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>FontResources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Graphics\Font.cs" />
     <Compile Include="MusicProject.cs" />
     <Compile Include="Screens\InstrumentEditorScreen.xaml.cs">
       <DependentUpon>InstrumentEditorScreen.xaml</DependentUpon>
@@ -158,19 +176,19 @@
     <Compile Include="Controls\NodeStart.xaml.cs">
       <DependentUpon>NodeStart.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\NoiseWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\NoiseWaveFunctionControl.xaml.cs">
       <DependentUpon>NoiseWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\SawtoothWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\SawtoothWaveFunctionControl.xaml.cs">
       <DependentUpon>SawtoothWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\SineWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\SineWaveFunctionControl.xaml.cs">
       <DependentUpon>SineWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\SquareWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\SquareWaveFunctionControl.xaml.cs">
       <DependentUpon>SquareWaveFunctionControl.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\TriangleWaveFunctionControl.xaml.cs">
+    <Compile Include="Controls\InstrumentEditor\TriangleWaveFunctionControl.xaml.cs">
       <DependentUpon>TriangleWaveFunctionControl.xaml</DependentUpon>
     </Compile>
     <Compile Include="Controls\WaveFunctionVisual.xaml.cs">
@@ -184,17 +202,26 @@
     </Compile>
     <Compile Include="UIUtils.cs" />
     <Compile Include="UserData.cs" />
-    <Page Include="Controls\MultiplyWaveFunctionControl.xaml">
+    <Compile Include="WriteableBitmapExtension.cs" />
+    <Page Include="Controls\InstrumentEditor\AmplitudeModifierWaveFunctionControl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\AudioPatchWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\MultiplyWaveFunctionControl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\VibratoWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\AudioPatchWaveFunctionControl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\InstrumentEditor\VibratoWaveFunctionControl.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\TrackChannelView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Screens\InstrumentSelect.xaml">
       <SubType>Designer</SubType>
@@ -212,19 +239,19 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\AddWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\AddWaveFunctionControl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\EnveloppeADSRWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\EnveloppeADSRWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\FrequencyModifierWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\FrequencyModifierWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\FrequencyModulationWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\FrequencyModulationWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -260,23 +287,23 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\NoiseWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\NoiseWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\SawtoothWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\SawtoothWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\SineWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\SineWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\SquareWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\SquareWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\TriangleWaveFunctionControl.xaml">
+    <Page Include="Controls\InstrumentEditor\TriangleWaveFunctionControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -337,10 +364,64 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <EmbeddedResource Include="FontResources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>FontResources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="Fonts\8X8.FON" />
+    <None Include="Fonts\8X8THIN.FON" />
+    <None Include="Fonts\AMBASSAD.FON" />
+    <None Include="Fonts\ANTIQUE.FON" />
+    <None Include="Fonts\APLS11.FON" />
+    <None Include="Fonts\BLOODY.FON" />
+    <None Include="Fonts\BOLD2.FON" />
+    <None Include="Fonts\BROADWAY.FON" />
+    <None Include="Fonts\BRUSH.FON" />
+    <None Include="Fonts\COMPUTER.FON" />
+    <None Include="Fonts\COURIER.FON" />
+    <None Include="Fonts\DECO.FON" />
+    <None Include="Fonts\DRAGON.FON" />
+    <None Include="Fonts\ELEGANT2.FON" />
+    <None Include="Fonts\ELEGITAL.FON" />
+    <None Include="Fonts\ELERGON.FON" />
+    <None Include="Fonts\F0.FON" />
+    <None Include="Fonts\FE_8X16.FON" />
+    <None Include="Fonts\FUTURA.FON" />
+    <None Include="Fonts\GAELIC.FON" />
+    <None Include="Fonts\GOTHIC.FON" />
+    <None Include="Fonts\GOTH_NEW.FON" />
+    <None Include="Fonts\GREEK.FON" />
+    <None Include="Fonts\HIGHSEAS.FON" />
+    <None Include="Fonts\ITALIC.FON" />
+    <None Include="Fonts\IVAN.FON" />
+    <None Include="Fonts\JULIE.FON" />
+    <None Include="Fonts\JUPITOR.FON" />
+    <None Include="Fonts\LCD.FON" />
+    <None Include="Fonts\LEGEND.FON" />
+    <None Include="Fonts\LUCIDA.FON" />
+    <None Include="Fonts\M.FON" />
+    <None Include="Fonts\MERP.FON" />
+    <None Include="Fonts\ML.FON" />
+    <None Include="Fonts\MODERN2.FON" />
+    <None Include="Fonts\NORMAL.FON" />
+    <None Include="Fonts\NUTSO.FON" />
+    <None Include="Fonts\OUTLINE.FON" />
+    <None Include="Fonts\PARKAVE.FON" />
+    <None Include="Fonts\PERCY.FON" />
+    <None Include="Fonts\ROMAN.FON" />
+    <None Include="Fonts\ROMAN2.FON" />
+    <None Include="Fonts\ROMANY.FON" />
+    <None Include="Fonts\SANS.FON" />
+    <None Include="Fonts\SCRAWL.FON" />
+    <None Include="Fonts\SCRIPT.FON" />
+    <None Include="Fonts\SIMPAGAR.FON" />
+    <None Include="Fonts\SMALL.FON" />
+    <None Include="Fonts\SYSFONT.FON" />
+    <None Include="Fonts\THIN.FON" />
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

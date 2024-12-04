@@ -10,11 +10,11 @@ none
 false
 DEBUG;TRACE
 C:\Users\swe\source\repos\MusicTracker\MusicTracker\App.xaml
-321964800419
+34-829402428
 
-37501841717
-35536389030
-Controls\MultiplyWaveFunctionControl.xaml;Controls\AudioPatchWaveFunctionControl.xaml;Controls\VibratoWaveFunctionControl.xaml;Screens\InstrumentSelect.xaml;Theme\Button.xaml;Theme\Colors.xaml;Theme\ComboBox.xaml;Controls\AddWaveFunctionControl.xaml;Controls\EnveloppeADSRWaveFunctionControl.xaml;Controls\FrequencyModifierWaveFunctionControl.xaml;Controls\FrequencyModulationWaveFunctionControl.xaml;Theme\DataGrid.xaml;Theme\Expander.xaml;Theme\GroupBox.xaml;Theme\Menu.xaml;Screens\InstrumentEditorScreen.xaml;Controls\NodeEnd.xaml;Controls\NodeLink.xaml;Controls\NodeStart.xaml;Controls\NoiseWaveFunctionControl.xaml;Controls\SawtoothWaveFunctionControl.xaml;Controls\SineWaveFunctionControl.xaml;Controls\SquareWaveFunctionControl.xaml;Controls\TriangleWaveFunctionControl.xaml;MainWindow.xaml;Controls\WaveFunctionVisual.xaml;Screens\TrackEditorScreen.xaml;Theme\ScrollBar.xaml;Theme\ScrollBar2.xaml;Theme\TabControl.xaml;Theme\TabItem.xaml;Theme\TreeView.xaml;
+45-1061267651
+36320689818
+Controls\InstrumentEditor\AmplitudeModifierWaveFunctionControl.xaml;Controls\InstrumentEditor\MultiplyWaveFunctionControl.xaml;Controls\InstrumentEditor\AudioPatchWaveFunctionControl.xaml;Controls\InstrumentEditor\VibratoWaveFunctionControl.xaml;Controls\TrackChannelView.xaml;Screens\InstrumentSelect.xaml;Theme\Button.xaml;Theme\Colors.xaml;Theme\ComboBox.xaml;Controls\InstrumentEditor\AddWaveFunctionControl.xaml;Controls\InstrumentEditor\EnveloppeADSRWaveFunctionControl.xaml;Controls\InstrumentEditor\FrequencyModifierWaveFunctionControl.xaml;Controls\InstrumentEditor\FrequencyModulationWaveFunctionControl.xaml;Theme\DataGrid.xaml;Theme\Expander.xaml;Theme\GroupBox.xaml;Theme\Menu.xaml;Screens\InstrumentEditorScreen.xaml;Controls\NodeEnd.xaml;Controls\NodeLink.xaml;Controls\NodeStart.xaml;Controls\InstrumentEditor\NoiseWaveFunctionControl.xaml;Controls\InstrumentEditor\SawtoothWaveFunctionControl.xaml;Controls\InstrumentEditor\SineWaveFunctionControl.xaml;Controls\InstrumentEditor\SquareWaveFunctionControl.xaml;Controls\InstrumentEditor\TriangleWaveFunctionControl.xaml;MainWindow.xaml;Controls\WaveFunctionVisual.xaml;Screens\TrackEditorScreen.xaml;Theme\ScrollBar.xaml;Theme\ScrollBar2.xaml;Theme\TabControl.xaml;Theme\TabItem.xaml;Theme\TreeView.xaml;
 
 False
 

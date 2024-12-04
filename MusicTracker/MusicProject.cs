@@ -19,7 +19,7 @@ namespace MusicTracker
 
     public class ProjectTrack
     {
-        public int NoteCount { get; set; } = 256;
+        public int NoteCount { get; set; } = 100;
         public string Name { get; set; }
         public int ID { get; set; }
 
@@ -54,6 +54,7 @@ namespace MusicTracker
         public void AddChannel()
         {
             Channels.Add(new TrackChannel());
+            NoteCount = Channels.Max(n => n.notes.Length);
         }
 
 
@@ -66,7 +67,7 @@ namespace MusicTracker
 
         public string Name { get; set; }
         public Engine.WaveFunction WaveFunction { get; set; }
-        public int[] notes { get; set; } = new int[1024];
+        public int[] notes { get; set; } = new int[100];
 
     }
 }

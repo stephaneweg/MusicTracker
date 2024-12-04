@@ -160,8 +160,8 @@ namespace MusicTracker.Engine
                 WaveFunction waveModulator = getWaveFunction(waveSelect2);
                
                 music.SetWaveFunction(i,waveCarrier,waveModulator);
-                music.SetEnvelope1(i, 1 - attack1 / 15d, 1 - decay1 / 15d, 1, 1 - released1 / 15d);
-                music.SetEnvelope2(i, 1 - attack2 / 15d, 1 - decay2 / 15d, 1, 1 - released2 / 15d);
+                music.SetEnvelope1(i, 1 - attack1 / 15d, 1 - decay1 / 15d, sustain1/15d, 1 - released1 / 15d);
+                music.SetEnvelope2(i, 1 - attack2 / 15d, 1 - decay2 / 15d, sustain2/15d, 1 - released2 / 15d);
                 music.SetFrequencyMultiplier1(i, 1);
                 music.SetFrequencyMultiplier2(i, 1);
             }

@@ -116,9 +116,9 @@ namespace MusicTracker
             Editor.Instrument instrument = (Editor.Instrument)frameworkElement.DataContext;
 
             InstrumentEditorScreen editor = new InstrumentEditorScreen();
-            editor.SetWaveFunction(instrument.WaveFunction);
+            editor.SetWaveFunction(instrument.WaveFunction.Clone());
             editor.ShowDialog();
-            instrument.WaveFunction = editor.WaveFunction;
+            instrument.WaveFunction = editor.WaveFunction.Clone();
             UserData.Instance.Save();
         }
     }

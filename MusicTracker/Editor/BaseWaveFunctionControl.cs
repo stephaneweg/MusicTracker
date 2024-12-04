@@ -27,29 +27,31 @@ namespace MusicTracker.Editor
             BaseWaveFunctionControl result = null;
 
             if (wf is Engine.SineWaveFunction)
-                result = new Controls.SineWaveFunctionControl();
+                result = new Controls.InstrumentEditor.SineWaveFunctionControl();
             else if (wf is Engine.SquareWaveFunction)
-                result = new Controls.SquareWaveFunctionControl();
+                result = new Controls.InstrumentEditor.SquareWaveFunctionControl();
             else if (wf is Engine.TriangleWaveFunction)
-                result = new Controls.TriangleWaveFunctionControl();
+                result = new Controls.InstrumentEditor.TriangleWaveFunctionControl();
             else if (wf is Engine.SawtoothWaveFunction)
-                result = new Controls.SawtoothWaveFunctionControl();
+                result = new Controls.InstrumentEditor.SawtoothWaveFunctionControl();
             else if (wf is Engine.NoiseWaveFunction)
-                result = new Controls.NoiseWaveFunctionControl();
+                result = new Controls.InstrumentEditor.NoiseWaveFunctionControl();
             else if (wf is Engine.EnveloppeADSRWaveFunction)
-                result = new Controls.EnveloppeADSRWaveFunctionControl();
+                result = new Controls.InstrumentEditor.EnveloppeADSRWaveFunctionControl();
             else if (wf is Engine.FrequencyModifierWaveFunction)
-                result = new Controls.FrequencyModifierWaveFunctionControl();
+                result = new Controls.InstrumentEditor.FrequencyModifierWaveFunctionControl();
             else if (wf is Engine.FrequencyModulationWaveFunction)
-                result = new Controls.FrequencyModulationWaveFunctionControl();
+                result = new Controls.InstrumentEditor.FrequencyModulationWaveFunctionControl();
             else if (wf is Engine.AddWaveFunction)
-                result = new Controls.AddWaveFunctionControl();
+                result = new Controls.InstrumentEditor.AddWaveFunctionControl();
             else if (wf is Engine.MultiplyWaveFunction)
-                result = new Controls.MultiplyWaveFunctionControl();
+                result = new Controls.InstrumentEditor.MultiplyWaveFunctionControl();
             else if (wf is Engine.VibratoWaveFunction)
-                result = new Controls.VibratoWaveFunctionControl();
+                result = new Controls.InstrumentEditor.VibratoWaveFunctionControl();
             else if (wf is Engine.AudioPatchWaveFunction)
-                result = new Controls.AudioPatchWaveFunctionControl();
+                result = new Controls.InstrumentEditor.AudioPatchWaveFunctionControl();
+            else if (wf is Engine.AmplitudeModifierWaveFunction)
+                result = new Controls.InstrumentEditor.AmplitudeModifierWaveFunctionControl();
 
 
             if (result!=null)

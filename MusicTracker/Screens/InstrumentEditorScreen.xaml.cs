@@ -32,7 +32,7 @@ namespace MusicTracker.Screens
 
         Editor.EditorControl editor = new Editor.EditorControl();
         WaveOut waveOut = new WaveOut();
-        SingleWaveProvider waveProvider = new SingleWaveProvider(null);
+        InstrumentWaveProvider waveProvider = new InstrumentWaveProvider(null);
         public Engine.WaveFunction WaveFunction
         {
             get { return waveProvider.WaveFunction; }
@@ -139,6 +139,8 @@ namespace MusicTracker.Screens
                 control = Editor.BaseWaveFunctionControl.CreateNew<Engine.VibratoWaveFunction>();
             else if (sender == addWaveFunction_AudioPatch)
                 control = Editor.BaseWaveFunctionControl.CreateNew<Engine.AudioPatchWaveFunction>();
+            else if (sender == addWaveFunction_AmplitudeModifier)
+                control = Editor.BaseWaveFunctionControl.CreateNew<Engine.AmplitudeModifierWaveFunction>();
             editor.AddControl(control);
 
 
@@ -264,7 +266,7 @@ namespace MusicTracker.Screens
         {
             editor.GridRoot.Children.OfType<Editor.BaseWaveFunctionControl>().ToList().ForEach(control => control.DoRemove());
             Editor.Instrument instrument =( (e.OriginalSource as MenuItem).DataContext as Editor.Instrument);
-            SetWaveFunction(instrument.WaveFunction);
+            SetWaveFunction(instrument.WaveFunction.Clone());
             UserControl_Loaded(null, null);
         }
 

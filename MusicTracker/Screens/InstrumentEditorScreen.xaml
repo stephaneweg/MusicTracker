@@ -34,6 +34,7 @@
                 <MenuItem Name="addWaveFunction_Noise" Header="Noise" Click="AddItem_Click"/>
                 <MenuItem Name="addWaveFunction_Vibrato" Header="Vibrato" Click="AddItem_Click"/>
                 <MenuItem Name="addWaveFunction_FrequencyModifier" Header="Frequency Modifier" Click="AddItem_Click"/>
+                <MenuItem Name="addWaveFunction_AmplitudeModifier" Header="Amplitude Modifier" Click="AddItem_Click"/>
                 <MenuItem Name="addWaveFunction_FrequencyModulator" Header="Frequency Modulator" Click="AddItem_Click"/>
                 <MenuItem Name="addWaveFunction_EnveloppeADSR" Header="ADSR Enveloppe" Click="AddItem_Click"/>
                 <MenuItem Name="addWaveFunction_Add" Header="Wave Addition" Click="AddItem_Click"/>

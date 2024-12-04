@@ -6,12 +6,14 @@ using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Runtime.Remoting.Channels;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -28,7 +30,7 @@ namespace MusicTracker.Screens
     /// </summary>
     public partial class TrackEditorScreen : UserControl
     {
-        
+
         public ProjectTrack Track
         {
             get { return waveProvider.Track; }
@@ -42,7 +44,6 @@ namespace MusicTracker.Screens
             }
         }
 
-        List<TextBlock[]> noteTexts = new List<TextBlock[]>();
 
         int selectedChannel = -1;
         int selectedNote = -1;
@@ -81,10 +82,11 @@ namespace MusicTracker.Screens
 
 
         WaveOut waveOut = new WaveOut();
-        Engine.WaveProvider waveProvider;
+        Engine.TrackWaveProvider waveProvider;
         public TrackEditorScreen()
         {
-            waveProvider = new Engine.WaveProvider(null);
+            waveProvider = new Engine.TrackWaveProvider(null);
+
             waveProvider.NoteSelected = SelectNote;
             waveOut.DesiredLatency = 100;
             waveOut.Init(waveProvider);
@@ -93,12 +95,15 @@ namespace MusicTracker.Screens
 
 
             InitializeComponent();
+            headerPressets.ItemsSource = UserData.Instance.InstrumentList;
+            comboBPM.DataContext = waveProvider;
+            comboBPM.ItemsSource = Enumerable.Range(1, 40).Select(i => i * 10d).ToList();
 
             NewMusic();
 
         }
 
-       
+
 
 
         public void AddChannel()
@@ -112,7 +117,6 @@ namespace MusicTracker.Screens
             if (selectedChannel >= 0 && selectedChannel < Track.Channels.Count)
             {
                 Track.Channels.RemoveAt(selectedChannel);
-                noteTexts.RemoveAt(selectedChannel);
                 sharpsInTrack.RemoveAt(selectedChannel);
                 List<FrameworkElement> toRemove = new List<FrameworkElement>();
                 foreach (FrameworkElement h in columnHeaderGrid.Children)
@@ -157,7 +161,7 @@ namespace MusicTracker.Screens
 
             sharpsInTrack.Add(0);
 
-            int channelIndex = noteTexts.Count;
+            int channelIndex = contentGrid.Children.Count;
             var channel = Track.Channels[channelIndex];
 
             columnHeaderGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
@@ -181,28 +185,33 @@ namespace MusicTracker.Screens
 
 
 
-            TextBlock[] textBlocks = new TextBlock[Track.NoteCount];
-            noteTexts.Add(textBlocks);
-            for (int i = 0; i < Track.NoteCount; i++)
-            {
-                TextBlock textBlock = new TextBlock { Text = "", Margin = new Thickness(10, 5, 10, 5), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center };
-                Border border = new Border { BorderBrush = this.Foreground, BorderThickness = new Thickness(0.5), Background = this.themeBackground };
-                border.Child = textBlock;
-                Grid.SetRow(border, i);
-                Grid.SetColumn(border, channelIndex);
-                contentGrid.Children.Add(border);
-                border.MouseDown += (s, e) =>
-                {
-                    if (e.LeftButton == MouseButtonState.Pressed)
-                    {
-                        SelectChannel(Grid.GetColumn(s as Border));
-                        SelectNote(Grid.GetRow(s as Border));
-                    }
-                };
-                textBlocks[i] = textBlock;
 
-                updateNoteText(channelIndex, i);
-            }
+
+            Controls.TrackChannelView trackChannelView = new Controls.TrackChannelView
+            {
+                Foreground = this.Foreground,
+                Background = this.Background,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch,
+            };
+            var h = contentScroll.ActualHeight - 20;
+            if (h < 0) h = outerGrid.ActualHeight;
+            trackChannelView.Height =h;
+            trackChannelView.TrackChanel = Track.Channels[channelIndex];
+
+            Grid.SetColumn(trackChannelView, channelIndex);
+            Grid.SetRow(trackChannelView, 0);
+            contentGrid.Children.Add(trackChannelView);
+            trackChannelView.MouseDown += (s, e) =>
+            {
+                if (e.LeftButton == MouseButtonState.Pressed)
+                {
+                    SelectChannel(Grid.GetColumn(s as Controls.TrackChannelView));
+                    int yIndex = (int)(e.GetPosition(s as Controls.TrackChannelView).Y + slScroll.Value) / 20;
+
+                    SelectNote(yIndex);
+                }
+            };
         }
 
 
@@ -213,7 +222,7 @@ namespace MusicTracker.Screens
         {
             var newTrack = new ProjectTrack();
             Track = newTrack;
-            for(int i=0;i<4;i++)
+            for (int i = 0; i < 4; i++)
             {
                 AddChannel();
             }
@@ -221,7 +230,9 @@ namespace MusicTracker.Screens
 
         public void TrackChanged()
         {
-            noteTexts.Clear();
+            slScroll.Value = 0;
+            slScroll.Maximum = (Track.NoteCount) * 20 - (contentScroll.ActualHeight - 20);
+
             sharpsInTrack = new List<int>();
             waveProvider.Track = Track;
             columnHeaderGrid.Children.Clear();
@@ -232,16 +243,18 @@ namespace MusicTracker.Screens
             rowHeaderGrid.RowDefinitions.Clear();
             rowHeaderGrid.Children.Clear();
 
-            for (int x = 0; x < Track.NoteCount; x++)
-            {
-                rowHeaderGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(30) });
-                contentGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(30) });
-                TextBlock textBlock = new TextBlock { Text = $"&H{x.ToString("X4")}", Margin = new Thickness(0, 0, 5, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
-                Border border = new Border { BorderBrush = this.Foreground, BorderThickness = new Thickness(0.5), Background = this.themeBackground };
-                border.Child = textBlock;
-                Grid.SetRow(border, x);
-                rowHeaderGrid.Children.Add(border);
-            }
+
+            contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            rowHeaderGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            TextBlock textBlock = new TextBlock { Text = "", Margin = new Thickness(0, 0, 5, 0), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+            Border border = new Border { BorderBrush = this.Foreground, BorderThickness = new Thickness(0.5), Background = this.themeBackground };
+            border.Child = textBlock;
+            Grid.SetRow(border, 0);
+            textBlock.Text = Enumerable.Range(0, Track.NoteCount).Select(x => $"&H{x.ToString("X4")}").Aggregate((s1, s2) => s1 + "\n" + s2);
+            textBlock.LineHeight = 20;
+            textBlock.VerticalAlignment = VerticalAlignment.Top;
+            rowHeaderGrid.Children.Add(border);
             foreach (var c in Track.Channels)
             {
                 ChannelAdded();
@@ -256,11 +269,14 @@ namespace MusicTracker.Screens
         {
             if (i >= 0 && i < Track.Channels.Count)
             {
-                for (int j = 0; j < Track.NoteCount; j++)
+                contentGrid.Children.OfType<Controls.TrackChannelView>().Where(b => Grid.GetColumn(b) == i).ToList().ForEach(b =>
                 {
-                    noteTexts[i][j].Foreground = brush;
-                    (noteTexts[i][j].Parent as Border).BorderBrush = brush;
+                    b.BorderBrush = brush;
+                    b.Foreground = brush;
+                    b.Redraw();
                 }
+                );
+
             }
             columnHeaderGrid.Children.OfType<Border>().ElementAt(i).BorderBrush = brush;
             (columnHeaderGrid.Children.OfType<Border>().ElementAt(i).Child as TextBox).Foreground = brush;
@@ -279,92 +295,102 @@ namespace MusicTracker.Screens
             {
                 SetTrackColor(selectedChannel, selectedBrush);
 
-                var posX = noteTexts[selectedChannel][0].TransformToAncestor(contentGrid).Transform(new Point(0, 0)).X;
-                if (posX - 10 < contentScroll.HorizontalOffset )
+                var posX = (contentGrid.Children.OfType<Controls.TrackChannelView>().First(b => Grid.GetColumn(b) == i)).TransformToAncestor(contentGrid).Transform(new Point(0, 0)).X;
+                if (posX - 10 < contentScroll.HorizontalOffset)
                 {
-                    contentScroll.ScrollToHorizontalOffset(posX-10);
+                    contentScroll.ScrollToHorizontalOffset(posX - 10);
                 }
-                if (posX+110 > contentScroll.HorizontalOffset + contentScroll.ActualWidth)
+                if (posX + 110 > contentScroll.HorizontalOffset + contentScroll.ActualWidth)
                 {
-                    contentScroll.ScrollToHorizontalOffset(posX - contentScroll.ActualWidth+110);
+                    contentScroll.ScrollToHorizontalOffset(posX - contentScroll.ActualWidth + 110);
                 }
             }
         }
 
         public void SelectNote(int i)
         {
-            if (selectedNote >= 0 && selectedNote < Track.NoteCount)
+            /*
+            if (selectedNote > -1 && selectedNote < rowHeaderGrid.Children.OfType<Border>().Count())
             {
-                for (int j = 0; j < Track.Channels.Count; j++)
-                {
-                    if (j == selectedChannel)
-                    {
-                        noteTexts[j][selectedNote].Foreground = selectedBrush;
-                        (noteTexts[j][selectedNote].Parent as Border).BorderBrush = selectedBrush;
-                    }
-                    else
-                    {
-                        noteTexts[j][selectedNote].Foreground = this.Foreground;
-                        (noteTexts[j][selectedNote].Parent as Border).BorderBrush = this.Foreground;
-                    }
-                    noteTexts[j][selectedNote].FontWeight = FontWeights.Normal;
-                    (noteTexts[j][selectedNote].Parent as Border).BorderThickness = new Thickness(0.5);
-                }
+                rowHeaderGrid.Children.OfType<Border>().ElementAt(selectedNote).BorderBrush = Foreground;
+                (rowHeaderGrid.Children.OfType<Border>().ElementAt(selectedNote).Child as TextBlock).Foreground = Foreground;
             }
+            */
             selectedNote = i;
+            /*
+            if (selectedNote>-1 && selectedNote< rowHeaderGrid.Children.OfType<Border>().Count())
+            {
+                rowHeaderGrid.Children.OfType<Border>().ElementAt(selectedNote).BorderBrush = selectedBrush;
+                (rowHeaderGrid.Children.OfType<Border>().ElementAt(selectedNote).Child as TextBlock).Foreground = selectedBrush;
+            }
+            */
+
+
+
+
+
             if (selectedNote >= 0 && selectedNote < Track.NoteCount)
             {
-                for (int j = 0; j < Track.Channels.Count; j++)
+                //
+                /*
+                var posY = (selectedNote * 20) - slScroll.Value;
+                if (posY <0)
                 {
-                    noteTexts[j][selectedNote].Foreground = Brushes.White;
-                    (noteTexts[j][selectedNote].Parent as Border).BorderBrush = Brushes.White;
+                    slScroll.Value += posY;
+                    rowHeaderScroll.ScrollToVerticalOffset(slScroll.Value);
+                }
+                if (posY+20>outerGrid.ActualHeight)
+                {
+                    slScroll.Value += posY+20 - outerGrid.ActualHeight;
+                    rowHeaderScroll.ScrollToVerticalOffset(slScroll.Value);
 
-                    if (j == selectedChannel)
-                    {
-                        noteTexts[j][selectedNote].FontWeight = FontWeights.Bold;
-                        (noteTexts[j][selectedNote].Parent as Border).BorderThickness = new Thickness(2);
-                    }
                 }
-                if (Track.Channels.Count > 0)
+                */
+                int nbrPerScreen = (int)(contentScroll.ActualHeight - 20) / 20;
+                int pageNum = selectedNote / nbrPerScreen;
+                var newValue = pageNum * nbrPerScreen * 20;
+                if (newValue != slScroll.Value)
                 {
-                    var posY = noteTexts[0][selectedNote].TransformToAncestor(contentGrid).Transform(new Point(0, 0)).Y;
-                    if (posY - 10 < contentScroll.VerticalOffset)
-                    {
-                        contentScroll.ScrollToVerticalOffset(posY - 10);
-                    }
-                    if (posY + 40 > contentScroll.VerticalOffset + contentScroll.ActualHeight)
-                    {
-                        contentScroll.ScrollToVerticalOffset(posY - contentScroll.ActualHeight + 40);
-                    }
-                }
-                else
-                {
-                    contentScroll.ScrollToHorizontalOffset(0);
-                    contentScroll.ScrollToVerticalOffset(0);
+                    slScroll.Value = newValue;
+                    rowHeaderScroll.ScrollToVerticalOffset(slScroll.Value);
                 }
             }
+
+            cursor.Margin = new Thickness(0, selectedNote * 20 - slScroll.Value, 0, 0);
+            cursor.Width = Track.Channels.Count * 100;
         }
 
 
         private void contentScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
         {
-            rowHeaderScroll.ScrollToVerticalOffset(contentScroll.VerticalOffset);
             columnHeaderScroll.ScrollToHorizontalOffset(contentScroll.HorizontalOffset);
+            foreach (var trackChannelView in contentGrid.Children.OfType<Controls.TrackChannelView>())
+            {
+                trackChannelView.Margin = new Thickness(0, 0, 0, 0);
+            }
         }
 
         private void btnEditInstrument_Click(object sender, RoutedEventArgs e)
         {
             InstrumentEditorScreen editor = new InstrumentEditorScreen();
 
-            editor.SetWaveFunction(Track.Channels[Grid.GetColumn(sender as Button)].WaveFunction);
+            editor.SetWaveFunction(Track.Channels[Grid.GetColumn(sender as Button)].WaveFunction.Clone());
             editor.ShowDialog();
             Track.Channels[Grid.GetColumn(sender as Button)].WaveFunction = editor.WaveFunction.Clone();
         }
 
+        private void headerPressets_Click(object sender, RoutedEventArgs e)
+        {
+            if (selectedChannel > -1)
+            {
+                Editor.Instrument instrument = ((e.OriginalSource as MenuItem).DataContext as Editor.Instrument);
+                Track.Channels[selectedChannel].WaveFunction = instrument.WaveFunction.Clone();
+            }
+        }
 
         private bool hasTextBoxKeyFocus()
         {
-           return columnHeaderGrid.Children.OfType<Border>().Select(b => b.Child).OfType<TextBox>().Any(t => t.IsFocused || t.IsKeyboardFocusWithin);
+            return columnHeaderGrid.Children.OfType<Border>().Select(b => b.Child).OfType<TextBox>().Any(t => t.IsFocused || t.IsKeyboardFocusWithin);
         }
         private void Editor_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -397,7 +423,7 @@ namespace MusicTracker.Screens
                 listDuration.SelectedIndex = 4;
             }
 
-            if (e.Key == Key.Down && selectedNote < 255)
+            if (e.Key == Key.Down && selectedNote < Track.NoteCount - 1)
             {
                 SelectNote(selectedNote + 1);
                 e.Handled = true;
@@ -435,7 +461,8 @@ namespace MusicTracker.Screens
                     {
                         interval = (int)(interval * 1.5);
                     }
-                    SelectNote(selectedNote + interval);
+                    var newIndex = Math.Min(Track.Channels[selectedChannel].notes.Length - 1, selectedNote + interval);
+                    SelectNote(newIndex);
                     e.Handled = true;
                 }
                 if (e.Key == Key.Space)
@@ -490,34 +517,24 @@ namespace MusicTracker.Screens
         private void setNote(int noteNum)
         {
             Track.setNote(selectedChannel, selectedNote, noteNum);
-            updateNoteText(selectedChannel, selectedNote);
+            (contentGrid.Children[selectedChannel] as Controls.TrackChannelView).RedrawNote(selectedNote);
         }
 
-        private void updateNoteText(int i, int j)
-        {
-            int noteNum = Track.note(i, j);
-            if (noteNum > 1)
-            {
-                string noteString = NoteStrings[(noteNum - 1) % 12];
-                int octave = (noteNum - 1) / 12;
-                noteTexts[i][j].Text = $"{noteString}{octave}";
-            }
-            else if (noteNum == 0)
-            {
-                noteTexts[i][j].Text = "------";
-            }
-            else
-            {
-                noteTexts[i][j].Text = "";
-            }
-        }
+        
 
         private void UserControl_SizeChanged(object sender, SizeChangedEventArgs e)
         {
+            foreach (var item in contentGrid.Children.OfType<Controls.TrackChannelView>())
+            {
+                item.Height = contentScroll.ActualHeight - 20;
+            }
+            slScroll.Maximum = (Track.NoteCount) * 20 - (contentScroll.ActualHeight - 20);
+            cursor.Margin = new Thickness(0, selectedNote * 20 - slScroll.Value, 0, 0);
+
             if (selectedChannel >= 0 && selectedChannel < Track.Channels.Count)
             {
 
-                var posX = noteTexts[selectedChannel][0].TransformToAncestor(contentGrid).Transform(new Point(0, 0)).X;
+                var posX = (contentGrid.Children.OfType<Controls.TrackChannelView>().First(c => Grid.GetColumn(c) == selectedChannel)).TransformToAncestor(contentGrid).Transform(new Point(0, 0)).X;
                 if (posX - contentScroll.HorizontalOffset < 0)
                 {
                     contentScroll.ScrollToHorizontalOffset(posX);
@@ -529,15 +546,7 @@ namespace MusicTracker.Screens
             }
             if (selectedNote >= 0 && selectedNote < Track.NoteCount)
             {
-                var posY = noteTexts[0][selectedNote].TransformToAncestor(contentGrid).Transform(new Point(0, 0)).Y;
-                if (posY - contentScroll.VerticalOffset < 0)
-                {
-                    contentScroll.ScrollToVerticalOffset(posY);
-                }
-                if (posY - contentScroll.VerticalOffset > contentScroll.ActualHeight - 60)
-                {
-                    contentScroll.ScrollToVerticalOffset(posY - contentScroll.ActualHeight + 60);
-                }
+                SelectNote(selectedNote);
             }
         }
 
@@ -557,13 +566,12 @@ namespace MusicTracker.Screens
             if (waveProvider.Playing)
             {
                 menuPlay.Header = "Start";
-                waveProvider.Stop(); 
+                waveProvider.Stop();
                 waveOut.Stop();
             }
         }
         private void menuPlay_Click(object sender, RoutedEventArgs e)
         {
-            waveProvider.BMP = 120;
             SelectNote(0);
             if (!waveProvider.Playing)
             {
@@ -576,6 +584,10 @@ namespace MusicTracker.Screens
 
         }
 
+        private void menuNewMusic_Click(object sender, RoutedEventArgs e)
+        {
+            NewMusic();
+        }
 
         private void menuImportFMS_Click(object sender, RoutedEventArgs e)
         {
@@ -595,24 +607,99 @@ namespace MusicTracker.Screens
                     int x = 0;
                     foreach (var m in music.Instruments)
                     {
-                        newTrack.Channels.Add(new TrackChannel { WaveFunction = m, Name = music.InstrumentNames[x], });
+                        newTrack.Channels.Add(new TrackChannel { WaveFunction = m, Name = music.InstrumentNames[x], notes = music.Notes[x].ToArray() });
                         x++;
-                    }
-                    for (int i = 0; i < newTrack.Channels.Count; i++)
-                    {
-                        for (int j = 0; j < music.Notes[i].Count; j++)
-                        {
-                            newTrack.setNote(i, j, music.Notes[i][j]);
-                        }
                     }
 
                     Track = newTrack;
+                    waveProvider.SpeedFactor = 1;
 
 
                 }
             }
         }
 
+        private void menuImportMidi_Click(object sender, RoutedEventArgs e)
+        {
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Filter = "MIDI files (*.mid)|*.mid|All files (*.*)|*.*";
+            if (dlg.ShowDialog() == true)
+            {
+                Engine.MidiFile music = new Engine.MidiFile(dlg.FileName);
+                if (music != null)
+                {
+                    var newTrack = new ProjectTrack();
+                    waveProvider.Track = newTrack;
+                    newTrack.Channels.Clear();
+                    int i = 1;
+                    double ratio = 24;
+                    var alltracks = music.Tracks.Where(t => t.MidiEvents.Any(me => me.MidiEventType == MidiEventType.NoteOn)).ToList();
+                    newTrack.NoteCount = (int)alltracks.Max(t => t.MidiEvents.Max(me => (me.Time * ratio) / music.TicksPerQuarterNote));
+                    var division = alltracks.SelectMany(t => t.MidiEvents.Select(me => (double)((me.Time * 96) / (double)music.TicksPerQuarterNote)));
+                    foreach (var track in alltracks)
+                    {
+                        var channel1 = new TrackChannel { WaveFunction = new Engine.SineWaveFunction(), Name = $"track {i}" };
+                        var channel2 = new TrackChannel { WaveFunction = new Engine.SineWaveFunction(), Name = $"track {i}" };
+                        var channel3 = new TrackChannel { WaveFunction = new Engine.SineWaveFunction(), Name = $"track {i}" };
+                        channel1.notes = new int[newTrack.NoteCount + 1];
+                        channel2.notes = new int[newTrack.NoteCount + 1];
+                        channel3.notes = new int[newTrack.NoteCount + 1];
+                        int n = 0;
+                        foreach (var tevent in track.TextEvents)
+                        {
+                            if (tevent.TextEventType == TextEventType.TrackName)
+                            {
+                                channel1.Name = tevent.Value;
+                                channel2.Name = tevent.Value;
+                                channel3.Name = tevent.Value;
+                            }
+                        }
+                        int lastNote1 = 0;
+                        int lastNote2 = 0;
+                        int lastNote3 = 0;
+                        for (; n < track.MidiEvents.Count; n++)
+                        {
+                            var midiEvent = track.MidiEvents[n];
+                            var pos = (int)((midiEvent.Time * ratio) / music.TicksPerQuarterNote);
+                            if (midiEvent.MidiEventType == MidiEventType.NoteOn)
+                            {
+
+                                if (pos < channel1.notes.Length)
+                                {
+                                    if (channel1.notes[pos] == 0 || channel1.notes[pos] == -1) { channel1.notes[pos] = (midiEvent.Note) - 11; lastNote1 = midiEvent.Note; }
+                                    else if (channel3.notes[pos] == 0 || channel2.notes[pos] == -1) { channel2.notes[pos] = (midiEvent.Note) - 11; lastNote2 = midiEvent.Note; }
+                                    else if (channel3.notes[pos] == 0 || channel3.notes[pos] == -1) { channel3.notes[pos] = (midiEvent.Note) - 11; lastNote3 = midiEvent.Note; }
+                                }
+                            }
+                            else if (midiEvent.MidiEventType == MidiEventType.NoteOff)
+                            {
+                                if (pos < channel1.notes.Length)
+                                {
+                                    if (lastNote1 == midiEvent.Note) { channel1.notes[pos] = -1; lastNote1 = 0; }
+                                    else if (lastNote2 == midiEvent.Note) { channel2.notes[pos] = -1; ; lastNote2 = 0; }
+                                    else if (lastNote3 == midiEvent.Note) { channel3.notes[pos] = -1; ; lastNote3 = 0; }
+                                    channel1.notes[pos] = -1;
+
+                                }
+                            }
+                        }
+                        //channel.notes[n] = -1;
+                        if (channel1.notes.Any(nn => nn != 0))
+                            newTrack.Channels.Add(channel1);
+                        if (channel2.notes.Any(nn => nn != 0))
+                            newTrack.Channels.Add(channel2);
+                        if (channel3.notes.Any(nn => nn != 0))
+                            newTrack.Channels.Add(channel3);
+                        i++;
+                    }
+
+                    Track = newTrack;
+                    waveProvider.SpeedFactor = ratio / 4;
+
+
+                }
+            }
+        }
         private void menuAddChannel_Click(object sender, RoutedEventArgs e)
         {
             AddChannel();
@@ -622,5 +709,18 @@ namespace MusicTracker.Screens
         {
             RemoveChannel();
         }
+
+
+        private void slScroll_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            foreach (var item in contentGrid.Children.OfType<Controls.TrackChannelView>())
+            {
+                item.ScrollOffset = slScroll.Value;
+            }
+            rowHeaderScroll.ScrollToVerticalOffset(slScroll.Value);
+            cursor.Margin = new Thickness(0, selectedNote * 20 - slScroll.Value, 0, 0);
+        }
+
+       
     }
 }

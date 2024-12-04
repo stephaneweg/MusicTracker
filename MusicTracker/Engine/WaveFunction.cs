@@ -16,174 +16,8 @@ namespace MusicTracker.Engine
    
 
 
-    public class SingleWaveProvider:WaveProvider16
-    {
-        public WaveFunction WaveFunction { get; set; }
-        public double Frequency { get; set; }
-        public SingleWaveProvider(WaveFunction wave1)
-        {
-            WaveFunction = wave1;
-            Frequency = 0;
-        }
-
-        public override int Read(short[] buffer, int offset, int sampleCount)
-        {
-            if (WaveFunction != null)
-            {
-                for (int index = 0; index < sampleCount; index++)
-                {
-                
-                    
-                        buffer[offset + index] = (short)(WaveFunction.GetNext(Frequency, 44100, 0) * short.MaxValue);
-                }
-                
-            }
-            return sampleCount;
-        }
-    }
-
-    public class WaveProvider:WaveProvider16
-    {
-        int noteIndex;
-        public Action<int> NoteSelected { get; set; }
-        double Interval = 0;
-        double T;
-        double bmp;
-        public int NoteIndex {
-            get { return noteIndex; }
-            set
-            {
-                if (noteIndex!=value)
-                {
-                    noteIndex = value;
-                    NoteSelected?.Invoke(noteIndex);
-                }
-            }
-        }
-        public bool Playing { get; private set; }
-        public double BMP {
-            get
-            {
-                return bmp;
-            }
-            set
-            {
-                bmp = value;
-                Interval = (60d / BMP) / 4 * 44100;
-            }
-        }
-        public ProjectTrack Track { get; set; }
-       
-        public WaveProvider(ProjectTrack track)
-        {
-            Track = track;
-        }
-
-        public void Stop()
-        {
-            Playing = false;
-        }
-        public void Start()
-        {
-            T = 0;
-            NoteIndex = 0;
-            for (int i = 0; i < Track.Channels.Count; i++)
-            {
-                if (Track.Channels[i] != null)
-                {
-                    var channel = Track.Channels[i];
-                    if (NoteIndex >= channel.notes.Length)
-                    {
-                        NoteIndex = 0;
-                    }
-                    var n = channel.notes[NoteIndex];
-                    if (n > 0)
-                    {
-                        channel.CurrentFrequency = 32.7d * Math.Pow(2, (n - 1) / 12.0);
-                        channel.WaveFunction.Reset();
-                    }
-                    else
-                    {
-                        channel.CurrentFrequency = 0;
-                    }
-
-                }
-            }
-            Playing = true;
-        }
-
-        public override int Read(short[] buffer, int offset, int sampleCount)
-        {
-            if (Playing)
-            {
-                for (int index = 0; index < sampleCount; index++)
-                {
-                    double cpt = 0;
-                    double total = 0;
-                    for (int i = 0; i < Track.Channels.Count; i++)
-                    {
-                        if (Track.Channels[i] != null)
-                        {
-                            var channel = Track.Channels[i];
-
-
-                            total += channel.WaveFunction.GetNext(channel.CurrentFrequency, 44100, 0);
-                            cpt++;
-                        }
-                    }
-                    if (cpt > 0)
-                    {
-                        buffer[offset + index] = (short)((total / cpt) * short.MaxValue);
-                    }
-                    else
-                    {
-                        buffer[offset + index] = 0;
-                    }
-
-                    T++;
-                    if (T >= Interval)
-                    {
-                        T = 0;
-                        NoteIndex++;
-
-                        if (NoteIndex>=Track.NoteCount)
-                        {
-                            NoteIndex = 0;
-                        }
-                        for (int i = 0; i < Track.Channels.Count; i++)
-                        {
-                            if (Track.Channels[i] != null)
-                            {
-                                var channel = Track.Channels[i];
-                                if (NoteIndex >= channel.notes.Length)
-                                {
-                                    NoteIndex = 0;
-                                }
-                                var n = channel.notes[NoteIndex];
-                                if (n > 0)
-                                {
-                                    channel.CurrentFrequency = 32.7d * Math.Pow(2, (n - 1) / 12.0);
-                                    channel.WaveFunction.Reset();
-                                }
-                                else if (n == -1)
-                                {
-                                    if (channel.WaveFunction.DoRelease())
-                                    {
-                                        channel.CurrentFrequency = 0;
-                                    }
-                                }
-
-                            }
-                        }
-
-                    }
-                }
-                return sampleCount;
-            }
-            return 0;
-        }
-    }
-
+   
+   
     [System.Text.Json.Serialization.JsonDerivedType(typeof(SineWaveFunction), "Sine")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(SquareWaveFunction), "Square")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(TriangleWaveFunction), "Triangle")]
@@ -195,6 +29,7 @@ namespace MusicTracker.Engine
     [System.Text.Json.Serialization.JsonDerivedType(typeof(AddWaveFunction), "Add")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(VibratoWaveFunction), "Vibrato")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(MultiplyWaveFunction), "Multiply")]
+    [System.Text.Json.Serialization.JsonDerivedType(typeof(AmplitudeModifierWaveFunction), "AmplitudeModifier")]
     [System.Text.Json.Serialization.JsonDerivedType(typeof(AudioPatchWaveFunction), "AudioPatch")]
     public abstract class WaveFunction :INotifyPropertyChanged
     {
@@ -501,6 +336,84 @@ namespace MusicTracker.Engine
         }
     }
 
+    public class AmplitudeModifierWaveFunction : WaveFunction
+    {
+        double amplitudeModifier;
+        WaveFunction waveFunction;
+        public double AmplitudeModifier
+        {
+            get { return amplitudeModifier; }
+            set
+            {
+                if (amplitudeModifier != value)
+                {
+                    amplitudeModifier = Math.Max(0, Math.Min(1, value));
+
+                    OnPropertyChanged(nameof(AmplitudeModifier));
+                }
+            }
+        }
+        public WaveFunction WaveFunction
+        {
+            get { return waveFunction; }
+            set
+            {
+                if (waveFunction != value)
+                {
+                    if (waveFunction != null)
+                    {
+                        waveFunction.PropertyChanged -= WaveFunction_PropertyChanged;
+                    }
+                    waveFunction = value;
+                    if (waveFunction != null)
+                    {
+                        waveFunction.PropertyChanged += WaveFunction_PropertyChanged;
+                    }
+                    OnPropertyChanged(nameof(WaveFunction));
+                }
+            }
+        }
+
+        private void WaveFunction_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(WaveFunction));
+        }
+        public override void Reset()
+        {
+            base.Reset();
+            if (WaveFunction != null)
+            {
+                WaveFunction.Reset();
+            }
+        }
+        public override double GetNext(double frequency, double SampleRate, double modulatorValue)
+        {
+            if (WaveFunction != null)
+            {
+                WaveFunction.Ended = Ended;
+                WaveFunction.TRelease = TRelease;
+
+                return WaveFunction.GetNext(frequency, SampleRate, modulatorValue) * amplitudeModifier;
+            }
+            return 0;
+        }
+
+        public override double maxLevels(double currentLevel)
+        {
+            if (WaveFunction != null) return WaveFunction.maxLevels(currentLevel + 1);
+            return currentLevel;
+        }
+        override public bool DoRelease()
+        {
+            bool ret = base.DoRelease();
+            if (waveFunction != null)
+            {
+                ret = ret & waveFunction.DoRelease();
+            }
+            return ret;
+        }
+
+    }
     public class FrequencyModifierWaveFunction : WaveFunction
     {
         double frequencyModifier;
