@@ -232,7 +232,19 @@ namespace MusicTracker.Screens
             var header = new DockPanel();
             if (headerRight != null) { DockPanel.SetDock(headerRight, Dock.Right); header.Children.Add(headerRight); }
             var titleSp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            titleSp.Children.Add(new TextBlock { Text = icon, FontSize = 13, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+            // Card icon as a white glyph in a small rounded teal badge (the emoji itself is monochrome under WPF,
+            // so it simply takes the white Foreground — see NewsIconBrushes).
+            titleSp.Children.Add(new Border
+            {
+                Background = (Brush)FindResource("AccentBrightBrush"), CornerRadius = new CornerRadius(5),
+                Padding = new Thickness(5, 2, 5, 2), Margin = new Thickness(0, 0, 7, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = icon, FontSize = 12, Foreground = System.Windows.Media.Brushes.White,
+                    VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center,
+                },
+            });
             titleSp.Children.Add(new TextBlock { Text = title, Foreground = (Brush)FindResource("AccentBrightBrush"), FontSize = 11, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
             header.Children.Add(titleSp);
 
