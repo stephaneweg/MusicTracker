@@ -278,9 +278,11 @@ namespace MusicTracker.Screens
             var del = new Button
             {
                 Content = "✕", Style = (Style)FindResource("deleteIconButton"),
-                Width = 22, Height = 22, FontSize = 11, Cursor = Cursors.Hand,
+                Width = 20, Height = 20, FontSize = 11, Cursor = Cursors.Hand,
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
-                Margin = new Thickness(0, 6, 6, 0), ToolTip = "Supprimer ce modèle",
+                // Inset past the card's 1px border AND its 10px corner radius, so the ✕ sits clearly INSIDE the card
+                // instead of straddling the rounded corner.
+                Margin = new Thickness(0, 9, 9, 0), ToolTip = "Supprimer ce modèle",
             };
             del.Click += (s, e) => onDelete();
             wrap.Children.Add(card);

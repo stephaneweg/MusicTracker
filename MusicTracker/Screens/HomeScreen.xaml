@@ -44,9 +44,8 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="{StaticResource SubtleBorderBrush}"/>
             <Setter Property="Padding" Value="14,12"/>
-            <Setter Property="Margin" Value="0,0,12,12"/>
-            <Setter Property="MinWidth" Value="300"/>
-            <Setter Property="MaxWidth" Value="380"/>
+            <!-- No Width/Margin here: the hosting ResponsiveWrapPanel owns cell width and spacing, and a MaxWidth
+                 would stop a card from filling the row when the pane is too narrow to show both side by side. -->
         </Style>
         <!-- White glyph on a rounded teal badge (emoji render monochrome in WPF, so they take the Foreground). -->
         <Style x:Key="CardBadge" TargetType="Border">
@@ -79,9 +78,10 @@
 
         <!-- Template card: icon chip + name + description + tags; hover accent border. -->
         <Style x:Key="TemplateCard" TargetType="Button">
-            <Setter Property="Width" Value="206"/>
+            <!-- Width and spacing come from the hosting ResponsiveWrapPanel so the cards can stretch when the
+                 pane is too narrow for 4 columns. -->
             <Setter Property="Height" Value="150"/>
-            <Setter Property="Margin" Value="0,0,12,12"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="VerticalContentAlignment" Value="Top"/>
@@ -230,126 +230,130 @@
                 </Grid>
             </DockPanel>
         </Border>
-
-        <!-- ===== Right: hero + action cards ===== -->
-        <Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <!-- Crossfade backdrop: a riff piano-roll (left) dissolving into a drum grid (right), both built in
+        <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <!-- ===== Right: hero + action cards ===== -->
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <!-- Crossfade backdrop: a riff piano-roll (left) dissolving into a drum grid (right), both built in
                  code-behind and faded via opacity masks. Sits behind the hero content. -->
-           
-
-            
-            <Border Grid.Row="0" Name="banner" VerticalAlignment="Top" Margin="30" Padding="5" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource SubtleBorderBrush}">
-                <Grid>
-
-                    <!-- backdrop wrapper: global vertical fade to transparent at the bottom. Composes with each
-                         canvas's own horizontal crossfade mask (masks multiply down the visual tree). -->
+                <Border Grid.Row="0" Name="banner" VerticalAlignment="Top" Margin="30" Padding="5" CornerRadius="10" BorderThickness="1" BorderBrush="{StaticResource SubtleBorderBrush}">
                     <Grid>
-                        <Grid.OpacityMask>
-                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                <GradientStop Offset="0" Color="White"/>
-                                <GradientStop Offset="0.1" Color="White"/>
-                                <GradientStop Offset="1" Color="Transparent"/>
-                            </LinearGradientBrush>
-                        </Grid.OpacityMask>
 
-                        <Canvas x:Name="bannerRiff" IsHitTestVisible="False" Opacity="0.3">
-                            <Canvas.OpacityMask>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Offset="0" Color="white"/>
-                                    <GradientStop Offset="0.7" Color="Transparent"/>
+                        <!-- backdrop wrapper: global vertical fade to transparent at the bottom. Composes with each
+                         canvas's own horizontal crossfade mask (masks multiply down the visual tree). -->
+                        <Grid>
+                            <Grid.OpacityMask>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Offset="0" Color="White"/>
+                                    <GradientStop Offset="0.1" Color="White"/>
                                     <GradientStop Offset="1" Color="Transparent"/>
                                 </LinearGradientBrush>
-                            </Canvas.OpacityMask>
-                        </Canvas>
-                        <Canvas x:Name="bannerDrum" IsHitTestVisible="False" Opacity="0.3">
-                            <Canvas.OpacityMask>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                                    <GradientStop Offset="0" Color="Transparent"/>
-                                    <GradientStop Offset="0.3" Color="Transparent"/>
-                                    <GradientStop Offset="1" Color="white"/>
-                                </LinearGradientBrush>
-                            </Canvas.OpacityMask>
-                        </Canvas>
-                    </Grid>
-                    <StackPanel>
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="440" Margin="0,30,0,30">
-                        <!-- Wordmark -->
-                        <StackPanel Orientation="Horizontal" Margin="2,0,0,4" HorizontalAlignment="Center">
-                            <Ellipse Width="16" Height="16" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                            <TextBlock Text="Aria Studio" Foreground="{StaticResource CommonForeground}" FontSize="32" FontWeight="Bold"/>
-                        </StackPanel>
-                        <TextBlock Text="Composez, arrangez et séquencez vos morceaux." HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"
+                            </Grid.OpacityMask>
+
+                            <Canvas x:Name="bannerRiff" IsHitTestVisible="False" Opacity="0.3">
+                                <Canvas.OpacityMask>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Offset="0" Color="white"/>
+                                        <GradientStop Offset="0.7" Color="Transparent"/>
+                                        <GradientStop Offset="1" Color="Transparent"/>
+                                    </LinearGradientBrush>
+                                </Canvas.OpacityMask>
+                            </Canvas>
+                            <Canvas x:Name="bannerDrum" IsHitTestVisible="False" Opacity="0.3">
+                                <Canvas.OpacityMask>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Offset="0" Color="Transparent"/>
+                                        <GradientStop Offset="0.3" Color="Transparent"/>
+                                        <GradientStop Offset="1" Color="white"/>
+                                    </LinearGradientBrush>
+                                </Canvas.OpacityMask>
+                            </Canvas>
+                        </Grid>
+                        <StackPanel>
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="440" Margin="0,30,0,30">
+                                <!-- Wordmark -->
+                                <StackPanel Orientation="Horizontal" Margin="2,0,0,4" HorizontalAlignment="Center">
+                                    <Ellipse Width="16" Height="16" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <TextBlock Text="Aria Studio" Foreground="{StaticResource CommonForeground}" FontSize="32" FontWeight="Bold"/>
+                                </StackPanel>
+                                <TextBlock Text="Composez, arrangez et séquencez vos morceaux." HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"
                             FontSize="13" Margin="2,0,0,26"/>
-                    </StackPanel>
-                    <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="0,0,0,30" Gap="12">
-                        <!-- Nouvelle musique (primary — accent chip) -->
-                        <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnNewSequencer_Click">
-                            <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,14,0">
-                                    <TextBlock Text="＋" FontSize="22" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Nouvelle musique" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Partir d'une timeline vierge." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
-                                </StackPanel>
-                            </DockPanel>
-                        </Button>
+                            </StackPanel>
+                            <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="0,0,0,30" Gap="12">
+                                <!-- Nouvelle musique (primary — accent chip) -->
+                                <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnNewSequencer_Click">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,14,0">
+                                            <TextBlock Text="＋" FontSize="22" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Nouvelle musique" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Partir d'une timeline vierge." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Button>
 
-                        <!-- Composer avec l'IA -->
-                        <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnComposeAi_Click"
+                                <!-- Composer avec l'IA -->
+                                <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnComposeAi_Click"
             ToolTip="Décris un style + une longueur ; l'IA génère un morceau, ouvert dans un nouvel onglet.">
-                            <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="#2A2C31" VerticalAlignment="Center" Margin="0,0,14,0">
-                                    <TextBlock Text="🤖" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Composer avec l'IA" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Décris un style, l'IA arrange le morceau." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
-                                </StackPanel>
-                            </DockPanel>
-                        </Button>
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="#2A2C31" VerticalAlignment="Center" Margin="0,0,14,0">
+                                            <TextBlock Text="🤖" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Composer avec l'IA" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Décris un style, l'IA arrange le morceau." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Button>
 
-                        <!-- Ouvrir un fichier -->
-                        <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnOpen_Click">
-                            <DockPanel>
-                                <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="#2A2C31" VerticalAlignment="Center" Margin="0,0,14,0">
-                                    <TextBlock Text="📂" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="Ouvrir un fichier…" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Text="Reprendre un projet enregistré." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
-                                </StackPanel>
-                            </DockPanel>
-                        </Button>
-                    </ctl:ReflowButtons>
-                </StackPanel>
-                
-                </Grid>
-            </Border>
+                                <!-- Ouvrir un fichier -->
+                                <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnOpen_Click">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="#2A2C31" VerticalAlignment="Center" Margin="0,0,14,0">
+                                            <TextBlock Text="📂" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="Ouvrir un fichier…" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="Reprendre un projet enregistré." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Button>
+                            </ctl:ReflowButtons>
+                        </StackPanel>
 
-            <!-- Templates from Data/templates/*.json (cards built in code-behind) + two "add" links. -->
-            <StackPanel Grid.Row="1" Margin="30,0,30,20">
-                <TextBlock Text="MODÈLES DE PROJET" Foreground="{StaticResource AccentBrightBrush}" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
-                <WrapPanel x:Name="templatesPanel"/>
-                <StackPanel Orientation="Horizontal" Margin="2,4,0,0">
-                    <Button x:Name="btnAddFromFile" Content="＋ Ajouter depuis un fichier…" Style="{StaticResource LinkBtn}" Click="btnAddFromFile_Click"
+                    </Grid>
+                </Border>
+
+                <!-- Templates from Data/templates/*.json (cards built in code-behind) + two "add" links. -->
+                <StackPanel Grid.Row="1" Margin="30,0,30,20">
+                    <TextBlock Text="MODÈLES DE PROJET" Foreground="{StaticResource AccentBrightBrush}" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
+                    <!-- 4 columns at full width, then 3 / 2 / 1 as the pane narrows (cards stretch to share it). -->
+                    <ctl:ResponsiveWrapPanel x:Name="templatesPanel" ItemWidth="240" MaxColumns="4" ItemSpacing="12"
+                                             CapLayout="Center"/>
+                    <StackPanel Orientation="Horizontal" Margin="2,4,0,0">
+                        <Button x:Name="btnAddFromFile" Content="＋ Ajouter depuis un fichier…" Style="{StaticResource LinkBtn}" Click="btnAddFromFile_Click"
                             Foreground="{StaticResource AccentBrightBrush}" ToolTip="Choisir un fichier .json de template et l'ajouter au dossier."/>
-                    <Button x:Name="btnAddWithAi" Content="🤖 Ajouter avec l'IA…" Style="{StaticResource LinkBtn}" Click="btnAddWithAi_Click" Margin="8,0,0,0"
+                        <Button x:Name="btnAddWithAi" Content="🤖 Ajouter avec l'IA…" Style="{StaticResource LinkBtn}" Click="btnAddWithAi_Click" Margin="8,0,0,0"
                             Foreground="{StaticResource AccentBrightBrush}" ToolTip="Décris un style + une intention ; l'IA génère un template que tu confirmes et enregistres."/>
+                    </StackPanel>
+
                 </StackPanel>
+
 
                 <!-- Resources widget. Code-behind only fills txtTip (rotating tip) and newsList (changelog entries). -->
-                <StackPanel Margin="0,22,0,0">
+                <StackPanel Grid.Row="2" Margin="0,22,0,0">
                     <TextBlock Text="RESSOURCES" Foreground="{StaticResource AccentBrightBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
-                    <WrapPanel>
+                    <!-- Side by side while both fit, otherwise stacked at full width. -->
+                    <ctl:ResponsiveWrapPanel ItemWidth="350" MaxColumns="2" ItemSpacing="12" CapLayout="Left">
                         <!-- Astuce du jour : today's tip, ‹ › to browse. -->
                         <Border Style="{StaticResource ResourceCard}">
                             <StackPanel>
@@ -365,8 +369,10 @@
                                         <TextBlock Text="ASTUCE DU JOUR" Style="{StaticResource CardTitle}"/>
                                     </StackPanel>
                                 </DockPanel>
+                                <!-- MinHeight (not a fixed width) keeps the card from resizing between tips of
+                                     different lengths, while still letting the text use the full card width. -->
                                 <TextBlock x:Name="txtTip" TextWrapping="Wrap" Foreground="{StaticResource CommonForeground}"
-                                           FontSize="12" Margin="0,8,0,0" MaxWidth="320"/>
+                                           FontSize="12" Margin="0,8,0,0" MinHeight="54"/>
                             </StackPanel>
                         </Border>
 
@@ -384,13 +390,13 @@
                                 <StackPanel x:Name="newsList" Margin="0,8,0,0"/>
                             </StackPanel>
                         </Border>
-                    </WrapPanel>
+                    </ctl:ResponsiveWrapPanel>
                 </StackPanel>
-            </StackPanel>
 
 
 
-               
-        </Grid>
+
+            </Grid>
+        </ScrollViewer>
     </Grid>
 </UserControl>

@@ -292,6 +292,7 @@
     <Compile Include="Controls\RiffThumbnail.cs" />
     <Compile Include="Controls\DrumColors.cs" />
     <Compile Include="Controls\InstrumentColors.cs" />
+    <Compile Include="Controls\ResponsiveWrapPanel.cs" />
     <Compile Include="Controls\WindowDrag.cs" />
     <Compile Include="Controls\ReflowButtons.cs" />
     <Compile Include="Engine\Flow\DrumCatalog.cs" />
