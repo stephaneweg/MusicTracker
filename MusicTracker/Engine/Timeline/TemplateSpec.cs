@@ -260,7 +260,7 @@ namespace MusicTracker.Engine.Timeline
         {
             var sys = new System.Text.StringBuilder();
             sys.AppendLine("Tu es arrangeur. Tu renvoies UNIQUEMENT un objet JSON STRICT (aucune prose) décrivant un MODÈLE de style musical GÉNÉRATIF et réutilisable.");
-            sys.AppendLine("PRINCIPE : le modèle ne décrit pas un morceau figé mais des BANQUES de matière. Pour CHAQUE section tu proposes PLUSIEURS options (progressions d'accords, articulations, cellules mélodiques, phrases de riff par piste, grooves de batterie) ; l'application PIOCHE une option dans chaque banque et assemble le morceau. Deux sections de même 'name' réutilisent la même pioche (forme cohérente). Propose donc 2 à 4 options par banque pour de la variété.");
+            sys.AppendLine("PRINCIPE : le modèle ne décrit pas un morceau figé mais des BANQUES de matière. Pour CHAQUE section tu proposes PLUSIEURS options (progressions d'accords, articulations, cellules mélodiques, phrases de riff par piste, grooves de batterie) ; l'application PIOCHE une option dans chaque banque et assemble le morceau. Deux sections de même 'name' réutilisent la même pioche (forme cohérente). Propose donc 4 à 8 options par banque pour de la variété.");
             sys.AppendLine("Tout est RELATIF au degré et au mode (indépendant de la tonalité absolue).");
             sys.AppendLine();
             sys.AppendLine("Schéma EXACT (respecte les noms de clés, JSON minifié) :");
@@ -285,7 +285,7 @@ namespace MusicTracker.Engine.Timeline
             sys.AppendLine(@"        { ""bars"": int(longueur du motif en mesures, souvent 1-2), ""slicesPerBeat"": int, ""motif"": [noteGM,début,durée, ...] } ]   // noteGM = batterie 35-81 (36 grosse caisse, 38 caisse claire, 42 charley fermé, 46 ouvert, 49 crash, 51 ride)");
             sys.AppendLine("  } ] }");
             sys.AppendLine();
-            sys.AppendLine("Règles : 3 à 5 sections nommées (intro/theme/refrain/pont/outro selon le style) ; 2 à 4 options par banque ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
+            sys.AppendLine("Règles : 3 à 5 sections nommées (intro/theme/refrain/pont/outro selon le style) ; 4 à 8 options par banque ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
             string usr = "Style et intention : « " + (styleIntention ?? "").Trim() + " ». Produis le modèle génératif en JSON.";
             return new[] { sys.ToString(), usr };
         }
