@@ -1527,14 +1527,93 @@ namespace MusicTracker.Screens
         static readonly string[] RomanU = { "I", "II", "III", "IV", "V", "VI", "VII" };
         static readonly string[] RomanL = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
         // Roman-numeral degree of a chord: its Degree (diatonic) or the nearest scale degree of its root; case + ° by quality.
+        /// <summary>
+        /// The chord's roman-numeral FUNCTION in the current key. The case reflects the real quality (I / i / vii°),
+        /// and a chord that is not simply the diatonic chord of its degree is named by its FUNCTION rather than by its
+        /// raw degree: in C major a D MAJOR chord is the dominant of the dominant → "V/V", not "II" (which would be
+        /// D minor). Covers every secondary dominant (V/ii, V/iii, V/IV, V/V, V/vi), secondary leading-tone chords
+        /// (vii°/x) and borrowed / chromatic roots (♭III, ♭VII, ♯IV…).
+        /// </summary>
         string ChordRoman(PatternGeneratorModule pg)
         {
-            int deg = pg.Degree >= 0 ? pg.Degree : Engine.Flow.MusicTheory.DegreeOf(project.Key ?? new Engine.Score.KeySignature(), ((pg.Root % 12) + 12) % 12);
-            deg = Math.Max(0, Math.Min(6, deg));
-            int q = pg.Quality;
-            bool minorish = q == 1 || q == 7 || q == 14 || q == 17 || q == 2 || q == 9 || q == 10;
-            bool dim = q == 2 || q == 9 || q == 10;
-            return (minorish ? RomanL[deg] : RomanU[deg]) + (dim ? "°" : "");
+            var key = project.Key ?? new Engine.Score.KeySignature();
+            int tonicPc = Engine.Flow.MusicTheory.TonicPc(key);
+            int[] scale = Engine.Score.MusicalMode.Scale(Engine.Score.MusicalMode.Effective(key));
+            int rootPc = ((pg.Root % 12) + 12) % 12;
+
+            ChordShape(pg.Quality, out bool minThird, out bool dimFifth, out bool augFifth, out bool dom7);
+            int deg = DiatonicDegree(rootPc, tonicPc, scale);        // 0..6, or −1 when the root is chromatic
+            string suffix = dimFifth ? "°" : augFifth ? "+" : "";
+
+            // Secondary dominant — a major-quality chord (or ANY dominant 7th) that isn't the key's own V, whose root
+            // sits a perfect fifth above a diatonic degree. Its target keeps its own diatonic case (V/V but V/ii).
+            if (!minThird && !dimFifth)
+            {
+                bool diatonicMajorHere = deg >= 0 && DiatonicThird(deg, scale) == 4;
+                bool actsAsSecondary = dom7 ? deg != 4 : !diatonicMajorHere;
+                if (actsAsSecondary)
+                {
+                    int target = DiatonicDegree(((rootPc - 7) % 12 + 12) % 12, tonicPc, scale);
+                    if (target >= 0 && !DiatonicIsDim(target, scale)) return "V/" + RomanDiatonic(target, scale);
+                }
+            }
+            // Secondary leading-tone chord — a diminished chord a semitone below a diatonic degree.
+            if (dimFifth && deg < 0)
+            {
+                int target = DiatonicDegree((rootPc + 1) % 12, tonicPc, scale);
+                if (target >= 0 && !DiatonicIsDim(target, scale)) return "vii°/" + RomanDiatonic(target, scale);
+            }
+
+            if (deg >= 0) return (minThird ? RomanL[deg] : RomanU[deg]) + suffix;
+
+            // Chromatic root that isn't a secondary function: name it as an altered neighbour degree. Borrowed chords
+            // are spelt FLAT by convention (♭III, ♭VI, ♭VII), except the tritone which reads ♯IV — so try the flat
+            // neighbour first, and only lead with the sharp one for that tritone.
+            bool preferSharp = ((rootPc - tonicPc) % 12 + 12) % 12 == 6;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                bool sharp = preferSharp ? pass == 0 : pass == 1;
+                for (int d = 0; d < 7; d++)
+                {
+                    int dpc = ((tonicPc + scale[d]) % 12 + 12) % 12;
+                    int delta = sharp ? ((rootPc - dpc) % 12 + 12) % 12    // root sits a semitone ABOVE that degree
+                                      : ((dpc - rootPc) % 12 + 12) % 12;   // root sits a semitone BELOW that degree
+                    if (delta == 1) return (sharp ? "♯" : "♭") + (minThird ? RomanL[d] : RomanU[d]) + suffix;
+                }
+            }
+            return (minThird ? RomanL[0] : RomanU[0]) + suffix;
+        }
+
+        // Scale index (0..6) of a pitch-class in the key, or −1 when it isn't in the scale.
+        static int DiatonicDegree(int pc, int tonicPc, int[] scale)
+        {
+            for (int d = 0; d < 7; d++) if (((tonicPc + scale[d]) % 12 + 12) % 12 == pc) return d;
+            return -1;
+        }
+        // Semitones of the diatonic third stacked on a degree (4 = major, 3 = minor).
+        static int DiatonicThird(int d, int[] scale) => ((scale[(d + 2) % 7] - scale[d]) % 12 + 12) % 12;
+        // True when the diatonic triad on that degree is DIMINISHED — such a degree cannot be tonicised, so it is
+        // never a valid target for a secondary dominant / leading-tone chord (an F♯ major in C is ♯IV, not "V/vii°").
+        static bool DiatonicIsDim(int d, int[] scale) => ((scale[(d + 4) % 7] - scale[d]) % 12 + 12) % 12 == 6;
+        // The degree's own roman numeral, cased (and marked °) by its DIATONIC quality — used as a secondary target.
+        static string RomanDiatonic(int d, int[] scale)
+        {
+            bool major = DiatonicThird(d, scale) == 4;
+            bool dim = ((scale[(d + 4) % 7] - scale[d]) % 12 + 12) % 12 == 6;
+            return (major ? RomanU[d] : RomanL[d]) + (dim ? "°" : "");
+        }
+        // The chord's shape, read from its actual intervals (no hard-coded quality-index lists).
+        static void ChordShape(int quality, out bool minThird, out bool dimFifth, out bool augFifth, out bool dom7)
+        {
+            var set = new System.Collections.Generic.HashSet<int>();
+            var notes = PatternGenerator.ChordNotes(0, 4, quality, 0);
+            int b = (notes != null && notes.Length > 0) ? notes[0] : 0;
+            if (notes != null) foreach (var n in notes) set.Add(((n - b) % 12 + 12) % 12);
+            minThird = set.Contains(3) && !set.Contains(4);
+            bool fifth = set.Contains(7);
+            dimFifth = set.Contains(6) && !fifth;
+            augFifth = set.Contains(8) && !fifth && !set.Contains(3);
+            dom7 = set.Contains(10) && !minThird && !dimFifth;   // major third + minor seventh
         }
 
         FrameworkElement MakeLeafBox(TimelineTrack track, TimelineItem item, double startBeat, bool interactive, double opacity, double top, double height, Action<double> onDrop = null)
