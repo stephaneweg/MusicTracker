@@ -691,89 +691,194 @@ namespace MusicTracker.Screens
         // Apply a rich section-based template, expanded to `measures` bars by alternating the dev sections. Builds an
         // audible chord bed on the Accords track, a drum groove per section, and a melodic line per instrument (its
         // per-section motif). Unsaved (CurrentPath = null).
+        // ---- generative templates -------------------------------------------------------------------------------
+        // A template opened from the home screen is remembered (spec + target length + current seed) so "Régénérer"
+        // can re-pick from its banks with a new seed and rebuild the whole project. Not persisted: a saved project is
+        // a plain arrangement, no longer tied to its template.
+        Engine.Timeline.TemplateSpec templateSpec;
+        int templateMeasures;
+        public int TemplateSeed { get; private set; }
+        public bool FromTemplate => templateSpec != null;
+
+        sealed class SecPick
+        {
+            public System.Collections.Generic.List<Engine.Timeline.TplChord> Prog;
+            public Engine.Timeline.TplArticulation Art;
+            public Engine.Timeline.TplMelodicCell Cell;
+            public Engine.Timeline.TplDrumGroove Groove;
+            public System.Collections.Generic.Dictionary<int, Engine.Timeline.TplPhrase> Phrase = new System.Collections.Generic.Dictionary<int, Engine.Timeline.TplPhrase>();
+        }
+
         public void LoadTemplateSpec(Engine.Timeline.TemplateSpec spec, int measures)
         {
             if (spec == null) return;
-            project.TimeSigNum = (spec.Meter != null && spec.Meter.Length > 0 && spec.Meter[0] > 0) ? spec.Meter[0] : 4;
-            project.TimeSigDen = (spec.Meter != null && spec.Meter.Length > 1 && spec.Meter[1] > 0) ? spec.Meter[1] : 4;
-            project.TimeSigScale = 1.0; project.PickupBeats = 0; project.Arrangement = null;
-            project.Key = new Engine.Score.KeySignature();
-            project.Tempo = new System.Collections.Generic.List<TempoChange> { new TempoChange { Beat = 0, Bpm = spec.Bpm > 0 ? spec.Bpm : 120 } };
+            templateSpec = spec;
+            templateMeasures = measures;
+            TemplateSeed = NewSeed();
+            BuildFromTemplate();
+        }
 
+        /// <summary>Re-pick from the template's banks with a NEW seed and rebuild (the "Régénérer" button).</summary>
+        public void RegenerateFromTemplate()
+        {
+            if (templateSpec == null) return;
+            TemplateSeed = NewSeed();
+            BuildFromTemplate();
+        }
+
+        static int NewSeed() { var g = Guid.NewGuid().GetHashCode(); return g == int.MinValue ? 1 : Math.Abs(g) % 1000000 + 1; }
+
+        void BuildFromTemplate()
+        {
+            var spec = templateSpec; if (spec == null) return;
+            int measures = templateMeasures > 0 ? templateMeasures : Math.Max(1, spec.Measure?.Count ?? 32);
+            var rng = new Random(TemplateSeed);
+            const int spq = 4;    // chord/articulation grid
+            const int rspq = 24;  // explicit-riff grid (1 temps = 24 slices, matches the app's riffs)
+
+            // metre / key / tempo
+            project.TimeSigNum = (spec.Measure != null && spec.Measure.Num > 0) ? spec.Measure.Num : 4;
+            project.TimeSigDen = (spec.Measure != null && spec.Measure.Denom > 0) ? spec.Measure.Denom : 4;
+            project.TimeSigScale = 1.0; project.PickupBeats = 0; project.Arrangement = null;
+            project.Key = KeyFromTonality(spec.Tonality);
+            int bpm = (spec.Measure != null && spec.Measure.Bpm > 0) ? spec.Measure.Bpm : 120;
+            project.Tempo = new System.Collections.Generic.List<TempoChange> { new TempoChange { Beat = 0, Bpm = bpm } };
+
+            // tracks (+ a drum track only if any section carries grooves)
             project.Tracks.Clear();
-            if (spec.Instruments != null)
-                foreach (var ins in spec.Instruments)
-                    project.Tracks.Add(new TimelineTrack { Name = ins.Name, Instrument = Math.Max(0, Math.Min(127, ins.Gm)), Type = TimelineTrackType.Instrument });
-            var drumTrack = new TimelineTrack { Name = "Batterie", Instrument = InstrumentCatalog.DrumIndex, Type = TimelineTrackType.Drum };
-            project.Tracks.Add(drumTrack);
+            var instrTracks = new System.Collections.Generic.List<TimelineTrack>();
+            if (spec.Tracks != null)
+                foreach (var t in spec.Tracks)
+                {
+                    var tr = new TimelineTrack { Name = t.Name, Instrument = Math.Max(0, Math.Min(127, t.Program)), Type = TimelineTrackType.Instrument };
+                    project.Tracks.Add(tr); instrTracks.Add(tr);
+                }
+            bool anyDrums = spec.Sections != null && spec.Sections.Exists(s => s.Drums != null && s.Drums.Count > 0);
+            TimelineTrack drumTrack = null;
+            if (anyDrums) { drumTrack = new TimelineTrack { Name = "Batterie", Instrument = InstrumentCatalog.DrumIndex, Type = TimelineTrackType.Drum }; project.Tracks.Add(drumTrack); }
             EnsureChordTrack();
 
             int barTemps = RulerBeatsPerBar();
-            const int spq = 4;
-            var form = BuildSpecForm(spec, measures);
-            int totalBars = 0; foreach (var k in form) totalBars += Math.Max(1, spec.Sections[k].Bars);
-            project.MinBeats = totalBars * barTemps;
+            int tonicPc = Engine.Flow.MusicTheory.TonicPc(project.Key);
+            int[] scalePcs = Engine.AI.AiTranslate.ScalePcs(project.Key);
 
-            // Accords: audible sustained bed, one chord per bar (chords spread across the section's bars).
+            // Per section-NAME pick cache → sections sharing a name reuse the same material (coherent form).
+            var picks = new System.Collections.Generic.Dictionary<string, SecPick>(StringComparer.OrdinalIgnoreCase);
+            SecPick PickFor(Engine.Timeline.TplSection sec)
+            {
+                string nm = sec.Name ?? "";
+                if (!picks.TryGetValue(nm, out var p))
+                {
+                    p = new SecPick
+                    {
+                        Prog = Engine.Timeline.TemplateComposer.Pick(sec.ChordProgressions, rng) ?? new System.Collections.Generic.List<Engine.Timeline.TplChord>(),
+                        Art = Engine.Timeline.TemplateComposer.Pick(sec.ChordArticulations, rng),
+                        Cell = Engine.Timeline.TemplateComposer.Pick(sec.ChordMelodicCells, rng),
+                        Groove = Engine.Timeline.TemplateComposer.Pick(sec.Drums, rng),
+                    };
+                    if (sec.Riffs != null) foreach (var rt in sec.Riffs) p.Phrase[rt.TrackNum] = Engine.Timeline.TemplateComposer.Pick(rt.Phrases, rng);
+                    picks[nm] = p;
+                }
+                return p;
+            }
+
+            // Build the ordered form: repeat the section list until we reach `measures` bars. Each instance's length
+            // is its picked progression's bar span. Remember each instance + its chord slots (for the riff engine).
+            var form = new System.Collections.Generic.List<(Engine.Timeline.TplSection sec, SecPick pick, int startBar, int bars, System.Collections.Generic.List<Engine.Timeline.TemplateComposer.ChordSlot> slots)>();
+            int placedBars = 0, guard = 0;
+            if (spec.Sections != null && spec.Sections.Count > 0)
+                while (placedBars < measures && guard++ < 4000)
+                    foreach (var sec in spec.Sections)
+                    {
+                        if (placedBars >= measures) break;
+                        var pick = PickFor(sec);
+                        var slots = new System.Collections.Generic.List<Engine.Timeline.TemplateComposer.ChordSlot>();
+                        double beatAcc = 0;
+                        foreach (var ch in pick.Prog)
+                        {
+                            int beats = Math.Max(1, ch.BeatCount);
+                            int qi = Engine.Timeline.TemplateChords.QualityIndex(ch.Mode, ch.Quality, ch.Color);
+                            slots.Add(new Engine.Timeline.TemplateComposer.ChordSlot
+                            {
+                                RootPc = Engine.AI.AiTranslate.RootPc(project.Key, ch.Degree),
+                                ChordPcs = Engine.Timeline.TemplateComposer.ChordPcs(project.Key, ch.Degree, qi),
+                                StartBeat = beatAcc, Beats = beats,
+                            });
+                            beatAcc += beats;
+                        }
+                        int bars = Math.Max(1, (int)Math.Ceiling(beatAcc / Math.Max(1, barTemps)));
+                        form.Add((sec, pick, placedBars, bars, slots));
+                        placedBars += bars;
+                    }
+            project.MinBeats = Math.Max(measures, placedBars) * barTemps;
+
+            // ---- chords (with the section's articulation + melodic cell) ----
             var ct = ChordTrack;
             PatternGeneratorModule prevChord = null;
-            foreach (var key in form)
+            foreach (var inst in form)
             {
-                var sec = spec.Sections[key];
-                int bars = Math.Max(1, sec.Bars);
-                for (int bar = 0; bar < bars; bar++)
+                var art = inst.pick.Art; var cell = inst.pick.Cell;
+                int artSpq = art != null && art.SlicesPerBeat > 0 ? art.SlicesPerBeat
+                           : cell != null && cell.SlicesPerBeat > 0 ? cell.SlicesPerBeat : spq;
+                var artNotes = art != null ? Engine.Timeline.TemplateComposer.ArticulationNotes(art) : null;
+                var cellNotes = cell != null ? RescaleNotes(Engine.Timeline.TemplateComposer.CellNotes(cell), cell.SlicesPerBeat > 0 ? cell.SlicesPerBeat : spq, artSpq) : null;
+                foreach (var ch in inst.pick.Prog)
                 {
-                    var sc = (sec.Chords != null && sec.Chords.Count > 0) ? sec.Chords[bar * sec.Chords.Count / bars] : new Engine.Timeline.TemplateSpec.Chord();
-                    var chord = new Engine.AI.AiChord { degree = sc.Degree, quality = sc.Quality };
-                    prevChord = AddAiChord(ct, chord, barTemps, 0, null, spq, prevChord, false);   // style 0 = plaqués tenu
+                    int beats = Math.Max(1, ch.BeatCount);
+                    int qi = Engine.Timeline.TemplateChords.QualityIndex(ch.Mode, ch.Quality, ch.Color);
+                    var chord = new Engine.AI.AiChord { degree = ch.Degree, quality = Get(PatternGenerator.QualityNames, qi) };
+                    prevChord = AddAiChord(ct, chord, beats, -1, artNotes, artSpq, prevChord, false, null, cellNotes);
                 }
             }
 
-            const int chunk = 4;   // lay drum + melodic content in 4-bar blocks (easier to edit than one per section)
-
-            // Drums: style modules split into 4-bar blocks per section instance.
-            foreach (var key in form)
+            // ---- drums: the picked groove tiled over each instance ----
+            if (drumTrack != null)
             {
-                var sec = spec.Sections[key];
-                int di = DrumStyleIndex(sec.Drum), bars = Math.Max(1, sec.Bars);
-                for (int start = 0; start < bars; start += chunk)
+                double dCursor = 0;
+                foreach (var inst in form)
                 {
-                    int cb = Math.Min(chunk, bars - start);
-                    drumTrack.Items.Add(new TimelineItem { Module = new DrumPatternModule { Style = di, BeatsPerBar = barTemps, Repeats = cb } });
-                }
-            }
-
-            // Instruments: per track, a melodic line per section (its part, in 4-bar blocks) or a silence gap to stay aligned.
-            foreach (var track in project.Tracks)
-            {
-                if (track.Type != TimelineTrackType.Instrument) continue;
-                int register = Engine.Timeline.TemplateSpec.RegisterForRole(RoleOfSpec(spec, track.Name));
-                double pendingSilence = 0;
-                foreach (var key in form)
-                {
-                    var sec = spec.Sections[key];
-                    int bars = Math.Max(1, sec.Bars);
-                    var part = sec.Parts?.Find(p => p.Instrument == track.Name);
-                    if (part != null && part.Durations != null && part.Durations.Length > 0)
+                    double startBeat = inst.startBar * barTemps;
+                    var g = inst.pick.Groove;
+                    if (g != null && g.Motif != null && g.Motif.Length >= 3)
                     {
-                        var durList = new System.Collections.Generic.List<double>(part.Durations);
-                        for (int start = 0; start < bars; start += chunk)
-                        {
-                            int cb = Math.Min(chunk, bars - start);
-                            int cBeats = cb * barTemps, cSlices = cBeats * spq;
-                            var ml = new MelodicLineModule
-                            {
-                                BeatsPerBar = cBeats, VoiceCount = 1,
-                                Contour = Engine.Timeline.TemplateSpec.ContourIndex(part.Contour),
-                                Anchor = Engine.Timeline.TemplateSpec.AnchorIndex(part.Anchor),
-                                RegisterShift = register, Continuity = 30,
-                            };
-                            ml.SetNotes(Engine.AI.AiTranslate.BuildRhythmNotes(durList, cSlices, spq), spq, cSlices);
-                            track.Items.Add(new TimelineItem { Module = ml, SilenceBefore = pendingSilence });
-                            pendingSilence = 0;
-                        }
+                        int gSpq = g.SlicesPerBeat > 0 ? g.SlicesPerBeat : spq;
+                        int gBars = Math.Max(1, g.Bars);
+                        int reps = Math.Max(1, inst.bars / gBars);
+                        var dnotes = Engine.Timeline.TemplateComposer.DrumNotes(g);
+                        var dpm = new DrumPatternModule { Kit = 0, Style = DrumPattern.CustomStyle, BeatsPerBar = gBars * barTemps, Repeats = reps };
+                        dpm.SetCustomNotes(dnotes, gSpq, gBars * barTemps * gSpq);
+                        drumTrack.Items.Add(new TimelineItem { Module = dpm, SilenceBefore = Math.Max(0, startBeat - dCursor) });
+                        dCursor = startBeat + reps * gBars * barTemps;
                     }
-                    else pendingSilence += bars * barTemps;
+                }
+            }
+
+            // ---- riffs: per track, the picked phrase transposed modally onto each instance's chords ----
+            for (int ti = 0; ti < instrTracks.Count; ti++)
+            {
+                var track = instrTracks[ti];
+                double cursor = 0;
+                foreach (var inst in form)
+                {
+                    double startBeat = inst.startBar * barTemps;
+                    inst.pick.Phrase.TryGetValue(ti, out var phrase);
+                    if (phrase == null || phrase.Motif == null || phrase.Motif.Length < 3 || inst.slots.Count == 0) continue;
+
+                    double sectionBeats = inst.bars * barTemps;
+                    var slots = inst.slots;
+                    Func<double, Engine.Timeline.TemplateComposer.ChordSlot> chordAt = (b) =>
+                    {
+                        var chosen = slots[0];
+                        foreach (var s in slots) { if (b + 1e-6 >= s.StartBeat) chosen = s; else break; }
+                        return chosen;
+                    };
+                    var notes = Engine.Timeline.TemplateComposer.RenderRiff(phrase, sectionBeats, chordAt, scalePcs, tonicPc, 0, rspq);
+                    if (notes.Count == 0) continue;
+
+                    var riff = new Riff { Name = track.Name, SlicesPerQuarter = rspq, LengthSlices = (int)Math.Round(sectionBeats * rspq), Notes = notes };
+                    RiffLibrary.Instance.Riffs.Add(riff);
+                    track.Items.Add(new TimelineItem { Module = new PlayRiffModule { RiffId = riff.Id }, SilenceBefore = Math.Max(0, startBeat - cursor) });
+                    cursor = startBeat + sectionBeats;
                 }
             }
 
@@ -782,40 +887,51 @@ namespace MusicTracker.Screens
             selectedItem = null; editorHost.Content = null;
             CurrentPath = null;
             txtBpm.Text = ((int)project.MainBpm).ToString();
+            UpdateTemplateBar();
             Render(); EnsureCursor();
         }
 
-        // Section sequence to fill `measures`: intro, theme, [devA/devB alternating], outro (only sections that exist).
-        static System.Collections.Generic.List<string> BuildSpecForm(Engine.Timeline.TemplateSpec spec, int measures)
+        // Show / refresh the template chip (seed + Régénérer), or hide it when this project isn't from a template.
+        void UpdateTemplateBar()
         {
-            int secBars = 8;
-            foreach (var s in spec.Sections.Values) { secBars = Math.Max(1, s.Bars); break; }
-            int n = Math.Max(1, (int)Math.Round(measures / (double)secBars));
-            var mid = new System.Collections.Generic.List<string>();
-            if (spec.Sections.ContainsKey("devA")) mid.Add("devA");
-            if (spec.Sections.ContainsKey("devB")) mid.Add("devB");
-
-            var form = new System.Collections.Generic.List<string>();
-            if (spec.Sections.ContainsKey("intro")) form.Add("intro");
-            if (spec.Sections.ContainsKey("theme") && form.Count < n) form.Add("theme");
-            int outro = spec.Sections.ContainsKey("outro") ? 1 : 0;
-            int k = 0;
-            while (form.Count < n - outro)
-            {
-                if (mid.Count > 0) form.Add(mid[k++ % mid.Count]);
-                else if (spec.Sections.ContainsKey("theme")) form.Add("theme");
-                else break;
-            }
-            if (outro == 1 && form.Count < n) form.Add("outro");
-            if (form.Count > n) form = form.GetRange(0, n);
-            if (form.Count == 0) foreach (var key in spec.Sections.Keys) { form.Add(key); break; }
-            return form;
+            if (tplBar == null) return;
+            tplBar.Visibility = FromTemplate ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+            if (FromTemplate && txtTplSeed != null) txtTplSeed.Text = "#" + TemplateSeed;
         }
 
-        static string RoleOfSpec(Engine.Timeline.TemplateSpec spec, string instName)
+        private void btnRegen_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            if (spec.Instruments != null) foreach (var ins in spec.Instruments) if (ins.Name == instName) return ins.Role;
-            return "lead";
+            if (!FromTemplate) return;
+            StopPlayback();
+            RegenerateFromTemplate();
+        }
+
+        // Tonic pitch-class (0..11) + template mode index (0..8) → KeySignature (letter/accidental for the armure,
+        // FullMode carrying the exact mode so the scale machinery uses it).
+        static Engine.Score.KeySignature KeyFromTonality(Engine.Timeline.TplTonality t)
+        {
+            int pc = t != null ? ((t.Note % 12) + 12) % 12 : 0;
+            int mode = t != null ? Math.Max(0, Math.Min(8, t.Mode)) : 0;
+            // pc → (letter 0..6, accidental) using the usual flat spellings for the black keys.
+            int[] letter = { 0, 0, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6 };
+            int[] acc    = { 0, 1, 0,-1, 0, 0, 1, 0,-1, 0,-1, 0 };
+            return new Engine.Score.KeySignature
+            {
+                TonicLetter = letter[pc], Accidental = acc[pc],
+                Mode = Engine.Score.MusicalMode.IsMinorish(mode) ? 1 : 0,
+                FullMode = mode,
+            };
+        }
+
+        // Rescale a note list from one slices-per-beat to another (start/length), for mixing banks authored at
+        // different resolutions in the same chord (articulation vs melodic cell).
+        static System.Collections.Generic.List<RiffNote> RescaleNotes(System.Collections.Generic.List<RiffNote> notes, int fromSpq, int toSpq)
+        {
+            if (notes == null || fromSpq <= 0 || toSpq <= 0 || fromSpq == toSpq) return notes;
+            var outp = new System.Collections.Generic.List<RiffNote>(notes.Count);
+            foreach (var n in notes)
+                outp.Add(new RiffNote(n.Note, (int)Math.Round(n.Start * (double)toSpq / fromSpq), Math.Max(1, (int)Math.Round(n.Length * (double)toSpq / fromSpq))));
+            return outp;
         }
 
         static int DrumStyleIndex(string name)

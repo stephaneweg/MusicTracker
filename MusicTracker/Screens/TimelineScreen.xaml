@@ -199,6 +199,16 @@
                 <!-- Transport -->
                 <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="Lire depuis le curseur"/>
                 <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,12,0" ToolTip="Arrêter (le curseur reste sur place)"/>
+                <!-- Template chip: only shown when the project was opened from a generative template. Shows the pick
+                     seed and re-rolls it (rebuilds the project from the template's banks). -->
+                <Border x:Name="tplBar" Style="{StaticResource ToolChip}" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Modèle" Style="{StaticResource ToolLabel}"/>
+                        <TextBlock x:Name="txtTplSeed" Foreground="{StaticResource SecondaryForeground}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Button x:Name="btnRegen" Content="🎲 Régénérer" Click="btnRegen_Click" Padding="8,3" Cursor="Hand"
+                                ToolTip="Repiocher dans les banques du modèle avec un nouveau tirage"/>
+                    </StackPanel>
+                </Border>
                 <!-- Tempo -->
                 <Border Style="{StaticResource ToolChip}">
                     <StackPanel Orientation="Horizontal">

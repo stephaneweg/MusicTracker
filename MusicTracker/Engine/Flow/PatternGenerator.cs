@@ -37,6 +37,27 @@ namespace MusicTracker.Engine.Flow
             "7♯5",
         };
 
+        /// <summary>Index of a quality NAME in <see cref="QualityNames"/> (exact, case- and diacritics-insensitive),
+        /// or −1 if absent. Used to map the template's (mode,quality,color) axes onto a concrete quality.</summary>
+        public static int IndexOfQuality(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return -1;
+            string n = NormQual(name);
+            for (int i = 0; i < QualityNames.Length; i++) if (NormQual(QualityNames[i]) == n) return i;
+            return -1;
+        }
+        static string NormQual(string s)
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in s.ToLowerInvariant())
+            {
+                if (c == '♭' || c == 'b') sb.Append('b');
+                else if (c == '♯' || c == '#') sb.Append('s');
+                else if (char.IsLetterOrDigit(c)) sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
         // Semitone offsets from the root, parallel to QualityNames.
         static readonly int[][] QualityIntervals =
         {

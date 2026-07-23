@@ -349,7 +349,7 @@
 
 
                 <!-- Resources widget. Code-behind only fills txtTip (rotating tip) and newsList (changelog entries). -->
-                <StackPanel Grid.Row="2" Margin="0,22,0,0">
+                <StackPanel Grid.Row="2"  Margin="30,0,30,20">
                     <TextBlock Text="RESSOURCES" Foreground="{StaticResource AccentBrightBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
                     <!-- Side by side while both fit, otherwise stacked at full width. -->
