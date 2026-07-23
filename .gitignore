@@ -8,6 +8,11 @@
 # --- Claude Code ---
 .claude/
 
+# --- NuGet ---
+# Restored from packages.config (Visual Studio restores automatically on build; from the
+# command line use "nuget restore MusicTracker.sln" before the first msbuild).
+packages/
+
 # --- SoundFonts ---
 # Third-party binary assets of several hundred MB (SGM 347 MB, MuseScore_General 206 MB,
 # FluidR3 142 MB) — over GitHub's 100 MB per-file limit, so they are not version-controlled
