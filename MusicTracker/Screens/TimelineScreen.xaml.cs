@@ -842,9 +842,13 @@ namespace MusicTracker.Screens
                     if (g != null && g.Motif != null && g.Motif.Length >= 3)
                     {
                         int gSpq = g.SlicesPerBeat > 0 ? g.SlicesPerBeat : spq;
-                        int gBars = Math.Max(1, g.Bars);
-                        int reps = Math.Max(1, inst.bars / gBars);
                         var dnotes = Engine.Timeline.TemplateComposer.DrumNotes(g);
+                        // Derive the motif's length from its actual CONTENT, not the declared 'bars' (the model often
+                        // declares bars=2 but only writes 1 bar of notes → the module reserved an empty trailing bar).
+                        int barSlicesG = Math.Max(1, barTemps * gSpq);
+                        int maxEnd = 0; foreach (var n in dnotes) maxEnd = Math.Max(maxEnd, n.Start + n.Length);
+                        int gBars = Math.Max(1, (int)Math.Ceiling(maxEnd / (double)barSlicesG));
+                        int reps = Math.Max(1, inst.bars / gBars);
                         var dpm = new DrumPatternModule { Kit = 0, Style = DrumPattern.CustomStyle, BeatsPerBar = gBars * barTemps, Repeats = reps };
                         dpm.SetCustomNotes(dnotes, gSpq, gBars * barTemps * gSpq);
                         drumTrack.Items.Add(new TimelineItem { Module = dpm, SilenceBefore = Math.Max(0, startBeat - dCursor) });
