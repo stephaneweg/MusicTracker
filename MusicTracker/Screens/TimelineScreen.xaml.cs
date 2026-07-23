@@ -525,10 +525,21 @@ namespace MusicTracker.Screens
             double x = beat * PxPerBeat;
             if (playCursor != null) { playCursor.Height = lanePanel.ActualHeight; Canvas.SetLeft(playCursor, x); }
             if (startMarker != null) Canvas.SetLeft(startMarker, x + 1); // centre the handle on the 2px line
-            // Auto-scroll into view only while actually playing (so setting the start doesn't yank the scroll).
-            if (player != null &&
-                (x < laneScroll.HorizontalOffset || x > laneScroll.HorizontalOffset + laneScroll.ViewportWidth - 20))
-                laneScroll.ScrollToHorizontalOffset(Math.Max(0, x - laneScroll.ViewportWidth * 0.5));
+            // Auto-scroll only while actually playing (so setting the start point doesn't yank the scroll).
+            // CONTINUOUS follow, like the score view: always aim to centre the cursor, then clamp. The clamping
+            // gives the three phases for free — the view holds still until the cursor reaches the middle (target
+            // would be negative), then tracks it smoothly, and finally lets it run out to the right edge once the
+            // end of the piece can no longer scroll further.
+            if (player != null)
+            {
+                double vw = laneScroll.ViewportWidth;
+                double maxOff = laneScroll.ScrollableWidth;
+                if (vw > 1 && maxOff > 0.5)
+                {
+                    double target = Math.Max(0, Math.Min(maxOff, x - vw * 0.5));
+                    if (Math.Abs(laneScroll.HorizontalOffset - target) > 0.5) laneScroll.ScrollToHorizontalOffset(target);
+                }
+            }
 
             // If a score is shown, sweep its cursor too (same beat position).
             if (activeScore != null && ReferenceEquals(editorHost.Content, scoreContainer)) activeScore.SetCursorBeat(beat);
@@ -2479,6 +2490,24 @@ namespace MusicTracker.Screens
         }
 
 
+        // A user-style name that is free in this project. Prefers the model's own 'name' (or the section name),
+        // sanitised, then appends _2, _3… on collision so re-composing never overwrites an existing style.
+        string UniqueUserStyleName(string preferred, string section)
+        {
+            var used = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (project.UserChordStyles != null) foreach (var u in project.UserChordStyles) if (u?.Name != null) used.Add(u.Name);
+
+            string b = !string.IsNullOrWhiteSpace(preferred) ? preferred : section;
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in (b ?? "").Trim()) sb.Append(char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '_');
+            string base_ = sb.ToString().Trim('_');
+            if (base_.Length == 0) base_ = "ia";
+            if (base_.Length > 24) base_ = base_.Substring(0, 24);
+
+            if (!used.Contains(base_)) return base_;
+            for (int n = 2; ; n++) { string nm = base_ + "_" + n; if (!used.Contains(nm)) return nm; }
+        }
+
         // "cadence_1", "cadence_2", … — the first number not already used by a project user style.
         string NextCadenceStyleName()
         {
@@ -3630,13 +3659,37 @@ namespace MusicTracker.Screens
             const int artSpq = 4; // slices per temps for the custom chord grid
             var styleOfSection = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var motifOfSection = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<RiffNote>>(StringComparer.OrdinalIgnoreCase);
+            // Each AI articulation is ALSO registered as a NAMED user style, and every chord of the section references it
+            // (UserStyleName). The per-chord grid stays duplicated (as before), but the shared name makes the motif
+            // editable/reusable afterwards: "Appliquer le motif" then propagates one edit — and its MELODIC CELL — to the
+            // whole section, exactly like a hand-drawn cadence style.
+            var nameOfSection = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var cellOfSection = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<RiffNote>>(StringComparer.OrdinalIgnoreCase);
+            var userStylesAi = project.UserChordStyles ?? (project.UserChordStyles = new System.Collections.Generic.List<UserChordStyle>());
             foreach (var art in a.articulation)
             {
                 if (string.IsNullOrWhiteSpace(art.section)) continue;
                 if (art.motif != null && art.motif.Count > 0)
-                    motifOfSection[art.section] = Engine.AI.AiTranslate.BuildArticulationNotes(art.motif, artSpq);
+                {
+                    var mnotes = Engine.AI.AiTranslate.BuildArticulationNotes(art.motif, artSpq);
+                    motifOfSection[art.section] = mnotes;
+                    string nm = UniqueUserStyleName(art.name, art.section);
+                    nameOfSection[art.section] = nm;
+                    int beats = Math.Max(1, barTemps);
+                    userStylesAi.Add(new UserChordStyle
+                    {
+                        Name = nm,
+                        Spb = artSpq,
+                        Beats = beats,
+                        Notes = new System.Collections.Generic.List<RiffNote>(mnotes),
+                        Slices = RiffNotes.ToSlices(mnotes, Math.Max(1, beats * artSpq)),
+                    });
+                }
                 else if (!string.IsNullOrWhiteSpace(art.style))
                     styleOfSection[art.section] = Engine.AI.AiTranslate.StyleIndex(art.style);
+
+                if (art.melodicCell != null && art.melodicCell.Count > 0)
+                    cellOfSection[art.section] = Engine.AI.AiTranslate.BuildMelodicCellNotes(art.melodicCell, artSpq);
             }
 
             // fresh timeline (replace mode); develop mode keeps existing tracks and appends
@@ -3668,18 +3721,20 @@ namespace MusicTracker.Screens
                 string sec = secOfMeasure.TryGetValue(meas, out var sn) ? sn : null;
                 int style = (sec != null && styleOfSection.TryGetValue(sec, out int st)) ? st : -1;
                 System.Collections.Generic.List<RiffNote> motif = (sec != null && motifOfSection.TryGetValue(sec, out var mo)) ? mo : null;
+                string artName = (sec != null && nameOfSection.TryGetValue(sec, out var an)) ? an : null;
+                System.Collections.Generic.List<RiffNote> cell = (sec != null && cellOfSection.TryGetValue(sec, out var ce)) ? ce : null;
                 if (list != null && list.Count > 0)
                 {
                     int k = list.Count;
                     for (int ci = 0; ci < k; ci++)
                     {
                         int part = Math.Max(1, barTemps / k + (ci < barTemps % k ? 1 : 0));
-                        prevPg = AddAiChord(chordTrack, list[ci], part, style, motif, artSpq, prevPg, silentChords);
+                        prevPg = AddAiChord(chordTrack, list[ci], part, style, motif, artSpq, prevPg, silentChords, artName, cell);
                         lastSingle = list[ci];
                     }
                 }
                 else if (lastSingle != null)
-                    prevPg = AddAiChord(chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords);
+                    prevPg = AddAiChord(chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords, artName, cell);
             }
             // Develop mode: shift the newly-appended chords so they start at baseBeats (a gap on the first new chord).
             if (append && chordTrack.Items.Count > chordPreCount)
@@ -3962,7 +4017,8 @@ namespace MusicTracker.Screens
         }
 
         PatternGeneratorModule AddAiChord(TimelineTrack chordTrack, Engine.AI.AiChord c, int beats, int style,
-            System.Collections.Generic.List<RiffNote> motifNotes, int artSpq, PatternGeneratorModule prev, bool silent = false)
+            System.Collections.Generic.List<RiffNote> motifNotes, int artSpq, PatternGeneratorModule prev, bool silent = false,
+            string userStyleName = null, System.Collections.Generic.List<RiffNote> melodicCell = null)
         {
             var pg = NewChordLike(prev);
             pg.BeatsPerBar = Math.Max(1, beats); pg.Repeats = 1;
@@ -3995,8 +4051,27 @@ namespace MusicTracker.Screens
                 pg.CustomSlicesPerQuarter = artSpq;
                 pg.CustomNotes = mnotes;
                 pg.CustomSlices = RiffNotes.ToSlices(mnotes, chordSlices);
+                // Reference the shared, project-saved articulation: the grid above stays per-chord (each chord may be
+                // trimmed to its own length), but the name links them so a later edit propagates over the whole section.
+                pg.UserStyleName = userStyleName;
             }
             else if (style >= 0) pg.Style = style;
+
+            // Melodic cell: the SAME diatonic-degree phrase on every chord of the section. It is stored as grid rows
+            // (degrees), so GenerateMelodic resolves it against THIS chord's anchor — i.e. it transposes modally.
+            if (melodicCell != null && melodicCell.Count > 0 && !silent)
+            {
+                int cellSlices = Math.Max(1, pg.BeatsPerBar * artSpq);
+                var cnotes = new System.Collections.Generic.List<RiffNote>();
+                foreach (var n in melodicCell)
+                {
+                    if (n.Start >= cellSlices) continue;
+                    int len = Math.Min(n.Length, cellSlices - n.Start);
+                    if (len >= 1) cnotes.Add(new RiffNote(n.Note, n.Start, len));
+                }
+                if (cnotes.Count > 0) pg.SetMelodicNotes(cnotes, artSpq, cellSlices);
+            }
+
             chordTrack.Items.Add(new TimelineItem { Module = pg });
             return pg;
         }

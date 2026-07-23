@@ -45,6 +45,43 @@ namespace MusicTracker.Screens
             "Change un motif de batterie et les répétitions s'ajustent pour garder la même durée.",
         };
 
+        // The "Nouveautés" list is downloaded from the repo's CHANGELOG.md (raw URL, key ChangelogUrl in App.config),
+        // so the news can be updated by pushing that file instead of shipping a new build. This array is the OFFLINE
+        // FALLBACK: it is shown immediately, then replaced if (and only if) the download succeeds and parses.
+        const int NewsMaxItems = 5;
+
+        static string ChangelogUrl
+        {
+            get
+            {
+                try { return System.Configuration.ConfigurationManager.AppSettings["ChangelogUrl"]; }
+                catch { return null; } // a malformed App.config must never break the home screen
+            }
+        }
+
+        /// <summary>Extracts "- &lt;icon&gt; text" entries from the changelog; everything else (headings, prose, blank
+        /// lines) is ignored, so the file stays readable on GitHub. Returns an empty list when nothing matches.</summary>
+        static System.Collections.Generic.List<(string icon, string text)> ParseChangelog(string md)
+        {
+            var list = new System.Collections.Generic.List<(string, string)>();
+            if (string.IsNullOrWhiteSpace(md)) return list;
+            foreach (var raw in md.Replace("\r\n", "\n").Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length < 3 || (line[0] != '-' && line[0] != '*')) continue;
+                line = line.Substring(1).Trim();
+                if (line.Length == 0) continue;
+                int sp = line.IndexOf(' ');
+                if (sp <= 0) continue;                       // needs an icon AND a text
+                string icon = line.Substring(0, sp).Trim();
+                string text = line.Substring(sp + 1).Trim();
+                if (icon.Length == 0 || text.Length == 0) continue;
+                if (char.IsLetterOrDigit(icon[0])) continue; // a plain bulleted sentence, not an "<emoji> text" entry
+                list.Add((icon, text));
+            }
+            return list;
+        }
+
         static readonly (string icon, string text)[] News =
         {
             ("🎛️", "Modèles de projet : depuis un fichier, avec l'IA, ou à ajouter dans le dossier — avec suppression."),
@@ -80,20 +117,51 @@ namespace MusicTracker.Screens
             arrows.Children.Add(prev); arrows.Children.Add(next);
             row.Children.Add(ResourceCard("💡", "ASTUCE DU JOUR", tipText, arrows));
 
-            // Nouveautés (changelog).
+            // Nouveautés (changelog): built-in list first, then refreshed from GitHub if reachable.
             var newsList = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-            foreach (var n in News)
-            {
-                var line = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
-                var ic = new TextBlock { Text = n.icon, FontSize = 13, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top };
-                DockPanel.SetDock(ic, Dock.Left);
-                line.Children.Add(ic);
-                line.Children.Add(new TextBlock { Text = n.text, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("SecondaryForeground"), FontSize = 11.5 });
-                newsList.Children.Add(line);
-            }
+            FillNews(newsList, News);
             row.Children.Add(ResourceCard("🆕", "NOUVEAUTÉS", newsList, null));
 
             resourcesHost.Children.Add(row);
+
+            LoadChangelogAsync(newsList); // fire-and-forget; leaves the built-in list untouched on any failure
+        }
+
+        void FillNews(StackPanel host, System.Collections.Generic.IEnumerable<(string icon, string text)> items)
+        {
+            host.Children.Clear();
+            int n = 0;
+            foreach (var it in items)
+            {
+                if (n++ >= NewsMaxItems) break;
+                var line = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
+                var ic = new TextBlock { Text = it.icon, FontSize = 13, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top };
+                DockPanel.SetDock(ic, Dock.Left);
+                line.Children.Add(ic);
+                line.Children.Add(new TextBlock { Text = it.text, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("SecondaryForeground"), FontSize = 11.5 });
+                host.Children.Add(line);
+            }
+        }
+
+        /// <summary>Fetch CHANGELOG.md from the repo and replace the news list with it. Deliberately silent and
+        /// best-effort: no network, no config, an HTTP error or an unparsable file all just keep the built-in list —
+        /// the home screen must never block or complain because GitHub is unreachable.</summary>
+        async void LoadChangelogAsync(StackPanel host)
+        {
+            string url = ChangelogUrl;
+            if (string.IsNullOrWhiteSpace(url)) return;
+            try
+            {
+                // A fresh HttpClient per call, like AIClient: avoids a client left in a bad state after a failure.
+                using (var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(8) })
+                {
+                    http.DefaultRequestHeaders.UserAgent.ParseAdd("MusicTracker");
+                    string md = await http.GetStringAsync(url).ConfigureAwait(true);
+                    var items = ParseChangelog(md);
+                    if (items.Count > 0) FillNews(host, items); // back on the UI thread (ConfigureAwait(true))
+                }
+            }
+            catch { /* offline / 404 / timeout → keep the built-in list */ }
         }
 
         Button ArrowBtn(string glyph) => new Button

@@ -160,6 +160,53 @@ namespace MusicTracker.Engine.AI
         public string section { get; set; }
         [JsonConverter(typeof(FlexibleStringConverter))] public string style { get; set; } // optional fallback: a named built-in style
         public List<AiArtNote> motif { get; set; }     // preferred: a custom one-bar voiced rhythm (reused over the section)
+        [JsonConverter(typeof(FlexibleStringConverter))] public string name { get; set; }  // optional: name for the saved user style
+        // Optional MELODIC CELL travelling with the motif: a short diatonic phrase attached to every chord that uses this
+        // articulation. Written in DEGREES of the key (not absolute pitches), so each chord transposes it modally.
+        public List<AiCellNote> melodicCell { get; set; }
+    }
+
+    // One note of a chord's melodic cell. degree = diatonic degree 1..7 (8..14 = same degree one octave up), relative to
+    // the chord's anchor; start/length in TEMPS (beats). Compact wire form: [degree, start, length].
+    [JsonConverter(typeof(AiCellNoteConverter))]
+    public class AiCellNote { public int degree { get; set; } = 1; public double start { get; set; } public double length { get; set; } = 1; }
+
+    /// <summary>Reads a melodic-cell note as EITHER a compact array [degree, start, length] OR the legacy object.</summary>
+    public class AiCellNoteConverter : JsonConverter<AiCellNote>
+    {
+        public override AiCellNote Read(ref Utf8JsonReader r, Type t, JsonSerializerOptions o)
+        {
+            var n = new AiCellNote();
+            if (r.TokenType == JsonTokenType.StartArray)
+            {
+                int i = 0;
+                while (r.Read() && r.TokenType != JsonTokenType.EndArray)
+                {
+                    double v = AiJson.ReadNum(ref r);
+                    if (i == 0) n.degree = (int)Math.Round(v); else if (i == 1) n.start = v; else if (i == 2) n.length = v;
+                    i++;
+                }
+            }
+            else if (r.TokenType == JsonTokenType.StartObject)
+            {
+                while (r.Read() && r.TokenType != JsonTokenType.EndObject)
+                {
+                    if (r.TokenType != JsonTokenType.PropertyName) continue;
+                    string name = r.GetString(); r.Read();
+                    double v = AiJson.ReadNum(ref r);
+                    switch ((name ?? "").ToLowerInvariant())
+                    {
+                        case "degree": case "deg": case "degre": n.degree = (int)Math.Round(v); break;
+                        case "start": n.start = v; break;
+                        case "length": case "len": case "dur": n.length = v; break;
+                    }
+                }
+            }
+            else r.Skip();
+            return n;
+        }
+        public override void Write(Utf8JsonWriter w, AiCellNote v, JsonSerializerOptions o)
+        { w.WriteStartArray(); w.WriteNumberValue(v.degree); w.WriteNumberValue(v.start); w.WriteNumberValue(v.length); w.WriteEndArray(); }
     }
     // One event of a custom chord-articulation motif. voice = grid row (0=bass, 1=root, 2=3rd, 3=5th, 4=7th, 5=root+8,
     // 6=9th, 7=3rd+8, 8=5th+8, 9=7th+8, 10=9th+8). start/length in TEMPS (beats).
@@ -335,8 +382,9 @@ namespace MusicTracker.Engine.AI
             sb.AppendLine(@"  ""chordInstrument"": int(GM 0..127, instrument de la piste d'accords),");
             sb.AppendLine(@"  ""sections"": [ { ""name"": string, ""measures"": int } ],");
             sb.AppendLine(@"  ""chords"": [ [mesure, degré, ""qualité""], ... ],   (chaque accord = TABLEAU [mesure 1-based, degré 1..7 relatif à la tonalité, qualité string])");
-            sb.AppendLine(@"  ""articulation"": [ { ""section"": string,
-      ""motif"": [ [voix, début, durée], ... ] } ],   (chaque événement = TABLEAU [voix 0..10, début en temps, durée en temps])");
+            sb.AppendLine(@"  ""articulation"": [ { ""section"": string, ""name"": string,
+      ""motif"": [ [voix, début, durée], ... ],   (chaque événement = TABLEAU [voix 0..10, début en temps, durée en temps])
+      ""melodicCell"": [ [degré, début, durée], ... ] } ],   (chaque note = TABLEAU [degré 1..14, début en temps, durée en temps])");
             sb.AppendLine(melodyKey + (wantDrums ? "," : ""));
             if (wantDrums)
                 sb.AppendLine(@"  ""drums"": [ { ""section"": string, ""fromMeasure"": int, ""measures"": int,
@@ -360,6 +408,10 @@ namespace MusicTracker.Engine.AI
                 sb.AppendLine("- Chaque section a UNE 'articulation' = un MOTIF d'accompagnement d'UNE mesure (réutilisé sur toute la section), liste d'événements 'motif'.");
                 sb.AppendLine("  Chaque événement joue une VOIX de l'accord : voice = 0 basse, 1 fondamentale, 2 tierce, 3 quinte, 4 septième, 5 fondamentale(8va), 6 neuvième, 7 tierce(8va), 8 quinte(8va), 9 septième(8va), 10 neuvième(8va). 'start'/'length' en TEMPS.");
                 sb.AppendLine("  Ex. plaqué 3/4 : [0,0,3],[1,0,3],[2,0,3],[3,0,3]. Valse : [0,0,1],[1,1,1],[2,1,1],[3,1,1],[1,2,1],[2,2,1],[3,2,1]. Arpège : [0,0,1],[1,1,1],[2,2,1].");
+                sb.AppendLine("  Donne aussi un 'name' court et parlant à chaque articulation (ex. \"valse_couplet\", \"arpege_refrain\") : elle est enregistrée sous ce nom et réutilisable/modifiable ensuite.");
+                sb.AppendLine("- CELLULE MÉLODIQUE ('melodicCell', optionnelle mais RECOMMANDÉE) : une petite phrase chantante d'UNE mesure attachée au motif, jouée en 2e voix PAR-DESSUS chaque accord de la section.");
+                sb.AppendLine("  Elle s'écrit en DEGRÉS DIATONIQUES, pas en notes absolues : 1 = note d'ancrage de l'accord, 2..7 = degrés suivants de la gamme, 8..14 = les mêmes une octave au-dessus. Elle est donc TRANSPOSÉE MODALEMENT sur chaque accord (le même dessin sonne juste partout).");
+                sb.AppendLine("  'start'/'length' en TEMPS, dans la mesure (comme le motif). Ex. arpège montant : [1,0,1],[3,1,1],[5,2,1]. Ex. broderie : [1,0,0.5],[2,0.5,0.5],[1,1,1]. Garde-la COURTE (3 à 6 notes) et complémentaire du motif d'accompagnement.");
             }
             if (riffMode)
             {
@@ -521,6 +573,25 @@ namespace MusicTracker.Engine.AI
             foreach (var e in motif)
             {
                 int row = Math.Max(0, Math.Min(maxRow, e.voice));
+                int start = Math.Max(0, (int)Math.Round(e.start * spq));
+                int len = Math.Max(1, (int)Math.Round(e.length * spq));
+                notes.Add(new RiffNote(row, start, len));
+            }
+            return notes;
+        }
+
+        // Melodic-cell notes (diatonic degree + start/length in temps) → a note list on the MELODIC grid, whose rows are
+        // the key's 7 diatonic degrees over 2 octaves (PatternGenerator.MelodicRowCount = 14). Row = degree−1, so degree 1
+        // is the chord's anchor and 8..14 repeat the degrees an octave up. PatternGenerator.GenerateMelodic then resolves
+        // each row to a real pitch per chord, which is what makes the cell transpose MODALLY from chord to chord.
+        public static List<RiffNote> BuildMelodicCellNotes(List<AiCellNote> cell, int spq)
+        {
+            var notes = new List<RiffNote>();
+            if (cell == null) return notes;
+            int maxRow = PatternGenerator.MelodicRowCount - 1;
+            foreach (var e in cell)
+            {
+                int row = Math.Max(0, Math.Min(maxRow, e.degree - 1)); // degrees are 1-based on the wire
                 int start = Math.Max(0, (int)Math.Round(e.start * spq));
                 int len = Math.Max(1, (int)Math.Round(e.length * spq));
                 notes.Add(new RiffNote(row, start, len));
