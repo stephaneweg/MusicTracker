@@ -21,6 +21,22 @@ packages/
 SoundFont/
 *.sf2
 
+# --- Generated output at the repo root ---
+# The compose_*/gen_* scripts write their scores and MIDI next to the .sln; these are
+# regenerable outputs, not sources. (Data/ and MusicTracker/ are unaffected: root-only.)
+/*.mscx
+/*.mscz
+/*.mid
+/*.midi
+/*.wav
+/*.mp3
+
+# --- One-off test / probe scripts ---
+/test_*.ps1
+/verify_*.ps1
+/probe_*.ps1
+/diag_*.ps1
+
 # --- Corpora / MIDI sources ---
 # Third-party scores used only OFFLINE to (re)generate the analysis models in
 # MusicTracker/Data/models/*.json. Those generated models ARE version-controlled, since the
