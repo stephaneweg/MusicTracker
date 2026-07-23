@@ -15,6 +15,9 @@ Les entrées les plus **récentes** vont **en premier** ; l'application n'en aff
 
 ## Entrées
 
+- 🎲 Modèles de projet génératifs : un modèle contient désormais des banques de matière par section (progressions, motifs d'accompagnement, cellules mélodiques, phrases par instrument, grooves). À l'ouverture l'app y pioche et assemble le morceau — un bouton « Régénérer » retire une nouvelle version.
+- 🤖 Génère tes propres styles avec l'IA : décris une intention, l'IA fabrique le modèle. Clic droit sur une carte pour le régénérer en réutilisant ton intention.
+- 🎻 Les phrases d'un modèle sont transposées modalement sur chaque accord (avec conduite des voix), et l'IA peut laisser un instrument silencieux sur une section pour aérer l'arrangement.
 - 🎹 Rendu audio nettement amélioré : équilibre des instruments corrigé (dé-duplication des modulateurs SoundFont et prise en compte des modulateurs de filtre), plus de trou sur le piano.
 - 🎚️ Dynamique par vélocité : les temps forts ressortent, les contretemps s'effacent — la lecture respire au lieu d'être uniforme.
 - 🎶 L'IA génère une cellule mélodique en plus du motif d'accompagnement ; elle est transposée modalement sur chaque accord.
