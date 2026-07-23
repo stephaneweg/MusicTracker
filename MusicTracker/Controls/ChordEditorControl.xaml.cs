@@ -140,7 +140,30 @@ namespace MusicTracker.Controls
 
         // ---- item sources ----
         public IReadOnlyList<string> RootNames => PatternGenerator.RootNames;
-        public IReadOnlyList<string> DegreeNames { get; } = new[] { "Manuel (accord fixe)", "I", "ii", "iii", "IV", "V", "vi", "vii" };
+        // Diatonic degrees, then the SECONDARY DOMINANTS (V/x) so they can be picked directly instead of being
+        // hand-built as a "manual" chord. The V/x list is KEY-DEPENDENT: a degree whose diatonic triad is diminished
+        // cannot be tonicised (no V/ii in a minor key, where ii° is diminished), so it isn't offered.
+        const int SecondaryBase = 8;   // first index of the V/x entries
+        static readonly string[] RomanU = { "I", "II", "III", "IV", "V", "VI", "VII" };
+        static readonly string[] RomanL = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
+        string[] degreeNames; int[] secondaryTargets;
+        public IReadOnlyList<string> DegreeNames { get { EnsureDegreeList(); return degreeNames; } }
+
+        void EnsureDegreeList()
+        {
+            if (degreeNames != null) return;
+            var key = project?.Key ?? new Engine.Score.KeySignature();
+            var names = new List<string> { "Manuel (accord fixe)" };
+            for (int d = 0; d < 7; d++) names.Add(MusicTheory.DiatonicThird(key, d) == 4 ? RomanU[d] : RomanL[d]);
+            var targets = new List<int>();
+            foreach (int t in MusicTheory.SecondaryTargets)
+            {
+                if (MusicTheory.DiatonicIsDim(key, t)) continue;   // a diminished degree can't be tonicised
+                names.Add("V/" + (MusicTheory.DiatonicThird(key, t) == 4 ? RomanU[t] : RomanL[t]));
+                targets.Add(t);
+            }
+            degreeNames = names.ToArray(); secondaryTargets = targets.ToArray();
+        }
         public IReadOnlyList<string> ColourNames => MusicTheory.DiatonicColourNames;
         public IReadOnlyList<string> SuspensionNames => MusicTheory.SuspensionNames;
         public IReadOnlyList<string> ModeNames => MusicTheory.ModeOverrideNames;
@@ -181,8 +204,35 @@ namespace MusicTracker.Controls
         // ---- degree / note / quality colours ----
         public int DegreeIndex
         {
-            get => pg.Degree < 0 ? 0 : pg.Degree + 1;
-            set { pg.Degree = value <= 0 ? -1 : value - 1; ApplyDiatonic(); Raise(nameof(RootEnabled)); Changed(); }
+            get
+            {
+                if (pg.Degree >= 0) return pg.Degree + 1;
+                // A "manual" chord that actually IS a secondary dominant shows up as such (V/V rather than Manuel).
+                EnsureDegreeList();
+                int t = MusicTheory.SecondaryDominantTarget(project?.Key ?? new Engine.Score.KeySignature(), pg.Root, pg.Quality);
+                int i = t < 0 ? -1 : Array.IndexOf(secondaryTargets, t);
+                return i >= 0 ? SecondaryBase + i : 0;
+            }
+            set
+            {
+                EnsureDegreeList();
+                if (value >= SecondaryBase && value - SecondaryBase < secondaryTargets.Length)
+                {
+                    // Secondary dominant: a chromatic chord, so it is stored with a fixed root (Degree = −1) placed a
+                    // fifth above the degree it tonicises, with a DOMINANT 7th quality. The 7th matters: a plain major
+                    // triad would often coincide with a diatonic chord (V/IV in C is just a C major = I) and so would
+                    // not read back as a secondary dominant at all.
+                    int target = secondaryTargets[value - SecondaryBase];
+                    pg.Degree = -1;
+                    pg.Root = MusicTheory.SecondaryDominantRoot(project?.Key ?? new Engine.Score.KeySignature(), target);
+                    ApplyDiatonic();
+                    int dom7 = PatternGenerator.IndexOfQuality("7 (dom)");
+                    if (dom7 >= 0) pg.Quality = dom7;
+                    Raise(nameof(RootEnabled)); Raise(nameof(RootIndex)); Changed();
+                    return;
+                }
+                pg.Degree = value <= 0 ? -1 : value - 1; ApplyDiatonic(); Raise(nameof(RootEnabled)); Changed();
+            }
         }
         public bool RootEnabled => pg.Degree < 0;
         public int RootIndex { get => pg.Root; set { if (pg.Root == value) return; pg.Root = value; Changed(); } }

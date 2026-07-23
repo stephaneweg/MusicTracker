@@ -235,6 +235,88 @@ namespace MusicTracker.Engine.Flow
             return ((tonic + pcs[d]) % 12, q);
         }
 
+        // ---- chord FUNCTION (secondary dominants & co) ---------------------------------------------------------
+        // Single source of truth, shared by the timeline's roman-numeral label AND the chord editor's degree combo,
+        // so the two can never disagree about what a chord "is".
+
+        /// <summary>The degrees that can be TONICISED by a secondary dominant: ii, iii, IV, V, vi. The tonic is
+        /// excluded (V/I is just V) and so is the diminished vii° (a diminished triad cannot be tonicised).</summary>
+        public static readonly int[] SecondaryTargets = { 1, 2, 3, 4, 5 };
+
+        /// <summary>The chord's shape read from its ACTUAL intervals (no hard-coded quality-index lists), so
+        /// sevenths, tensions and suspensions are classified correctly.</summary>
+        public static void ChordShape(int quality, out bool minThird, out bool dimFifth, out bool augFifth, out bool dom7)
+        {
+            var set = new HashSet<int>();
+            var notes = PatternGenerator.ChordNotes(0, 4, quality, 0);
+            int b = (notes != null && notes.Length > 0) ? notes[0] : 0;
+            if (notes != null) foreach (var n in notes) set.Add(((n - b) % 12 + 12) % 12);
+            minThird = set.Contains(3) && !set.Contains(4);
+            bool fifth = set.Contains(7);
+            dimFifth = set.Contains(6) && !fifth;
+            augFifth = set.Contains(8) && !fifth && !set.Contains(3);
+            dom7 = set.Contains(10) && !minThird && !dimFifth;   // major third + minor seventh
+        }
+
+        /// <summary>Scale index (0..6) of a pitch-class in the key, or −1 when it isn't diatonic.</summary>
+        public static int DiatonicDegreeOf(KeySignature key, int pc)
+        {
+            int tonic = TonicPc(key);
+            var scale = MusicalMode.Scale(MusicalMode.Effective(key ?? new KeySignature()));
+            for (int d = 0; d < 7; d++) if (((tonic + scale[d]) % 12 + 12) % 12 == (((pc % 12) + 12) % 12)) return d;
+            return -1;
+        }
+
+        /// <summary>Semitones of the diatonic third stacked on a degree (4 = major, 3 = minor).</summary>
+        public static int DiatonicThird(KeySignature key, int degree)
+        {
+            var s = MusicalMode.Scale(MusicalMode.Effective(key ?? new KeySignature()));
+            int d = ((degree % 7) + 7) % 7;
+            return ((s[(d + 2) % 7] - s[d]) % 12 + 12) % 12;
+        }
+        /// <summary>True when the diatonic triad on that degree is DIMINISHED (so it cannot be tonicised).</summary>
+        public static bool DiatonicIsDim(KeySignature key, int degree)
+        {
+            var s = MusicalMode.Scale(MusicalMode.Effective(key ?? new KeySignature()));
+            int d = ((degree % 7) + 7) % 7;
+            return ((s[(d + 4) % 7] - s[d]) % 12 + 12) % 12 == 6;
+        }
+
+        /// <summary>
+        /// The degree (0..6) this chord tonicises as a SECONDARY DOMINANT, or −1 when it isn't one. A chord qualifies
+        /// when it is major-quality (or any dominant 7th that isn't the key's own V) and its root sits a perfect fifth
+        /// above a tonicisable degree — e.g. in C, D major → V/V, C7 → V/IV.
+        /// </summary>
+        public static int SecondaryDominantTarget(KeySignature key, int rootPc, int quality)
+        {
+            ChordShape(quality, out bool minThird, out bool dimFifth, out _, out bool dom7);
+            if (minThird || dimFifth) return -1;
+            int root = ((rootPc % 12) + 12) % 12;
+            int deg = DiatonicDegreeOf(key, root);
+            bool diatonicMajorHere = deg >= 0 && DiatonicThird(key, deg) == 4;
+            bool actsAsSecondary = dom7 ? deg != 4 : !diatonicMajorHere;
+            if (!actsAsSecondary) return -1;
+            int target = DiatonicDegreeOf(key, ((root - 7) % 12 + 12) % 12);
+            if (target < 0 || DiatonicIsDim(key, target)) return -1;
+            return target;
+        }
+
+        /// <summary>The degree tonicised by a secondary LEADING-TONE chord (a diminished chord a semitone below its
+        /// target, on a chromatic root), or −1.</summary>
+        public static int SecondaryLeadingToneTarget(KeySignature key, int rootPc, int quality)
+        {
+            ChordShape(quality, out _, out bool dimFifth, out _, out _);
+            int root = ((rootPc % 12) + 12) % 12;
+            if (!dimFifth || DiatonicDegreeOf(key, root) >= 0) return -1;
+            int target = DiatonicDegreeOf(key, (root + 1) % 12);
+            if (target < 0 || DiatonicIsDim(key, target)) return -1;
+            return target;
+        }
+
+        /// <summary>Root pitch-class of the secondary dominant that tonicises <paramref name="targetDegree"/>.</summary>
+        public static int SecondaryDominantRoot(KeySignature key, int targetDegree)
+            => ((DiatonicChord(key ?? new KeySignature(), targetDegree).root + 7) % 12 + 12) % 12;
+
         // Base TRIAD quality per scale degree (major / natural minor), parallel to *Qual (which carry the diatonic 7ths).
         static readonly int[] MajorTriadQual = { 0, 1, 1, 0, 0, 1, 2 }; // I ii iii IV V vi vii° (maj/min/dim indices)
         static readonly int[] MinorTriadQual = { 1, 2, 0, 1, 1, 0, 0 }; // i ii° III iv v VI VII
