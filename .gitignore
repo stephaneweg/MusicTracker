@@ -36,6 +36,11 @@ SoundFont/
 /verify_*.ps1
 /probe_*.ps1
 /diag_*.ps1
+/_holdout.ps1
+/_sweep.ps1
+/resolve_test.ps1
+/AudioProbe.cs
+/test_ajustement_modal.cs
 
 # --- Corpora / MIDI sources ---
 # Third-party scores used only OFFLINE to (re)generate the analysis models in
