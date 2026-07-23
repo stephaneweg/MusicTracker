@@ -116,41 +116,28 @@ namespace MusicTracker.Screens
             ("🎨", "Interface sombre & teal, dialogues déplaçables, éditeurs enrichis."),
         };
 
+        // The widget's LAYOUT lives in HomeScreen.xaml; only these two dynamic parts are driven from here.
+        int tipIndex;
+
         void BuildResources()
         {
-            resourcesHost.Children.Clear();
-            resourcesHost.Children.Add(new TextBlock
-            {
-                Text = "RESSOURCES", Foreground = (Brush)FindResource("AccentBrightBrush"),
-                FontSize = 11, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 0, 0, 12),
-            });
-
-            var row = new WrapPanel();
-
-            // Astuce du jour (starts on today's tip; ‹ › to browse).
-            int tip = Tips.Length > 0 ? DateTime.Now.DayOfYear % Tips.Length : 0;
-            var tipText = new TextBlock
-            {
-                Text = Tips.Length > 0 ? Tips[tip] : "",
-                TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("CommonForeground"),
-                FontSize = 12, Margin = new Thickness(0, 8, 0, 0), MaxWidth = 320,
-            };
-            var prev = ArrowBtn("‹"); var next = ArrowBtn("›");
-            prev.Click += (s, e) => { if (Tips.Length > 0) { tip = (tip - 1 + Tips.Length) % Tips.Length; tipText.Text = Tips[tip]; } };
-            next.Click += (s, e) => { if (Tips.Length > 0) { tip = (tip + 1) % Tips.Length; tipText.Text = Tips[tip]; } };
-            var arrows = new StackPanel { Orientation = Orientation.Horizontal };
-            arrows.Children.Add(prev); arrows.Children.Add(next);
-            row.Children.Add(ResourceCard("💡", "ASTUCE DU JOUR", tipText, arrows));
-
-            // Nouveautés (changelog): built-in list first, then refreshed from GitHub if reachable.
-            var newsList = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
-            FillNews(newsList, News);
-            row.Children.Add(ResourceCard("🆕", "NOUVEAUTÉS", newsList, null));
-
-            resourcesHost.Children.Add(row);
-
-            LoadChangelogAsync(newsList); // fire-and-forget; leaves the built-in list untouched on any failure
+            tipIndex = Tips.Length > 0 ? DateTime.Now.DayOfYear % Tips.Length : 0; // start on today's tip
+            ShowTip();
+            FillNews(newsList, News);      // built-in list…
+            LoadChangelogAsync(newsList);  // …then the repo's CHANGELOG.md; any failure leaves it untouched
         }
+
+        void ShowTip() { if (Tips.Length > 0) txtTip.Text = Tips[tipIndex]; }
+
+        void ShiftTip(int delta)
+        {
+            if (Tips.Length == 0) return;
+            tipIndex = ((tipIndex + delta) % Tips.Length + Tips.Length) % Tips.Length;
+            ShowTip();
+        }
+
+        private void btnTipPrev_Click(object sender, RoutedEventArgs e) => ShiftTip(-1);
+        private void btnTipNext_Click(object sender, RoutedEventArgs e) => ShiftTip(+1);
 
         void FillNews(StackPanel host, System.Collections.Generic.IEnumerable<(string icon, string text)> items)
         {
@@ -220,46 +207,7 @@ namespace MusicTracker.Screens
             catch { /* offline / 404 / timeout → keep what is displayed */ }
         }
 
-        Button ArrowBtn(string glyph) => new Button
-        {
-            Content = glyph, FontSize = 15, Cursor = Cursors.Hand,
-            Background = System.Windows.Media.Brushes.Transparent, BorderThickness = new Thickness(0),
-            Foreground = (Brush)FindResource("SecondaryForeground"), Padding = new Thickness(6, 0, 6, 0),
-        };
-
-        Border ResourceCard(string icon, string title, UIElement content, UIElement headerRight)
-        {
-            var header = new DockPanel();
-            if (headerRight != null) { DockPanel.SetDock(headerRight, Dock.Right); header.Children.Add(headerRight); }
-            var titleSp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            // Card icon as a white glyph in a small rounded teal badge (the emoji itself is monochrome under WPF,
-            // so it simply takes the white Foreground — see NewsIconBrushes).
-            titleSp.Children.Add(new Border
-            {
-                Background = (Brush)FindResource("AccentBrightBrush"), CornerRadius = new CornerRadius(5),
-                Padding = new Thickness(5, 2, 5, 2), Margin = new Thickness(0, 0, 7, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock
-                {
-                    Text = icon, FontSize = 12, Foreground = System.Windows.Media.Brushes.White,
-                    VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center,
-                },
-            });
-            titleSp.Children.Add(new TextBlock { Text = title, Foreground = (Brush)FindResource("AccentBrightBrush"), FontSize = 11, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
-            header.Children.Add(titleSp);
-
-            var stack = new StackPanel();
-            stack.Children.Add(header);
-            stack.Children.Add(content);
-
-            return new Border
-            {
-                Background = (Brush)FindResource("LightBackground"), CornerRadius = new CornerRadius(10),
-                BorderThickness = new Thickness(1), BorderBrush = (Brush)FindResource("SubtleBorderBrush"),
-                Padding = new Thickness(14, 12, 14, 12), Margin = new Thickness(0, 0, 12, 12),
-                MinWidth = 300, MaxWidth = 380, Child = stack,
-            };
-        }
+        // (The Resources cards' shell, teal badge and ‹ › arrows now live in HomeScreen.xaml as styles.)
 
         // Faint equalizer strip along the bottom of the whole page: flat teal bars, deterministic heights
         // (two folded sines), rebuilt on resize to span the full width.

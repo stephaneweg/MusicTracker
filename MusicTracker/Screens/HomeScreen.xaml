@@ -35,6 +35,48 @@
             </Setter>
         </Style>
 
+        <!-- ==== Resources widget (Astuce du jour / Nouveautés) ==== -->
+        <!-- Card shell, its teal title badge and the ‹ › browse arrows. Only the tip TEXT and the news LIST
+             are filled from code-behind; everything below is pure layout. -->
+        <Style x:Key="ResourceCard" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource SubtleBorderBrush}"/>
+            <Setter Property="Padding" Value="14,12"/>
+            <Setter Property="Margin" Value="0,0,12,12"/>
+            <Setter Property="MinWidth" Value="300"/>
+            <Setter Property="MaxWidth" Value="380"/>
+        </Style>
+        <!-- White glyph on a rounded teal badge (emoji render monochrome in WPF, so they take the Foreground). -->
+        <Style x:Key="CardBadge" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource AccentBrightBrush}"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="Margin" Value="0,0,7,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="CardBadgeGlyph" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="CardTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrightBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="ArrowBtn" TargetType="Button">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource SecondaryForeground}"/>
+            <Setter Property="Padding" Value="6,0"/>
+        </Style>
+
         <!-- Template card: icon chip + name + description + tags; hover accent border. -->
         <Style x:Key="TemplateCard" TargetType="Button">
             <Setter Property="Width" Value="206"/>
@@ -303,8 +345,47 @@
                             Foreground="{StaticResource AccentBrightBrush}" ToolTip="Décris un style + une intention ; l'IA génère un template que tu confirmes et enregistres."/>
                 </StackPanel>
 
-                <!-- Resources widget (Astuce du jour + Nouveautés), built in code-behind. -->
-                <StackPanel x:Name="resourcesHost" Margin="0,22,0,0"/>
+                <!-- Resources widget. Code-behind only fills txtTip (rotating tip) and newsList (changelog entries). -->
+                <StackPanel Margin="0,22,0,0">
+                    <TextBlock Text="RESSOURCES" Foreground="{StaticResource AccentBrightBrush}"
+                               FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
+                    <WrapPanel>
+                        <!-- Astuce du jour : today's tip, ‹ › to browse. -->
+                        <Border Style="{StaticResource ResourceCard}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <Button x:Name="btnTipPrev" Content="‹" Style="{StaticResource ArrowBtn}" Click="btnTipPrev_Click"/>
+                                        <Button x:Name="btnTipNext" Content="›" Style="{StaticResource ArrowBtn}" Click="btnTipNext_Click"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Style="{StaticResource CardBadge}">
+                                            <TextBlock Text="💡" Style="{StaticResource CardBadgeGlyph}"/>
+                                        </Border>
+                                        <TextBlock Text="ASTUCE DU JOUR" Style="{StaticResource CardTitle}"/>
+                                    </StackPanel>
+                                </DockPanel>
+                                <TextBlock x:Name="txtTip" TextWrapping="Wrap" Foreground="{StaticResource CommonForeground}"
+                                           FontSize="12" Margin="0,8,0,0" MaxWidth="320"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Nouveautés : built-in list, then refreshed from the repo's CHANGELOG.md. -->
+                        <Border Style="{StaticResource ResourceCard}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Style="{StaticResource CardBadge}">
+                                            <TextBlock Text="🆕" Style="{StaticResource CardBadgeGlyph}"/>
+                                        </Border>
+                                        <TextBlock Text="NOUVEAUTÉS" Style="{StaticResource CardTitle}"/>
+                                    </StackPanel>
+                                </DockPanel>
+                                <StackPanel x:Name="newsList" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
+                </StackPanel>
             </StackPanel>
 
 
