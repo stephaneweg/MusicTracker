@@ -33,6 +33,20 @@ namespace MusicTracker.Engine
         // Synthesizer so playback reuses the already-loaded font instead of re-reading the file.
         public static MeltySynth.SoundFont SoundFontObject { get; private set; }
 
+        /// <summary>
+        /// True when a usable SoundFont is loaded (parsed, with at least one preset). SoundFonts are no
+        /// longer shipped with the build (they are hundreds of MB, so they are not version-controlled),
+        /// so a fresh install can legitimately have none — every playback path must check this instead of
+        /// failing silently. See <see cref="SoundFontProblem"/> for the reason, and SoundFontGuard for the UI.
+        /// </summary>
+        public static bool IsSoundFontLoaded => SoundFontObject != null && instrumentList != null && instrumentList.Count > 0;
+
+        /// <summary>Why the SoundFont could not be used (missing file, parse error, no preset), or null when fine.</summary>
+        public static string SoundFontProblem { get; private set; }
+
+        /// <summary>The path the last load attempt used — shown to the user so they know where to put the file.</summary>
+        public static string LastAttemptedSoundFont { get; private set; }
+
 
         private static readonly string[] gmNames =
         {
@@ -103,7 +117,13 @@ namespace MusicTracker.Engine
         public static Dictionary<int,Dictionary<int,Preset>> LoadSoundFont(string path)
         {
             Dictionary<int,Dictionary<int,Preset>> result = new Dictionary<int,Dictionary<int,Preset>>();
-            if (System.IO.File.Exists(path))
+            LastAttemptedSoundFont = path;
+            if (!System.IO.File.Exists(path))
+            {
+                SoundFontProblem = "Fichier introuvable.";
+                return result;
+            }
+            try
             {
                 MeltySynth.SoundFont sf = new MeltySynth.SoundFont(path);
                 SoundFontObject = sf; // keep the parsed font so the MeltySynth Synthesizer can share it (no reload)
@@ -115,6 +135,15 @@ namespace MusicTracker.Engine
                         result[preset.BankNumber] = new Dictionary<int, Preset>();
                     result[preset.BankNumber][preset.PatchNumber] = preset;
                 }
+                // A file that parses but exposes no preset is just as unusable as a missing one.
+                SoundFontProblem = result.Count > 0 ? null : "Le fichier ne contient aucun preset exploitable.";
+            }
+            catch (Exception ex)
+            {
+                // A corrupt/truncated .sf2 (or an .sf3, which is Ogg-compressed and unsupported) must not
+                // take the app down — report it like a missing file and keep whatever was already loaded.
+                SoundFontProblem = "Fichier illisible : " + ex.Message;
+                result.Clear();
             }
             return result;
         }

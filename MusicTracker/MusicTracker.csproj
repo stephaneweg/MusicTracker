@@ -198,6 +198,7 @@
     <Compile Include="Engine\Timeline\LookaheadBuffer.cs" />
     <Compile Include="Engine\AudioFormat.cs" />
     <Compile Include="AppPaths.cs" />
+    <Compile Include="SoundFontGuard.cs" />
     <Compile Include="Controls\Score\ScorePdfExporter.cs" />
     <Compile Include="Controls\Score\ScoreView.cs" />
     <Compile Include="Engine\Score\MusicalMode.cs" />

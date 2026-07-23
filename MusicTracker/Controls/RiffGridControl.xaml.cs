@@ -923,6 +923,7 @@ namespace MusicTracker.Controls
         {
             EndRun();
             if (waveOut != null) { StopPreview(); return; }
+            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Lecture")) return;
             try
             {
                 Func<Riff> melody = () => new Riff { Notes = CurrentNotes(), LengthSlices = Cols, SlicesPerQuarter = spb };

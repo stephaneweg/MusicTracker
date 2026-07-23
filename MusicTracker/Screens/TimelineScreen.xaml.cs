@@ -428,6 +428,7 @@ namespace MusicTracker.Screens
         void StartPlayback()
         {
             CommitRiffEditor(); // stop any riff preview first
+            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Lecture")) return;
             try
             {
                 player = new Engine.Timeline.TimelinePlayer(project, RiffById, AudioFormat.SampleRate);
@@ -4659,6 +4660,7 @@ namespace MusicTracker.Screens
                 Filter = "WAVE (*.wav)|*.wav|MP3 (*.mp3)|*.mp3|Tous les fichiers (*.*)|*.*",
                 DefaultExt = ".wav",
             };
+            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Export")) return;
             if (sfd.ShowDialog() != true) return;
 
             string path = sfd.FileName;

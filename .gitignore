@@ -31,14 +31,12 @@ SoundFont/
 /*.wav
 /*.mp3
 
-# --- One-off test / probe scripts ---
-/test_*.ps1
-/verify_*.ps1
-/probe_*.ps1
-/diag_*.ps1
-/_holdout.ps1
-/_sweep.ps1
-/resolve_test.ps1
+# --- Utility / analysis scripts at the repo root ---
+# Offline tooling kept locally only (corpus analysis, .mscx generation, probes). Root-only,
+# so the projects' own sources are unaffected.
+/*.ps1
+/*.py
+/*.sh
 /AudioProbe.cs
 /test_ajustement_modal.cs
 

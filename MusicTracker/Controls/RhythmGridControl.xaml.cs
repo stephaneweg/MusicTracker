@@ -515,6 +515,7 @@ namespace MusicTracker.Controls
         {
             if (waveOut != null) { StopPreview(); return; }
             if (makeRiff == null) return;
+            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Lecture")) return;
             try
             {
                 // Drum kits are identified by the SF2 BANK (128), not the patch number — a kit's PatchNumber is

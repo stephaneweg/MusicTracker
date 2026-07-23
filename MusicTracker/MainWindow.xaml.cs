@@ -54,6 +54,10 @@ namespace MusicTracker
             try { await System.Threading.Tasks.Task.Run(() => AppSettings.Instance.Apply()); }
             catch (Exception ex) { MessageBox.Show("SoundFont load error : " + ex.Message); }
             finally { dlg.Close(); }
+
+            // Say so up front if no SoundFont could be loaded, instead of letting the user discover it as
+            // unexplained silence on the first Play (SoundFonts ship separately — see SoundFontGuard).
+            SoundFontGuard.CheckAtStartup(this);
         }
 
         // ===== Tabs ==================================================================
