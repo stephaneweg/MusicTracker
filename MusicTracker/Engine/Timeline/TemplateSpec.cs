@@ -278,14 +278,14 @@ namespace MusicTracker.Engine.Timeline
             sys.AppendLine(@"     ""chordMelodicCells"": [   // BANQUE (optionnelle) : 2e voix chantante attachée aux accords");
             sys.AppendLine(@"        { ""beatCount"": int, ""slicesPerBeat"": int(le MÊME que l'articulation), ""cell"": [degré,début,durée, ...] } ],   // degré DIATONIQUE 1-7 (8-14 = octave au-dessus), transposé modalement sur chaque accord");
             sys.AppendLine(@"     ""riffs"": [   // une entrée par piste utilisée");
-            sys.AppendLine(@"        { ""trackNum"": int(index de piste), ""phrases"": [   // BANQUE de phrases de 4 MESURES");
+            sys.AppendLine(@"        { ""trackNum"": int(index de piste), ""phrases"": [   // BANQUE de 4 à 8 phrases de 4 MESURES PAR PISTE");
             sys.AppendLine(@"           { ""slicesPerBeat"": int, ""motif"": [note,début,durée, note,début,durée, ...] } ] } ],");
             sys.AppendLine(@"           // note = demi-tons CHROMATIQUES au-dessus de la TONIQUE (0=tonique, 12=octave), écrite comme si l'accord était le degré 1 ; l'app transpose modalement par accord + voice-leading. Durée NÉGATIVE = silence. Les notes peuvent se chevaucher (polyphonie). début/durée en SLICES.");
             sys.AppendLine(@"     ""drums"": [   // BANQUE de grooves");
             sys.AppendLine(@"        { ""bars"": int(longueur du motif en mesures, souvent 1-2), ""slicesPerBeat"": int, ""motif"": [noteGM,début,durée, ...] } ]   // noteGM = batterie 35-81 (36 grosse caisse, 38 caisse claire, 42 charley fermé, 46 ouvert, 49 crash, 51 ride)");
             sys.AppendLine("  } ] }");
             sys.AppendLine();
-            sys.AppendLine("Règles : 3 à 5 sections nommées (intro/theme/refrain/pont/outro selon le style) ; 4 à 8 options par banque ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
+            sys.AppendLine("Règles : 3 à 5 sections nommées (intro/theme/refrain/pont/outro selon le style) ; 4 à 8 options par banque ; POUR LES RIFFS, 4 à 8 phrases PAR PISTE et PAR SECTION, avec une DENSITÉ adaptée au rôle de la piste (mélodie/lead = phrases plus denses et actives ; basse, nappes, contrechant = plus aérées et tenues) ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
             string usr = "Style et intention : « " + (styleIntention ?? "").Trim() + " ». Produis le modèle génératif en JSON.";
             return new[] { sys.ToString(), usr };
         }
