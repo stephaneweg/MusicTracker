@@ -65,6 +65,25 @@ namespace MusicTracker.Screens
         static readonly TimeSpan CacheLifetime = TimeSpan.FromDays(1);
         static string CachePath => AppPaths.Local("userdata\\changelog.md");
 
+        // One hue per news line. WPF (.NET Framework) does NOT render colour emoji fonts: the glyph falls back to a
+        // monochrome outline, which simply takes the Foreground — so tinting is the only way to get colour here, and
+        // it is reliable whatever emoji the changelog uses. Saturated but not harsh, readable on the dark card.
+        static readonly Brush[] NewsIconBrushes = MakeFrozen(
+            Color.FromRgb(0x3B, 0xCE, 0xDA),   // teal (app accent)
+            Color.FromRgb(0xF2, 0xB3, 0x3D),   // amber
+            Color.FromRgb(0xFF, 0x7A, 0x6B),   // coral
+            Color.FromRgb(0x7F, 0xD4, 0x8A),   // green
+            Color.FromRgb(0xB4, 0x8C, 0xF2),   // violet
+            Color.FromRgb(0x5A, 0xA9, 0xFF),   // blue
+            Color.FromRgb(0xF5, 0x8B, 0xC0));  // pink
+
+        static Brush[] MakeFrozen(params Color[] colors)
+        {
+            var b = new Brush[colors.Length];
+            for (int i = 0; i < colors.Length; i++) { var s = new SolidColorBrush(colors[i]); s.Freeze(); b[i] = s; }
+            return b;
+        }
+
         /// <summary>Extracts "- &lt;icon&gt; text" entries from the changelog; everything else (headings, prose, blank
         /// lines) is ignored, so the file stays readable on GitHub. Returns an empty list when nothing matches.</summary>
         static System.Collections.Generic.List<(string icon, string text)> ParseChangelog(string md)
@@ -139,13 +158,18 @@ namespace MusicTracker.Screens
             int n = 0;
             foreach (var it in items)
             {
-                if (n++ >= NewsMaxItems) break;
+                if (n >= NewsMaxItems) break;
                 var line = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
-                var ic = new TextBlock { Text = it.icon, FontSize = 13, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top };
+                var ic = new TextBlock
+                {
+                    Text = it.icon, FontSize = 13, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top,
+                    Foreground = NewsIconBrushes[n % NewsIconBrushes.Length], // one hue per line (see NewsIconBrushes)
+                };
                 DockPanel.SetDock(ic, Dock.Left);
                 line.Children.Add(ic);
                 line.Children.Add(new TextBlock { Text = it.text, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("SecondaryForeground"), FontSize = 11.5 });
                 host.Children.Add(line);
+                n++;
             }
         }
 
