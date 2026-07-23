@@ -1,0 +1,154 @@
+<UserControl x:Class="MusicTracker.Controls.RiffGridControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignHeight="320" d:DesignWidth="1200"
+             Unloaded="UserControl_Unloaded">
+    <UserControl.Resources>
+        <!-- Radio/Toggle button styled as a flat toggle button (used for the keyboard-entry toolbar). -->
+        <Style x:Key="TogBtn" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Foreground" Value="#DDDDDD"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="MinWidth" Value="22"/>
+            <Setter Property="Margin" Value="1,0"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border x:Name="bd" Background="#2A2A33" BorderBrush="#444444" BorderThickness="1" CornerRadius="3" Padding="6,2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#888888"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#178C97"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#2FC7D4"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Toggle styled like the main toolbar Buttons (rounded, LightBackground), accent blue when active. -->
+        <Style x:Key="ToolbarToggle" TargetType="{x:Type ToggleButton}">
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#AAAAAA"/>
+            <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource LightBackground}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="3"/>
+            <Setter Property="Padding" Value="10,1,10,1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Border x:Name="OuterBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="3" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="true">
+                                <Setter Property="Background" Value="{StaticResource OutlineColorBrush}"/>
+                                <Setter Property="Foreground" Value="#DDDDDD"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="true">
+                                <Setter TargetName="OuterBorder" Property="Background" Value="#178C97"/>
+                                <Setter TargetName="OuterBorder" Property="BorderBrush" Value="#2FC7D4"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <WrapPanel Grid.Row="0" Margin="0,0,0,6">
+            <Button x:Name="btnPlay" Content="▶ Écouter" Click="BtnPlay_Click" Padding="12,3" Cursor="Hand"/>
+            <TextBlock Text="Tempo :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="10,0,5,0"/>
+            <TextBox x:Name="txtTempo" Width="40" VerticalAlignment="Center" TextChanged="TxtTempo_TextChanged" ToolTip="Tempo de l'éditeur (BPM) : preview + avance du curseur en MIDI/audio"/>
+            <TextBlock Text="BPM" Foreground="#777" VerticalAlignment="Center" Margin="3,0,0,0"/>
+            <Border Width="1" Height="20" Background="#444" Margin="10,2"/>
+            <TextBlock Text="Temps :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox x:Name="txtBeats" Width="44" VerticalAlignment="Center"/>
+            <TextBlock Text="Slices/temps :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="12,0,5,0"/>
+            <ComboBox x:Name="cboSpb" Width="60" IsEditable="True" VerticalAlignment="Center">
+                <ComboBoxItem>2</ComboBoxItem><ComboBoxItem>3</ComboBoxItem><ComboBoxItem>4</ComboBoxItem>
+                <ComboBoxItem>6</ComboBoxItem><ComboBoxItem>8</ComboBoxItem><ComboBoxItem>12</ComboBoxItem><ComboBoxItem>24</ComboBoxItem>
+            </ComboBox>
+            <Button Content="Appliquer" Click="BtnApply_Click" Margin="8,0,0,0" Padding="8,3" Cursor="Hand"/>
+            <Border Width="1" Height="20" Background="#444" Margin="10,2"/>
+            <ToggleButton x:Name="btnAudioIn" Content="🎤 Audio" Style="{StaticResource ToolbarToggle}" Padding="10,3" Checked="BtnAudioIn_Checked" Unchecked="BtnAudioIn_Unchecked" ToolTip="Entrée audio live (détection monophonique) → ajoute les notes jouées"/>
+            <ToggleButton x:Name="btnMetro" Style="{StaticResource ToolbarToggle}" Padding="8,3" Checked="BtnMetro_Checked" Unchecked="BtnMetro_Unchecked" ToolTip="Jouer le métronome au tempo de l'éditeur">
+                <StackPanel Orientation="Horizontal">
+                    <Viewbox Width="15" Height="15" VerticalAlignment="Center">
+                        <Canvas Width="32" Height="32">
+                            <!-- metronome: trapezoid body + pendulum rod + weight; follows the button Foreground -->
+                            <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="3"
+                                  StrokeLineJoin="Round" Fill="Transparent" Data="M0,30 L7,0 L21,0 L28,30 Z M25,-3 L15.4,18"/>
+                            <Ellipse Width="6" Height="6" Canvas.Left="22" Canvas.Top="-5"
+                                     Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                        </Canvas>
+                    </Viewbox>
+                    <TextBlock Text="Métro" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ToggleButton>
+            <Button x:Name="btnStopRun" Content="■ Stop" Click="BtnStopRun_Click" Margin="4,0,0,0" Padding="10,3" Cursor="Hand" Foreground="#FF6666" ToolTip="Arrêter la saisie temps réel MIDI/audio (fige le curseur) — ou touche Échap"/>
+            <Border Width="1" Height="20" Background="#444" Margin="10,2"/>
+            <Button x:Name="btnClear" Content="Effacer" Click="BtnClear_Click" Padding="10,3" Cursor="Hand" ToolTip="Effacer toutes les notes du riff"/>
+            <Border Width="1" Height="20" Background="#444" Margin="10,2"/>
+            <Button x:Name="btnImport" Content="📥 Importer…" Click="BtnImport_Click" Padding="10,3" Cursor="Hand" ToolTip="Importer une piste d'un fichier MIDI ou MuseScore dans ce riff (la timeline n'est pas modifiée)"/>
+            <Button x:Name="btnCropBefore" Content="⮜ Rogner avant" Click="BtnCropBefore_Click" Margin="4,0,0,0" Padding="10,3" Cursor="Hand" ToolTip="Supprimer tout ce qui précède le curseur (et ramener le reste au début)"/>
+            <Button x:Name="btnCropAfter" Content="Rogner après ⮞" Click="BtnCropAfter_Click" Margin="4,0,0,0" Padding="10,3" Cursor="Hand" ToolTip="Supprimer tout ce qui suit le curseur (le riff s'arrête au curseur)"/>
+        </WrapPanel>
+        <!-- Keyboard-entry toolbar (duration / tuplet / octave / accidental), built in code-behind. -->
+        <WrapPanel Grid.Row="1" x:Name="kbBar" Margin="0,0,0,6"/>
+        <Border Grid.Row="2" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="1" CornerRadius="4" Background="#15151A">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="52"/>   <!-- LabelW: fixed note-name column -->
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="18"/>     <!-- RulerH -->
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Top-left corner, above the fixed note-name column. -->
+                <Border Grid.Row="0" Grid.Column="0" Background="#202028"/>
+
+                <!-- Fixed top ruler (measure numbers): scrolls horizontally with the grid only. -->
+                <ScrollViewer x:Name="rulerScroll" Grid.Row="0" Grid.Column="1" Height="18"
+                              VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
+                    <Canvas x:Name="rulerCanvas" Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            MouseLeftButtonDown="RulerCanvas_MouseLeftButtonDown"/>
+                </ScrollViewer>
+
+                <!-- Fixed note-name column: scrolls vertically with the grid only. -->
+                <ScrollViewer x:Name="labelScroll" Grid.Row="1" Grid.Column="0"
+                              VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                    <Canvas x:Name="labelCanvas" Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                </ScrollViewer>
+
+                <ScrollViewer x:Name="scroller" Grid.Row="1" Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                              Style="{StaticResource CornerlessScroll}" ScrollChanged="Scroller_ScrollChanged">
+                    <Canvas x:Name="canvasGrid" Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            MouseLeftButtonDown="CanvasGrid_MouseLeftButtonDown"
+                            MouseMove="CanvasGrid_MouseMove"
+                            MouseLeftButtonUp="CanvasGrid_MouseLeftButtonUp"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

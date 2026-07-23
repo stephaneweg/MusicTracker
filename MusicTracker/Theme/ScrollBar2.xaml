@@ -10,8 +10,17 @@
     </ResourceDictionary.MergedDictionaries>
 
     <!--NORMAL-->
-	<SolidColorBrush x:Key="ScrollBarBackground" Color="Transparent"/>
-	<SolidColorBrush x:Key="ScrollBarHorizontalBackground" Color="Transparent"/>
+    <SolidColorBrush x:Key="ScrollBarBackground" Color="Transparent"/>
+    <LinearGradientBrush x:Key="HorizontalScrollBarBackground" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Offset="0" Color="#111111"/>
+        <GradientStop Offset="1" Color="#333333"/>
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="VerticalScrollBarBackground" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Offset="0" Color="#111111"/>
+        <GradientStop Offset="1" Color="#333333"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ScrollBarHorizontalBackground" Color="Transparent"/>
 	<SolidColorBrush x:Key="ScrollBarBorder" Color="Transparent"/>
 	
 	<!--DISABLED-->
@@ -236,6 +245,37 @@
 			</Trigger>
     	</ControlTemplate.Triggers>
     </ControlTemplate>
+
+    <!-- ScrollViewer whose bottom-right corner (where H + V bars meet) is the panel background, not system grey. -->
+    <Style x:Key="CornerlessScroll" TargetType="{x:Type ScrollViewer}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ScrollViewer}">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Grid.Column="0" Grid.Row="0"
+                                                CanContentScroll="{TemplateBinding CanContentScroll}" Margin="{TemplateBinding Padding}"/>
+                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Grid.Row="0" Orientation="Vertical"
+                                   Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                                   Value="{Binding VerticalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                   Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                        <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Column="0" Grid.Row="1" Orientation="Horizontal"
+                                   Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}"
+                                   Value="{Binding HorizontalOffset, RelativeSource={RelativeSource TemplatedParent}, Mode=OneWay}"
+                                   Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"/>
+                        <Rectangle Grid.Column="1" Grid.Row="1" Fill="{StaticResource CommonBackground}"/>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <Style x:Key="{x:Type ScrollBar}" TargetType="{x:Type ScrollBar}">
         <Setter Property="SnapsToDevicePixels" Value="True"/>

@@ -1,0 +1,107 @@
+{
+  "name": "Symphonie Pastorale Ghibli",
+  "icon": "🍃",
+  "tags": "ghibli orchestral poétique calme",
+  "bpm": 84,
+  "meter": [4, 4],
+  "instruments": [
+    { "name": "Flûte Traversière", "gm": 73, "role": "lead" },
+    { "name": "Piano Acoustique", "gm": 0, "role": "comp" },
+    { "name": "Ensemble de Cordes", "gm": 48, "role": "pad" },
+    { "name": "Contrebasse Acoustique", "gm": 32, "role": "bass" }
+  ],
+  "sections": {
+    "intro": {
+      "bars": 8,
+      "drum": "Ballade (cross-stick)",
+      "chords": [
+        { "degree": 1, "quality": "maj9" },
+        { "degree": 4, "quality": "maj7" },
+        { "degree": 1, "quality": "maj9" },
+        { "degree": 4, "quality": "maj7" }
+      ],
+      "parts": [
+        { "instrument": "Flûte Traversière", "durations": [2, 2, 4], "contour": "wave", "anchor": "fifth" },
+        { "instrument": "Piano Acoustique", "durations": [1, 1, 1, 1], "contour": "zigzag", "anchor": "root" },
+        { "instrument": "Ensemble de Cordes", "durations": [4, 4], "contour": "static", "anchor": "third" },
+        { "instrument": "Contrebasse Acoustique", "durations": [4], "contour": "down", "anchor": "root" }
+      ]
+    },
+    "theme": {
+      "bars": 8,
+      "drum": "Ballade (cross-stick)",
+      "chords": [
+        { "degree": 1, "quality": "add9" },
+        { "degree": 6, "quality": "m7" },
+        { "degree": 2, "quality": "m7" },
+        { "degree": 5, "quality": "7" },
+        { "degree": 3, "quality": "m7" },
+        { "degree": 6, "quality": "m7" },
+        { "degree": 4, "quality": "maj7" },
+        { "degree": 5, "quality": "7" }
+      ],
+      "parts": [
+        { "instrument": "Flûte Traversière", "durations": [1, 0.5, 0.5, 2, 1, 1, 2], "contour": "wave", "anchor": "default" },
+        { "instrument": "Piano Acoustique", "durations": [0.5, 0.5, 1, 0.5, 0.5, 1], "contour": "zigzag", "anchor": "third" },
+        { "instrument": "Ensemble de Cordes", "durations": [2, 2, 4], "contour": "up", "anchor": "fifth" },
+        { "instrument": "Contrebasse Acoustique", "durations": [2, 2], "contour": "static", "anchor": "root" }
+      ]
+    },
+    "devA": {
+      "bars": 8,
+      "drum": "Ballade (cross-stick)",
+      "chords": [
+        { "degree": 4, "quality": "maj7" },
+        { "degree": 3, "quality": "m7" },
+        { "degree": 2, "quality": "m7" },
+        { "degree": 1, "quality": "maj7" },
+        { "degree": 4, "quality": "maj7" },
+        { "degree": 7, "quality": "m7b5" },
+        { "degree": 3, "quality": "7" },
+        { "degree": 6, "quality": "m7" }
+      ],
+      "parts": [
+        { "instrument": "Flûte Traversière", "durations": [0.5, 0.5, 1, 1, 1, 0.5, 0.5, 2], "contour": "up", "anchor": "seventh" },
+        { "instrument": "Piano Acoustique", "durations": [1, 0.5, 0.5, 1, 1], "contour": "wave", "anchor": "root" },
+        { "instrument": "Ensemble de Cordes", "durations": [4, 4], "contour": "zigzag", "anchor": "third" },
+        { "instrument": "Contrebasse Acoustique", "durations": [2, 2], "contour": "down", "anchor": "root" }
+      ]
+    },
+    "devB": {
+      "bars": 8,
+      "drum": "Ballade (cross-stick)",
+      "chords": [
+        { "degree": 2, "quality": "m9" },
+        { "degree": 5, "quality": "9" },
+        { "degree": 3, "quality": "m7" },
+        { "degree": 6, "quality": "m7" },
+        { "degree": 4, "quality": "maj9" },
+        { "degree": 5, "quality": "7" },
+        { "degree": 1, "quality": "maj7" },
+        { "degree": 1, "quality": "7" }
+      ],
+      "parts": [
+        { "instrument": "Flûte Traversière", "durations": [1.5, 0.5, 2, 0.5, 0.5, 1, 2], "contour": "zigzag", "anchor": "fifth" },
+        { "instrument": "Piano Acoustique", "durations": [0.5, 0.5, 0.5, 0.5, 1, 1], "contour": "up", "anchor": "third" },
+        { "instrument": "Ensemble de Cordes", "durations": [2, 2, 2, 2], "contour": "wave", "anchor": "seventh" },
+        { "instrument": "Contrebasse Acoustique", "durations": [1, 1, 2], "contour": "static", "anchor": "root" }
+      ]
+    },
+    "outro": {
+      "bars": 8,
+      "drum": "Ballade (cross-stick)",
+      "chords": [
+        { "degree": 4, "quality": "maj7" },
+        { "degree": 4, "quality": "m6" },
+        { "degree": 1, "quality": "add9" },
+        { "degree": 1, "quality": "maj7" }
+      ],
+      "parts": [
+        { "instrument": "Flûte Traversière", "durations": [2, 2, 4], "contour": "down", "anchor": "third" },
+        { "instrument": "Piano Acoustique", "durations": [1, 1, 2], "contour": "static", "anchor": "root" },
+        { "instrument": "Ensemble de Cordes", "durations": [4, 4], "contour": "down", "anchor": "fifth" },
+        { "instrument": "Contrebasse Acoustique", "durations": [4], "contour": "static", "anchor": "root" }
+      ]
+    }
+  }
+}

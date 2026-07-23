@@ -11,12 +11,15 @@
                 <ResourceDictionary Source="Theme/Colors.xaml"/>
                 <ResourceDictionary Source="Theme/ScrollBar2.xaml"/>
                 <ResourceDictionary Source="Theme/ComboBox.xaml"/>
+                <ResourceDictionary Source="Theme/CheckBox.xaml"/>
                 <ResourceDictionary Source="Theme/Expander.xaml"/>
                 <ResourceDictionary Source="Theme/GroupBox.xaml"/>
                 <ResourceDictionary Source="Theme/Menu.xaml"/>
                 <ResourceDictionary Source="Theme/DataGrid.xaml"/>
                 <ResourceDictionary Source="Theme/TabControl.xaml"/>
                 <ResourceDictionary Source="Theme/TabItem.xaml"/>
+                <ResourceDictionary Source="Theme/Slider.xaml"/>
+                <ResourceDictionary Source="Theme/ToolBar.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
 
@@ -106,7 +109,7 @@
             <Style TargetType="{x:Type TextBox}" x:Key="labelTextBox">
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="FontSize" Value="15"/>
-                <Setter Property="FontFamily" Value="Arial"/>
+                <Setter Property="FontFamily" Value="Segoe UI"/>
                 <Setter Property="Foreground" Value="{StaticResource TextBoxForeground}"/>
                 <Setter Property="Background" Value="{StaticResource TextBoxOuterBackground}"/>
                 <Setter Property="BorderBrush" Value="{StaticResource TextBoxOuterBorder}"/>
@@ -165,7 +168,7 @@
             <Style TargetType="{x:Type PasswordBox}" x:Key="labelPassword">
                 <Setter Property="FontWeight" Value="Normal"/>
                 <Setter Property="FontSize" Value="15"/>
-                <Setter Property="FontFamily" Value="Arial"/>
+                <Setter Property="FontFamily" Value="Segoe UI"/>
                 <Setter Property="Foreground" Value="{StaticResource TextBoxForeground}"/>
                 <Setter Property="Background" Value="{StaticResource TextBoxOuterBackground}"/>
                 <Setter Property="BorderBrush" Value="{StaticResource TextBoxOuterBorder}"/>
@@ -215,6 +218,26 @@
                                     <Setter Property="Foreground" Value="{StaticResource DisabledTextBoxForeground}"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style TargetType="Window" x:Key="windowStyle">
+                <Setter Property="WindowStyle" Value="None"/>
+                <Setter Property="AllowsTransparency" Value="True"/>
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Window}">
+                            <GroupBox Margin="0" BorderThickness="2" BorderBrush="{StaticResource ButtonOuterBorder}">
+                                <GroupBox.Header>
+                                    <Grid>
+                                        <TextBlock FontSize="15" Text="{Binding Path=Title}" VerticalAlignment="Center" Margin="5"/>
+                                    </Grid>
+                                </GroupBox.Header>
+                                <ContentPresenter />
+                            </GroupBox>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>

@@ -1,0 +1,41 @@
+<Window x:Class="MusicTracker.Dialogs.TransposeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Title="Transposer" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="26,22" MinWidth="300">
+            <Border ctl:WindowDrag.Enable="True" Background="{StaticResource CommonBackground}" CornerRadius="5,5,0,0"
+                    Margin="-26,-22,-26,6" Padding="26,22,26,10">
+                <TextBlock Text="Transposer" Foreground="{StaticResource CommonForeground}"
+                           FontSize="16" FontWeight="Bold"/>
+            </Border>
+            <TextBlock Text="Choisissez la gamme cible. Les notes sont transposées au plus près (montée ou descente, selon le plus court)."
+                       Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,16" MaxWidth="300"/>
+
+            <StackPanel Orientation="Horizontal">
+                <ComboBox x:Name="cboTonic" Width="56" VerticalAlignment="Center"/>
+                <ToggleButton x:Name="tglSharp" Content="♯" Width="28" VerticalAlignment="Center" Margin="6,0,0,0" Click="TglSharp_Click" Cursor="Hand"/>
+                <ToggleButton x:Name="tglFlat" Content="♭" Width="28" VerticalAlignment="Center" Margin="3,0,0,0" Click="TglFlat_Click" Cursor="Hand"/>
+                <ComboBox x:Name="cboMode" Width="92" VerticalAlignment="Center" Margin="10,0,0,0"/>
+            </StackPanel>
+
+            <TextBlock Text="Sens de la transposition" Foreground="{StaticResource CommonForeground}" FontWeight="Bold" Margin="0,16,0,4"/>
+            <StackPanel Orientation="Horizontal">
+                <ToggleButton x:Name="tglNearest" Content="Au plus près" Padding="10,3" Click="Dir_Click" Cursor="Hand"/>
+                <ToggleButton x:Name="tglUp" Content="Vers le haut" Padding="10,3" Margin="4,0,0,0" Click="Dir_Click" Cursor="Hand"/>
+                <ToggleButton x:Name="tglDown" Content="Vers le bas" Padding="10,3" Margin="4,0,0,0" Click="Dir_Click" Cursor="Hand"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="Transposer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

@@ -15,6 +15,8 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <TargetFrameworkProfile />
+    <NuGetPackageImportStamp>
+    </NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -25,6 +27,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -39,6 +42,9 @@
     <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=9.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.9.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Expression.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Unnoficial.Microsoft.Expression.Drawing.1.0.0\lib\Microsoft.Expression.Drawing.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Win32.Registry, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Win32.Registry.4.7.0\lib\net461\Microsoft.Win32.Registry.dll</HintPath>
     </Reference>
@@ -50,6 +56,9 @@
     </Reference>
     <Reference Include="NAudio.Core, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
       <HintPath>..\packages\NAudio.Core.2.2.1\lib\netstandard2.0\NAudio.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="NAudio.Lame, Version=2.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\NAudio.Lame.2.1.0\lib\netstandard2.0\NAudio.Lame.dll</HintPath>
     </Reference>
     <Reference Include="NAudio.Midi, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
       <HintPath>..\packages\NAudio.Midi.2.2.1\lib\netstandard2.0\NAudio.Midi.dll</HintPath>
@@ -103,127 +112,330 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xaml">
       <RequiredTargetFramework>4.0</RequiredTargetFramework>
     </Reference>
     <Reference Include="WindowsBase" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="ReachFramework" />
+    <Reference Include="System.Printing" />
     <Reference Include="WriteableBitmapEx.Wpf, Version=1.6.8.0, Culture=neutral, PublicKeyToken=50375ca6144f1c69, processorArchitecture=MSIL">
       <HintPath>..\packages\WriteableBitmapEx.1.6.8\lib\net40\WriteableBitmapEx.Wpf.dll</HintPath>
     </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MeltySynth\MeltySynth.csproj">
+      <Project>{6F3A1C2B-9D4E-4F8A-B1C7-2E5D9A0F3B41}</Project>
+      <Name>MeltySynth</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Controls\InstrumentEditor\AmplitudeModifierWaveFunctionControl.xaml.cs">
-      <DependentUpon>AmplitudeModifierWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\InstrumentEditor\MultiplyWaveFunctionControl.xaml.cs">
-      <DependentUpon>MultiplyWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\InstrumentEditor\AudioPatchWaveFunctionControl.xaml.cs">
-      <DependentUpon>AudioPatchWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TrackChannelView.xaml.cs">
-      <DependentUpon>TrackChannelView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Editor\BaseWaveFunctionControl.cs" />
-    <Compile Include="Editor\EditorControl.cs" />
-    <Compile Include="Controls\InstrumentEditor\AddWaveFunctionControl.xaml.cs">
-      <DependentUpon>AddWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\InstrumentEditor\EnveloppeADSRWaveFunctionControl.xaml.cs">
-      <DependentUpon>EnveloppeADSRWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\InstrumentEditor\VibratoWaveFunctionControl.xaml.cs">
-      <DependentUpon>VibratoWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\InstrumentEditor\FrequencyModifierWaveFunctionControl.xaml.cs">
-      <DependentUpon>FrequencyModifierWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\InstrumentEditor\FrequencyModulationWaveFunctionControl.xaml.cs">
-      <DependentUpon>FrequencyModulationWaveFunctionControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Editor\NodeControl.cs" />
     <Compile Include="Converters.cs" />
-    <Compile Include="Editor\Instrument.cs" />
-    <Compile Include="Engine\AudioPatch.cs" />
-    <Compile Include="Engine\FMSMusic.cs" />
-    <Compile Include="Engine\InstrumentWaveProvider.cs" />
-    <Compile Include="Engine\MidiFile.cs" />
-    <Compile Include="Engine\TrackWaveProvider.cs" />
-    <Compile Include="FontResources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>FontResources.resx</DependentUpon>
+    <Compile Include="Engine\AI\AIClient.cs" />
+    <Compile Include="Engine\ComposerV2\MusicMathV2.cs" />
+    <Compile Include="Engine\ComposerV2\CorpusModelV2.cs" />
+    <Compile Include="Engine\ComposerV2\CorpusAnalyzerV2.cs" />
+    <Compile Include="Engine\ComposerV2\MelodyResolverV2.cs" />
+    <Compile Include="Engine\ComposerV2\ComposerV2Runtime.cs" />
+    <Compile Include="Engine\ComposerV3\ComposerV3Types.cs" />
+    <Compile Include="Engine\Compose\MeterRhythm.cs" />
+    <Compile Include="Engine\Compose\ProceduralComposer.cs" />
+    <Compile Include="Engine\ComposerV3\ComposerV3Factory.cs" />
+    <Compile Include="Engine\ComposerV3\BaseComposerV3.cs" />
+    <Compile Include="Engine\ComposerV3\StyleDistanceV3.cs" />
+    <Compile Include="Engine\ComposerV3\MathComposerV3.cs" />
+    <Compile Include="Engine\ComposerV3\GhibliComposerV3.cs" />
+    <Compile Include="Engine\ComposerV3\BachComposerV3.cs" />
+    <Compile Include="Engine\ComposerV3\BachClavierComposerV3.cs" />
+    <Compile Include="Engine\ComposerV3\VivaldiComposerV3.cs" />
+    <Compile Include="Engine\Timeline\Orchestrateur.cs" />
+    <Compile Include="Engine\MuseScoreImporter.cs" />
+    <Compile Include="Engine\MidiImporter.cs" />
+    <Compile Include="Engine\InstrumentCatalog.cs" />
+    <Compile Include="Engine\Riff.cs" />
+    <Compile Include="Engine\RiffNote.cs" />
+    <Compile Include="Engine\RiffRecorder.cs" />
+    <Compile Include="Engine\Flow\FlowModule.cs" />
+    <Compile Include="Engine\Flow\FlowPlayer.cs" />
+    <Compile Include="Engine\Flow\MeltyRiffPlayer.cs" />
+    <Compile Include="Engine\Flow\MusicTheory.cs" />
+    <Compile Include="Engine\Flow\HarmonySuggest.cs" />
+    <Compile Include="Engine\Flow\ChordDegrees.cs" />
+    <Compile Include="Engine\Flow\PatternGenerator.cs" />
+    <Compile Include="Engine\Flow\DrumPattern.cs" />
+    <Compile Include="Engine\Flow\LoopingRiffProvider.cs" />
+    <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
+    <Compile Include="Engine\Flow\ModuleDuration.cs" />
+    <Compile Include="Engine\Timeline\TimelineProject.cs" />
+    <Compile Include="Engine\Timeline\ScoreSlicing.cs" />
+    <Compile Include="Engine\Timeline\MidiTimelineExporter.cs" />
+    <Compile Include="Engine\Timeline\MuseScoreExporter.cs" />
+    <Compile Include="Engine\Timeline\Composer.cs" />
+    <Compile Include="Engine\Timeline\MusicComposer.cs" />
+    <Compile Include="Engine\Timeline\ComposedArrangement.cs" />
+    <Compile Include="Engine\Timeline\Harmony.cs" />
+    <Compile Include="Engine\Timeline\MelodicLineEngine.cs" />
+    <Compile Include="Engine\Timeline\MotifCopy.cs" />
+    <Compile Include="Engine\Timeline\MotifCatalogue.cs" />
+    <Compile Include="Engine\Timeline\OrchestrateurLines.cs" />
+    <Compile Include="Engine\Timeline\ThemeLibrary.cs" />
+    <Compile Include="Engine\Timeline\RecipeRenderer.cs" />
+    <Compile Include="Engine\Timeline\FormSpec.cs" />
+    <Compile Include="Engine\Timeline\ArrangementEngine.cs" />
+    <Compile Include="Engine\Timeline\HisaishiComposer.cs" />
+    <Compile Include="Engine\Timeline\TimelineImporter.cs" />
+    <Compile Include="Engine\Timeline\TimelinePlayer.cs" />
+    <Compile Include="Engine\Timeline\LookaheadBuffer.cs" />
+    <Compile Include="Engine\AudioFormat.cs" />
+    <Compile Include="AppPaths.cs" />
+    <Compile Include="Controls\Score\ScorePdfExporter.cs" />
+    <Compile Include="Controls\Score\ScoreView.cs" />
+    <Compile Include="Engine\Score\MusicalMode.cs" />
+    <Compile Include="Engine\Score\ScoreModel.cs" />
+    <Resource Include="Fonts\Bravura.otf" />
+    <Compile Include="FileAssociations.cs" />
+    <Compile Include="RiffLibrary.cs" />
+    <Compile Include="RecentFiles.cs" />
+    <Compile Include="Screens\IMusicEditor.cs" />
+    <Compile Include="Screens\HomeScreen.xaml.cs">
+      <DependentUpon>HomeScreen.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Graphics\Font.cs" />
-    <Compile Include="MusicProject.cs" />
-    <Compile Include="Screens\InstrumentEditorScreen.xaml.cs">
-      <DependentUpon>InstrumentEditorScreen.xaml</DependentUpon>
+    <Compile Include="Engine\SequencerSlice.cs" />
+    <Compile Include="Engine\IWaveProvider.cs" />
+    <Compile Include="Engine\WaveExporter.cs" />
+    <Compile Include="Dialogs\NumberDialog.xaml.cs">
+      <DependentUpon>NumberDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\NodeEnd.xaml.cs">
-      <DependentUpon>NodeEnd.xaml</DependentUpon>
+    <Compile Include="Dialogs\InstrumentBoostDialog.xaml.cs">
+      <DependentUpon>InstrumentBoostDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\NodeLink.xaml.cs">
-      <DependentUpon>NodeLink.xaml</DependentUpon>
+    <Compile Include="Dialogs\RiffEditorWindow.xaml.cs">
+      <DependentUpon>RiffEditorWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\NodeStart.xaml.cs">
-      <DependentUpon>NodeStart.xaml</DependentUpon>
+    <Compile Include="Dialogs\ImportGraphOptionsDialog.xaml.cs">
+      <DependentUpon>ImportGraphOptionsDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\InstrumentEditor\NoiseWaveFunctionControl.xaml.cs">
-      <DependentUpon>NoiseWaveFunctionControl.xaml</DependentUpon>
+    <Compile Include="Dialogs\KeySignatureDialog.xaml.cs">
+      <DependentUpon>KeySignatureDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\InstrumentEditor\SawtoothWaveFunctionControl.xaml.cs">
-      <DependentUpon>SawtoothWaveFunctionControl.xaml</DependentUpon>
+    <Compile Include="Dialogs\SettingsDialog.xaml.cs">
+      <DependentUpon>SettingsDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\InstrumentEditor\SineWaveFunctionControl.xaml.cs">
-      <DependentUpon>SineWaveFunctionControl.xaml</DependentUpon>
+    <Compile Include="Dialogs\AiComposeDialog.xaml.cs">
+      <DependentUpon>AiComposeDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\InstrumentEditor\SquareWaveFunctionControl.xaml.cs">
-      <DependentUpon>SquareWaveFunctionControl.xaml</DependentUpon>
+    <Compile Include="Dialogs\AiElementDialog.xaml.cs">
+      <DependentUpon>AiElementDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\InstrumentEditor\TriangleWaveFunctionControl.xaml.cs">
-      <DependentUpon>TriangleWaveFunctionControl.xaml</DependentUpon>
+    <Compile Include="Dialogs\FileBrowserDialog.xaml.cs">
+      <DependentUpon>FileBrowserDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\WaveFunctionVisual.xaml.cs">
-      <DependentUpon>WaveFunctionVisual.xaml</DependentUpon>
+    <Compile Include="Dialogs\TemplateMeasuresDialog.xaml.cs">
+      <DependentUpon>TemplateMeasuresDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Screens\InstrumentSelect.xaml.cs">
-      <DependentUpon>InstrumentSelect.xaml</DependentUpon>
+    <Compile Include="Dialogs\ApiKeysDialog.xaml.cs">
+      <DependentUpon>ApiKeysDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Screens\TrackEditorScreen.xaml.cs">
-      <DependentUpon>TrackEditorScreen.xaml</DependentUpon>
+    <Compile Include="Engine\AI\AiProviders.cs" />
+    <Compile Include="Engine\AI\MistralClient.cs" />
+    <Compile Include="Engine\AI\GeminiClient.cs" />
+    <Compile Include="Engine\AI\GroqClient.cs" />
+    <Compile Include="Engine\AI\DeepSeekClient.cs" />
+    <Compile Include="Engine\AI\ClaudeClient.cs" />
+    <Compile Include="Engine\AI\GrokClient.cs" />
+    <Compile Include="Engine\AI\QwenClient.cs" />
+    <Compile Include="Engine\AI\AiArrangement.cs" />
+    <Compile Include="Dialogs\TransposeDialog.xaml.cs">
+      <DependentUpon>TransposeDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\CadenceDialog.xaml.cs">
+      <DependentUpon>CadenceDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\ComposerDialog.xaml.cs">
+      <DependentUpon>ComposerDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\NewModelDialog.cs" />
+    <Compile Include="Dialogs\CreateStructureDialog.xaml.cs">
+      <DependentUpon>CreateStructureDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\ImportTrackDialog.cs" />
+    <Compile Include="Dialogs\ChordSuggestionDialog.xaml.cs">
+      <DependentUpon>ChordSuggestionDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\GenerateThemeDialog.cs" />
+    <Compile Include="Dialogs\VariationDialog.cs" />
+    <Compile Include="AppSettings.cs" />
+    <Compile Include="Screens\TimelineScreen.xaml.cs">
+      <DependentUpon>TimelineScreen.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\RhythmGridControl.xaml.cs">
+      <DependentUpon>RhythmGridControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\RiffGridControl.xaml.cs">
+      <DependentUpon>RiffGridControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\ChordEditorControl.xaml.cs">
+      <DependentUpon>ChordEditorControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\RiffThumbnail.cs" />
+    <Compile Include="Controls\DrumColors.cs" />
+    <Compile Include="Controls\InstrumentColors.cs" />
+    <Compile Include="Controls\WindowDrag.cs" />
+    <Compile Include="Controls\ReflowButtons.cs" />
+    <Compile Include="Engine\Flow\DrumCatalog.cs" />
+    <Compile Include="Engine\Timeline\TemplateSpec.cs" />
+    <Compile Include="Controls\NoteSourceProvider.cs" />
+    <Compile Include="Controls\TimelineEditor\VolumeLaneControl.xaml.cs">
+      <DependentUpon>VolumeLaneControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TimelineEditor\ModuleBoxControl.xaml.cs">
+      <DependentUpon>ModuleBoxControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TimelineEditor\RepeatItemControl.xaml.cs">
+      <DependentUpon>RepeatItemControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TimelineEditor\TempoLaneControl.xaml.cs">
+      <DependentUpon>TempoLaneControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TimelineEditor\ChordLaneControl.xaml.cs">
+      <DependentUpon>ChordLaneControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TimelineEditor\MeasureRulerControl.xaml.cs">
+      <DependentUpon>MeasureRulerControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\ExportProgressDialog.xaml.cs">
+      <DependentUpon>ExportProgressDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\ImportProgressDialog.xaml.cs">
+      <DependentUpon>ImportProgressDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="UIUtils.cs" />
+    <Compile Include="Utils.cs" />
     <Compile Include="UserData.cs" />
-    <Compile Include="WriteableBitmapExtension.cs" />
-    <Page Include="Controls\InstrumentEditor\AmplitudeModifierWaveFunctionControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\MultiplyWaveFunctionControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\AudioPatchWaveFunctionControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\VibratoWaveFunctionControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\TrackChannelView.xaml">
+    <Compile Include="Extensions.cs" />
+    <Page Include="Dialogs\NumberDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Screens\InstrumentSelect.xaml">
+    <Page Include="Dialogs\InstrumentBoostDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\RiffEditorWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\ImportGraphOptionsDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\KeySignatureDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\TransposeDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\CadenceDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\ComposerDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\ChordSuggestionDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\CreateStructureDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\SettingsDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\AiComposeDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\AiElementDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\FileBrowserDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\TemplateMeasuresDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\ApiKeysDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Screens\TimelineScreen.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\RhythmGridControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\RiffGridControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\ChordEditorControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\VolumeLaneControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\ModuleBoxControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\RepeatItemControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\TempoLaneControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\ChordLaneControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\MeasureRulerControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\ExportProgressDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\ImportProgressDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Screens\HomeScreen.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -239,21 +451,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\InstrumentEditor\AddWaveFunctionControl.xaml">
+    <Page Include="Theme\CheckBox.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\EnveloppeADSRWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\FrequencyModifierWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\FrequencyModulationWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Theme\DataGrid.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -271,42 +471,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Screens\InstrumentEditorScreen.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\NodeEnd.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\NodeLink.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\NodeStart.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\NoiseWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\SawtoothWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\SineWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\SquareWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\InstrumentEditor\TriangleWaveFunctionControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -315,20 +479,10 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Engine\WaveFunction.cs" />
-    <Compile Include="Engine\WaveType.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="Controls\WaveFunctionVisual.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Screens\TrackEditorScreen.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Theme\ScrollBar.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -337,11 +491,19 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
+    <Page Include="Theme\Slider.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="Theme\TabControl.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Theme\TabItem.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Theme\ToolBar.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -364,68 +526,54 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <EmbeddedResource Include="FontResources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>FontResources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <None Include="Fonts\8X8.FON" />
-    <None Include="Fonts\8X8THIN.FON" />
-    <None Include="Fonts\AMBASSAD.FON" />
-    <None Include="Fonts\ANTIQUE.FON" />
-    <None Include="Fonts\APLS11.FON" />
-    <None Include="Fonts\BLOODY.FON" />
-    <None Include="Fonts\BOLD2.FON" />
-    <None Include="Fonts\BROADWAY.FON" />
-    <None Include="Fonts\BRUSH.FON" />
-    <None Include="Fonts\COMPUTER.FON" />
-    <None Include="Fonts\COURIER.FON" />
-    <None Include="Fonts\DECO.FON" />
-    <None Include="Fonts\DRAGON.FON" />
-    <None Include="Fonts\ELEGANT2.FON" />
-    <None Include="Fonts\ELEGITAL.FON" />
-    <None Include="Fonts\ELERGON.FON" />
-    <None Include="Fonts\F0.FON" />
-    <None Include="Fonts\FE_8X16.FON" />
-    <None Include="Fonts\FUTURA.FON" />
-    <None Include="Fonts\GAELIC.FON" />
-    <None Include="Fonts\GOTHIC.FON" />
-    <None Include="Fonts\GOTH_NEW.FON" />
-    <None Include="Fonts\GREEK.FON" />
-    <None Include="Fonts\HIGHSEAS.FON" />
-    <None Include="Fonts\ITALIC.FON" />
-    <None Include="Fonts\IVAN.FON" />
-    <None Include="Fonts\JULIE.FON" />
-    <None Include="Fonts\JUPITOR.FON" />
-    <None Include="Fonts\LCD.FON" />
-    <None Include="Fonts\LEGEND.FON" />
-    <None Include="Fonts\LUCIDA.FON" />
-    <None Include="Fonts\M.FON" />
-    <None Include="Fonts\MERP.FON" />
-    <None Include="Fonts\ML.FON" />
-    <None Include="Fonts\MODERN2.FON" />
-    <None Include="Fonts\NORMAL.FON" />
-    <None Include="Fonts\NUTSO.FON" />
-    <None Include="Fonts\OUTLINE.FON" />
-    <None Include="Fonts\PARKAVE.FON" />
-    <None Include="Fonts\PERCY.FON" />
-    <None Include="Fonts\ROMAN.FON" />
-    <None Include="Fonts\ROMAN2.FON" />
-    <None Include="Fonts\ROMANY.FON" />
-    <None Include="Fonts\SANS.FON" />
-    <None Include="Fonts\SCRAWL.FON" />
-    <None Include="Fonts\SCRIPT.FON" />
-    <None Include="Fonts\SIMPAGAR.FON" />
-    <None Include="Fonts\SMALL.FON" />
-    <None Include="Fonts\SYSFONT.FON" />
-    <None Include="Fonts\THIN.FON" />
+    <None Include="Data\drums\catalog.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\templates\ghibli_pastoral.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\catalogue\ghibli.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\catalogue\generic.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\catalogue\bach.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\catalogue\vivaldi.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\themes\bach.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\themes\generic.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\themes\ghibli.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\themes\index.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\themes\vivaldi.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <!-- SoundFonts (SoundFont\*.sf2) are intentionally NOT referenced here and NOT version-controlled:
+         they are third-party binary assets of several hundred MB (SGM 347 MB, MuseScore_General 206 MB,
+         FluidR3 142 MB), over GitHub's 100 MB per-file limit. They are excluded by .gitignore and must be
+         placed by hand in a "SoundFont" folder next to the executable (see AppPaths.Local). -->
+    <None Include="Data\models\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>
@@ -435,51 +583,15 @@
     <Resource Include="gridbg.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="AudioPatch\019_Church_Organ.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\023_Tango_Accordion.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\024_Nylon_Guitar2.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\026_Jazz_Guitar.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\040_Violin2.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\046_Harp.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\084_Charang.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\095_Sweep_Pad.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\flute.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\FrHorn.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\HalloPad.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\oboe.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\Piano.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\Trumpet.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="AudioPatch\Xylophone.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <Folder Include="Data\themes\_generated\" />
+    <Folder Include="Editor\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets" Condition="Exists('..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets'))" />
+  </Target>
 </Project>

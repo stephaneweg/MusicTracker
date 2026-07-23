@@ -24,6 +24,7 @@
 
     <local:IsFirstItemInContainerConverter x:Key="FirstItemConverter"/>
     <local:IsLastItemInContainerConverter x:Key="LastItemConverter"/>
+    <local:IsSingleItemInContainerConverter x:Key="SingleItemInContainerConverter"/>
 
     <Style TargetType="TabItem" >
         <Setter Property="Foreground" Value="#cccccc"/>
@@ -47,7 +48,7 @@
                             <Setter Property="Background" TargetName="border" Value="{StaticResource OutlineColorBrush}">
                             </Setter>
                             <Setter Property="Foreground" TargetName="headerText" Value="White"/>
-                            <Setter Property="BorderBrush" TargetName="border" Value="#224455"/>
+                            <Setter Property="BorderBrush" TargetName="border" Value="#178C97"/>
                         </Trigger>
                         <DataTrigger Binding="{Binding RelativeSource={RelativeSource Self}, Converter={StaticResource FirstItemConverter}}"
                                              Value="True">

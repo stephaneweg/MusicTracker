@@ -162,7 +162,7 @@
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="Height" Value="Auto"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -186,7 +186,7 @@
         <Setter Property="Foreground" Value="{StaticResource ButtonForeground}"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Validation.ErrorTemplate" Value="{x:Null}"/>
         <Setter Property="Background" Value="red"/>

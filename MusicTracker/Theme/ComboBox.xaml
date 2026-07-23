@@ -53,7 +53,7 @@
     <Style x:Key="{x:Type ComboBox}" TargetType="ComboBox">
         <Setter Property="Width" Value="Auto"/>
         <Setter Property="Foreground" Value="{StaticResource comboBoxForeground}"/>
-        <Setter Property="FontFamily" Value="Verdana"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="FontSize" Value="15"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="Height" Value="Auto"/>
@@ -90,13 +90,15 @@
               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
                         <TextBox x:Name="PART_EditableTextBox"
-              Style="{x:Null}" 
-              Template="{StaticResource ComboBoxTextBox}" 
-              HorizontalAlignment="Left" 
-              VerticalAlignment="Center" 
+              Style="{x:Null}"
+              Template="{StaticResource ComboBoxTextBox}"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Center"
               Margin="3,3,23,3"
-              Focusable="True" 
+              Focusable="True"
               Background="Transparent"
+              Foreground="{TemplateBinding Foreground}"
+              CaretBrush="{TemplateBinding Foreground}"
               Visibility="Hidden"
               IsReadOnly="{TemplateBinding IsReadOnly}"/>
                         <Popup 
@@ -151,7 +153,7 @@
         <Setter Property="SnapsToDevicePixels" Value="true"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="Foreground" Value="{StaticResource ComboBoxItemForeground}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>

@@ -1,0 +1,54 @@
+<Window x:Class="MusicTracker.Dialogs.TemplateMeasuresDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        Title="Nouveau modèle" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent">
+    <Window.Resources>
+        <!-- A measure-count choice chip (radio-like ToggleButton). -->
+        <Style x:Key="CountChip" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
+            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="bd" Background="{StaticResource LightBackground}" CornerRadius="6"
+                                BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Padding="16,7">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource SurfaceHoverBackground}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentDeepBrush}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="26,22" MinWidth="320">
+            <Border ctl:WindowDrag.Enable="True" Background="{StaticResource CommonBackground}" CornerRadius="5,5,0,0"
+                    Margin="-26,-22,-26,6" Padding="26,22,26,10">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="txtIcon" Text="🎼" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="txtTitle" Text="Nouveau modèle" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Combien de mesures créer ?" Foreground="{StaticResource CommonForeground}" Margin="0,0,0,10"/>
+            <WrapPanel x:Name="chips" MaxWidth="300"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="Créer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="18,4" Cursor="Hand" IsDefault="True"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

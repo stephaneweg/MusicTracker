@@ -1,0 +1,553 @@
+{
+  "version": 1,
+  "themes": [
+
+    {
+      "composer": "bach", "style": "Prélude", "name": "Prélude limpide", "mood": "Calme",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 76, "spq": 24, "themeBars": 8,
+      "melody": "72/8 76/8 79/8 84/8 79/8 76/8 79/8 84/8 | 74/8 77/8 81/8 84/8 81/8 77/8 81/8 84/8 | 72/8 76/8 79/8 84/8 83/8 79/8 76/8 72/8 | 71/8 74/8 79/8 83/8 79/8 74/8 71/8 67/8 | 72/8 76/8 79/8 76/8 74/8 77/8 81/8 77/8 | 76/8 79/8 84/8 79/8 77/8 81/8 84/8 81/8 | 79/8 76/8 72/8 76/8 74/8 71/8 67/8 71/8 | 72/8 76/8 79/8 76/8 72/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":7},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Prélude", "name": "Prélude du soir", "mood": "Calme",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 72, "spq": 24, "themeBars": 8,
+      "melody": "79/8 76/8 72/8 76/8 79/8 76/8 72/8 76/8 | 81/8 77/8 74/8 77/8 81/8 77/8 74/8 77/8 | 84/8 79/8 76/8 79/8 84/8 79/8 76/8 79/8 | 83/8 79/8 74/8 79/8 77/8 74/8 71/8 74/8 | 72/8 76/8 79/8 76/8 72/8 76/8 79/8 84/8 | 81/8 77/8 74/8 77/8 79/8 76/8 72/8 76/8 | 74/8 71/8 67/8 71/8 74/8 77/8 74/8 71/8 | 72/8 76/8 72/8 71/8 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Fugue", "name": "Fugue grave", "mood": "Majestueux",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 84, "spq": 24, "themeBars": 8,
+      "melody": "72/4 79/4 77/8 76/8 74/8 72/8 | 76/8 72/8 74/8 76/8 72/4 71/4 | 74/4 81/4 79/8 77/8 76/8 74/8 | 77/8 74/8 76/8 77/8 74/4 72/4 | 79/8 83/8 86/8 83/8 79/8 76/8 79/8 83/8 | 84/8 81/8 79/8 76/8 74/8 72/8 71/8 69/8 | 71/8 74/8 79/8 76/8 74/8 72/8 71/8 67/8 | 67/4 74/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":7,"q":8},{"root":2,"q":7},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Fugue", "name": "Fugue en marche", "mood": "Majestueux",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 88, "spq": 24, "themeBars": 8,
+      "melody": "67/4 72/4 71/8 72/8 74/8 76/8 | 79/4 76/4 74/8 72/8 71/8 69/8 | 67/4 74/4 72/8 74/8 76/8 79/8 | 81/4 79/4 77/8 76/8 74/8 72/8 | 76/8 79/8 84/8 79/8 76/8 79/8 84/8 81/8 | 79/8 76/8 74/8 72/8 71/8 74/8 77/8 74/8 | 72/8 76/8 79/8 76/8 74/8 72/8 71/8 67/8 | 71/4 74/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":7,"q":0},{"root":0,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Toccata", "name": "Toccata étincelante", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 116, "spq": 24, "themeBars": 8,
+      "melody": "60/16 67/16 72/16 76/16 72/16 67/16 72/16 76/16 79/16 76/16 72/16 76/16 79/16 84/16 79/16 76/16 | 62/16 65/16 69/16 74/16 69/16 65/16 69/16 74/16 77/16 74/16 69/16 74/16 77/16 81/16 77/16 74/16 | 64/16 67/16 71/16 74/16 71/16 67/16 71/16 74/16 79/16 74/16 71/16 74/16 79/16 83/16 79/16 74/16 | 65/16 69/16 72/16 77/16 72/16 69/16 72/16 77/16 76/16 74/16 72/16 71/16 69/16 67/16 65/16 64/16 | 60/16 67/16 72/16 76/16 79/16 76/16 72/16 67/16 72/16 76/16 79/16 84/16 79/16 76/16 72/16 76/16 | 62/16 69/16 74/16 77/16 81/16 77/16 74/16 69/16 71/16 74/16 79/16 83/16 79/16 74/16 71/16 67/16 | 72/16 74/16 76/16 77/16 79/16 81/16 83/16 84/16 83/16 81/16 79/16 77/16 76/16 74/16 72/16 71/16 | 79/16 77/16 76/16 74/16 72/16 71/16 69/16 67/16 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":1},{"root":7,"q":8},{"root":5,"q":0},{"root":0,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":1,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":1,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Toccata", "name": "Toccata fougueuse", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "60/8 67/8 72/16 76/16 79/16 76/16 72/16 67/16 72/16 76/16 79/16 84/16 79/16 76/16 | 62/8 69/8 74/16 77/16 81/16 77/16 74/16 69/16 74/16 77/16 81/16 84/16 81/16 77/16 | 64/8 71/8 74/16 79/16 83/16 79/16 74/16 71/16 74/16 79/16 83/16 86/16 83/16 79/16 | 65/8 69/8 72/16 76/16 77/16 76/16 74/16 72/16 71/16 69/16 67/16 65/16 64/16 62/16 | 60/8 72/8 76/16 79/16 84/16 79/16 76/16 72/16 76/16 79/16 84/16 88/16 84/16 79/16 | 62/8 71/8 74/16 79/16 83/16 79/16 77/16 74/16 71/16 74/16 77/16 79/16 77/16 74/16 | 72/16 74/16 76/16 79/16 81/16 83/16 84/16 86/16 84/16 83/16 81/16 79/16 77/16 76/16 74/16 72/16 | 71/8 74/8 77/16 74/16 72/16 71/16 69/16 67/16 72/4.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":1},{"root":4,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":7,"q":8},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":1,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":1,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Allemande", "name": "Allemande gracieuse", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 84, "spq": 24, "themeBars": 8,
+      "melody": "71/8 72/8 74/8 76/8 79/8 76/8 74/8 72/8 | 74/8 71/8 72/8 74/8 76/4 79/4 | 81/8 79/8 77/8 76/8 74/8 72/8 71/8 69/8 | 71/8 72/8 74/8 76/8 72/4 71/4 | 72/8 76/8 79/8 84/8 81/8 79/8 77/8 76/8 | 74/8 77/8 81/8 79/8 77/8 76/8 74/8 72/8 | 71/8 74/8 77/8 74/8 72/8 71/8 69/8 67/8 | 69/8 72/8 71/8 74/8 72/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":9,"q":1},{"root":0,"q":0},{"root":5,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Allemande", "name": "Allemande tendre", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 80, "spq": 24, "themeBars": 8,
+      "melody": "72/8 74/8 76/8 79/8 77/8 76/8 74/8 72/8 | 74/8 76/8 77/8 79/8 76/4 74/4 | 76/8 79/8 81/8 84/8 81/8 79/8 77/8 76/8 | 74/8 76/8 74/8 72/8 71/4 74/4 | 72/8 71/8 69/8 67/8 69/8 72/8 76/8 74/8 | 72/8 76/8 79/8 76/8 74/8 72/8 71/8 69/8 | 67/8 71/8 74/8 77/8 76/8 74/8 72/8 71/8 | 72/8 76/8 74/8 71/8 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":9,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Bourrée", "name": "Bourrée alerte", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/8 79/8 76/4 72/4 | 74/8 76/8 77/8 79/8 76/4 74/4 | 76/4 79/8 81/8 79/4 76/4 | 77/8 76/8 74/8 72/8 74/4 71/4 | 72/4 79/8 81/8 79/4 76/4 | 84/8 81/8 79/8 76/8 74/4 77/4 | 76/8 74/8 72/8 71/8 69/8 72/8 71/8 69/8 | 72/4 76/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":7},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":1,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":1,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Bourrée", "name": "Bourrée du village", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 126, "spq": 24, "themeBars": 8,
+      "melody": "76/4 72/8 76/8 79/4 76/4 | 81/8 79/8 77/8 76/8 74/4 77/4 | 76/4 79/8 84/8 81/4 79/4 | 77/8 76/8 74/8 72/8 71/4 74/4 | 72/4 76/8 79/8 84/4 81/4 | 79/8 77/8 76/8 74/8 72/4 76/4 | 74/8 72/8 71/8 69/8 67/8 71/8 74/8 71/8 | 72/4 79/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":7},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":1,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":1,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Gavotte", "name": "Gavotte fleurie", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 100, "spq": 24, "themeBars": 8,
+      "melody": "79/4 79/4 76/8 77/8 79/8 81/8 | 79/4 76/4 74/2 | 72/4 72/4 74/8 76/8 77/8 79/8 | 76/4 74/4 72/2 | 81/4 81/4 79/8 77/8 76/8 74/8 | 76/4 79/4 81/2 | 79/8 77/8 76/8 74/8 72/8 74/8 76/8 77/8 | 76/4 72/4 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Gavotte", "name": "Gavotte tendre", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 96, "spq": 24, "themeBars": 8,
+      "melody": "76/4 76/4 74/8 76/8 77/8 79/8 | 81/4 79/4 76/2 | 74/4 74/4 72/8 74/8 76/8 77/8 | 79/4 76/4 72/2 | 79/4 79/4 81/8 79/8 77/8 76/8 | 74/4 77/4 76/2 | 72/8 74/8 76/8 79/8 77/8 76/8 74/8 72/8 | 74/4 71/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":9,"q":1},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Courante", "name": "Courante vive", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 132, "spq": 24, "themeBars": 8,
+      "melody": "72/8 76/8 79/8 76/8 72/8 76/8 | 79/8 84/8 81/8 79/8 77/8 76/8 | 74/8 77/8 81/8 77/8 74/8 77/8 | 79/4 76/4 72/4 | 76/8 79/8 84/8 79/8 76/8 79/8 | 81/8 84/8 81/8 79/8 77/8 76/8 | 74/8 72/8 71/8 74/8 77/8 74/8 | 72/4 76/4 72/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":2,"q":7},{"root":0,"q":0},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24} ] }
+    },
+    {
+      "composer": "bach", "style": "Courante", "name": "Courante légère", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 138, "spq": 24, "themeBars": 8,
+      "melody": "79/8 76/8 72/8 76/8 79/8 81/8 | 84/8 81/8 79/8 76/8 74/8 72/8 | 76/8 79/8 81/8 79/8 76/8 74/8 | 72/4 76/4 79/4 | 81/8 79/8 76/8 79/8 81/8 84/8 | 83/8 81/8 79/8 76/8 74/8 71/8 | 72/8 76/8 74/8 72/8 71/8 69/8 | 67/4 72/4 72/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":2,"q":7},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24} ] }
+    },
+    {
+      "composer": "bach", "style": "Menuet", "name": "Menuet poli", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/4 79/4 | 81/4 79/4 76/4 | 77/4 76/4 74/4 | 72/2 76/4 | 79/4 81/4 84/4 | 81/4 79/4 76/4 | 74/8 76/8 77/8 74/8 72/8 71/8 | 72/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":9,"q":1},{"root":2,"q":7},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":2,"q":7},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24} ] }
+    },
+    {
+      "composer": "bach", "style": "Menuet", "name": "Menuet du jardin", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 116, "spq": 24, "themeBars": 8,
+      "melody": "76/4 74/4 72/4 | 74/4 76/4 79/4 | 77/4 76/4 74/4 | 72/4 71/4 67/4 | 79/4 76/4 74/4 | 76/4 79/4 81/4 | 79/8 77/8 76/8 74/8 72/8 71/8 | 72/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24} ] }
+    },
+    {
+      "composer": "bach", "style": "Sarabande", "name": "Sarabande sombre", "mood": "Majestueux",
+      "key": { "tonicPc": 9, "minor": true }, "meter": { "num": 3, "den": 4 }, "tempo": 66, "spq": 24, "themeBars": 8,
+      "melody": "69/4 72/2 | 71/4 74/2 | 72/4 71/4 69/4 | 67/2. | 72/4 76/2 | 74/4 72/4 71/4 | 69/4 71/8 69/8 67/4 | 69/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":4,"q":1},{"root":9,"q":1},{"root":7,"q":0},{"root":0,"q":0},{"root":2,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":48} ] }
+    },
+    {
+      "composer": "bach", "style": "Sarabande", "name": "Sarabande de deuil", "mood": "Majestueux",
+      "key": { "tonicPc": 9, "minor": true }, "meter": { "num": 3, "den": 4 }, "tempo": 64, "spq": 24, "themeBars": 8,
+      "melody": "76/4 74/2 | 72/4 71/2 | 69/4 72/4 76/4 | 74/2. | 77/4 76/2 | 74/4 72/4 71/4 | 69/4 67/8 69/8 71/4 | 69/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":0,"q":0},{"root":9,"q":1},{"root":2,"q":1},{"root":5,"q":6},{"root":9,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":48} ] }
+    },
+    {
+      "composer": "bach", "style": "Chaconne", "name": "Chaconne en la", "mood": "Majestueux",
+      "key": { "tonicPc": 9, "minor": true }, "meter": { "num": 3, "den": 4 }, "tempo": 100, "spq": 24, "themeBars": 8,
+      "melody": "69/4 72/4 76/4 | 74/4 72/4 71/4 | 72/4 76/4 79/4 | 77/4 76/4 74/4 | 76/4 79/4 81/4 | 79/4 77/4 76/4 | 74/8 72/8 71/8 69/8 67/8 71/8 | 69/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":7,"q":0},{"root":0,"q":0},{"root":2,"q":1},{"root":5,"q":0},{"root":4,"q":8},{"root":2,"q":1},{"root":9,"q":1} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24} ] }
+    },
+    {
+      "composer": "bach", "style": "Chaconne", "name": "Chaconne grave", "mood": "Majestueux",
+      "key": { "tonicPc": 9, "minor": true }, "meter": { "num": 3, "den": 4 }, "tempo": 96, "spq": 24, "themeBars": 8,
+      "melody": "76/4 72/4 69/4 | 71/4 74/4 72/4 | 79/4 76/4 72/4 | 74/4 71/4 69/4 | 81/4 79/4 76/4 | 77/4 74/4 72/4 | 71/8 74/8 72/8 71/8 69/8 67/8 | 69/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":2,"q":1},{"root":0,"q":0},{"root":4,"q":8},{"root":5,"q":0},{"root":2,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24} ] }
+    },
+    {
+      "composer": "bach", "style": "Gigue", "name": "Gigue sautillante", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 6, "den": 8 }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "72/8 76/8 79/8 84/8 79/8 76/8 | 74/8 77/8 81/8 77/8 74/8 72/8 | 76/8 79/8 84/8 81/8 79/8 76/8 | 79/8 76/8 72/8 74/8 71/8 67/8 | 72/8 76/8 79/8 76/8 79/8 84/8 | 81/8 79/8 76/8 74/8 77/8 74/8 | 72/8 76/8 72/8 71/8 74/8 71/8 | 72/4. 67/4.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":7},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":36},{"deg":5,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":3,"start":60,"len":12} ] }
+    },
+    {
+      "composer": "bach", "style": "Gigue", "name": "Gigue endiablée", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 6, "den": 8 }, "tempo": 126, "spq": 24, "themeBars": 8,
+      "melody": "79/8 76/8 72/8 76/8 79/8 84/8 | 81/8 77/8 74/8 77/8 81/8 79/8 | 76/8 79/8 84/8 79/8 76/8 72/8 | 74/8 77/8 74/8 71/8 74/8 71/8 | 72/8 76/8 79/8 84/8 81/8 79/8 | 76/8 79/8 76/8 74/8 72/8 71/8 | 69/8 72/8 76/8 74/8 72/8 71/8 | 72/4. 67/4.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":2,"q":7},{"root":0,"q":0},{"root":7,"q":8},{"root":2,"q":7},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true, "notes": [ {"deg":1,"start":0,"len":36},{"deg":5,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":3,"start":60,"len":12} ] }
+    },
+
+    {
+      "composer": "bach",
+      "style": "Fugue",
+      "name": "Fugue en Do",
+      "mood": "Majestueux",
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 88, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/4 79/8 77/8 76/8 74/8 | 72/8 74/8 76/8 72/8 71/4 67/4 | 74/4 77/4 81/8 79/8 77/8 76/8 | 74/8 76/8 77/8 74/8 72/4 71/4 | 76/8 79/8 83/8 81/8 79/8 77/8 76/8 74/8 | 72/8 76/8 79/8 76/8 72/8 74/8 76/8 72/8 | 71/8 74/8 77/8 74/8 72/8 71/8 69/8 67/8 | 67/4 74/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":9,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "bach",
+      "style": "Toccata",
+      "name": "Toccata en Do",
+      "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 112, "spq": 24, "themeBars": 8,
+      "melody": "60/16 64/16 67/16 72/16 67/16 64/16 67/16 72/16 76/16 72/16 67/16 72/16 76/16 79/16 76/16 72/16 | 67/16 71/16 74/16 79/16 74/16 71/16 74/16 79/16 71/16 74/16 79/16 83/16 79/16 74/16 71/16 67/16 | 69/16 72/16 76/16 81/16 76/16 72/16 76/16 81/16 72/16 76/16 81/16 84/16 81/16 76/16 72/16 69/16 | 77/16 76/16 74/16 72/16 71/16 69/16 67/16 65/16 64/16 65/16 67/16 69/16 71/16 72/16 74/16 76/16 | 72/16 76/16 79/16 84/16 79/16 76/16 79/16 84/16 81/16 79/16 76/16 72/16 76/16 79/16 76/16 72/16 | 74/16 79/16 83/16 79/16 77/16 74/16 71/16 74/16 77/16 79/16 83/16 79/16 77/16 74/16 71/16 67/16 | 72/16 74/16 76/16 77/16 79/16 81/16 83/16 84/16 83/16 81/16 79/16 77/16 76/16 74/16 72/16 71/16 | 79/16 77/16 76/16 74/16 72/16 71/16 69/16 67/16 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":9,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":2,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] }
+    },
+
+    {
+      "composer": "bach",
+      "style": "Allemande",
+      "name": "Allemande en Do",
+      "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 84, "spq": 24, "themeBars": 8,
+      "melody": "72/8 74/8 76/8 77/8 79/8 77/8 76/8 74/8 | 76/8 72/8 74/8 76/8 72/4 71/4 | 72/8 76/8 79/8 84/8 83/8 81/8 79/8 77/8 | 76/8 74/8 72/8 74/8 76/4 79/4 | 81/8 79/8 77/8 76/8 77/8 79/8 81/8 83/8 | 84/8 81/8 79/8 77/8 76/8 74/8 72/8 71/8 | 69/8 72/8 76/8 74/8 72/8 71/8 69/8 67/8 | 65/8 69/8 71/8 74/8 72/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":0,"q":0},{"root":9,"q":1},{"root":2,"q":1},{"root":7,"q":0},{"root":0,"q":0},{"root":7,"q":8} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 1, 7, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"67/4 72/4 76/2 | 79/4 76/4 72/2 | 74/4 72/4 71/2 | 72/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"theme","ops":["run"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 84/2 | 83/2 81/2 | 79/2 76/2 | 77/2 79/2 | 81/2 77/2 | 76/2 74/2 | 72/2 76/2 | 79/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 76/4 79/2 | 77/4 74/4 72/2 | 71/4 74/4 77/2 | 36+48+55+60+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "bach",
+      "style": "Sarabande",
+      "name": "Sarabande grave",
+      "mood": "Majestueux",
+      "key": { "tonicPc": 9, "minor": true },
+      "meter": { "num": 3, "den": 4 },
+      "tempo": 60, "spq": 24, "themeBars": 8,
+      "melody": "69/4 72/2 | 71/4 69/4 67/4 | 65/4 69/2 | 67/4 65/4 64/4 | 64/4 67/2 | 69/4 67/4 65/4 | 64/4 65/4 67/4 | 67/4 69/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":4,"q":0},{"root":9,"q":1},{"root":2,"q":1},{"root":9,"q":1},{"root":2,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":3,"start":24,"len":48},{"deg":5,"start":24,"len":48} ] },
+      "variations": [ 7, 5, 1 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"64/4 67/2 | 69/4 67/4 64/4 | 65/4 64/2 | 64/4 r/4 r/4" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"theme","ops":["ornament"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"72/4 76/2 | 74/2 72/4 | 71/4 72/2 | 69/2. | 72/4 76/2 | 74/2 71/4 | 69/4 71/2 | 69/2." },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"67/4 65/4 64/4 | 65/4 64/4 62/4 | 64/4 65/4 67/4 | 33+45+52+57/2." }
+      ] }
+    },
+
+    {
+      "composer": "bach", "style": "Prélude", "name": "Prélude en Do", "mood": "Calme",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 72, "spq": 24, "themeBars": 8,
+      "melody": "72/8 76/8 79/8 83/8 79/8 76/8 79/8 76/8 | 74/8 77/8 81/8 84/8 81/8 77/8 81/8 77/8 | 72/8 76/8 79/8 76/8 71/8 74/8 79/8 74/8 | 72/8 76/8 81/8 76/8 72/8 74/8 76/8 77/8 | 79/8 76/8 72/8 76/8 79/8 84/8 79/8 76/8 | 77/8 74/8 71/8 74/8 77/8 81/8 77/8 74/8 | 76/8 72/8 67/8 72/8 76/8 79/8 76/8 72/8 | 74/8 71/8 67/8 71/8 72/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":1},{"root":7,"q":0},{"root":9,"q":1},{"root":0,"q":0},{"root":2,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":3,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/4 76/4 79/2 | 83/4 79/4 76/2 | 79/4 76/4 72/2 | 67/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 83/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 71/4 72/2 | 74/4 72/4 67/2 | 76/4 72/4 67/2 | 36+48+55+60+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "bach", "style": "Courante", "name": "Courante en Do", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 132, "spq": 24, "themeBars": 8,
+      "melody": "72/8 76/8 79/8 76/8 72/8 71/8 | 72/8 74/8 76/8 77/8 79/8 81/8 | 79/8 77/8 76/8 74/8 72/8 71/8 | 72/4 76/4 79/4 | 81/8 79/8 77/8 76/8 74/8 72/8 | 74/8 76/8 77/8 79/8 81/8 83/8 | 84/8 81/8 79/8 77/8 76/8 74/8 | 74/8 71/8 72/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":2,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":3,"start":24,"len":24},{"deg":5,"start":48,"len":24} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"76/4 79/4 84/4 | 83/4 79/4 76/4 | 77/4 76/4 74/4 | 72/4 r/4 r/4" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/4 84/2 | 83/4 79/4 76/4 | 79/4 76/2 | 74/2. | 81/4 79/4 77/4 | 76/4 79/2 | 74/4 72/4 71/4 | 72/2." },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"74/4 72/4 71/4 | 72/4 76/4 79/4 | 77/4 74/4 72/4 | 36+48+55/2." }
+      ] }
+    },
+
+    {
+      "composer": "bach", "style": "Gigue", "name": "Gigue en Do", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 6, "den": 8 }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "72/8 76/8 79/8 84/8 79/8 76/8 | 77/8 79/8 81/8 77/8 74/8 71/8 | 72/8 76/8 79/8 76/8 72/8 67/8 | 74/4. 79/4. | 79/8 84/8 88/8 84/8 79/8 76/8 | 77/8 81/8 84/8 81/8 77/8 74/8 | 76/8 79/8 83/8 79/8 76/8 72/8 | 71/8 74/8 71/8 72/4.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":0,"q":0},{"root":5,"q":0},{"root":9,"q":1},{"root":2,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":3,"start":48,"len":12},{"deg":5,"start":60,"len":12} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/8 76/8 79/8 84/4. | 83/8 79/8 76/8 72/4. | 74/8 77/8 81/8 79/4. | 76/8 r/8 r/8 r/4." },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/4. 84/4. | 83/4. 79/4. | 81/4. 76/4. | 74/4. 79/4. | 84/4. 81/4. | 79/4. 76/4. | 77/4. 74/4. | 72/2." },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/8 76/8 79/8 76/4. | 74/8 71/8 67/8 72/4. | 76/8 72/8 67/8 72/4. | 36+48+55+60/2." }
+      ] }
+    },
+
+    {
+      "composer": "bach", "style": "Menuet", "name": "Menuet en Do", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/4 79/4 | 77/4 76/8 74/8 72/4 | 74/4 76/4 77/4 | 76/2 72/4 | 79/4 77/4 76/4 | 74/4 72/8 71/8 69/4 | 71/4 74/4 76/4 | 74/2 72/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":7,"q":0},{"root":5,"q":0},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":3,"start":24,"len":24},{"deg":5,"start":24,"len":24},{"deg":3,"start":48,"len":24},{"deg":5,"start":48,"len":24} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"76/4 79/4 84/4 | 83/4 79/4 76/4 | 77/4 76/4 74/4 | 72/4 r/4 r/4" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"theme","ops":["ornament"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/4 84/2 | 83/2 79/4 | 81/4 79/2 | 76/2. | 84/4 81/2 | 79/4 76/2 | 74/4 76/2 | 72/2." },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 74/4 76/4 | 79/4 76/4 72/4 | 74/4 71/4 72/4 | 36+48+55/2." }
+      ] }
+    },
+
+    {
+      "composer": "bach", "style": "Bourrée", "name": "Bourrée en Do", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/8 77/8 79/4 76/4 | 77/4 79/8 77/8 76/2 | 76/4 79/8 81/8 83/4 79/4 | 81/4 79/8 77/8 76/2 | 79/4 84/8 83/8 81/4 79/4 | 77/4 76/8 74/8 72/2 | 74/4 76/8 77/8 79/4 72/4 | 74/4 71/8 74/8 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":2,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":3,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/4 76/4 79/2 | 77/4 79/4 84/2 | 83/4 79/4 76/2 | 72/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"theme","ops":["moto"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 84/2 | 81/2 79/2 | 84/2 83/2 | 81/2 79/2 | 77/2 76/2 | 74/2 72/2 | 74/2 79/2 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 76/4 79/2 | 77/4 74/4 72/2 | 79/4 76/4 72/2 | 36+48+55+60+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "bach", "style": "Gavotte", "name": "Gavotte en Do", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 96, "spq": 24, "themeBars": 8,
+      "melody": "76/4 77/4 79/4 76/4 | 72/4 74/4 76/2 | 77/4 79/4 81/4 77/4 | 76/4 74/4 72/2 | 79/4 81/4 83/4 79/4 | 77/4 76/4 74/2 | 76/4 72/4 74/4 71/4 | 72/2 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":0},{"root":0,"q":0},{"root":9,"q":1},{"root":2,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":3,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/4 76/4 79/2 | 81/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"83/2 79/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 36+48+55+60/1" }
+      ] }
+    },
+
+    {
+      "composer": "bach", "style": "Chaconne", "name": "Chaconne en La mineur", "mood": "Majestueux",
+      "key": { "tonicPc": 9, "minor": true }, "meter": { "num": 3, "den": 4 }, "tempo": 72, "spq": 24, "themeBars": 8,
+      "melody": "69/4 72/2 | 71/4 72/4 74/4 | 76/4 74/2 | 72/4 71/4 69/4 | 67/4 72/2 | 74/4 72/4 71/4 | 69/4 71/4 72/4 | 71/2 69/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":4,"q":0},{"root":5,"q":0},{"root":0,"q":0},{"root":2,"q":1},{"root":9,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "form": "Suite (danse AABB)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":3,"start":24,"len":24},{"deg":5,"start":48,"len":24} ] },
+      "variations": [ 7, 5, 1 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"64/4 67/2 | 69/4 72/4 76/4 | 74/4 72/2 | 69/4 r/4 r/4" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"76/4 79/2 | 77/2 76/4 | 79/4 76/2 | 72/2. | 76/4 79/2 | 77/2 74/4 | 72/4 74/2 | 69/2." },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 71/4 69/4 | 67/4 69/4 71/4 | 72/4 71/4 69/4 | 33+45+52+57/2." }
+      ] }
+    }
+
+  ],
+
+  "pool": [
+    { "id": "b-seq", "kind": "variation", "bars": 8, "intent": { "function": "build", "energy": "medium" },
+      "source": "fragment", "fragFrom": 0, "fragTo": 3, "ops": [ "sequence:2,2" ] },
+    { "id": "b-moto", "kind": "variation", "bars": 8, "intent": { "function": "build", "energy": "high" },
+      "source": "theme", "ops": [ "moto" ] },
+    { "id": "b-clim", "kind": "variation", "bars": 4, "intent": { "function": "climax", "energy": "high" },
+      "source": "fragment", "fragFrom": 4, "fragTo": 7, "ops": [ "octave:1" ] },
+
+    { "id": "intro-alle", "kind": "intro", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "67/4 72/4 76/2 | 79/4 76/4 72/2 | 74/4 72/4 71/2 | 72/4 r/4 r/2" },
+    { "id": "intro-prelude", "kind": "intro", "bars": 4, "intent": { "function": "intro", "energy": "low" },
+      "melody": "72/4 76/4 79/2 | 83/4 79/4 76/2 | 79/4 76/4 72/2 | 67/4 r/4 r/2" },
+    { "id": "contre-alle", "kind": "counter", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/2 84/2 | 83/2 81/2 | 79/2 76/2 | 77/2 79/2 | 81/2 77/2 | 76/2 74/2 | 72/2 76/2 | 79/1" },
+    { "id": "contre-prelude", "kind": "counter", "bars": 8, "intent": { "function": "counter", "energy": "low" },
+      "melody": "79/2 83/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+    { "id": "outro-bach44", "kind": "outro", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "72/4 76/4 79/2 | 77/4 74/4 72/2 | 71/4 74/4 77/2 | 36+48+55+60+64/1" },
+    { "id": "outro-bach44b", "kind": "outro", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "72/4 71/4 72/2 | 74/4 72/4 67/2 | 76/4 72/4 67/2 | 36+48+55+60+64/1" },
+
+    { "id": "intro-cour", "kind": "intro", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 79/4 84/4 | 83/4 79/4 76/4 | 77/4 76/4 74/4 | 72/4 r/4 r/4" },
+    { "id": "contre-cour", "kind": "counter", "bars": 8, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/4 84/2 | 83/4 79/4 76/4 | 79/4 76/2 | 74/2. | 81/4 79/4 77/4 | 76/4 79/2 | 74/4 72/4 71/4 | 72/2." },
+    { "id": "outro-cour", "kind": "outro", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "74/4 72/4 71/4 | 72/4 76/4 79/4 | 77/4 74/4 72/4 | 36+48+55/2." },
+
+    { "id": "intro-sara", "kind": "intro", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "low" },
+      "melody": "64/4 67/2 | 69/4 67/4 64/4 | 65/4 64/2 | 64/4 r/4 r/4" },
+    { "id": "contre-sara", "kind": "counter", "bars": 8, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "low" },
+      "melody": "72/4 76/2 | 74/2 72/4 | 71/4 72/2 | 69/2. | 72/4 76/2 | 74/2 71/4 | 69/4 71/2 | 69/2." },
+    { "id": "outro-sara", "kind": "outro", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "67/4 65/4 64/4 | 65/4 64/4 62/4 | 64/4 65/4 67/4 | 33+45+52+57/2." },
+
+    { "id": "intro-gigue", "kind": "intro", "bars": 4, "meter": { "num": 6, "den": 8 }, "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/8 76/8 79/8 84/4. | 83/8 79/8 76/8 72/4. | 74/8 77/8 81/8 79/4. | 76/8 r/8 r/8 r/4." },
+    { "id": "contre-gigue", "kind": "counter", "bars": 8, "meter": { "num": 6, "den": 8 }, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/4. 84/4. | 83/4. 79/4. | 81/4. 76/4. | 74/4. 79/4. | 84/4. 81/4. | 79/4. 76/4. | 77/4. 74/4. | 72/2." },
+    { "id": "outro-gigue", "kind": "outro", "bars": 4, "meter": { "num": 6, "den": 8 }, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "72/8 76/8 79/8 76/4. | 74/8 71/8 67/8 72/4. | 76/8 72/8 67/8 72/4. | 36+48+55+60/2." },
+
+    { "id": "bp-i-prelude-1", "kind": "intro", "style": "Prélude", "mood": "Calme", "bars": 4, "intent": { "function": "intro", "energy": "low" },
+      "melody": "72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 69/2 | 72/4 r/4 r/2" },
+    { "id": "bp-i-prelude-2", "kind": "intro", "style": "Prélude", "mood": "Calme", "bars": 4, "intent": { "function": "intro", "energy": "low" },
+      "melody": "72/8 76/8 79/8 84/8 79/4 76/4 | 74/8 77/8 81/8 79/8 76/4 74/4 | 72/4 76/4 74/2 | 72/4 r/4 r/2" },
+    { "id": "bp-ct-prelude-1", "kind": "counter", "style": "Prélude", "mood": "Calme", "bars": 8, "intent": { "function": "counter", "energy": "low" },
+      "melody": "79/2 76/2 | 77/1 | 76/2 79/2 | 72/1 | 81/2 79/2 | 76/1 | 74/2 76/2 | 72/1" },
+    { "id": "bp-ct-prelude-2", "kind": "counter", "style": "Prélude", "mood": "Calme", "bars": 8, "intent": { "function": "counter", "energy": "low" },
+      "melody": "76/1 | 79/2 76/2 | 74/1 | 76/2 72/2 | 79/1 | 81/2 79/2 | 76/2 74/2 | 72/1" },
+    { "id": "bp-o-prelude-1", "kind": "outro", "style": "Prélude", "mood": "Calme", "bars": 4, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 60+64+67+72/1" },
+    { "id": "bp-o-prelude-2", "kind": "outro", "style": "Prélude", "mood": "Calme", "bars": 4, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "76/4 74/4 72/2 | 69/4 72/4 67/2 | 71/4 74/4 72/2 | 36+48+55+60+64/1" },
+
+    { "id": "bp-i-fugue-1", "kind": "intro", "style": "Fugue", "mood": "Majestueux", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "67/4 72/4 76/2 | 79/4 84/4 79/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+    { "id": "bp-i-fugue-2", "kind": "intro", "style": "Fugue", "mood": "Majestueux", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/8 76/8 79/8 76/8 79/4 84/4 | 83/4 79/4 76/2 | 74/4 77/4 79/2 | 72/4 r/4 r/2" },
+    { "id": "bp-ct-fugue-1", "kind": "counter", "style": "Fugue", "mood": "Majestueux", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 79/2 | 81/1 | 79/2 76/2 | 74/1 | 84/2 81/2 | 79/1 | 77/2 76/2 | 72/1" },
+    { "id": "bp-ct-fugue-2", "kind": "counter", "style": "Fugue", "mood": "Majestueux", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 84/2 | 83/1 | 81/2 79/2 | 76/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+    { "id": "bp-o-fugue-1", "kind": "outro", "style": "Fugue", "mood": "Majestueux", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/4 79/4 76/2 | 81/4 79/4 76/2 | 74/4 72/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "bp-o-fugue-2", "kind": "outro", "style": "Fugue", "mood": "Majestueux", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "79/4 76/4 74/2 | 72/4 76/4 79/2 | 77/4 74/4 72/2 | 36+48+55+60+64/1" },
+
+    { "id": "bp-i-toccata-1", "kind": "intro", "style": "Toccata", "mood": "Enjoué", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/8 76/8 79/8 84/8 79/8 76/8 79/8 84/8 | 83/8 81/8 79/8 76/8 74/4 72/4 | 76/8 79/8 84/8 79/8 76/4 74/4 | 72/4 r/4 r/2" },
+    { "id": "bp-i-toccata-2", "kind": "intro", "style": "Toccata", "mood": "Enjoué", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "79/8 76/8 72/8 76/8 79/8 84/8 81/8 79/8 | 77/8 74/8 72/8 74/8 77/4 76/4 | 74/8 77/8 81/8 79/8 76/4 74/4 | 72/4 r/4 r/2" },
+    { "id": "bp-ct-toccata-1", "kind": "counter", "style": "Toccata", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 84/2 | 81/1 | 84/2 79/2 | 76/1 | 84/2 81/2 | 79/1 | 77/2 76/2 | 72/1" },
+    { "id": "bp-ct-toccata-2", "kind": "counter", "style": "Toccata", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 81/2 | 83/1 | 81/2 79/2 | 76/1 | 84/2 86/2 | 84/1 | 81/2 79/2 | 72/1" },
+    { "id": "bp-o-toccata-1", "kind": "outro", "style": "Toccata", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/8 81/8 79/8 76/8 74/4 72/4 | 76/4 72/4 67/2 | 74/4 71/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "bp-o-toccata-2", "kind": "outro", "style": "Toccata", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "79/4 84/4 81/2 | 79/4 76/4 74/2 | 76/4 72/4 67/2 | 36+48+55+60+64/1" },
+
+    { "id": "bp-i-allemande-1", "kind": "intro", "style": "Allemande", "mood": "Tendre", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 79/4 84/2 | 81/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+    { "id": "bp-i-allemande-2", "kind": "intro", "style": "Allemande", "mood": "Tendre", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "72/8 74/8 76/8 79/8 77/4 76/4 | 74/8 76/8 79/8 81/8 79/4 76/4 | 74/4 77/4 76/2 | 72/4 r/4 r/2" },
+    { "id": "bp-ct-allemande-1", "kind": "counter", "style": "Allemande", "mood": "Tendre", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "76/2 79/2 | 81/1 | 79/2 77/2 | 76/1 | 81/2 84/2 | 81/1 | 79/2 76/2 | 72/1" },
+    { "id": "bp-ct-allemande-2", "kind": "counter", "style": "Allemande", "mood": "Tendre", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/2 76/2 | 77/1 | 79/2 84/2 | 76/1 | 81/2 79/2 | 77/1 | 76/2 74/2 | 72/1" },
+    { "id": "bp-o-allemande-1", "kind": "outro", "style": "Allemande", "mood": "Tendre", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "79/4 76/4 74/2 | 72/4 76/4 79/2 | 77/4 74/4 72/2 | 60+64+67+72/1" },
+    { "id": "bp-o-allemande-2", "kind": "outro", "style": "Allemande", "mood": "Tendre", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "76/4 79/4 81/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 60+64+67+74/1" },
+
+    { "id": "bp-i-bourree-1", "kind": "intro", "style": "Bourrée", "mood": "Enjoué", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/4 76/8 79/8 76/4 72/4 | 74/8 76/8 77/8 79/8 76/4 74/4 | 76/4 79/4 81/2 | 79/4 r/4 r/2" },
+    { "id": "bp-i-bourree-2", "kind": "intro", "style": "Bourrée", "mood": "Enjoué", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "76/4 79/8 84/8 81/4 79/4 | 77/8 76/8 74/8 72/8 74/4 71/4 | 72/4 76/4 79/2 | 72/4 r/4 r/2" },
+    { "id": "bp-ct-bourree-1", "kind": "counter", "style": "Bourrée", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 79/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 79/2 | 72/1" },
+    { "id": "bp-ct-bourree-2", "kind": "counter", "style": "Bourrée", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 84/2 | 83/1 | 81/2 79/2 | 76/1 | 84/2 81/2 | 79/1 | 77/2 76/2 | 72/1" },
+    { "id": "bp-o-bourree-1", "kind": "outro", "style": "Bourrée", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/4 79/4 76/2 | 81/4 79/4 76/2 | 74/4 72/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "bp-o-bourree-2", "kind": "outro", "style": "Bourrée", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "72/8 76/8 79/8 76/8 74/4 72/4 | 76/4 79/4 74/2 | 72/4 67/4 64/2 | 36+48+55+60+64/1" },
+
+    { "id": "bp-i-gavotte-1", "kind": "intro", "style": "Gavotte", "mood": "Tendre", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "79/4 79/4 76/8 77/8 79/8 81/8 | 79/4 76/4 74/2 | 72/4 74/4 76/2 | 72/4 r/4 r/2" },
+    { "id": "bp-i-gavotte-2", "kind": "intro", "style": "Gavotte", "mood": "Tendre", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 76/4 74/8 76/8 77/8 79/8 | 81/4 79/4 76/2 | 74/4 72/4 71/2 | 72/4 r/4 r/2" },
+    { "id": "bp-ct-gavotte-1", "kind": "counter", "style": "Gavotte", "mood": "Tendre", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "76/2 79/2 | 81/1 | 79/2 76/2 | 74/1 | 81/2 84/2 | 81/1 | 79/2 76/2 | 72/1" },
+    { "id": "bp-ct-gavotte-2", "kind": "counter", "style": "Gavotte", "mood": "Tendre", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/2 76/2 | 77/1 | 76/2 79/2 | 72/1 | 81/2 79/2 | 76/1 | 74/2 76/2 | 72/1" },
+    { "id": "bp-o-gavotte-1", "kind": "outro", "style": "Gavotte", "mood": "Tendre", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "79/4 76/4 74/2 | 76/4 72/4 74/2 | 71/4 74/4 72/2 | 60+64+67+72/1" },
+    { "id": "bp-o-gavotte-2", "kind": "outro", "style": "Gavotte", "mood": "Tendre", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "76/4 74/4 72/2 | 74/4 79/4 76/2 | 72/4 71/4 72/2 | 60+64+67+72/1" },
+
+    { "id": "bp-i-courante-1", "kind": "intro", "style": "Courante", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/8 76/8 79/8 84/8 79/8 76/8 | 79/8 84/8 81/8 79/8 77/8 76/8 | 74/4 77/4 79/4 | 72/4 r/4 r/4" },
+    { "id": "bp-i-courante-2", "kind": "intro", "style": "Courante", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "high" },
+      "melody": "79/8 76/8 72/8 76/8 79/8 81/8 | 84/8 81/8 79/8 76/8 74/8 72/8 | 76/4 79/4 74/4 | 72/4 r/4 r/4" },
+    { "id": "bp-ct-courante-1", "kind": "counter", "style": "Courante", "mood": "Enjoué", "bars": 8, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 81/4 | 79/2. | 81/2 84/4 | 79/2. | 86/2 84/4 | 81/2. | 79/2 77/4 | 72/2." },
+    { "id": "bp-ct-courante-2", "kind": "counter", "style": "Courante", "mood": "Enjoué", "bars": 8, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 84/4 | 81/2. | 84/2 81/4 | 76/2. | 81/2 79/4 | 77/2. | 76/2 74/4 | 72/2." },
+    { "id": "bp-o-courante-1", "kind": "outro", "style": "Courante", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "79/4 76/4 72/4 | 74/4 76/4 79/4 | 76/4 74/4 71/4 | 48+60+64+67/2." },
+    { "id": "bp-o-courante-2", "kind": "outro", "style": "Courante", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/4 81/4 79/4 | 76/4 79/4 74/4 | 72/4 76/4 79/4 | 36+48+55+60+64/2." },
+
+    { "id": "bp-i-menuet-1", "kind": "intro", "style": "Menuet", "mood": "Tendre", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "72/4 76/4 79/4 | 81/4 79/4 76/4 | 77/4 76/4 74/4 | 72/4 r/4 r/4" },
+    { "id": "bp-i-menuet-2", "kind": "intro", "style": "Menuet", "mood": "Tendre", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 79/4 84/4 | 81/4 79/4 76/4 | 74/4 77/4 76/4 | 72/4 r/4 r/4" },
+    { "id": "bp-ct-menuet-1", "kind": "counter", "style": "Menuet", "mood": "Tendre", "bars": 8, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/2 84/4 | 81/2. | 79/2 76/4 | 74/2. | 84/2 81/4 | 79/2. | 76/2 74/4 | 72/2." },
+    { "id": "bp-ct-menuet-2", "kind": "counter", "style": "Menuet", "mood": "Tendre", "bars": 8, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "76/2 79/4 | 81/2. | 79/2 77/4 | 76/2. | 81/2 84/4 | 81/2. | 79/2 76/4 | 72/2." },
+    { "id": "bp-o-menuet-1", "kind": "outro", "style": "Menuet", "mood": "Tendre", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "79/4 76/4 74/4 | 72/4 76/4 79/4 | 77/4 74/4 72/4 | 48+60+64+67/2." },
+    { "id": "bp-o-menuet-2", "kind": "outro", "style": "Menuet", "mood": "Tendre", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "76/4 79/4 81/4 | 79/4 76/4 72/4 | 74/4 71/4 72/4 | 36+48+55+60/2." },
+
+    { "id": "bp-i-sarabande-1", "kind": "intro", "style": "Sarabande", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "low" },
+      "melody": "69/4 72/2 | 71/4 74/2 | 72/4 71/4 69/4 | 67/4 r/4 r/4" },
+    { "id": "bp-i-sarabande-2", "kind": "intro", "style": "Sarabande", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "low" },
+      "melody": "76/4 74/2 | 72/4 71/2 | 69/4 72/4 76/4 | 74/4 r/4 r/4" },
+    { "id": "bp-ct-sarabande-1", "kind": "counter", "style": "Sarabande", "mood": "Majestueux", "bars": 8, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "low" },
+      "melody": "76/2 72/4 | 74/2. | 72/2 69/4 | 71/2. | 77/2 76/4 | 72/2. | 71/2 69/4 | 69/2." },
+    { "id": "bp-ct-sarabande-2", "kind": "counter", "style": "Sarabande", "mood": "Majestueux", "bars": 8, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "low" },
+      "melody": "72/2 76/4 | 74/2. | 76/2 72/4 | 71/2. | 79/2 77/4 | 76/2. | 74/2 72/4 | 69/2." },
+    { "id": "bp-o-sarabande-1", "kind": "outro", "style": "Sarabande", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "72/4 71/4 69/4 | 67/4 69/4 72/4 | 71/4 69/4 67/4 | 33+45+52+57/2." },
+    { "id": "bp-o-sarabande-2", "kind": "outro", "style": "Sarabande", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "76/4 74/4 72/4 | 69/4 67/4 64/4 | 67/4 69/4 71/4 | 33+45+52+57+60/2." },
+
+    { "id": "bp-i-chaconne-1", "kind": "intro", "style": "Chaconne", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "69/4 72/4 76/4 | 74/4 72/4 71/4 | 72/4 76/4 79/4 | 76/4 r/4 r/4" },
+    { "id": "bp-i-chaconne-2", "kind": "intro", "style": "Chaconne", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 72/4 69/4 | 71/4 74/4 72/4 | 79/4 76/4 72/4 | 74/4 r/4 r/4" },
+    { "id": "bp-ct-chaconne-1", "kind": "counter", "style": "Chaconne", "mood": "Majestueux", "bars": 8, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "76/2 79/4 | 77/2. | 76/2 72/4 | 74/2. | 81/2 79/4 | 76/2. | 74/2 72/4 | 69/2." },
+    { "id": "bp-ct-chaconne-2", "kind": "counter", "style": "Chaconne", "mood": "Majestueux", "bars": 8, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "72/2 76/4 | 79/2. | 77/2 76/4 | 72/2. | 84/2 81/4 | 79/2. | 76/2 74/4 | 69/2." },
+    { "id": "bp-o-chaconne-1", "kind": "outro", "style": "Chaconne", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "79/4 76/4 74/4 | 72/4 71/4 69/4 | 71/4 74/4 72/4 | 33+45+52+57/2." },
+    { "id": "bp-o-chaconne-2", "kind": "outro", "style": "Chaconne", "mood": "Majestueux", "bars": 4, "minor": true, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "76/4 79/4 81/4 | 79/4 76/4 74/4 | 72/4 71/4 69/4 | 33+45+52+57+60/2." },
+
+    { "id": "bp-i-gigue-1", "kind": "intro", "style": "Gigue", "mood": "Enjoué", "bars": 4, "meter": { "num": 6, "den": 8 }, "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/8 76/8 79/8 84/8 79/8 76/8 | 74/8 77/8 81/8 77/8 74/8 72/8 | 76/8 79/8 84/8 81/8 79/8 76/8 | 72/4. r/4." },
+    { "id": "bp-i-gigue-2", "kind": "intro", "style": "Gigue", "mood": "Enjoué", "bars": 4, "meter": { "num": 6, "den": 8 }, "intent": { "function": "intro", "energy": "high" },
+      "melody": "79/8 76/8 72/8 76/8 79/8 84/8 | 81/8 77/8 74/8 77/8 81/8 79/8 | 76/8 79/8 76/8 74/8 72/8 71/8 | 72/4. r/4." },
+    { "id": "bp-ct-gigue-1", "kind": "counter", "style": "Gigue", "mood": "Enjoué", "bars": 8, "meter": { "num": 6, "den": 8 }, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/4. 76/4. | 77/2. | 79/4. 84/4. | 76/2. | 81/4. 79/4. | 77/2. | 76/4. 79/4. | 72/2." },
+    { "id": "bp-ct-gigue-2", "kind": "counter", "style": "Gigue", "mood": "Enjoué", "bars": 8, "meter": { "num": 6, "den": 8 }, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/4. 79/4. | 81/2. | 79/4. 76/4. | 74/2. | 84/4. 81/4. | 79/2. | 77/4. 76/4. | 72/2." },
+    { "id": "bp-o-gigue-1", "kind": "outro", "style": "Gigue", "mood": "Enjoué", "bars": 4, "meter": { "num": 6, "den": 8 }, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/8 79/8 76/8 79/4. | 77/8 74/8 72/8 76/4. | 74/8 71/8 67/8 72/4. | 36+48+55+60/2." },
+    { "id": "bp-o-gigue-2", "kind": "outro", "style": "Gigue", "mood": "Enjoué", "bars": 4, "meter": { "num": 6, "den": 8 }, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "72/8 76/8 79/8 76/4. | 74/8 77/8 74/8 72/4. | 71/8 74/8 71/8 67/4. | 36+48+55+60+64/2." }
+  ]
+}

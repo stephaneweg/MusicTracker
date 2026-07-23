@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "themes": [
+
+    {
+      "composer": "generic", "style": "Classique", "name": "Sonatine en Do", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 100, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/4 79/8 77/8 76/8 74/8 | 72/4 74/4 76/2 | 74/4 77/4 81/8 79/8 77/8 76/8 | 74/4 72/4 71/2 | 72/4 76/4 79/8 81/8 83/8 84/8 | 83/4 81/4 79/2 | 77/8 76/8 74/8 72/8 74/4 76/4 | 74/4 71/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":2,"q":1},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "AABA (lied)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":3,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/4 76/4 79/2 | 81/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 83/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 36+48+55+60+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "generic", "style": "Romantique", "name": "Nocturne en La mineur", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 72, "spq": 24, "themeBars": 8,
+      "melody": "69/4 76/4 74/8 72/8 71/8 69/8 | 67/4 72/4 71/2 | 69/8 72/8 76/8 79/8 77/4 76/4 | 74/4 72/8 71/8 69/2 | 72/4 79/4 77/8 76/8 74/8 72/8 | 71/4 76/4 74/2 | 72/8 74/8 76/8 77/8 76/8 74/8 72/8 71/8 | 69/2 64/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":5,"q":6},{"root":0,"q":6},{"root":4,"q":8},{"root":9,"q":1},{"root":2,"q":7},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "form": "Posée (intro·thème·dév·reprise)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"64/4 67/4 69/2 | 72/4 71/4 69/2 | 67/4 65/4 64/2 | 64/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"76/2 81/2 | 79/1 | 77/2 76/2 | 74/1 | 81/2 84/2 | 81/1 | 79/2 76/2 | 69/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 71/4 69/2 | 67/4 64/4 65/2 | 64/4 67/4 69/2 | 33+45+52+57+60/1" }
+      ] }
+    },
+
+    {
+      "composer": "generic", "style": "Ballade", "name": "Ballade au crépuscule", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 76, "spq": 24, "themeBars": 8,
+      "melody": "72/4 74/8 76/8 79/4 76/4 | 74/8 72/8 71/8 69/8 67/2 | 69/4 72/8 76/8 79/4 77/4 | 76/8 74/8 72/8 71/8 72/2 | 76/4 79/8 81/8 84/4 81/4 | 79/8 77/8 76/8 74/8 72/2 | 74/4 77/8 76/8 74/4 72/4 | 71/8 74/8 72/8 71/8 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":9,"q":7},{"root":5,"q":6},{"root":7,"q":0},{"root":4,"q":7},{"root":5,"q":6},{"root":2,"q":7},{"root":7,"q":8} ] },
+      "form": "Posée (intro·thème·dév·reprise)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"76/4 74/4 72/2 | 74/4 72/4 71/2 | 72/4 76/4 79/2 | 76/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 76/2 | 77/1 | 79/2 81/2 | 76/1 | 84/2 79/2 | 77/1 | 76/2 74/2 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 71/4 69/2 | 72/4 76/4 74/2 | 72/4 67/4 69/2 | 60+64+67+72/1" }
+      ] }
+    },
+
+    {
+      "composer": "generic", "style": "Contemporain", "name": "Reflets", "mood": "Méditatif",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 64, "spq": 24, "themeBars": 8,
+      "melody": "72/2 76/2 | 74/2. 72/4 | 76/2 79/2 | 77/2. 76/4 | 79/2 76/2 | 74/2. 72/4 | 71/4 74/4 76/2 | 72/1",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":9,"q":7},{"root":5,"q":6},{"root":0,"q":0},{"root":2,"q":7},{"root":10,"q":6},{"root":5,"q":6},{"root":0,"q":13} ] },
+      "form": "Posée (intro·thème·dév·reprise)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] },
+      "variations": [ 7, 5, 1 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"67/2 72/2 | 74/2. 72/4 | 76/2 74/2 | 72/2 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"theme","ops":["ornament"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/1 | 77/1 | 76/1 | 79/1 | 81/1 | 79/1 | 76/1 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"76/2 74/2 | 72/2. 71/4 | 72/2 67/2 | 36+48+55+60+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "generic", "style": "Jazz", "name": "Bleu de minuit", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 120, "spq": 24, "themeBars": 8,
+      "melody": "72/8 75/8 76/8 79/4. 77/8 76/8 | 74/8 72/8 70/8 69/8 67/4 72/4 | 76/8 79/8 81/8 84/8 82/4 81/4 | 79/8 77/8 76/8 74/8 72/2 | 72/8 75/8 76/8 79/8 81/8 79/8 77/8 76/8 | 74/8 77/8 76/8 74/8 72/4 70/4 | 69/8 72/8 74/8 76/8 75/8 74/8 72/8 71/8 | 72/4 76/4 79/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":6},{"root":9,"q":7},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":6},{"root":7,"q":8} ] },
+      "form": "AABA (lied)",
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":3,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":12},{"deg":3,"start":84,"len":12} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/4 75/8 76/8 79/2 | 77/4 76/4 74/2 | 76/4 79/4 81/2 | 79/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 76/2 | 77/1 | 81/2 79/2 | 76/1 | 84/2 81/2 | 79/1 | 77/2 74/2 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"74/4 72/4 71/2 | 76/4 74/4 72/2 | 75/4 74/4 72/2 | 36+48+55+59+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "generic", "style": "Jazz", "name": "Pluie sur les toits", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 76, "spq": 24, "themeBars": 8,
+      "melody": "69/8 72/8 76/8 74/8 72/4 71/4 | 69/4 67/4 69/2 | 72/8 74/8 76/8 79/8 77/4 76/4 | 74/4 72/4 71/2 | 76/8 79/8 81/8 84/8 83/4 81/4 | 79/8 77/8 76/8 74/8 72/2 | 72/8 71/8 69/8 67/8 69/4 72/4 | 71/8 69/8 67/4 69/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":7},{"root":2,"q":7},{"root":11,"q":9},{"root":4,"q":18},{"root":9,"q":7},{"root":5,"q":6},{"root":4,"q":18},{"root":9,"q":7} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "generic", "style": "Jazz", "name": "Café fermé", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 84, "spq": 24, "themeBars": 8,
+      "melody": "69/4. 72/8 71/4 69/4 | 67/8 69/8 72/4 71/8 69/8 67/4 | 65/4. 67/8 69/4 72/4 | 71/8 69/8 67/8 64/8 64/2 | 76/4 75/8 76/8 79/4 77/4 | 76/8 74/8 72/8 71/8 69/2 | 72/4 74/8 76/8 77/4 76/4 | 74/8 72/8 71/8 69/8 69/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":7},{"root":4,"q":7},{"root":2,"q":7},{"root":4,"q":8},{"root":9,"q":7},{"root":11,"q":9},{"root":4,"q":18},{"root":9,"q":7} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":12},{"deg":8,"start":36,"len":12},{"deg":10,"start":48,"len":24},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "generic", "style": "Jazz", "name": "Tour de cartes", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 92, "spq": 24, "themeBars": 8,
+      "melody": "69/8 72/8 76/8 72/8 71/8 69/8 67/8 69/8 | 74/8 72/8 69/8 67/8 65/4 62/4 | 67/8 71/8 74/8 77/8 76/8 74/8 71/8 67/8 | 72/8 76/8 79/8 76/8 74/8 72/8 71/8 72/8 | 77/8 76/8 74/8 72/8 69/4 72/4 | 71/8 74/8 77/8 74/8 72/8 71/8 69/8 67/8 | 68/8 71/8 76/8 74/8 77/4 71/4 | 72/8 71/8 69/8 67/8 69/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":7},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":6},{"root":5,"q":6},{"root":11,"q":9},{"root":4,"q":18},{"root":9,"q":7} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "generic", "style": "Jazz", "name": "Néon bleu", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 80, "spq": 24, "themeBars": 8,
+      "melody": "69/4 72/8 75/8 76/4 72/4 | 74/4 72/8 71/8 69/4 67/4 | 70/4 74/8 72/8 70/4 69/4 | 69/8 72/8 76/8 79/8 77/8 76/8 74/8 72/8 | 77/4 76/8 74/8 72/2 | 71/4 74/8 77/8 76/4 74/4 | 72/8 71/8 69/8 68/8 71/4 68/4 | 69/4 72/4 71/8 69/8 69/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":7},{"root":2,"q":7},{"root":10,"q":8},{"root":9,"q":7},{"root":5,"q":6},{"root":11,"q":9},{"root":4,"q":18},{"root":9,"q":7} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":12},{"deg":8,"start":36,"len":12},{"deg":10,"start":48,"len":24},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "generic", "style": "Jazz", "name": "Dernier métro", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 72, "spq": 24, "themeBars": 8,
+      "melody": "76/2 72/2 | 74/2. 72/4 | 69/2 65/2 | 68/4 71/4 76/2 | 77/2 76/2 | 74/2 72/2 | 72/4 71/4 68/2 | 69/1",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":7},{"root":5,"q":6},{"root":2,"q":7},{"root":4,"q":8},{"root":9,"q":7},{"root":11,"q":9},{"root":4,"q":18},{"root":9,"q":7} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] }
+    }
+
+  ],
+
+  "pool": [
+    { "id": "g-seq", "kind": "variation", "bars": 8, "intent": { "function": "build", "energy": "medium" },
+      "source": "fragment", "fragFrom": 0, "fragTo": 3, "ops": [ "sequence:2,2" ] },
+    { "id": "g-moto", "kind": "variation", "bars": 8, "intent": { "function": "build", "energy": "high" },
+      "source": "theme", "ops": [ "moto" ] },
+    { "id": "g-clim", "kind": "variation", "bars": 4, "intent": { "function": "climax", "energy": "high" },
+      "source": "fragment", "fragFrom": 4, "fragTo": 7, "ops": [ "octave:1" ] },
+
+    { "id": "intro-classique", "kind": "intro", "style": "Classique", "mood": "Tendre", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "72/4 76/4 79/2 | 81/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+    { "id": "intro-ballade", "kind": "intro", "style": "Ballade", "mood": "Tendre", "bars": 4, "intent": { "function": "intro", "energy": "low" },
+      "melody": "76/4 74/4 72/2 | 74/4 72/4 71/2 | 72/4 76/4 79/2 | 76/4 r/4 r/2" },
+    { "id": "contre-classique", "kind": "counter", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/2 83/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+    { "id": "contre-ballade", "kind": "counter", "bars": 8, "intent": { "function": "counter", "energy": "low" },
+      "melody": "79/2 76/2 | 77/1 | 79/2 81/2 | 76/1 | 84/2 79/2 | 77/1 | 76/2 74/2 | 72/1" },
+    { "id": "outro-classique", "kind": "outro", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 36+48+55+60+64/1" },
+    { "id": "outro-ballade", "kind": "outro", "bars": 4, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "72/4 71/4 69/2 | 72/4 76/4 74/2 | 72/4 67/4 69/2 | 60+64+67+72/1" },
+
+    { "id": "intro-roman", "kind": "intro", "style": "Romantique", "mood": "Mélancolique", "bars": 4, "minor": true, "intent": { "function": "intro", "energy": "low" },
+      "melody": "64/4 67/4 69/2 | 72/4 71/4 69/2 | 67/4 65/4 64/2 | 64/4 r/4 r/2" },
+    { "id": "intro-jazz-min", "kind": "intro", "style": "Jazz", "mood": "Mélancolique", "bars": 4, "minor": true, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "72/4 75/8 76/8 79/4 76/4 | 74/8 72/8 71/8 69/8 67/4 64/4 | 71/4 74/8 77/8 76/4 74/4 | 68/4 71/4 69/2" },
+    { "id": "contre-roman", "kind": "counter", "bars": 8, "minor": true, "intent": { "function": "counter", "energy": "low" },
+      "melody": "76/2 81/2 | 79/1 | 77/2 76/2 | 74/1 | 81/2 84/2 | 81/1 | 79/2 76/2 | 69/1" },
+    { "id": "outro-roman", "kind": "outro", "bars": 4, "minor": true, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "72/4 71/4 69/2 | 67/4 64/4 65/2 | 64/4 67/4 69/2 | 33+45+52+57+60/1" }
+  ]
+}

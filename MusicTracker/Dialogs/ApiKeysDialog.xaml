@@ -1,0 +1,85 @@
+<Window x:Class="MusicTracker.Dialogs.ApiKeysDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        Title="Clés API" Width="620" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent">
+    <Window.Resources>
+        <!-- ListView rows without selection chrome (the row IS the editor). -->
+        <Style x:Key="PlainRow" TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <ContentPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="24,20">
+            <Border ctl:WindowDrag.Enable="True" Background="{StaticResource CommonBackground}" CornerRadius="5,5,0,0" Margin="-24,-20,-24,4" Padding="24,20,24,8">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="🔑" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock Text="Clés API" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <TextBlock Text="Stocke plusieurs clés par fournisseur (ex. plusieurs projets Gemini) et choisis-les par leur nom dans les écrans de composition."
+                       Foreground="{StaticResource SecondaryForeground}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,14"/>
+
+            <!-- Column headers (aligned with the row template below) -->
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140"/>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="34"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="FOURNISSEUR" Foreground="{StaticResource AccentBrightBrush}" FontSize="10" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="NOM" Foreground="{StaticResource AccentBrightBrush}" FontSize="10" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="CLÉ" Foreground="{StaticResource AccentBrightBrush}" FontSize="10" FontWeight="SemiBold" Margin="8,0,0,0"/>
+            </Grid>
+
+            <ListView x:Name="lstKeys" ItemsSource="{Binding Keys}" ItemContainerStyle="{StaticResource PlainRow}"
+                      MaxHeight="320" BorderThickness="0" Background="Transparent"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="160"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="34"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"
+                                      ItemsSource="{Binding DataContext.Providers, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      DisplayMemberPath="Label" SelectedValuePath="Id"
+                                      SelectedValue="{Binding Provider, Mode=TwoWay}"/>
+                            <TextBox Grid.Column="1" VerticalContentAlignment="Center" Margin="0,0,8,0" Padding="6,3"
+                                     Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBox Grid.Column="2" VerticalContentAlignment="Center" Padding="6,3" FontFamily="Consolas"
+                                     Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Grid.Column="3" Content="🗑" Style="{StaticResource deleteIconButton}" Click="btnDeleteRow_Click"
+                                    ToolTip="Supprimer" VerticalAlignment="Center" Margin="4,0,0,0" Cursor="Hand"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <TextBlock x:Name="txtEmpty" Text="Aucune clé. Ajoute-en une ci-dessous." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="2,4,0,0" Visibility="Collapsed"/>
+
+            <Button x:Name="btnAdd" Content="＋  Ajouter une clé" Click="btnAdd_Click" Cursor="Hand"
+                    HorizontalAlignment="Left" Margin="0,10,0,0" Padding="12,6"
+                    Background="Transparent" Foreground="{StaticResource AccentBrightBrush}" BorderThickness="0"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="Enregistrer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="18,4" Cursor="Hand" IsDefault="True"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

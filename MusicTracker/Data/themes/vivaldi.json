@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "themes": [
+
+    {
+      "composer": "vivaldi", "style": "Vivace", "name": "Ritournelle bondissante", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 144, "spq": 24, "themeBars": 8,
+      "melody": "72/8 72/8 76/8 79/8 76/8 72/8 79/8 76/8 | 74/8 74/8 77/8 81/8 77/8 74/8 81/8 77/8 | 76/8 79/8 84/8 79/8 76/8 79/8 84/8 79/8 | 81/8 79/8 77/8 76/8 74/8 72/8 71/8 69/8 | 72/8 72/8 79/8 76/8 72/8 76/8 79/8 84/8 | 83/8 81/8 79/8 77/8 76/8 74/8 72/8 71/8 | 72/8 76/8 79/8 76/8 74/8 77/8 81/8 77/8 | 76/8 79/8 76/8 74/8 72/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":2,"q":7},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":7,"q":0},{"root":2,"q":7},{"root":7,"q":8} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":1,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":1,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "vivaldi", "style": "Vivace", "name": "Tempête joyeuse", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 152, "spq": 24, "themeBars": 8,
+      "melody": "79/8 76/8 72/8 76/8 79/8 84/8 79/8 76/8 | 77/8 74/8 71/8 74/8 77/8 81/8 77/8 74/8 | 72/8 76/8 79/8 84/8 83/8 81/8 79/8 76/8 | 74/8 77/8 81/8 79/8 77/8 76/8 74/8 72/8 | 76/8 79/8 84/8 79/8 76/8 79/8 84/8 81/8 | 79/8 76/8 74/8 72/8 71/8 74/8 77/8 74/8 | 72/8 76/8 79/8 76/8 81/8 79/8 76/8 72/8 | 74/8 77/8 74/8 72/8 71/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":2,"q":7},{"root":0,"q":0},{"root":7,"q":8} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":1,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":1,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "vivaldi", "style": "Modéré", "name": "Marche solennelle", "mood": "Majestueux",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 92, "spq": 24, "themeBars": 8,
+      "melody": "72/8t 74/8t 76/8t 74/8t 72/8t 74/8t 76/4 79/4 | 81/8t 79/8t 77/8t 79/8t 81/8t 79/8t 77/4 76/4 | 79/4 76/8 74/8 72/4 71/4 | 72/2 76/2 | 79/8t 81/8t 84/8t 81/8t 79/8t 81/8t 84/4 79/4 | 77/8t 76/8t 74/8t 76/8t 77/8t 76/8t 74/4 72/4 | 74/4 72/8 71/8 69/4 67/4 | 72/2 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":7,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] }
+    },
+    {
+      "composer": "vivaldi", "style": "Modéré", "name": "Cortège", "mood": "Majestueux",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 100, "spq": 24, "themeBars": 8,
+      "melody": "76/8t 77/8t 79/8t 77/8t 76/8t 77/8t 79/4 76/4 | 72/4 74/4 76/2 | 79/8t 81/8t 84/8t 81/8t 79/8t 81/8t 84/4 81/4 | 79/4 76/4 72/2 | 81/8t 79/8t 77/8t 79/8t 81/8t 79/8t 77/4 76/4 | 74/4 76/4 79/2 | 77/4 76/8 74/8 72/4 71/4 | 72/2 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":9,"q":7},{"root":7,"q":0},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":0},{"root":2,"q":7},{"root":0,"q":0} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":false,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] }
+    },
+
+    {
+      "composer": "vivaldi", "style": "Lent", "name": "Adagio de pluie", "mood": "Méditatif",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 54, "spq": 24, "themeBars": 8,
+      "melody": "69/2 72/4 71/4 | 69/2. 67/4 | 72/4 74/4 76/2 | 74/4 72/4 69/2 | 76/2 79/4 77/4 | 76/2. 74/4 | 72/4 74/8 72/8 71/4 69/4 | 69/2 64/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":4,"q":1},{"root":0,"q":0},{"root":9,"q":1},{"root":5,"q":0},{"root":2,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] }
+    },
+    {
+      "composer": "vivaldi", "style": "Lent", "name": "Soir sur l'eau", "mood": "Méditatif",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 56, "spq": 24, "themeBars": 8,
+      "melody": "76/2 74/2 | 72/2. 71/4 | 69/4 72/4 76/2 | 74/2 72/2 | 77/2 76/2 | 74/4 72/4 71/2 | 72/4 74/8 76/8 74/4 72/4 | 71/2 69/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":0,"q":6},{"root":9,"q":1},{"root":2,"q":1},{"root":5,"q":6},{"root":9,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] }
+    },
+
+    {
+      "composer": "vivaldi",
+      "style": "Vivace",
+      "name": "Ritournelle vive",
+      "mood": "Enjoué",
+      "auto": true,
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 140, "spq": 24, "themeBars": 8,
+      "melody": "72/8 76/8 79/8 76/8 72/8 76/8 79/8 84/8 | 83/8 81/8 79/8 77/8 76/8 74/8 72/8 71/8 | 72/8 76/8 79/8 76/8 74/8 77/8 81/8 77/8 | 76/8 79/8 84/8 79/8 76/4 72/4 | 74/8 77/8 81/8 77/8 72/8 77/8 81/8 77/8 | 79/8 83/8 86/8 83/8 79/8 76/8 79/8 83/8 | 84/8 83/8 81/8 79/8 77/8 76/8 74/8 72/8 | 71/8 74/8 77/8 74/8 72/4 67/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":0,"q":0},{"root":5,"q":0},{"root":7,"q":8},{"root":0,"q":0},{"root":9,"q":1},{"root":2,"q":7},{"root":7,"q":8} ] },
+      "form": "Ritournelle (concerto)",
+      "accomp": { "bars":1, "spq":24, "openVoicing":false, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":1,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":1,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":1,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/4 76/4 79/2 | 84/4 79/4 76/2 | 79/4 76/4 72/2 | 67/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"develop","bars":8,"cadence":2,"source":"theme","ops":["run"] },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 76/2 | 77/1 | 79/2 76/2 | 74/1 | 81/2 79/2 | 77/1 | 76/2 79/2 | 72/1" },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 71/4 72/2 | 74/4 72/4 67/2 | 76/4 72/4 67/2 | 36+48+55+60+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "vivaldi",
+      "style": "Modéré",
+      "name": "Ritournelle majestueuse",
+      "mood": "Majestueux",
+      "auto": true,
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 96, "spq": 24, "themeBars": 8,
+      "melody": "72/8t 74/8t 76/8t 74/8t 72/8t 74/8t 76/4 72/4 | 74/8t 76/8t 79/8t 76/8t 74/8t 76/8t 79/4 76/4 | 77/4 76/8 74/8 72/4 71/4 | 72/2 76/2 | 79/8t 77/8t 76/8t 77/8t 79/8t 77/8t 76/4 74/4 | 76/8t 74/8t 72/8t 74/8t 76/8t 74/8t 72/4 71/4 | 74/4 72/8 71/8 69/4 67/4 | 72/2 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":0},{"root":7,"q":0},{"root":9,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":2,"q":7},{"root":7,"q":8},{"root":0,"q":0} ] },
+      "form": "Ritournelle (concerto)",
+      "accomp": { "bars":1, "spq":24, "openVoicing":false, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] },
+      "variations": [ 1, 5, 7 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"76/4 79/4 84/2 | 83/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"84/2 79/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2","rhythm:1"] },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 36+48+55+60/1" }
+      ] }
+    },
+
+    {
+      "composer": "vivaldi",
+      "style": "Lent",
+      "name": "Largo contemplatif",
+      "mood": "Méditatif",
+      "auto": true,
+      "key": { "tonicPc": 9, "minor": true },
+      "tempo": 56, "spq": 24, "themeBars": 8,
+      "melody": "69/2 72/4 71/4 | 69/2. 67/4 | 65/2 69/4 67/4 | 64/2. 64/4 | 67/2 72/4 71/4 | 69/2. 67/4 | 65/4 64/8 62/8 60/4 64/4 | 64/2 69/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":1},{"root":4,"q":1},{"root":5,"q":0},{"root":0,"q":0},{"root":2,"q":1},{"root":9,"q":1},{"root":4,"q":8},{"root":9,"q":1} ] },
+      "form": "Ritournelle (concerto)",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] },
+      "variations": [ 7, 5, 1 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"64/4 67/4 69/2 | 67/4 64/4 62/2 | 64/4 60/4 59/2 | 64/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"76/2 72/2 | 74/1 | 72/2 69/2 | 71/1 | 77/2 76/2 | 72/1 | 71/2 69/2 | 69/1" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2"] },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"64/4 62/4 60/2 | 64/4 60/4 59/2 | 57/4 60/4 64/2 | 33+45+52+57/1" }
+      ] }
+    }
+
+  ],
+
+  "pool": [
+    { "id": "v-seq", "kind": "variation", "bars": 8,
+      "intent": { "function": "build", "energy": "medium" },
+      "source": "fragment", "fragFrom": 0, "fragTo": 3, "ops": [ "sequence:2,2" ] },
+    { "id": "v-moto", "kind": "variation", "bars": 8,
+      "intent": { "function": "build", "energy": "high" },
+      "source": "theme", "ops": [ "moto" ] },
+    { "id": "v-clim", "kind": "variation", "bars": 4,
+      "intent": { "function": "climax", "energy": "high" },
+      "source": "fragment", "fragFrom": 4, "fragTo": 7, "ops": [ "octave:1" ] },
+
+    { "id": "intro-vivace", "kind": "intro", "bars": 4,
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/4 76/4 79/2 | 84/4 79/4 76/2 | 79/4 76/4 72/2 | 67/4 r/4 r/2" },
+    { "id": "intro-modere", "kind": "intro", "bars": 4,
+      "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 79/4 84/2 | 83/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+    { "id": "intro-lent", "kind": "intro", "bars": 4, "minor": true,
+      "intent": { "function": "intro", "energy": "low" },
+      "melody": "64/4 67/4 69/2 | 67/4 64/4 62/2 | 64/4 60/4 59/2 | 64/4 r/4 r/2" },
+
+    { "id": "contre-vivace", "kind": "counter", "bars": 8,
+      "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 76/2 | 77/1 | 79/2 76/2 | 74/1 | 81/2 79/2 | 77/1 | 76/2 79/2 | 72/1" },
+    { "id": "contre-modere", "kind": "counter", "bars": 8,
+      "intent": { "function": "counter", "energy": "medium" },
+      "melody": "84/2 79/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+    { "id": "contre-lent", "kind": "counter", "bars": 8, "minor": true,
+      "intent": { "function": "counter", "energy": "low" },
+      "melody": "76/2 72/2 | 74/1 | 72/2 69/2 | 71/1 | 77/2 76/2 | 72/1 | 71/2 69/2 | 69/1" },
+
+    { "id": "outro-vivace", "kind": "outro", "bars": 4,
+      "intent": { "function": "cadence", "energy": "high" },
+      "melody": "72/4 71/4 72/2 | 74/4 72/4 67/2 | 76/4 72/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "outro-modere", "kind": "outro", "bars": 4,
+      "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 36+48+55+60/1" },
+    { "id": "outro-lent", "kind": "outro", "bars": 4, "minor": true,
+      "intent": { "function": "cadence", "energy": "low" },
+      "melody": "64/4 62/4 60/2 | 64/4 60/4 59/2 | 57/4 60/4 64/2 | 33+45+52+57/1" },
+
+    { "id": "v-i-vivace-1", "kind": "intro", "style": "Vivace", "mood": "Enjoué", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/8 76/8 79/8 84/8 79/8 76/8 79/8 84/8 | 83/8 81/8 79/8 77/8 76/8 74/8 72/8 71/8 | 72/8 76/8 79/8 76/8 74/8 77/8 81/8 77/8 | 76/4 79/4 72/2" },
+    { "id": "v-i-vivace-2", "kind": "intro", "style": "Vivace", "mood": "Enjoué", "bars": 4, "intent": { "function": "intro", "energy": "high" },
+      "melody": "79/8 76/8 72/8 76/8 79/8 84/8 81/8 79/8 | 77/8 74/8 71/8 74/8 77/8 81/8 79/8 77/8 | 76/8 79/8 84/8 81/8 79/8 76/8 74/8 72/8 | 74/4 71/4 67/2" },
+    { "id": "v-i-modere-1", "kind": "intro", "style": "Modéré", "mood": "Majestueux", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/8t 79/8t 84/8t 79/8t 76/8t 79/8t 84/4 79/4 | 83/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 74/4 72/2" },
+    { "id": "v-i-modere-2", "kind": "intro", "style": "Modéré", "mood": "Majestueux", "bars": 4, "intent": { "function": "intro", "energy": "medium" },
+      "melody": "72/4 76/4 79/2 | 84/8t 83/8t 81/8t 83/8t 84/8t 83/8t 81/4 79/4 | 77/4 76/4 74/2 | 76/4 72/4 67/2" },
+    { "id": "v-i-lent-1", "kind": "intro", "style": "Lent", "mood": "Méditatif", "bars": 4, "minor": true, "intent": { "function": "intro", "energy": "low" },
+      "melody": "64/4 67/4 69/2 | 72/4 71/4 69/2 | 67/4 65/4 64/2 | 64/4 69/4 67/2" },
+    { "id": "v-i-lent-2", "kind": "intro", "style": "Lent", "mood": "Méditatif", "bars": 4, "minor": true, "intent": { "function": "intro", "energy": "low" },
+      "melody": "69/4 72/4 76/2 | 74/4 72/4 69/2 | 67/4 69/4 71/2 | 69/4 64/4 64/2" },
+
+    { "id": "v-ct-vivace-1", "kind": "counter", "style": "Vivace", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 76/2 | 77/1 | 79/2 84/2 | 76/1 | 81/2 79/2 | 77/1 | 76/2 79/2 | 72/1" },
+    { "id": "v-ct-vivace-2", "kind": "counter", "style": "Vivace", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 79/2 | 81/1 | 79/2 76/2 | 74/1 | 84/2 81/2 | 79/1 | 77/2 76/2 | 72/1" },
+    { "id": "v-ct-modere-1", "kind": "counter", "style": "Modéré", "mood": "Majestueux", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "84/2 79/2 | 81/1 | 79/2 77/2 | 76/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+    { "id": "v-ct-modere-2", "kind": "counter", "style": "Modéré", "mood": "Majestueux", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/2 84/2 | 83/1 | 81/2 79/2 | 76/1 | 84/2 81/2 | 79/1 | 77/2 76/2 | 72/1" },
+    { "id": "v-ct-lent-1", "kind": "counter", "style": "Lent", "mood": "Méditatif", "bars": 8, "minor": true, "intent": { "function": "counter", "energy": "low" },
+      "melody": "76/2 72/2 | 74/1 | 72/2 69/2 | 71/1 | 77/2 76/2 | 72/1 | 71/2 69/2 | 69/1" },
+    { "id": "v-ct-lent-2", "kind": "counter", "style": "Lent", "mood": "Méditatif", "bars": 8, "minor": true, "intent": { "function": "counter", "energy": "low" },
+      "melody": "72/2 76/2 | 74/1 | 76/2 72/2 | 69/1 | 79/2 77/2 | 76/1 | 74/2 72/2 | 69/1" },
+
+    { "id": "v-o-vivace-1", "kind": "outro", "style": "Vivace", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/4 79/4 76/2 | 81/4 79/4 76/2 | 74/4 72/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "v-o-vivace-2", "kind": "outro", "style": "Vivace", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "72/8 76/8 79/8 76/8 74/4 67/4 | 76/4 72/4 67/2 | 74/4 71/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "v-o-modere-1", "kind": "outro", "style": "Modéré", "mood": "Majestueux", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "79/4 76/4 74/2 | 72/4 76/4 79/2 | 77/4 74/4 72/2 | 36+48+55+60/1" },
+    { "id": "v-o-modere-2", "kind": "outro", "style": "Modéré", "mood": "Majestueux", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "84/4 79/4 76/2 | 77/4 76/4 74/2 | 72/4 74/4 72/2 | 36+48+55+60+64/1" },
+    { "id": "v-o-lent-1", "kind": "outro", "style": "Lent", "mood": "Méditatif", "bars": 4, "minor": true, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "72/4 71/4 69/2 | 67/4 69/4 72/2 | 71/4 69/4 64/2 | 33+45+52+57+60/1" },
+    { "id": "v-o-lent-2", "kind": "outro", "style": "Lent", "mood": "Méditatif", "bars": 4, "minor": true, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "76/4 74/4 72/2 | 69/4 67/4 64/2 | 67/4 69/4 71/2 | 33+45+52+57/1" }
+  ]
+}

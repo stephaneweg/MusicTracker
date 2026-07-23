@@ -1,0 +1,358 @@
+using System;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
+
+namespace MusicTracker.Screens
+{
+    /// <summary>Welcome screen: recent musics on the left, create/open actions on the right.</summary>
+    public partial class HomeScreen : UserControl
+    {
+        public event Action NewSequencerRequested;
+        public event Action OpenRequested;
+        public event Action<RecentEntry> OpenRecentRequested;
+        public event Action ComposeAiRequested;
+        public event Action<string> TemplateSpecRequested;   // section-based template name (TemplateLibrary)
+
+        public HomeScreen()
+        {
+            InitializeComponent();
+            var entries = RecentFiles.Instance.Entries;
+            listRecent.ItemsSource = entries;
+            emptyState.Visibility = (entries == null || entries.Count == 0)
+                ? Visibility.Visible : Visibility.Collapsed;
+
+            bannerRiff.SizeChanged += (s, e) => BuildBanner();
+            eqCanvas.SizeChanged += (s, e) => BuildEqualizer();
+            BuildTemplateCards();
+            BuildResources();
+        }
+
+        // ---- Resources widget: "Astuce du jour" (rotating tips) + "Nouveautés" (changelog) ----
+
+        static readonly string[] Tips =
+        {
+            "Un modèle crée un morceau complet en un clic — ou génère-en un sur mesure avec « Ajouter avec l'IA ».",
+            "Dans l'éditeur batterie, choisis un motif par catégorie, ou dessine le tien et enregistre-le pour le réutiliser partout.",
+            "Stocke plusieurs clés API par fournisseur (Paramètres ▸ Clés API) et bascule de l'une à l'autre par leur nom.",
+            "Une ligne mélodique ne fixe que le rythme : le moteur choisit les notes sur les accords en cours.",
+            "Dans un motif rythmique, une durée négative = un silence — pour aérer et structurer les phrases.",
+            "Le bouton ♫ d'une piste affiche sa partition ; M coupe la piste, S l'isole.",
+            "Importe un MIDI ou un fichier MuseScore directement dans la timeline (Importer…).",
+            "Les accords vont sur la piste « Accords » en bas ; insère une cadence pour une suite toute prête.",
+            "Change un motif de batterie et les répétitions s'ajustent pour garder la même durée.",
+        };
+
+        static readonly (string icon, string text)[] News =
+        {
+            ("🎛️", "Modèles de projet : depuis un fichier, avec l'IA, ou à ajouter dans le dossier — avec suppression."),
+            ("🥁", "Catalogue de motifs batterie (Standard, Afrique, Australie) + tes motifs enregistrés, réutilisables."),
+            ("🔑", "Plusieurs clés API par fournisseur, choisies par nom dans les écrans de composition."),
+            ("🎼", "Templates IA structurés (intro/thème/développement/outro), étendus à la longueur voulue."),
+            ("🎨", "Interface sombre & teal, dialogues déplaçables, éditeurs enrichis."),
+        };
+
+        void BuildResources()
+        {
+            resourcesHost.Children.Clear();
+            resourcesHost.Children.Add(new TextBlock
+            {
+                Text = "RESSOURCES", Foreground = (Brush)FindResource("AccentBrightBrush"),
+                FontSize = 11, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 0, 0, 12),
+            });
+
+            var row = new WrapPanel();
+
+            // Astuce du jour (starts on today's tip; ‹ › to browse).
+            int tip = Tips.Length > 0 ? DateTime.Now.DayOfYear % Tips.Length : 0;
+            var tipText = new TextBlock
+            {
+                Text = Tips.Length > 0 ? Tips[tip] : "",
+                TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("CommonForeground"),
+                FontSize = 12, Margin = new Thickness(0, 8, 0, 0), MaxWidth = 320,
+            };
+            var prev = ArrowBtn("‹"); var next = ArrowBtn("›");
+            prev.Click += (s, e) => { if (Tips.Length > 0) { tip = (tip - 1 + Tips.Length) % Tips.Length; tipText.Text = Tips[tip]; } };
+            next.Click += (s, e) => { if (Tips.Length > 0) { tip = (tip + 1) % Tips.Length; tipText.Text = Tips[tip]; } };
+            var arrows = new StackPanel { Orientation = Orientation.Horizontal };
+            arrows.Children.Add(prev); arrows.Children.Add(next);
+            row.Children.Add(ResourceCard("💡", "ASTUCE DU JOUR", tipText, arrows));
+
+            // Nouveautés (changelog).
+            var newsList = new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+            foreach (var n in News)
+            {
+                var line = new DockPanel { Margin = new Thickness(0, 0, 0, 7) };
+                var ic = new TextBlock { Text = n.icon, FontSize = 13, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top };
+                DockPanel.SetDock(ic, Dock.Left);
+                line.Children.Add(ic);
+                line.Children.Add(new TextBlock { Text = n.text, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("SecondaryForeground"), FontSize = 11.5 });
+                newsList.Children.Add(line);
+            }
+            row.Children.Add(ResourceCard("🆕", "NOUVEAUTÉS", newsList, null));
+
+            resourcesHost.Children.Add(row);
+        }
+
+        Button ArrowBtn(string glyph) => new Button
+        {
+            Content = glyph, FontSize = 15, Cursor = Cursors.Hand,
+            Background = System.Windows.Media.Brushes.Transparent, BorderThickness = new Thickness(0),
+            Foreground = (Brush)FindResource("SecondaryForeground"), Padding = new Thickness(6, 0, 6, 0),
+        };
+
+        Border ResourceCard(string icon, string title, UIElement content, UIElement headerRight)
+        {
+            var header = new DockPanel();
+            if (headerRight != null) { DockPanel.SetDock(headerRight, Dock.Right); header.Children.Add(headerRight); }
+            var titleSp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            titleSp.Children.Add(new TextBlock { Text = icon, FontSize = 13, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+            titleSp.Children.Add(new TextBlock { Text = title, Foreground = (Brush)FindResource("AccentBrightBrush"), FontSize = 11, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+            header.Children.Add(titleSp);
+
+            var stack = new StackPanel();
+            stack.Children.Add(header);
+            stack.Children.Add(content);
+
+            return new Border
+            {
+                Background = (Brush)FindResource("LightBackground"), CornerRadius = new CornerRadius(10),
+                BorderThickness = new Thickness(1), BorderBrush = (Brush)FindResource("SubtleBorderBrush"),
+                Padding = new Thickness(14, 12, 14, 12), Margin = new Thickness(0, 0, 12, 12),
+                MinWidth = 300, MaxWidth = 380, Child = stack,
+            };
+        }
+
+        // Faint equalizer strip along the bottom of the whole page: flat teal bars, deterministic heights
+        // (two folded sines), rebuilt on resize to span the full width.
+        void BuildEqualizer()
+        {
+            eqCanvas.Children.Clear();
+            double w = eqCanvas.ActualWidth, h = eqCanvas.ActualHeight;
+            if (w < 1 || h < 1) return;
+            var fill = (Brush)FindResource("AccentBrush");
+            const double barW = 3, pitch = 7;
+            int n = (int)(w / pitch);
+            for (int i = 0; i < n; i++)
+            {
+                double t = i * 0.28;
+                double a = Math.Abs(Math.Sin(t) * 0.55 + Math.Sin(t * 0.37 + 1.3) * 0.45); // 0..1
+                double bh = 4 + a * (h - 4);
+                var bar = new Rectangle { Width = barW, Height = bh, Fill = fill, RadiusX = 1.5, RadiusY = 1.5 };
+                Canvas.SetLeft(bar, i * pitch);
+                Canvas.SetTop(bar, h - bh);
+                eqCanvas.Children.Add(bar);
+            }
+        }
+
+        // Build the "Modèles de projet" cards from the section-based TemplateLibrary (Data/templates/*.json).
+        void BuildTemplateCards()
+        {
+            templatesPanel.Children.Clear();
+            foreach (var spec in Engine.Timeline.TemplateLibrary.All)
+            {
+                string n = spec.Name;
+                AddTemplateCard(spec.Icon ?? "🎼", n, "Modèle — structure intro/thème/développement/outro.",
+                                spec.Tags, "#1FB6C3", () => TemplateSpecRequested?.Invoke(n), () => DeleteTemplate(n));
+            }
+        }
+
+        void DeleteTemplate(string name)
+        {
+            if (MessageBox.Show("Supprimer le modèle « " + name + " » ?\nLe fichier .json sera effacé.", "Supprimer un modèle",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            Engine.Timeline.TemplateLibrary.Delete(name);
+            RefreshTemplateCards();
+        }
+
+        void AddTemplateCard(string icon, string name, string desc, string tags, string accentHex, Action onClick, Action onDelete = null)
+        {
+            var card = new Button { Style = (Style)FindResource("TemplateCard"), ToolTip = desc };
+            card.Click += (s, e) => onClick();
+
+            var body = new StackPanel();
+            Color accent; try { accent = (Color)ColorConverter.ConvertFromString(accentHex ?? "#1FB6C3"); } catch { accent = Colors.Teal; }
+            body.Children.Add(new Border
+            {
+                Width = 40, Height = 40, CornerRadius = new CornerRadius(9),
+                Background = new SolidColorBrush(accent),
+                HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 10),
+                Child = new TextBlock { Text = icon, FontSize = 18, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            });
+            body.Children.Add(new TextBlock { Text = name, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = (Brush)FindResource("CommonForeground"), TextTrimming = TextTrimming.CharacterEllipsis });
+            body.Children.Add(new TextBlock { Text = desc, FontSize = 11, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource("SecondaryForeground"), Margin = new Thickness(0, 3, 0, 0) });
+            body.Children.Add(new TextBlock { Text = tags, FontSize = 10, Foreground = (Brush)FindResource("AccentBrightBrush"), Margin = new Thickness(0, 8, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis });
+            card.Content = body;
+
+            if (onDelete == null) { templatesPanel.Children.Add(card); return; }
+
+            // Wrap the card so a small ✕ (delete) can overlay its top-right corner without triggering the card click.
+            var wrap = new Grid { Margin = card.Margin };
+            card.Margin = new Thickness(0);
+            var del = new Button
+            {
+                Content = "✕", Style = (Style)FindResource("deleteIconButton"),
+                Width = 22, Height = 22, FontSize = 11, Cursor = Cursors.Hand,
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 6, 6, 0), ToolTip = "Supprimer ce modèle",
+            };
+            del.Click += (s, e) => onDelete();
+            wrap.Children.Add(card);
+            wrap.Children.Add(del);
+            templatesPanel.Children.Add(wrap);
+        }
+
+        // ---- hero backdrop: a riff piano-roll crossfading into a drum grid (both faint, behind the content) ----
+
+        // Family colours for the decorative drum cells (evoke the drum editor's GarageBand-style palette).
+        static readonly Color[] DrumFamily =
+        {
+            Color.FromRgb(0xE8, 0x89, 0x4A), // kick   — orange
+            Color.FromRgb(0xE4, 0x57, 0x4C), // snare  — red
+            Color.FromRgb(0xE6, 0xC3, 0x4A), // hats   — yellow
+            Color.FromRgb(0x5F, 0xBF, 0x6F), // toms   — green
+            Color.FromRgb(0x7E, 0x6B, 0xD6), // perc   — purple
+            Color.FromRgb(0x4A, 0xA8, 0xE8), // cymbal — blue
+        };
+
+        void BuildBanner()
+        {
+            double w = bannerRiff.ActualWidth, h = bannerRiff.ActualHeight;
+            if (w < 2 || h < 2) return;
+            BuildRiffGrid(w, h);
+            BuildDrumGrid(w, h);
+        }
+
+        // Left half: same grey step-grid as the drum side, with teal note rectangles on top spanning a few
+        // cells each (their "length"), tracing a gentle melodic contour — a piano-roll over the grid.
+        void BuildRiffGrid(double w, double h)
+        {
+            bannerRiff.Children.Clear();
+            var teal = (Brush)FindResource("AccentBrush");
+            var empty = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+            const int rows = 11;
+            const double pad = 2, cw = 20, pitch = 27;
+            double cellH = (h - 2 * pad) / rows;
+            int endCol = (int)(w * 0.85 / pitch) + 1;   // mask hides the right; don't draw past the fade
+
+            // grey grid cells
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < endCol; c++)
+                {
+                    var cell = new Rectangle { Width = cw, Height = cellH - 5, RadiusX = 3, RadiusY = 3, Fill = empty };
+                    Canvas.SetLeft(cell, c * pitch); Canvas.SetTop(cell, pad + r * cellH + 2);
+                    bannerRiff.Children.Add(cell);
+                }
+
+            // teal notes on top, each spanning 1–3 cells
+            int col = 0;
+            for (int i = 0; col < endCol; i++)
+            {
+                double a = Math.Sin(i * 0.62) * 0.5 + Math.Sin(i * 0.27 + 0.8) * 0.5; // -1..1
+                int row = (int)Math.Round((rows - 1) / 2.0 - a * ((rows - 1) / 2.0 - 1));
+                row = Math.Max(0, Math.Min(rows - 1, row));
+                int len = 1 + (i % 3);
+                var note = new Rectangle { Width = len * pitch - (pitch - cw), Height = cellH - 5, RadiusX = 3, RadiusY = 3, Fill = teal };
+                Canvas.SetLeft(note, col * pitch); Canvas.SetTop(note, pad + row * cellH + 2);
+                bannerRiff.Children.Add(note);
+                col += len + (i % 2);   // advance, with an occasional gap
+            }
+        }
+
+        // Right half: a step grid coloured by percussion family, like the drum editor. Only the visible (right)
+        // portion is drawn since the opacity mask hides the left; empty cells are barely-there outlines.
+        void BuildDrumGrid(double w, double h)
+        {
+            bannerDrum.Children.Clear();
+            const int rows = 6;
+            double pad = 2;
+            double cellH = (h - 2 * pad) / rows;
+            const double cw = 20, pitch = 27;
+            int cols = (int)(w / pitch) + 1;
+            int startCol = (int)(w * 0.40 / pitch);
+            var empty = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+
+            for (int r = 0; r < rows; r++)
+                for (int c = startCol; c < cols; c++)
+                {
+                    bool lit = DrumLit(r, c);
+                    var cell = new Rectangle
+                    {
+                        Width = cw,
+                        Height = cellH - 5,
+                        RadiusX = 3,
+                        RadiusY = 3,
+                        Fill = lit ? new SolidColorBrush(DrumFamily[r]) : empty,
+                    };
+                    Canvas.SetLeft(cell, c * pitch);
+                    Canvas.SetTop(cell, pad + r * cellH + 2);
+                    bannerDrum.Children.Add(cell);
+                }
+        }
+
+        static bool DrumLit(int row, int col)
+        {
+            switch (row)
+            {
+                case 0: return col % 4 == 0;    // kick
+                case 1: return col % 8 == 4;    // snare (backbeat)
+                case 2: return col % 2 == 0;    // hats (eighths)
+                case 3: return col % 16 == 10;  // tom fill
+                case 4: return col % 16 == 7;   // perc accent
+                case 5: return col % 16 == 0;   // crash
+                default: return false;
+            }
+        }
+
+        private void BtnNewSequencer_Click(object sender, System.Windows.RoutedEventArgs e) => NewSequencerRequested?.Invoke();
+        private void BtnComposeAi_Click(object sender, System.Windows.RoutedEventArgs e) => ComposeAiRequested?.Invoke();
+        private void BtnOpen_Click(object sender, System.Windows.RoutedEventArgs e) => OpenRequested?.Invoke();
+
+        void RefreshTemplateCards() { Engine.Timeline.TemplateLibrary.Reload(); BuildTemplateCards(); }
+
+        static readonly System.Text.Json.JsonSerializerOptions TemplateJsonOpts =
+            new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true };
+
+        // "Ajouter depuis un fichier…" — pick a .json template, validate it, copy it into Data/templates, refresh.
+        void btnAddFromFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Dialogs.FileBrowserDialog { Owner = Window.GetWindow(this), Title = "Ajouter un template", Filter = "Template (*.json)|*.json|Tous les fichiers (*.*)|*.*" };
+            if (dlg.ShowDialog() != true) return;
+            try
+            {
+                string json = System.IO.File.ReadAllText(dlg.FileName);
+                var spec = System.Text.Json.JsonSerializer.Deserialize<Engine.Timeline.TemplateSpec>(json, TemplateJsonOpts);
+                if (spec == null || string.IsNullOrWhiteSpace(spec.Name)) throw new Exception("Template invalide (« name » manquant).");
+                Engine.Timeline.TemplateLibrary.Save(json, spec.Name);
+                RefreshTemplateCards();
+            }
+            catch (Exception ex) { MessageBox.Show("Impossible d'ajouter ce template : " + ex.Message, "Ajouter un template", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        }
+
+        // "Ajouter avec l'IA…" — style + intention → the template prompt → provider call → validate → save.
+        void btnAddWithAi_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Dialogs.AiElementDialog("Générer un template — IA",
+                "Décris un STYLE et une intention (ex. « valse mélancolique de Chopin »). L'IA renvoie un template ; vérifie puis Confirme pour l'enregistrer.",
+                desc => Engine.Timeline.TemplatePrompt.Build(desc)) { Owner = Window.GetWindow(this) };
+            if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.ResultJson)) return;
+            try
+            {
+                string json = Engine.AI.AiArrangement.CleanJson(dlg.ResultJson);
+                var spec = System.Text.Json.JsonSerializer.Deserialize<Engine.Timeline.TemplateSpec>(json, TemplateJsonOpts);
+                if (spec == null || string.IsNullOrWhiteSpace(spec.Name)) throw new Exception("Réponse sans template valide.");
+                Engine.Timeline.TemplateLibrary.Save(json, spec.Name);
+                RefreshTemplateCards();
+            }
+            catch (Exception ex) { MessageBox.Show("Template IA invalide : " + ex.Message, "Ajouter avec l'IA", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        }
+
+        private void ListRecent_DoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (listRecent.SelectedItem is RecentEntry entry)
+                OpenRecentRequested?.Invoke(entry);
+        }
+    }
+}

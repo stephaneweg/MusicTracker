@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MusicTracker.Engine;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -20,19 +21,21 @@ namespace MusicTracker
 
         public void Save()
         {
-            System.IO.File.WriteAllText("userdata.json", System.Text.Json.JsonSerializer.Serialize(this));
+            try { System.IO.File.WriteAllText(AppPaths.Local("userdata.json"), System.Text.Json.JsonSerializer.Serialize(this)); }
+            catch { /* best-effort */ }
         }
         public static UserData Load()
         {
             UserData result = new UserData();
-            if (System.IO.File.Exists("userdata.json"))
+            string path = AppPaths.Local("userdata.json");
+            if (System.IO.File.Exists(path))
             {
-                result = System.Text.Json.JsonSerializer.Deserialize<UserData>(System.IO.File.ReadAllText("userdata.json"));
+                result = System.Text.Json.JsonSerializer.Deserialize<UserData>(System.IO.File.ReadAllText(path));
             }
+
             return result;
         }
 
-        public ObservableCollection<Editor.Instrument> InstrumentList { get; set; } = new ObservableCollection<Editor.Instrument>();
 
     }
 }

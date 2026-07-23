@@ -1,0 +1,104 @@
+<Window x:Class="MusicTracker.Dialogs.CreateStructureDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        Title="Créer une structure" Width="430" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent">
+    <Window.Resources>
+        <!-- Teal section header shown in each Expander. -->
+        <Style x:Key="ExpHeader" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrightBrush}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+    </Window.Resources>
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="26,22" MinWidth="320">
+            <StackPanel ctl:WindowDrag.Enable="True" Background="{StaticResource CommonBackground}" Orientation="Horizontal" Margin="0,0,0,2" HorizontalAlignment="Stretch">
+                <TextBlock Text="🏛️" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource CommonForeground}" />
+                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="Génère une charpente d'arrangement éditable : choisis une FORME (sonate, rondeau, ABAC…) — elle bâtit la structure + le plan harmonique ; le STYLE fournit l'âme (thème, accompagnement)."
+                       Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8" MaxWidth="360"/>
+
+            <!-- Style & forme -->
+            <Expander IsExpanded="True" Margin="0,8,0,0" Foreground="{StaticResource CommonForeground}">
+                <Expander.Header><TextBlock Text="Style &amp; forme" Style="{StaticResource ExpHeader}"/></Expander.Header>
+                <StackPanel Margin="0,6,0,0">
+                    <DockPanel Margin="0,2"><ComboBox x:Name="styleBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200" SelectionChanged="StyleBox_Changed"/>
+                        <TextBlock Text="Modèle" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="formBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Forme" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="compStyleBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Style" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="toneBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Tonalité" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="modeBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Mode" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="charBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Humeur" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="devBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Développement" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                </StackPanel>
+            </Expander>
+
+            <!-- Charpente -->
+            <Expander IsExpanded="True" Margin="0,8,0,0" Foreground="{StaticResource CommonForeground}">
+                <Expander.Header><TextBlock Text="Charpente" Style="{StaticResource ExpHeader}"/></Expander.Header>
+                <StackPanel Margin="0,6,0,0">
+                    <DockPanel Margin="0,2"><TextBox x:Name="tempoBox" DockPanel.Dock="Right" HorizontalAlignment="Left" Width="50" TextAlignment="Center"/>
+                        <TextBlock Text="Tempo (BPM)" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="meterBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="80">
+                            <ComboBoxItem>2/4</ComboBoxItem><ComboBoxItem>3/4</ComboBoxItem><ComboBoxItem IsSelected="True">4/4</ComboBoxItem>
+                            <ComboBoxItem>6/8</ComboBoxItem><ComboBoxItem>9/8</ComboBoxItem><ComboBoxItem>12/8</ComboBoxItem></ComboBox>
+                        <TextBlock Text="Mesure" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><TextBox x:Name="themeBox" DockPanel.Dock="Right" HorizontalAlignment="Left" Width="50" TextAlignment="Center" Text="4"/>
+                        <TextBlock Text="Mesures du thème" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><TextBox x:Name="introBox" DockPanel.Dock="Right" HorizontalAlignment="Left" Width="50" TextAlignment="Center" Text="4"/>
+                        <TextBlock Text="Mesures intro (0 = aucune)" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><TextBox x:Name="outroBox" DockPanel.Dock="Right" HorizontalAlignment="Left" Width="50" TextAlignment="Center" Text="4"/>
+                        <TextBlock Text="Mesures outro (0 = aucune)" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><TextBox x:Name="repsBox" DockPanel.Dock="Right" HorizontalAlignment="Left" Width="50" TextAlignment="Center" Text="2"/>
+                        <TextBlock Text="Nombre de variations" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+
+                    <CheckBox x:Name="musicBox" Content="Générer la musique" IsChecked="True" Margin="0,10,0,0" Foreground="{StaticResource CommonForeground}"/>
+                    <TextBlock Text="Décoché : seulement la charpente + accompagnement (sans mélodie/contre-chant), pour poser ta propre mélodie."
+                               Foreground="#888888" FontSize="10" TextWrapping="Wrap" Margin="0,2,0,0" MaxWidth="360"/>
+                </StackPanel>
+            </Expander>
+
+            <!-- Pistes optionnelles -->
+            <Expander IsExpanded="False" Margin="0,8,0,0" Foreground="{StaticResource CommonForeground}">
+                <Expander.Header><TextBlock Text="Pistes optionnelles" Style="{StaticResource ExpHeader}"/></Expander.Header>
+                <StackPanel Margin="0,6,0,0">
+                    <WrapPanel>
+                        <CheckBox x:Name="padBox" Content="Nappe de cordes" IsChecked="True" Margin="0,0,14,0" Foreground="{StaticResource CommonForeground}"/>
+                        <CheckBox x:Name="bassBox" Content="Basse" IsChecked="True" Margin="0,0,14,0" Foreground="{StaticResource CommonForeground}"/>
+                        <CheckBox x:Name="counterBox" Content="Contre-chant" IsChecked="True" Margin="0,0,14,0" Foreground="{StaticResource CommonForeground}"/>
+                        <CheckBox x:Name="introMelBox" Content="Intro mélodique" IsChecked="True" Foreground="{StaticResource CommonForeground}"/>
+                    </WrapPanel>
+                    <CheckBox x:Name="counterSameStaffBox" Content="Contre-chant sur la même portée (2 voix)" Margin="0,6,0,0" Foreground="{StaticResource CommonForeground}"
+                              ToolTip="Coché : le contre-chant devient une 2e voix de la mélodie (même portée). Décoché : sa propre piste/portée."/>
+                </StackPanel>
+            </Expander>
+
+            <!-- Instruments -->
+            <Expander IsExpanded="False" Margin="0,8,0,0" Foreground="{StaticResource CommonForeground}">
+                <Expander.Header><TextBlock Text="Instruments" Style="{StaticResource ExpHeader}"/></Expander.Header>
+                <StackPanel Margin="0,6,0,0">
+                    <DockPanel Margin="0,2"><ComboBox x:Name="melInstBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Mélodie" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="accInstBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Accompagnement" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                    <DockPanel Margin="0,2"><ComboBox x:Name="padInstBox" DockPanel.Dock="Right" HorizontalAlignment="Left" MinWidth="200"/>
+                        <TextBlock Text="Nappe orchestrale" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource CommonForeground}"/></DockPanel>
+                </StackPanel>
+            </Expander>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Padding="16,4" Margin="0,0,8,0" Cursor="Hand" Click="Cancel_Click"/>
+                <Button Content="Créer" Style="{StaticResource okButton}" Padding="16,4" Cursor="Hand" IsDefault="True" Click="Ok_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

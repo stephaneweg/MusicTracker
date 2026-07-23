@@ -7,7 +7,53 @@
         xmlns:controls="clr-namespace:MusicTracker.Controls"
         xmlns:screens="clr-namespace:MusicTracker.Screens"
         mc:Ignorable="d" WindowState="Maximized"
-        Title="MainWindow" Height="600" Width="800" Loaded="Window_Loaded">
+        Title="MusicTracker" Height="600" Width="800" Loaded="Window_Loaded">
+    <Window.Resources>
+        <!-- A tab = a button (name + optional ✕). Blue when selected, grey otherwise. -->
+        <Style x:Key="TabButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+            <Setter Property="Background" Value="#34353D"/>   <!-- flat dark grey (Accueil overrides to a darker shade) -->
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="bd" Background="{TemplateBinding Background}" BorderThickness="0" CornerRadius="0"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </Border>
+                            <!-- selected marker: a blue underline (same blue as dialog borders) at the bottom of the strip -->
+                            <Border x:Name="topline" Height="3" VerticalAlignment="Bottom" Visibility="Collapsed"
+                                    Background="{StaticResource OutlineColorBrush}"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3F4049"/>
+                            </Trigger>
+                            <Trigger Property="Tag" Value="sel">
+                                <Setter TargetName="topline" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <DockPanel>
+        <Border DockPanel.Dock="Top" x:Name="topBar" Background="{StaticResource DarkBackground}"
+                BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1" Height="34">
+            <DockPanel>
+                <!-- Gear / settings button, pinned to the top-right corner. -->
+                <Button DockPanel.Dock="Right" Click="btnSettings_Click" ToolTip="Paramètres" Cursor="Hand"
+                        Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="6,0"
+                        Background="Transparent" BorderThickness="0" VerticalAlignment="Center"/>
+                <!-- Accueil + one button per open music (flush, full height). -->
+                <StackPanel x:Name="tabStrip" Orientation="Horizontal"/>
+            </DockPanel>
+        </Border>
+        <ContentControl x:Name="host"/>
+    </DockPanel>
+    <!--
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>
@@ -124,7 +170,8 @@
                 </Expander>
             </Grid>
 
-            <screens:TrackEditorScreen x:Name="trackEditor" Grid.Column="2"/>
+            <screens:SequencerScreen x:Name="trackEditor" Grid.Column="2"/>
         </Grid>
     </Grid>
+    -->
 </Window>

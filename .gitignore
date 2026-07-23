@@ -1,1 +1,24 @@
-.vs/*
+# --- Visual Studio / build output ---
+.vs/
+[Bb]in/
+[Oo]bj/
+*.suo
+*.user
+
+# --- Claude Code ---
+.claude/
+
+# --- SoundFonts ---
+# Third-party binary assets of several hundred MB (SGM 347 MB, MuseScore_General 206 MB,
+# FluidR3 142 MB) — over GitHub's 100 MB per-file limit, so they are not version-controlled
+# and are no longer referenced by the .csproj. Place them by hand in a "SoundFont" folder
+# next to the executable (resolved through AppPaths.Local).
+SoundFont/
+*.sf2
+
+# --- Corpora / MIDI sources ---
+# Third-party scores used only OFFLINE to (re)generate the analysis models in
+# MusicTracker/Data/models/*.json. Those generated models ARE version-controlled, since the
+# app needs them at runtime and they can no longer be rebuilt from a fresh clone.
+corpus/
+midi/

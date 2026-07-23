@@ -1,0 +1,61 @@
+<Window x:Class="MusicTracker.Dialogs.CadenceDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Title="Générer une cadence" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="26,22" MinWidth="320">
+            <StackPanel Background="{StaticResource CommonBackground}"  ctl:WindowDrag.Enable="True"  Orientation="Horizontal" Margin="0,0,0,2" HorizontalAlignment="Stretch" >
+                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="Une suite d'accords dans la tonalité du morceau, depuis le degré choisi vers la tonique (pas de 7e sur la tonique). Les accords sont insérés dans la piste sélectionnée."
+                       Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,16" MaxWidth="320"/>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Mesures" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBox x:Name="txtMeasures" Grid.Row="0" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="4" Margin="0,4"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Accords / mesure" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBox x:Name="txtChordsPerMeasure" Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="1" Margin="0,4"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Depuis le degré" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboDegree" Grid.Row="2" Grid.Column="1" Width="160" HorizontalAlignment="Left" Margin="0,4"/>
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Style" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboStyle" Grid.Row="3" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Rythme / articulation" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboRhythm" Grid.Row="4" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"
+                          ToolTip="Comment chaque accord est joué (plaqué, arpège, jazz, bossa, funk…) au lieu de simples accords tenus"/>
+            </Grid>
+
+            <CheckBox x:Name="chkBass" Content="Ajouter la basse (fondamentale)" Foreground="#DDDDDD" Margin="0,12,0,0"/>
+            <CheckBox x:Name="chkVoiceLead" Content="Conduite des voix (renversements automatiques)" Foreground="#DDDDDD" Margin="0,6,0,0" IsChecked="True"
+                      ToolTip="Choisit le renversement de chaque accord pour que les notes (les doigts) bougent le moins possible"/>
+            <CheckBox x:Name="chkOpen" Content="Voicing ouvert (écarté)" Foreground="#DDDDDD" Margin="0,6,0,0"
+                      ToolTip="Écarte chaque accord (position ouverte) au lieu d'un empilement serré"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="Générer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

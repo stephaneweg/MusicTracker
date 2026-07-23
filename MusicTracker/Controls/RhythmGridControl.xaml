@@ -1,0 +1,46 @@
+<UserControl x:Class="MusicTracker.Controls.RhythmGridControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignHeight="300" d:DesignWidth="600"
+             Unloaded="UserControl_Unloaded">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+            <Button x:Name="btnPlay" Content="▶ Écouter" Click="btnPlay_Click" Padding="12,3" Cursor="Hand"/>
+            <Border Width="1" Background="#444" Margin="10,2"/>
+            <TextBlock Text="Temps :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBox x:Name="txtBeats" Width="44" VerticalAlignment="Center"/>
+            <TextBlock Text="Slices/temps :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="12,0,5,0"/>
+            <ComboBox x:Name="cboSpb" Width="60" IsEditable="True" VerticalAlignment="Center">
+                <ComboBoxItem>2</ComboBoxItem>
+                <ComboBoxItem>3</ComboBoxItem>
+                <ComboBoxItem>4</ComboBoxItem>
+                <ComboBoxItem>6</ComboBoxItem>
+                <ComboBoxItem>8</ComboBoxItem>
+                <ComboBoxItem>12</ComboBoxItem>
+                <ComboBoxItem>24</ComboBoxItem>
+            </ComboBox>
+            <Button Content="Appliquer" Click="btnApply_Click" Margin="8,0,0,0" Padding="8,3" Cursor="Hand"/>
+            <Border x:Name="seedSep" Width="1" Background="#444" Margin="10,2"/>
+            <TextBlock x:Name="lblSeed" Text="Copier :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <ComboBox x:Name="cboSeedStyle" Width="170" VerticalAlignment="Center"/>
+            <Button x:Name="btnSeed" Content="Copier ce style" Click="btnSeed_Click" Margin="8,0,0,0" Padding="8,3" Cursor="Hand"/>
+            <Button x:Name="btnSaveStyle" Content="Enregistrer ce style" Click="btnSaveStyle_Click" Margin="8,0,0,0" Padding="8,3" Cursor="Hand" Visibility="Collapsed"/>
+            <Button x:Name="btnApplySection" Content="Appliquer à la section" Click="btnApplySection_Click" Margin="8,0,0,0" Padding="8,3" Cursor="Hand" Visibility="Collapsed"/>
+        </StackPanel>
+        <Border Grid.Row="1" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="1" CornerRadius="4" Background="#1A1A20">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Style="{StaticResource CornerlessScroll}">
+                <Canvas x:Name="canvasGrid" Background="Transparent" Margin="6"
+                        HorizontalAlignment="Left" VerticalAlignment="Top"
+                        MouseLeftButtonDown="canvasGrid_MouseLeftButtonDown"
+                        MouseMove="canvasGrid_MouseMove"
+                        MouseLeftButtonUp="canvasGrid_MouseLeftButtonUp"/>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

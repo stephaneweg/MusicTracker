@@ -1,125 +1,231 @@
-﻿using MusicTracker.Controls;
-using MusicTracker.Engine;
 using MusicTracker.Screens;
+using MusicTracker.Dialogs;
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Runtime.Remoting.Lifetime;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace MusicTracker
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Application shell: a custom TAB STRIP of buttons (permanent "Accueil" + one closable button per open music) over a
+    /// single content host. Opening / creating / AI-composing a piece adds a tab, so several pieces stay open side by side.
     /// </summary>
     public partial class MainWindow : Window
     {
+        HomeScreen homeScreen;
+        Button homeBtn;
+        readonly List<(IMusicEditor editor, Button btn)> editorTabs = new List<(IMusicEditor, Button)>();
+        object current; // the content shown in `host` (homeScreen or an editor)
+
         public MainWindow()
         {
             InitializeComponent();
-            leftAccordion.InitAccordion();
-            MusicLoaded();
-           
-        }
+            FileAssociations.EnsureRegistered();
+            Engine.AudioFormat.SampleRate = AppSettings.Instance.SampleRate;
 
-        public void MusicLoaded()
-        {
-            listInstruments.ItemsSource = null;
-            listInstruments.ItemsSource = UserData.Instance.InstrumentList;
-        }
+            homeScreen = new HomeScreen();
+            homeScreen.NewSequencerRequested += () => OpenEditor(new TimelineScreen(), null);
+            homeScreen.OpenRequested += OpenDialog;
+            homeScreen.OpenRecentRequested += (entry) => OpenPath(entry.Path);
+            homeScreen.ComposeAiRequested += ComposeWithAiNewTab;
+            homeScreen.TemplateSpecRequested += OpenTemplateSpec;
+            homeBtn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(16, 0, 16, 0), Content = "Accueil",
+                                   Background = new SolidColorBrush(Color.FromRgb(0x24, 0x25, 0x2C)) }; // a bit darker than the music tabs
+            homeBtn.Click += (s, e) => Select(homeScreen);
+            tabStrip.Children.Add(homeBtn);
+            Select(homeScreen);
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            /*
-            editorScreen.SetWaveFunction(new Engine.FrequencyModulationWaveFunction
+            var args = Environment.GetCommandLineArgs();
+            if (args.Length > 1 && !string.IsNullOrEmpty(args[1]) && System.IO.File.Exists(args[1]))
             {
-                Carrier = new Engine.EnveloppeADSRWaveFunction
-                {
-                    Attack = 0.01,
-                    Decay = 0.01,
-                    Sustain = 0.5,
-                    Release = 0.01,
-                    WaveFunction = new Engine.SineWaveFunction()
-                },
-                Modulator = new Engine.EnveloppeADSRWaveFunction
-                {
-                    Attack = 0.01,
-                    Decay = 0.01,
-                    Sustain = 0.5,
-                    Release = 0.01,
-                    WaveFunction = new Engine.FrequencyModifierWaveFunction
-                    {
-                        FrequencyModifier = 1,
-                        WaveFunction = new Engine.SineWaveFunction()
-                    }
-                }
-
-            });
-            */
+                string file = args[1];
+                Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)(() => OpenPath(file)));
+            }
         }
 
-        private void btnNewTrack_Click(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-
+            var dlg = new Dialogs.ImportProgressDialog { Owner = this };
+            dlg.SetBusy("Chargement des instruments (SoundFont)…");
+            dlg.Show();
+            try { await System.Threading.Tasks.Task.Run(() => AppSettings.Instance.Apply()); }
+            catch (Exception ex) { MessageBox.Show("SoundFont load error : " + ex.Message); }
+            finally { dlg.Close(); }
         }
 
-        private void btnRemoveTrack_Click(object sender, RoutedEventArgs e)
+        // ===== Tabs ==================================================================
+
+        void OpenEditor(IMusicEditor editor, string path)
         {
-
-        }
-
-        private void btnTrack_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void btnNewInstrument_Click(object sender, RoutedEventArgs e)
-        {
-            Editor.Instrument instrument = new Editor.Instrument
+            if (editor is TimelineScreen ts)
             {
-                ID = UserData.Instance.InstrumentList.Any() ? UserData.Instance.InstrumentList.Max(x => x.ID) + 1 : 1,
-                Name = "New Instrument",
-                WaveFunction = new Engine.SineWaveFunction()
+                ts.ComposeInNewTabRequested += ComposeWithAiNewTab;   // its AI menu spawns a new tab
+                ts.SaveRequested += () => SaveEditor(editor);          // its toolbar "Enregistrer" button
+            }
+            var btn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(14, 0, 10, 0) };
+            SetTabButtonContent(btn, editor, TabTitle(path), true);
+            btn.Click += (s, e) => Select(editor);
+            tabStrip.Children.Add(btn);
+            editorTabs.Add((editor, btn));
+            Select(editor);
+        }
+
+        // Tab button content = name + a ✕ (close). The ✕ closes without triggering the button's select (Preview + Handled).
+        void SetTabButtonContent(Button btn, IMusicEditor editor, string title, bool closable)
+        {
+            var sp = new StackPanel { Orientation = Orientation.Horizontal };
+            sp.Children.Add(new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center });
+            if (closable)
+            {
+                var close = new TextBlock
+                {
+                    Text = "✕",
+                    FontSize = 11,
+                    Margin = new Thickness(10, 0, 0, 0),
+                    Padding = new Thickness(2, 0, 2, 0),
+                    Foreground = new SolidColorBrush(Color.FromRgb(0xCC, 0xAA, 0xAA)),
+                    Cursor = Cursors.Hand,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = "Fermer",
+                };
+                close.PreviewMouseLeftButtonDown += (s, e) => { e.Handled = true; CloseEditor(editor); };
+                sp.Children.Add(close);
+            }
+            btn.Content = sp;
+        }
+
+        void Select(object content)
+        {
+            current = content;
+            host.Content = content;
+            // Highlight the active MUSIC tab; the Accueil button stays at its darker shade (never highlighted).
+            // Stop audio on every editor that isn't the one shown.
+            foreach (var (editor, btn) in editorTabs)
+            {
+                bool active = ReferenceEquals(editor, content);
+                btn.Tag = active ? "sel" : null;
+                if (!active) editor.StopAudio();
+            }
+        }
+
+        void CloseEditor(IMusicEditor editor)
+        {
+            int i = editorTabs.FindIndex(t => ReferenceEquals(t.editor, editor));
+            if (i < 0) return;
+            editor.StopAudio();
+            tabStrip.Children.Remove(editorTabs[i].btn);
+            editorTabs.RemoveAt(i);
+            if (ReferenceEquals(current, editor))
+                Select(editorTabs.Count > 0 ? (object)editorTabs[Math.Min(i, editorTabs.Count - 1)].editor : homeScreen);
+        }
+
+        static string TabTitle(string path) => string.IsNullOrEmpty(path) ? "(nouveau)" : System.IO.Path.GetFileName(path);
+
+        void SetEditorTitle(IMusicEditor editor, string path)
+        {
+            int i = editorTabs.FindIndex(t => ReferenceEquals(t.editor, editor));
+            if (i >= 0) SetTabButtonContent(editorTabs[i].btn, editor, TabTitle(path), true);
+        }
+
+        // ===== Actions ===============================================================
+
+        private void btnSettings_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+        private void OpenSettings()
+        {
+            var dlg = new Dialogs.SettingsDialog { Owner = this };
+            dlg.ShowDialog();
+        }
+
+        // The editor's own "Enregistrer" button (in its toolbar) calls back here.
+        void SaveEditor(IMusicEditor editor)
+        {
+            if (editor == null) return;
+            string path = editor.CurrentPath;
+            if (string.IsNullOrEmpty(path))
+            {
+                var dlg = new Dialogs.FileBrowserDialog
+                {
+                    SaveMode = true,
+                    Owner = this,
+                    Filter = editor.ModeName + " (*" + editor.FileExtension + ")|*" + editor.FileExtension,
+                    DefaultExt = editor.FileExtension,
+                };
+                if (dlg.ShowDialog() != true) return;
+                path = dlg.FileName;
+            }
+            try { editor.Save(path); }
+            catch (Exception ex) { MessageBox.Show("Save error : " + ex.Message); return; }
+            RecentFiles.Instance.Add(path, editor.ModeName);
+            SetEditorTitle(editor, path);
+        }
+
+        // Open a section-based AI template (TemplateLibrary / Data/templates) in a new UNSAVED tab, expanded to a bar count.
+        private void OpenTemplateSpec(string name)
+        {
+            var spec = Engine.Timeline.TemplateLibrary.Find(name);
+            if (spec == null) return;
+            var ask = new Dialogs.TemplateMeasuresDialog(spec.Name) { Owner = this };
+            if (ask.ShowDialog() != true) return;
+            int measures = ask.Measures;
+
+            var editor = new TimelineScreen();
+            OpenEditor(editor, null);
+            Defer(() => editor.LoadTemplateSpec(spec, measures));
+        }
+
+        private void OpenDialog()
+        {
+            var dlg = new Dialogs.FileBrowserDialog
+            {
+                Owner = this,
+                Filter = "Musiques (*.sq;*.mid;*.mscz;*.mscx)|*.sq;*.mid;*.mscz;*.mscx|Tous les fichiers (*.*)|*.*",
             };
-            UserData.Instance.InstrumentList.Add(instrument);
-
-            InstrumentEditorScreen editor = new InstrumentEditorScreen();
-            editor.SetWaveFunction(instrument.WaveFunction);
-            editor.ShowDialog();
-            instrument.WaveFunction = editor.WaveFunction;
-            UserData.Instance.Save();
-
+            if (dlg.ShowDialog() == true) OpenPath(dlg.FileName);
         }
 
-        private void btnRemoveInstrument_Click(object sender, RoutedEventArgs e)
+        private void OpenPath(string path)
         {
-            FrameworkElement frameworkElement = (FrameworkElement)sender;
-            Editor.Instrument instrument = (Editor.Instrument)frameworkElement.DataContext;
-            UserData.Instance.InstrumentList.Remove(instrument);
-            UserData.Instance.Save();
+            string ext = (System.IO.Path.GetExtension(path) ?? "").ToLowerInvariant();
+            switch (ext)
+            {
+                case ".sq": case ".mid": case ".midi": case ".mscz": case ".mscx":
+                    break;
+                default:
+                    MessageBox.Show("Type de fichier non reconnu : " + ext);
+                    return;
+            }
+            var editor = new TimelineScreen();
+            OpenEditor(editor, path);
+            Defer(() => { editor.LoadFile(path); SetEditorTitle(editor, path); });
+            RecentFiles.Instance.Add(path, editor.ModeName);
         }
 
-        private void btnInstrument_Click(object sender, RoutedEventArgs e)
+        // "Composer avec l'IA" (from Home or an editor's menu) → open the dialog and lay the result on a NEW tab.
+        void ComposeWithAiNewTab()
         {
-            FrameworkElement frameworkElement = (FrameworkElement)sender;
-            Editor.Instrument instrument = (Editor.Instrument)frameworkElement.DataContext;
+            var dlg = new Dialogs.AiComposeDialog { Owner = this };
+            if (dlg.ShowDialog() != true || dlg.Result == null) return;
+            var result = dlg.Result; bool fix = dlg.FixNotes; bool chordVoice = dlg.ChordVoice;
+            var editor = new TimelineScreen();
+            OpenEditor(editor, null);
+            Defer(() =>
+            {
+                try { editor.ComposeFresh(result, fix, chordVoice); }
+                catch (Exception ex) { MessageBox.Show("Composition impossible : " + ex.Message); }
+            });
+        }
 
-            InstrumentEditorScreen editor = new InstrumentEditorScreen();
-            editor.SetWaveFunction(instrument.WaveFunction.Clone());
-            editor.ShowDialog();
-            instrument.WaveFunction = editor.WaveFunction.Clone();
-            UserData.Instance.Save();
+        private void Defer(Action action)
+        {
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)(() =>
+            {
+                try { action(); }
+                catch (Exception ex) { MessageBox.Show("Open error : " + ex.Message); }
+            }));
         }
     }
 }

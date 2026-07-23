@@ -1,0 +1,223 @@
+<Window x:Class="MusicTracker.Dialogs.AiComposeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        mc:Ignorable="d"
+        Title="Composer avec l'IA" SizeToContent="Height" Width="580" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent">
+    <Window.Resources>
+        <!-- Two joined segments: unchecked = "Ligne mélodique" active (teal), checked = "Mélodie complète" active. -->
+        <Style x:Key="RiffSegToggle" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border CornerRadius="4" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="1" SnapsToDevicePixels="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="segLeft" Grid.Column="0" Background="{StaticResource AccentBrush}" Padding="14,5" CornerRadius="3,0,0,3">
+                                    <TextBlock x:Name="txtLeft" Text="Ligne mélodique" Foreground="White" FontSize="12" FontWeight="SemiBold"/>
+                                </Border>
+                                <Border x:Name="segRight" Grid.Column="1" Background="#2A2C31" Padding="14,5" CornerRadius="0,3,3,0">
+                                    <TextBlock x:Name="txtRight" Text="Mélodie complète" Foreground="#8A9099" FontSize="12"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="segLeft" Property="Background" Value="#2A2C31"/>
+                                <Setter TargetName="txtLeft" Property="Foreground" Value="#8A9099"/>
+                                <Setter TargetName="txtLeft" Property="FontWeight" Value="Normal"/>
+                                <Setter TargetName="segRight" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="txtRight" Property="Foreground" Value="White"/>
+                                <Setter TargetName="txtRight" Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Small teal section header + a hairline rule under it. -->
+        <Style x:Key="SectionLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrightBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,12,10"/>
+        </Style>
+        <!-- Subtle secondary button (Copier / Coller) — quieter than the accent "Générer". -->
+        <Style x:Key="SubtleBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Foreground" Value="{StaticResource SecondaryForeground}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="b" Background="{TemplateBinding Background}" CornerRadius="5" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="b" Property="Background" Value="{StaticResource SurfaceHoverBackground}"/>
+                                <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="26,20,26,22">
+            <!-- Header -->
+            <StackPanel Background="{StaticResource CommonBackground}"  ctl:WindowDrag.Enable="True"  Orientation="Horizontal" Margin="0,0,0,2" HorizontalAlignment="Stretch" >
+                <TextBlock Text="🤖" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource CommonForeground}" />
+                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="Décris un style et une intention ; l'IA propose accords, sections, mélodies et batterie, posés sur la timeline."
+                       Foreground="{StaticResource SecondaryForeground}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>
+
+            <!-- ① Modèle IA (collapsible — closed once a key is present) -->
+            <Expander x:Name="expModel" Margin="0,12,0,0" IsExpanded="True">
+                <Expander.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="MODÈLE" Style="{StaticResource SectionLabel}"/>
+                        <TextBlock x:Name="txtModelSummary" Foreground="{StaticResource SecondaryForeground}" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </Expander.Header>
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition Height="auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Fournisseur :" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox Grid.Row="0" Grid.Column="1" x:Name="cboProvider" VerticalAlignment="Center" Width="130" HorizontalAlignment="Left" Margin="0,0,0,10"
+                              SelectionChanged="cboProvider_SelectionChanged">
+                        <ComboBoxItem Content="Mistral"/>
+                        <ComboBoxItem Content="Gemini"/>
+                        <ComboBoxItem Content="Groq"/>
+                        <ComboBoxItem Content="DeepSeek"/>
+                        <ComboBoxItem Content="Claude"/>
+                        <ComboBoxItem Content="Grok"/>
+                        <ComboBoxItem Content="Qwen"/>
+                    </ComboBox>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Clé :" Style="{StaticResource FieldLabel}"/>
+                    <Grid Grid.Row="1" Grid.Column="1" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" x:Name="cboKey" VerticalAlignment="Center"
+                                  ToolTip="Choisis une clé par son nom. Gère-les (plusieurs par fournisseur) via « Gérer… »."/>
+                        <Button Grid.Column="1" Content="Gérer…" Click="btnManageKeys_Click" Margin="8,0,0,0" Padding="10,4" Cursor="Hand"
+                                Background="Transparent" Foreground="{StaticResource AccentBrightBrush}" BorderThickness="0"
+                                ToolTip="Ajouter / modifier / supprimer des clés API"/>
+                    </Grid>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Modèle :" Style="{StaticResource FieldLabel}"/>
+                    <ComboBox Grid.Row="2" Grid.Column="1" x:Name="cboModel" IsEditable="True" VerticalAlignment="Center" Margin="0,0,0,0"
+                              ToolTip="Choisis un modèle dans la liste (elle dépend du fournisseur) ou tape un identifiant personnalisé."/>
+                </Grid>
+            </Expander>
+
+            <!-- ② Le morceau -->
+            <TextBlock Text="LE MORCEAU" Style="{StaticResource SectionLabel}" Margin="0,18,0,4"/>
+            <Border Height="1" Background="{StaticResource SubtleBorderBrush}" Margin="0,0,0,10"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="110"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Style :" Style="{StaticResource FieldLabel}"/>
+                <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtStyle" VerticalAlignment="Center" Margin="0,0,0,10"
+                         ToolTip="ex. « valse de Chopin mélancolique », « ballade Ghibli 6/8 », « bossa nova jazz »"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Longueur :" Style="{StaticResource FieldLabel}"/>
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox x:Name="txtMeasures" VerticalAlignment="Center" Width="70"/>
+                    <TextBlock Text="mesures" Foreground="{StaticResource SecondaryForeground}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Mélodie :" Style="{StaticResource FieldLabel}"/>
+                <ToggleButton Grid.Row="2" Grid.Column="1" x:Name="tglRiffMode" Style="{StaticResource RiffSegToggle}" HorizontalAlignment="Left" Margin="0,0,0,2"
+                              ToolTip="« Ligne mélodique » = rythme seul, le moteur choisit les hauteurs (contour/ancrage). « Mélodie complète » = l'IA écrit les notes explicites (riffs)."/>
+            </Grid>
+
+            <WrapPanel Margin="0,10,0,0">
+                <CheckBox x:Name="chkFixNotes" Content="Corriger les notes hors accord" Foreground="{StaticResource CommonForeground}"
+                          IsChecked="True" VerticalAlignment="Center" Cursor="Hand" Margin="0,0,22,8"
+                          ToolTip="Mode riff : recale les notes fausses — sur les temps → note d'accord, hors temps → note de la gamme (seules les notes hors gamme/accord bougent)."/>
+                <CheckBox x:Name="chkDrums" Content="Piste batterie" Foreground="{StaticResource CommonForeground}"
+                          VerticalAlignment="Center" Cursor="Hand" Margin="0,0,22,8"
+                          ToolTip="Demande aussi une piste batterie : l'IA place les percussions (notes GM 35-81) sur une piste kit dédiée."/>
+                <CheckBox x:Name="chkChordVoice" Content="Accords en voix dédiée (articulation vide)" Foreground="{StaticResource CommonForeground}"
+                          VerticalAlignment="Center" Cursor="Hand" Margin="0,0,0,8"
+                          ToolTip="La piste Accords reste SILENCIEUSE (motif personnalisé vide) — elle sert seulement de repère harmonique pour les lignes mélodiques. L'IA écrit le contenu des accords, mis en forme à sa guise, dans une voix « Accords » dédiée (notes explicites)."/>
+            </WrapPanel>
+
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <TextBlock Text="Réflexion (Gemini 2.5) :" Foreground="{StaticResource CommonForeground}" VerticalAlignment="Center" Margin="0,0,10,0"
+                           ToolTip="Budget de « thinking » de Gemini 2.5. Auto = le modèle décide (meilleure qualité). Plus bas = plus rapide / moins cher (qualité possiblement moindre) ; 0 = désactivé. Sans effet sur les autres fournisseurs."/>
+                <Slider x:Name="sldThinking" Width="180" Minimum="-1" Maximum="24576" SmallChange="256" LargeChange="2048"
+                        VerticalAlignment="Center" ValueChanged="sldThinking_ValueChanged"/>
+                <TextBlock x:Name="txtThinking" Foreground="{StaticResource SecondaryForeground}" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="42"/>
+            </StackPanel>
+
+            <TextBlock Text="Intention musicale (optionnel)" Foreground="{StaticResource CommonForeground}" Margin="0,14,0,5"/>
+            <TextBox x:Name="txtIntention" Height="64" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                     ToolTip="ex. « une musique sombre », « qui rappelle l'enfance », « flûte + marimba mystique, avec un drone »"/>
+
+            <!-- ③ Génération -->
+            <TextBlock Text="GÉNÉRATION" Style="{StaticResource SectionLabel}" Margin="0,18,0,4"/>
+            <Border Height="1" Background="{StaticResource SubtleBorderBrush}" Margin="0,0,0,10"/>
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="btnGenerate" Content="Générer" Style="{StaticResource okButton}" Click="btnGenerate_Click" Padding="22,6" FontSize="14" Cursor="Hand"/>
+                <Button x:Name="btnCopyPrompt" Content="Copier le prompt" Style="{StaticResource SubtleBtn}" Click="btnCopyPrompt_Click" Margin="10,0,0,0"
+                        ToolTip="Copie le prompt (sans appeler l'API) dans le presse-papiers : colle-le dans un chat IA, puis récupère la réponse avec « Coller la réponse ». Utile sans clé API."/>
+                <Button x:Name="btnPasteResponse" Content="Coller la réponse" Style="{StaticResource SubtleBtn}" Click="btnPasteResponse_Click" Margin="8,0,0,0"
+                        ToolTip="Colle le JSON copié depuis le chat IA : il est analysé comme un morceau, prêt à appliquer à la timeline."/>
+            </StackPanel>
+            <ProgressBar x:Name="progGen" IsIndeterminate="True" Height="3" Visibility="Collapsed" Margin="0,10,0,0"
+                         Background="#14151A" BorderThickness="0" Foreground="{StaticResource AccentBrush}"/>
+            <TextBlock x:Name="txtStatus" Foreground="{StaticResource SecondaryForeground}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
+
+            <Expander Header="Avancé — JSON" IsExpanded="False" Margin="0,10,0,0" Foreground="{StaticResource SecondaryForeground}" FontSize="11">
+                <TextBox x:Name="txtResult" Height="170" IsReadOnly="True" FontFamily="Consolas" FontSize="11" Margin="0,6,0,0"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap"
+                         Background="{StaticResource DarkBackground}" Foreground="#CCCCCC"/>
+            </Expander>
+
+            <!-- Footer -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button x:Name="btnApply" Content="Confirmer" Style="{StaticResource okButton}" Click="btnApply_Click" Padding="18,4" Cursor="Hand" IsEnabled="False"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

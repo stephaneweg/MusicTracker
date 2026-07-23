@@ -15,8 +15,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ToggleButton}">
-                    <Border x:Name="OuterBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="0" BorderThickness="{TemplateBinding BorderThickness}">
-                        <Border x:Name="InnerBorder" BorderBrush="{StaticResource ButtonInnerBorder}" Background="{StaticResource ButtonInnerBackground}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="0">
+                    <Border x:Name="OuterBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="4" BorderThickness="{TemplateBinding BorderThickness}">
+                        <Border x:Name="InnerBorder" BorderBrush="{StaticResource ButtonInnerBorder}" Background="{StaticResource ButtonInnerBackground}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
                             <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" RecognizesAccessKey="True" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </Border>
@@ -32,7 +32,9 @@
 
 
                         <Trigger Property="IsChecked" Value="True">
-                            <Setter Property="Background" Value="Red"/>
+                            <Setter Property="Background" Value="{StaticResource AccentDeepBrush}"/>
+                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -42,6 +44,46 @@
 
 
     
+
+    <!-- A ToggleButton that looks EXACTLY like the standard app Button (rounded, LightBackground), with an extra
+         CHECKED state in the accent BLUE so it reads as "active". Used by the score-editor toolbar. -->
+    <Style TargetType="{x:Type ToggleButton}" x:Key="toolToggleBlue">
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="Foreground" Value="#aaaaaa"/>
+        <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LightBackground}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Margin" Value="3"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="10,1,10,1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToggleButton}">
+                    <Border x:Name="OuterBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="3" BorderThickness="{TemplateBinding BorderThickness}">
+                        <ContentPresenter Margin="{TemplateBinding Padding}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" RecognizesAccessKey="True" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Background" Value="{StaticResource OutlineColorBrush}"/>
+                            <Setter Property="Foreground" Value="#dddddd"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Background" Value="#178C97"/>
+                            <Setter Property="BorderBrush" Value="#2FC7D4"/>
+                            <Setter Property="Foreground" Value="#ffffff"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Background" Value="#353535"/>
+                            <Setter Property="Foreground" Value="#888888"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <Style x:Key="ButtonFocusVisual">
         <Setter Property="Control.Template">
@@ -57,7 +99,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocusVisual}"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="Foreground" Value="#aaaaaa"/>
         <Setter Property="Background" Value="{StaticResource LightBackground}"/>
         <Setter Property="BorderBrush" Value="{StaticResource LightBackground}"/>
@@ -96,9 +138,9 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocusVisual}"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="FontFamily" Value="Arial"/>
-        <Setter Property="Foreground" Value="#aaaaaa"/>
-        <Setter Property="Background" Value="{StaticResource OutlineColorBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
+        <Setter Property="Background" Value="{StaticResource AccentDeepBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource LightBackground}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Margin" Value="3"/>
@@ -113,12 +155,12 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="true">
-                            <Setter Property="Background" Value="{StaticResource OutlineColorBrush2}"/>
-                            <Setter Property="Foreground" Value="#dddddd"/>
+                            <Setter Property="Background" Value="{StaticResource OutlineColorBrush}"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="true">
-                            <Setter Property="Background" Value="{StaticResource OutlineColorBrush2}"/>
-                            <Setter Property="Foreground" Value="#dddddd"/>
+                            <Setter Property="Background" Value="{StaticResource OutlineColorBrush}"/>
+                            <Setter Property="Foreground" Value="#FFFFFF"/>
                             <Setter Property="BorderBrush" Value="{StaticResource LightBackground}"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -132,11 +174,103 @@
     </Style>
 
 
+    <!-- Cancel / dismiss button: neutral at rest, RED wash on hover (~20% red over the dialog background). -->
+    <Style TargetType="{x:Type Button}" x:Key="cancelButton">
+        <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocusVisual}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="Foreground" Value="#B9BDC4"/>
+        <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LightBackground}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Margin" Value="3"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="10,1,10,1"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="OuterBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="3" BorderThickness="{TemplateBinding BorderThickness}">
+                        <ContentPresenter Margin="{TemplateBinding Padding}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" RecognizesAccessKey="True" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="true">
+                            <Setter Property="Background" Value="#492E32"/>
+                            <Setter Property="BorderBrush" Value="#7A3A3E"/>
+                            <Setter Property="Foreground" Value="#FFB4B4"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Background" Value="#5A3236"/>
+                            <Setter Property="BorderBrush" Value="#7A3A3E"/>
+                            <Setter Property="Foreground" Value="#FFCECE"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Background" Value="#353535"/>
+                            <Setter Property="Foreground" Value="#888888"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Flat icon button: subtle, rounded, surface wash on hover (e.g. collapse chevrons). -->
+    <Style TargetType="{x:Type Button}" x:Key="iconButton">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="{StaticResource SecondaryForeground}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="5,2"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource SurfaceHoverBackground}"/>
+                            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource AccentBrightBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Flat delete/close icon button: quiet red, red wash on hover. -->
+    <Style TargetType="{x:Type Button}" x:Key="deleteIconButton">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="#B06A6A"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="5,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="#492E32"/>
+                            <Setter Property="Foreground" Value="#FFB4B4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="{x:Type Button}" x:Key="menuButton">
         <Setter Property="FocusVisualStyle" Value="{StaticResource ButtonFocusVisual}"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="FontFamily" Value="Arial"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="Foreground" Value="#aaaaaa"/>
         <Setter Property="BorderBrush" Value="transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -152,10 +286,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="true">
-                            <Setter Property="Foreground" Value="#3366cc"/>
+                            <Setter Property="Foreground" Value="#3BCEDA"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="true">
-                            <Setter Property="Foreground" Value="#3366cc"/>
+                            <Setter Property="Foreground" Value="#3BCEDA"/>
                             <Setter Property="Margin" TargetName="outerBorder" Value="0,2,0,-2"/>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">

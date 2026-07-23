@@ -1,0 +1,120 @@
+﻿<Window x:Class="MusicTracker.Dialogs.SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        mc:Ignorable="d"
+        Title="Paramètres" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="26,22" MinWidth="360">
+            <Border ctl:WindowDrag.Enable="True" Background="{StaticResource CommonBackground}" CornerRadius="5,5,0,0"
+                    Margin="-26,-22,-26,18" Padding="26,22,26,10">
+                <TextBlock Text="Paramètres" Foreground="{StaticResource CommonForeground}"
+                           FontSize="16" FontWeight="Bold"/>
+            </Border>
+
+            <!-- ===== Général ===== -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="170"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="SoundFont :" Foreground="{StaticResource CommonForeground}"
+                           VerticalAlignment="Center" Margin="0,0,12,10"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" x:Name="cboSoundFont" Margin="0,0,0,10"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Fréquence d'échantillonnage :" Foreground="{StaticResource CommonForeground}"
+                           VerticalAlignment="Center" Margin="0,0,12,10"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" x:Name="cboSampleRate" Margin="0,0,0,10"/>
+            </Grid>
+
+            <!-- ===== Éditeur de riff ===== -->
+            <TextBlock Text="ÉDITEUR DE RIFF" Foreground="{StaticResource AccentBrightBrush}"
+                       FontWeight="SemiBold" FontSize="11" Margin="0,14,0,4"/>
+            <Border Height="1" Background="{StaticResource SubtleBorderBrush}" Margin="0,0,0,10"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="170"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Vitesse de saisie (slices/s) :" Foreground="{StaticResource CommonForeground}"
+                           VerticalAlignment="Center" Margin="0,0,12,10"/>
+                <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtRiffSpeed" VerticalAlignment="Center" Margin="0,0,0,10"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Précision de saisie :" Foreground="{StaticResource CommonForeground}"
+                           VerticalAlignment="Center" Margin="0,0,12,10"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" x:Name="cboRiffSnap" VerticalAlignment="Center" Margin="0,0,0,10"/>
+            </Grid>
+
+            <!-- ===== Détection de note (audio) ===== -->
+            <TextBlock Text="DÉTECTION DE NOTE (AUDIO)" Foreground="{StaticResource AccentBrightBrush}"
+                       FontWeight="SemiBold" FontSize="11" Margin="0,14,0,4"/>
+            <Border Height="1" Background="{StaticResource SubtleBorderBrush}" Margin="0,0,0,10"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="170"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
+                </Grid.RowDefinitions>
+
+                <CheckBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" x:Name="chkAudioScaleSnap" Foreground="{StaticResource CommonForeground}"
+                          Margin="0,0,0,10"
+                          Content="Caler sur la gamme"
+                          ToolTip="Si décoché (défaut), la détection audio est chromatique ; coché, les notes détectées sont calées sur la gamme de l'éditeur."/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Sensibilité aux ré-attaques (détaché) :" Foreground="{StaticResource CommonForeground}"
+                           VerticalAlignment="Center" Margin="0,0,12,10"/>
+                <Slider Grid.Row="1" Grid.Column="1" x:Name="sldOnset" Minimum="0" Maximum="100" VerticalAlignment="Center" Margin="0,0,0,10"
+                        ToolTip="Plus haut = un coup d'archet répété sur la même note crée plus facilement une nouvelle note (violon détaché)."/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Fenêtre d'analyse (latence) :" Foreground="{StaticResource CommonForeground}"
+                           VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <ComboBox Grid.Row="2" Grid.Column="1" x:Name="cboFrameSize" VerticalAlignment="Center"
+                          ToolTip="Plus petit = latence plus basse et meilleure détection des détachés, mais moins fiable sur les notes graves. Prend effet au prochain démarrage de l'entrée audio (🎤)."/>
+            </Grid>
+
+            <!-- ===== IA ===== -->
+            <TextBlock Text="INTELLIGENCE ARTIFICIELLE" Foreground="{StaticResource AccentBrightBrush}"
+                       FontWeight="SemiBold" FontSize="11" Margin="0,14,0,4"/>
+            <Border Height="1" Background="{StaticResource SubtleBorderBrush}" Margin="0,0,0,10"/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Gérer les clés API…" Style="{StaticResource okButton}" Click="btnApiKeys_Click" Padding="14,5" Cursor="Hand"/>
+                <TextBlock Text="Clés API stockées localement (plusieurs par fournisseur)." Foreground="{StaticResource SecondaryForeground}" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </DockPanel>
+
+            <TextBlock Text="AUDIO" Foreground="{StaticResource AccentBrightBrush}"
+                       FontWeight="SemiBold" FontSize="11" Margin="0,14,0,4"/>
+            <Border Height="1" Background="{StaticResource SubtleBorderBrush}" Margin="0,0,0,10"/>
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Boost instruments…" Style="{StaticResource okButton}" Click="btnBoost_Click" Padding="14,5" Cursor="Hand"/>
+                <TextBlock Text="Ajuster le volume de lecture par instrument (piano, cordes…)." Foreground="{StaticResource SecondaryForeground}" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"/>
+            </DockPanel>
+
+            <TextBlock x:Name="txtNote" Text="Changer le SoundFont recharge les instruments immédiatement. Changer la fréquence est appliqué de même ; relancez une lecture en cours pour l'entendre."
+                       Foreground="#888888" FontSize="10" TextWrapping="Wrap" Margin="0,14,0,0" MaxWidth="360"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="Appliquer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>
+

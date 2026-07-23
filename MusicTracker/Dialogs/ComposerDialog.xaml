@@ -1,0 +1,44 @@
+<Window x:Class="MusicTracker.Dialogs.ComposerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="clr-namespace:MusicTracker.Controls"
+        Title="Composer un morceau" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="26,22" MinWidth="320">
+            <StackPanel Background="{StaticResource CommonBackground}"  ctl:WindowDrag.Enable="True"  Orientation="Horizontal" Margin="0,0,0,2" HorizontalAlignment="Stretch" >
+                <TextBlock Text="🎲" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{StaticResource CommonForeground}" />
+                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Text="Génère mélodie + accords + batterie cohérents dans la tonalité courante, selon un style. Relance pour une autre variante."
+                       Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,16" MaxWidth="320"/>
+
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="auto"/><RowDefinition Height="auto"/><RowDefinition Height="auto"/><RowDefinition Height="auto"/><RowDefinition Height="auto"/><RowDefinition Height="auto"/><RowDefinition Height="auto"/><RowDefinition Height="auto"/></Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Style" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboStyle" Grid.Row="0" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Mesures" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBox x:Name="txtMeasures" Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="8" Margin="0,4"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Voix de mélodie" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboVoices" Grid.Row="2" Grid.Column="1" Width="70" HorizontalAlignment="Left" Margin="0,4"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Profil rythmique" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboRhythm" Grid.Row="3" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Respiration" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboBreath" Grid.Row="4" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Virtuosité" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboVirtuosity" Grid.Row="5" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
+                <TextBlock Grid.Row="6" Grid.Column="0" Text="Forme (classique)" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboForm" Grid.Row="6" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
+                <TextBlock Grid.Row="7" Grid.Column="0" Text="Mode (Hisaishi)" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <ComboBox x:Name="cboMode" Grid.Row="7" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="Composer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

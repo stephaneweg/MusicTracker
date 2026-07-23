@@ -1,0 +1,441 @@
+{
+  "version": 1,
+  "themes": [
+
+    {
+      "composer": "ghibli", "style": "Berceuse", "name": "Berceuse de la lune", "mood": "Calme",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 70, "spq": 24, "themeBars": 8,
+      "melody": "67/4 72/4 76/2 | 74/4 72/4 69/2 | 72/4 76/4 79/2 | 76/4 74/4 72/2 | 79/4 81/4 84/2 | 81/4 79/4 76/2 | 74/8 76/8 79/8 76/8 74/4 72/4 | 71/4 74/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":13},{"root":9,"q":7},{"root":5,"q":6},{"root":0,"q":11},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":3,"start":12,"len":12},{"deg":5,"start":24,"len":12},{"deg":8,"start":36,"len":12},{"deg":5,"start":48,"len":12},{"deg":3,"start":60,"len":12},{"deg":5,"start":72,"len":12},{"deg":3,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "ghibli", "style": "Berceuse", "name": "Au creux du soir", "mood": "Calme",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 68, "spq": 24, "themeBars": 8,
+      "melody": "76/2 74/2 | 72/2. 71/4 | 72/4 74/4 76/2 | 79/2 76/2 | 81/2 79/2 | 76/4 74/4 72/2 | 69/4 72/4 74/2 | 71/4 74/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":13},{"root":5,"q":13},{"root":9,"q":7},{"root":5,"q":6},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "ghibli", "style": "Chantant", "name": "Chant du matin", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 82, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/8 79/8 76/4 74/4 | 72/8 74/8 76/8 79/8 81/4 79/4 | 79/8 76/8 74/8 72/8 74/4 76/4 | 74/4 72/4 71/2 | 76/4 79/8 81/8 79/4 76/4 | 81/8 79/8 76/8 74/8 72/4 74/4 | 69/8 72/8 76/8 74/8 72/4 71/4 | 72/4 74/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":13},{"root":5,"q":13},{"root":2,"q":7},{"root":5,"q":6},{"root":9,"q":7},{"root":0,"q":11},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":3,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "ghibli", "style": "Chantant", "name": "Promesse", "mood": "Tendre",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 80, "spq": 24, "themeBars": 8,
+      "melody": "79/4 76/4 72/2 | 74/8 76/8 79/8 81/8 79/4 76/4 | 72/4 74/4 76/2 | 74/4 72/4 69/2 | 76/4 79/4 81/2 | 84/8 81/8 79/8 76/8 79/4 76/4 | 74/8 76/8 74/8 72/8 71/4 74/4 | 72/2 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":13},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":11},{"root":8,"q":0},{"root":0,"q":13},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":3,"start":12,"len":12},{"deg":5,"start":24,"len":12},{"deg":8,"start":36,"len":12},{"deg":5,"start":48,"len":12},{"deg":3,"start":60,"len":12},{"deg":5,"start":72,"len":12},{"deg":3,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "ghibli", "style": "Chantant", "name": "Course dans les nuages", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 124, "spq": 24, "themeBars": 8,
+      "melody": "72/8 74/8 76/8 79/8 81/8 79/8 76/8 74/8 | 76/8 72/8 74/8 76/8 79/4 76/4 | 81/8 79/8 76/8 79/8 81/8 84/8 81/8 79/8 | 76/8 79/8 76/8 74/8 72/4 76/4 | 79/8 81/8 84/8 81/8 79/8 76/8 74/8 72/8 | 74/8 76/8 79/8 76/8 74/8 72/8 71/8 69/8 | 72/8 76/8 79/8 81/8 79/8 76/8 74/8 72/8 | 76/4 79/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":9,"q":7},{"root":0,"q":11},{"root":0,"q":13},{"root":5,"q":13},{"root":2,"q":7},{"root":5,"q":6},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "ghibli", "style": "Chantant", "name": "Pirouette", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 132, "spq": 24, "themeBars": 8,
+      "melody": "76/8 79/8 81/8 79/8 76/8 79/8 81/8 84/8 | 81/8 79/8 76/8 74/8 76/4 72/4 | 74/8 76/8 79/8 81/8 84/8 81/8 79/8 76/8 | 79/8 76/8 74/8 72/8 74/4 76/4 | 72/8 76/8 79/8 84/8 81/8 79/8 76/8 79/8 | 81/8 79/8 76/8 74/8 72/8 74/8 76/8 79/8 | 81/8 84/8 81/8 79/8 76/8 74/8 72/8 71/8 | 72/4 76/4 79/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":11},{"root":4,"q":7},{"root":9,"q":7},{"root":5,"q":6},{"root":9,"q":7},{"root":0,"q":11},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":3,"start":12,"len":12},{"deg":5,"start":24,"len":12},{"deg":8,"start":36,"len":12},{"deg":5,"start":48,"len":12},{"deg":8,"start":60,"len":12},{"deg":5,"start":72,"len":12},{"deg":3,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "ghibli", "style": "Aventure", "name": "Vers l'horizon", "mood": "Majestueux",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 104, "spq": 24, "themeBars": 8,
+      "melody": "60/4 67/4 72/2 | 76/4 74/4 72/2 | 67/4 74/4 79/2 | 77/4 76/4 72/2 | 72/4 79/4 84/2 | 83/4 81/4 79/2 | 76/8 79/8 81/8 84/8 81/4 79/4 | 79/4 72/4 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":13},{"root":9,"q":7},{"root":5,"q":6},{"root":0,"q":13},{"root":4,"q":7},{"root":5,"q":6},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "ghibli", "style": "Aventure", "name": "Appel des cimes", "mood": "Majestueux",
+      "key": { "tonicPc": 0, "minor": false }, "tempo": 100, "spq": 24, "themeBars": 8,
+      "melody": "67/4 72/4 79/2 | 77/4 79/4 72/2 | 70/4 74/4 77/2 | 76/4 72/4 67/2 | 72/4 79/4 84/2 | 82/4 79/4 76/2 | 74/8 77/8 79/8 82/8 79/4 76/4 | 72/4 79/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":5,"q":13},{"root":10,"q":13},{"root":0,"q":13},{"root":5,"q":13},{"root":10,"q":13},{"root":2,"q":7},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":3,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "ghibli", "style": "Mélancolie", "name": "Brume d'automne", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 72, "spq": 24, "themeBars": 8,
+      "melody": "76/2 72/2 | 74/4 72/4 71/2 | 69/4 72/4 76/2 | 74/4 72/4 69/2 | 77/2 76/2 | 74/4 72/4 71/2 | 72/8 74/8 76/8 74/8 72/4 71/4 | 69/2 64/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":14},{"root":2,"q":7},{"root":5,"q":6},{"root":2,"q":7},{"root":2,"q":7},{"root":7,"q":0},{"root":0,"q":6},{"root":9,"q":7} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+    {
+      "composer": "ghibli", "style": "Mélancolie", "name": "Lettre jamais envoyée", "mood": "Mélancolique",
+      "key": { "tonicPc": 9, "minor": true }, "tempo": 70, "spq": 24, "themeBars": 8,
+      "melody": "69/4 76/4 74/2 | 72/4 71/4 69/2 | 72/8 74/8 76/8 79/8 77/4 76/4 | 74/4 72/8 71/8 69/2 | 76/4 79/4 81/2 | 79/8 77/8 76/8 74/8 72/2 | 71/8 74/8 76/8 74/8 72/4 71/4 | 69/2 69/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":14},{"root":9,"q":14},{"root":0,"q":6},{"root":2,"q":7},{"root":5,"q":6},{"root":9,"q":7},{"root":4,"q":7},{"root":9,"q":7} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] }
+    },
+
+    {
+      "composer": "ghibli", "style": "Valse", "name": "Valse des lucioles", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 156, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/4 79/4 | 81/4 79/4 76/4 | 74/4 79/4 76/4 | 72/2 67/4 | 76/4 79/4 84/4 | 81/4 79/4 76/4 | 74/4 76/4 79/4 | 76/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":13},{"root":5,"q":6},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":3,"start":48,"len":24} ] }
+    },
+    {
+      "composer": "ghibli", "style": "Valse", "name": "Tourbillon", "mood": "Enjoué",
+      "key": { "tonicPc": 0, "minor": false }, "meter": { "num": 3, "den": 4 }, "tempo": 168, "spq": 24, "themeBars": 8,
+      "melody": "79/4 81/4 84/4 | 83/4 81/4 79/4 | 76/4 79/4 81/4 | 79/2 76/4 | 84/4 81/4 79/4 | 76/4 79/4 74/4 | 72/4 76/4 79/4 | 72/2.",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":6},{"root":5,"q":6},{"root":9,"q":7},{"root":5,"q":13},{"root":9,"q":7},{"root":7,"q":5},{"root":0,"q":13} ] },
+      "accomp": { "bars":1,"spq":24,"openVoicing":true,"spread":false,"smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24} ] }
+    },
+
+    {
+      "composer": "ghibli",
+      "style": "Berceuse",
+      "name": "Berceuse en Do",
+      "mood": "Calme",
+      "auto": true,
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 72,
+      "spq": 24,
+      "themeBars": 8,
+
+      "melody": "64/8 67/8 69/8 67/8 64/4 67/4 | 69/8 67/8 64/8 62/8 64/2 | 64/8 67/8 69/8 72/8 71/4 69/4 | 67/4 69/8 67/8 64/2 | 69/8 72/8 74/8 72/8 69/4 72/4 | 72/8 71/8 69/8 67/8 64/2 | 65/8 69/8 74/8 72/8 69/4 65/4 | 67/8 69/8 71/8 74/8 67/2",
+
+      "harmony": {
+        "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":11},{"root":9,"q":7},{"root":5,"q":13},{"root":0,"q":11},{"root":8,"q":0},{"root":5,"q":6},{"root":0,"q":13} ]
+      },
+
+      "form": "Ballade",
+
+      "accomp": {
+        "bars": 1,
+        "spq": 24,
+        "openVoicing": true,
+        "spread": false,
+        "smartVoice": true,
+        "notes": [
+          { "deg": 1, "start": 0,  "len": 12 },
+          { "deg": 3, "start": 12, "len": 12 },
+          { "deg": 5, "start": 24, "len": 12 },
+          { "deg": 8, "start": 36, "len": 12 },
+          { "deg": 5, "start": 48, "len": 12 },
+          { "deg": 3, "start": 60, "len": 12 },
+          { "deg": 5, "start": 72, "len": 12 },
+          { "deg": 3, "start": 84, "len": 12 }
+        ]
+      },
+
+      "variations": [ 7, 1, 5 ],
+
+      "arrangement": {
+        "sections": [
+          { "role": "intro", "bars": 4, "cadence": 0, "source": "free",
+            "melody": "76/4 74/4 72/2 | 74/4 72/4 71/2 | 72/4 71/4 69/2 | 67/4 r/4 r/2" },
+
+          { "role": "theme", "bars": 8, "cadence": 1, "source": "theme", "voice": "lead" },
+
+          { "role": "restate", "bars": 8, "cadence": 1, "source": "theme", "voice": "lead",
+            "counter": "79/2 76/2 | 74/1 | 76/2 79/2 | 74/1 | 81/2 79/2 | 76/1 | 77/4 81/4 79/2 | 74/1" },
+
+          { "role": "develop", "bars": 8, "cadence": 2, "source": "fragment",
+            "fragFrom": 0, "fragTo": 3, "ops": [ "sequence:2,2", "rhythm:1" ] },
+
+          { "role": "climax", "bars": 4, "cadence": 1, "source": "fragment",
+            "fragFrom": 4, "fragTo": 7, "ops": [ "octave:1" ], "voice": "both" },
+
+          { "role": "outro", "bars": 4, "cadence": 1, "source": "free",
+            "melody": "69/4 67/4 65/2 | 67/4 64/4 60/2 | 62/4 65/4 67/2 | 60+64+67+74/1" }
+        ]
+      }
+    },
+
+    {
+      "composer": "ghibli",
+      "style": "Chantant",
+      "name": "Chant lumineux",
+      "mood": "Tendre",
+      "auto": true,
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 88, "spq": 24, "themeBars": 8,
+      "melody": "67/4 69/8 72/8 69/4 67/4 | 64/8 67/8 69/8 67/8 64/2 | 72/4 74/8 72/8 69/4 67/4 | 69/8 67/8 64/8 62/8 64/2 | 67/8 72/8 74/8 76/8 74/4 72/4 | 74/8 72/8 69/8 67/8 69/2 | 72/4 69/8 67/8 64/4 62/4 | 64/8 62/8 64/8 67/8 60/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":11},{"root":5,"q":13},{"root":2,"q":7},{"root":5,"q":6},{"root":0,"q":13} ] },
+      "form": "Ballade",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":10,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"72/4 74/4 76/2 | 74/4 72/4 71/2 | 72/4 69/4 67/2 | 69/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"76/2 79/2 | 77/1 | 79/2 76/2 | 74/1 | 81/2 79/2 | 77/1 | 76/2 74/2 | 72/1" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2","rhythm:1"] },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"67/4 69/4 71/2 | 72/4 71/4 67/2 | 69/4 65/4 64/2 | 60+64+67+74/1" }
+      ] }
+    },
+
+    {
+      "composer": "ghibli",
+      "style": "Aventure",
+      "name": "Envol heroique",
+      "mood": "Majestueux",
+      "auto": true,
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 104, "spq": 24, "themeBars": 8,
+      "melody": "67/4 72/4 74/2 | 76/4 74/8 72/8 69/4 67/4 | 69/4 74/4 76/2 | 77/4 76/8 74/8 72/2 | 79/4 77/4 76/2 | 74/8 76/8 77/8 79/8 76/4 74/4 | 72/4 74/4 76/2 | 79/4 76/4 72/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":0,"q":13},{"root":5,"q":6},{"root":2,"q":7},{"root":5,"q":13},{"root":2,"q":7},{"root":7,"q":5},{"root":0,"q":13} ] },
+      "form": "Ballade",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":8,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"60/4 64/4 67/2 | 67/4 72/4 74/2 | 76/4 74/4 72/2 | 71/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"84/2 79/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2","rhythm:1"] },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"79/4 76/4 72/2 | 74/4 71/4 67/2 | 72/4 67/4 64/2 | 36+48+55+60+64/1" }
+      ] }
+    },
+
+    {
+      "composer": "ghibli",
+      "style": "Mélancolie",
+      "name": "Pluie sur la colline",
+      "mood": "Mélancolique",
+      "auto": true,
+      "key": { "tonicPc": 9, "minor": true },
+      "tempo": 66, "spq": 24, "themeBars": 8,
+      "melody": "69/4 67/8 65/8 64/2 | 64/8 65/8 67/8 64/8 62/2 | 60/4 64/8 60/8 59/4 57/4 | 59/8 60/8 62/8 64/8 60/2 | 67/4 65/8 64/8 62/4 60/4 | 64/8 62/8 60/8 59/8 57/2 | 65/4 64/8 62/8 60/4 59/4 | 57/8 59/8 60/8 64/8 57/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":9,"q":14},{"root":9,"q":7},{"root":0,"q":6},{"root":9,"q":14},{"root":0,"q":6},{"root":9,"q":14},{"root":5,"q":6},{"root":9,"q":7} ] },
+      "form": "Ballade",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":5,"start":24,"len":24},{"deg":8,"start":48,"len":24},{"deg":5,"start":72,"len":24} ] },
+      "variations": [ 7, 5, 1 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"64/4 62/4 60/2 | 62/4 60/4 59/2 | 60/4 59/4 57/2 | 59/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"72/2 69/2 | 71/1 | 69/2 67/2 | 64/1 | 72/2 71/2 | 69/1 | 67/2 65/2 | 64/1" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:-2,2","rhythm:1"] },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"60/4 59/4 57/2 | 64/4 60/4 59/2 | 60/4 62/4 60/2 | 33+45+52+57/1" }
+      ] }
+    },
+
+    {
+      "composer": "ghibli",
+      "style": "Valse",
+      "name": "Valse des nuages",
+      "mood": "Enjoué",
+      "auto": true,
+      "key": { "tonicPc": 0, "minor": false },
+      "meter": { "num": 3, "den": 4 },
+      "tempo": 150, "spq": 24, "themeBars": 8,
+      "melody": "72/4 76/8 79/8 81/4 | 79/4 77/8 76/8 74/4 | 76/4 74/8 72/8 74/4 | 72/2 76/4 | 77/4 81/8 79/8 77/4 | 76/4 74/8 72/8 71/4 | 74/4 76/8 79/8 72/4 | 74/2 72/4",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":13},{"root":5,"q":13},{"root":9,"q":7},{"root":0,"q":13},{"root":0,"q":13} ] },
+      "form": "Ballade",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":24},{"deg":3,"start":24,"len":24},{"deg":5,"start":24,"len":24},{"deg":3,"start":48,"len":24},{"deg":5,"start":48,"len":24} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"79/4 81/4 83/4 | 84/4 83/4 81/4 | 79/4 81/4 79/4 | 76/4 r/4 r/4" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"84/2 81/4 | 79/2. | 81/2 84/4 | 79/2. | 86/2 84/4 | 81/2. | 79/2 77/4 | 76/2." },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2","rhythm:1"] },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"79/4 76/4 74/4 | 76/4 72/4 71/4 | 72/4 74/4 76/4 | 60+64+67/2." }
+      ] }
+    },
+
+    {
+      "composer": "ghibli",
+      "style": "Chantant",
+      "name": "Chant espiègle",
+      "mood": "Enjoué",
+      "auto": true,
+      "key": { "tonicPc": 0, "minor": false },
+      "tempo": 116, "spq": 24, "themeBars": 8,
+      "melody": "72/8 74/8 76/8 74/8 72/4 76/4 | 77/8 76/8 74/8 72/8 74/2 | 76/8 79/8 77/8 76/8 74/4 76/4 | 72/4 74/8 72/8 69/2 | 76/8 77/8 79/8 81/8 79/4 77/4 | 79/8 77/8 76/8 74/8 72/2 | 74/8 76/8 77/8 79/8 76/4 74/4 | 72/8 76/8 74/8 72/8 67/2",
+      "harmony": { "cadenceStyle": -1, "chords": [ {"root":0,"q":13},{"root":5,"q":6},{"root":5,"q":6},{"root":9,"q":7},{"root":5,"q":6},{"root":9,"q":7},{"root":7,"q":5},{"root":0,"q":13} ] },
+      "form": "Ballade",
+      "accomp": { "bars":1, "spq":24, "openVoicing":true, "spread":false, "smartVoice":true,
+        "notes": [ {"deg":1,"start":0,"len":12},{"deg":5,"start":12,"len":12},{"deg":8,"start":24,"len":12},{"deg":5,"start":36,"len":12},{"deg":3,"start":48,"len":12},{"deg":5,"start":60,"len":12},{"deg":8,"start":72,"len":12},{"deg":5,"start":84,"len":12} ] },
+      "variations": [ 7, 1, 5 ],
+      "arrangement": { "sections": [
+        { "role":"intro","bars":4,"cadence":0,"source":"free","melody":"76/4 79/4 81/2 | 79/4 77/4 76/2 | 77/4 76/4 74/2 | 72/4 r/4 r/2" },
+        { "role":"theme","bars":8,"cadence":1,"source":"theme","voice":"lead" },
+        { "role":"restate","bars":8,"cadence":1,"source":"theme","voice":"lead","counter":"79/2 81/2 | 84/1 | 81/2 79/2 | 77/1 | 84/2 86/2 | 84/1 | 81/2 79/2 | 76/1" },
+        { "role":"develop","bars":8,"cadence":2,"source":"fragment","fragFrom":0,"fragTo":3,"ops":["sequence:2,2","rhythm:1"] },
+        { "role":"climax","bars":4,"cadence":1,"source":"fragment","fragFrom":4,"fragTo":7,"ops":["octave:1"],"voice":"both" },
+        { "role":"outro","bars":4,"cadence":1,"source":"free","melody":"76/4 74/4 72/2 | 74/4 72/4 71/2 | 72/4 74/4 76/2 | 60+64+67+72/1" }
+      ] }
+    }
+  ],
+
+  "pool": [
+    { "id": "var-sequence", "kind": "variation", "bars": 8,
+      "intent": { "function": "build", "energy": "medium" },
+      "source": "fragment", "fragFrom": 0, "fragTo": 3, "ops": [ "sequence:2,2" ] },
+    { "id": "var-moto", "kind": "variation", "bars": 8,
+      "intent": { "function": "build", "energy": "high" },
+      "source": "theme", "ops": [ "moto" ] },
+    { "id": "var-ornement", "kind": "variation", "bars": 8,
+      "intent": { "function": "build", "energy": "low" },
+      "source": "theme", "ops": [ "ornament" ] },
+    { "id": "clim-octave", "kind": "variation", "bars": 4,
+      "intent": { "function": "climax", "energy": "high" },
+      "source": "fragment", "fragFrom": 4, "fragTo": 7, "ops": [ "octave:1" ] },
+
+    { "id": "intro-doux", "kind": "intro", "bars": 4,
+      "intent": { "function": "intro", "energy": "low" },
+      "melody": "72/4 74/4 76/2 | 74/4 72/4 71/2 | 72/4 69/4 67/2 | 69/4 r/4 r/2" },
+    { "id": "intro-flottant", "kind": "intro", "bars": 4,
+      "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 74/4 72/2 | 74/4 72/4 71/2 | 72/4 76/4 79/2 | 76/4 r/4 r/2" },
+    { "id": "intro-brillant", "kind": "intro", "bars": 4,
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "60/4 64/4 67/2 | 67/4 72/4 74/2 | 76/4 74/4 72/2 | 71/4 r/4 r/2" },
+
+    { "id": "gh-i-berceuse-1", "kind": "intro", "style": "Berceuse", "mood": "Calme", "bars": 4,
+      "intent": { "function": "intro", "energy": "low" },
+      "melody": "67/2 72/2 | 74/2. 72/4 | 69/2 67/2 | 64/2 67/2" },
+    { "id": "gh-i-berceuse-2", "kind": "intro", "style": "Berceuse", "mood": "Calme", "bars": 4,
+      "intent": { "function": "intro", "energy": "low" },
+      "melody": "72/4 74/4 76/2 | 79/2 76/2 | 74/4 72/4 69/2 | 67/2 72/2" },
+    { "id": "gh-i-chantant-tendre-1", "kind": "intro", "style": "Chantant", "mood": "Tendre", "bars": 4,
+      "intent": { "function": "intro", "energy": "medium" },
+      "melody": "72/8 74/8 76/8 79/8 76/4 74/4 | 72/4 74/8 76/8 79/2 | 81/8 79/8 76/8 74/8 76/4 72/4 | 74/4 72/4 67/2" },
+    { "id": "gh-i-chantant-tendre-2", "kind": "intro", "style": "Chantant", "mood": "Tendre", "bars": 4,
+      "intent": { "function": "intro", "energy": "medium" },
+      "melody": "76/4 79/8 81/8 79/4 76/4 | 74/8 76/8 79/8 81/8 79/4 76/4 | 72/4 74/4 76/2 | 79/4 76/4 74/2" },
+    { "id": "gh-i-chantant-enjoue-1", "kind": "intro", "style": "Chantant", "mood": "Enjoué", "bars": 4,
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/8 76/8 79/8 76/8 72/8 76/8 79/8 81/8 | 79/8 76/8 74/8 72/8 74/4 76/4 | 79/8 81/8 84/8 81/8 79/4 76/4 | 74/4 76/4 79/2" },
+    { "id": "gh-i-chantant-enjoue-2", "kind": "intro", "style": "Chantant", "mood": "Enjoué", "bars": 4,
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "79/8 76/8 72/8 76/8 79/8 81/8 79/8 76/8 | 81/8 79/8 76/8 74/8 72/4 76/4 | 72/8 76/8 79/8 81/8 84/8 81/8 79/8 76/8 | 79/4 76/4 74/2" },
+    { "id": "gh-i-aventure-1", "kind": "intro", "style": "Aventure", "mood": "Majestueux", "bars": 4,
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "60/4 67/4 72/2 | 74/4 76/4 79/2 | 72/4 76/4 81/2 | 79/4 74/4 67/2" },
+    { "id": "gh-i-aventure-2", "kind": "intro", "style": "Aventure", "mood": "Majestueux", "bars": 4,
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "67/4 72/4 76/2 | 79/2 74/2 | 72/4 79/4 84/2 | 81/4 79/4 67/2" },
+    { "id": "gh-i-melancolie-1", "kind": "intro", "style": "Mélancolie", "mood": "Mélancolique", "bars": 4, "minor": true,
+      "intent": { "function": "intro", "energy": "low" },
+      "melody": "76/2 72/2 | 74/2. 72/4 | 71/2 69/2 | 67/2 69/2" },
+    { "id": "gh-i-melancolie-2", "kind": "intro", "style": "Mélancolie", "mood": "Mélancolique", "bars": 4, "minor": true,
+      "intent": { "function": "intro", "energy": "low" },
+      "melody": "69/4 72/8 74/8 76/4 74/4 | 72/8 71/8 69/8 67/8 69/2 | 76/4 74/8 72/8 71/4 69/4 | 71/4 67/4 69/2" },
+    { "id": "gh-i-valse-1", "kind": "intro", "style": "Valse", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 },
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "72/4 76/4 79/4 | 81/4 79/4 76/4 | 74/4 76/4 79/4 | 76/4 79/4 74/4" },
+    { "id": "gh-i-valse-2", "kind": "intro", "style": "Valse", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 },
+      "intent": { "function": "intro", "energy": "high" },
+      "melody": "79/4 72/4 76/4 | 81/4 79/4 76/4 | 84/4 81/4 79/4 | 76/4 79/4 72/4" },
+
+    { "id": "gh-ct-berceuse-1", "kind": "counter", "style": "Berceuse", "mood": "Calme", "bars": 8, "intent": { "function": "counter", "energy": "low" },
+      "melody": "79/2 76/2 | 74/1 | 76/2 79/2 | 72/1 | 81/2 79/2 | 76/1 | 74/2 76/2 | 72/1" },
+    { "id": "gh-ct-berceuse-2", "kind": "counter", "style": "Berceuse", "mood": "Calme", "bars": 8, "intent": { "function": "counter", "energy": "low" },
+      "melody": "76/1 | 79/2 76/2 | 74/1 | 76/2 72/2 | 79/1 | 81/2 79/2 | 76/2 74/2 | 72/1" },
+    { "id": "gh-ct-chantant-tendre-1", "kind": "counter", "style": "Chantant", "mood": "Tendre", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "79/2 83/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+    { "id": "gh-ct-chantant-tendre-2", "kind": "counter", "style": "Chantant", "mood": "Tendre", "bars": 8, "intent": { "function": "counter", "energy": "medium" },
+      "melody": "76/2 79/2 | 81/1 | 79/2 77/2 | 76/1 | 81/2 84/2 | 81/1 | 79/2 76/2 | 72/1" },
+    { "id": "gh-ct-chantant-enjoue-1", "kind": "counter", "style": "Chantant", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 81/2 | 83/1 | 84/2 79/2 | 81/1 | 86/2 84/2 | 81/1 | 79/2 76/2 | 72/1" },
+    { "id": "gh-ct-chantant-enjoue-2", "kind": "counter", "style": "Chantant", "mood": "Enjoué", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "81/2 84/2 | 83/1 | 81/2 79/2 | 76/1 | 84/2 86/2 | 84/1 | 81/2 79/2 | 76/1" },
+    { "id": "gh-ct-aventure-1", "kind": "counter", "style": "Aventure", "mood": "Majestueux", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 79/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 81/2 76/2 | 79/1" },
+    { "id": "gh-ct-aventure-2", "kind": "counter", "style": "Aventure", "mood": "Majestueux", "bars": 8, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 84/2 | 82/1 | 79/2 77/2 | 72/1 | 84/2 82/2 | 79/1 | 76/2 79/2 | 72/1" },
+    { "id": "gh-ct-melancolie-1", "kind": "counter", "style": "Mélancolie", "mood": "Mélancolique", "bars": 8, "minor": true, "intent": { "function": "counter", "energy": "low" },
+      "melody": "76/2 81/2 | 79/1 | 77/2 76/2 | 74/1 | 81/2 84/2 | 81/1 | 79/2 76/2 | 69/1" },
+    { "id": "gh-ct-melancolie-2", "kind": "counter", "style": "Mélancolie", "mood": "Mélancolique", "bars": 8, "minor": true, "intent": { "function": "counter", "energy": "low" },
+      "melody": "81/2 79/2 | 77/1 | 76/2 79/2 | 74/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+    { "id": "gh-ct-valse-1", "kind": "counter", "style": "Valse", "mood": "Enjoué", "bars": 8, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 81/4 | 79/2. | 81/2 84/4 | 79/2. | 86/2 84/4 | 81/2. | 79/2 77/4 | 76/2." },
+    { "id": "gh-ct-valse-2", "kind": "counter", "style": "Valse", "mood": "Enjoué", "bars": 8, "meter": { "num": 3, "den": 4 }, "intent": { "function": "counter", "energy": "high" },
+      "melody": "79/2 84/4 | 81/2. | 84/2 81/4 | 76/2. | 81/2 86/4 | 84/2. | 81/2 79/4 | 72/2." },
+
+    { "id": "gh-o-berceuse-1", "kind": "outro", "style": "Berceuse", "mood": "Calme", "bars": 4, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "72/4 74/4 76/2 | 79/4 76/4 72/2 | 74/4 71/4 69/2 | 60+64+67+72/1" },
+    { "id": "gh-o-berceuse-2", "kind": "outro", "style": "Berceuse", "mood": "Calme", "bars": 4, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "76/4 74/4 72/2 | 69/4 72/4 67/2 | 71/4 74/4 72/2 | 36+48+55+60+64/1" },
+    { "id": "gh-o-chantant-tendre-1", "kind": "outro", "style": "Chantant", "mood": "Tendre", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "79/4 76/4 74/2 | 72/4 76/4 79/2 | 77/4 74/4 72/2 | 60+64+67+72/1" },
+    { "id": "gh-o-chantant-tendre-2", "kind": "outro", "style": "Chantant", "mood": "Tendre", "bars": 4, "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "76/4 79/4 81/2 | 79/4 76/4 72/2 | 74/4 71/4 72/2 | 60+64+67+74/1" },
+    { "id": "gh-o-chantant-enjoue-1", "kind": "outro", "style": "Chantant", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/4 79/4 76/2 | 81/4 79/4 76/2 | 74/4 79/4 72/2 | 60+64+67+72/1" },
+    { "id": "gh-o-chantant-enjoue-2", "kind": "outro", "style": "Chantant", "mood": "Enjoué", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "79/4 84/4 81/2 | 79/4 76/4 74/2 | 76/4 72/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "gh-o-aventure-1", "kind": "outro", "style": "Aventure", "mood": "Majestueux", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/4 79/4 72/2 | 76/4 79/4 84/2 | 79/4 74/4 67/2 | 36+48+55+60+64/1" },
+    { "id": "gh-o-aventure-2", "kind": "outro", "style": "Aventure", "mood": "Majestueux", "bars": 4, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "79/4 82/4 84/2 | 79/4 76/4 72/2 | 74/4 79/4 67/2 | 36+48+55+60+67/1" },
+    { "id": "gh-o-melancolie-1", "kind": "outro", "style": "Mélancolie", "mood": "Mélancolique", "bars": 4, "minor": true, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "72/4 71/4 69/2 | 67/4 69/4 72/2 | 71/4 74/4 72/2 | 33+45+52+57+60/1" },
+    { "id": "gh-o-melancolie-2", "kind": "outro", "style": "Mélancolie", "mood": "Mélancolique", "bars": 4, "minor": true, "intent": { "function": "cadence", "energy": "low" },
+      "melody": "76/4 74/4 72/2 | 69/4 67/4 64/2 | 67/4 69/4 71/2 | 33+45+52+57/1" },
+    { "id": "gh-o-valse-1", "kind": "outro", "style": "Valse", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "79/4 76/4 72/4 | 74/4 76/4 79/4 | 76/4 74/4 71/4 | 48+60+64+67/2." },
+    { "id": "gh-o-valse-2", "kind": "outro", "style": "Valse", "mood": "Enjoué", "bars": 4, "meter": { "num": 3, "den": 4 }, "intent": { "function": "cadence", "energy": "high" },
+      "melody": "84/4 81/4 79/4 | 76/4 79/4 74/4 | 72/4 76/4 79/4 | 36+48+55+60+64/2." },
+
+    { "id": "contre-berceuse", "kind": "counter", "bars": 8,
+      "intent": { "function": "counter", "energy": "low" },
+      "melody": "79/2 76/2 | 74/1 | 76/2 79/2 | 74/1 | 81/2 79/2 | 76/1 | 77/4 81/4 79/2 | 74/1" },
+    { "id": "contre-lumineux", "kind": "counter", "bars": 8,
+      "intent": { "function": "counter", "energy": "medium" },
+      "melody": "76/2 79/2 | 77/1 | 79/2 76/2 | 74/1 | 81/2 79/2 | 77/1 | 76/2 74/2 | 72/1" },
+    { "id": "contre-aigu", "kind": "counter", "bars": 8,
+      "intent": { "function": "counter", "energy": "high" },
+      "melody": "84/2 79/2 | 81/1 | 79/2 76/2 | 77/1 | 84/2 81/2 | 79/1 | 76/2 74/2 | 72/1" },
+
+    { "id": "outro-tendre", "kind": "outro", "bars": 4,
+      "intent": { "function": "cadence", "energy": "low" },
+      "melody": "69/8 67/8 65/8 64/8 65/2 | 72/8 71/8 69/8 67/8 64/2 | 65/8 69/8 72/8 74/8 71/4 69/4 | 60+64+67+74/1" },
+    { "id": "outro-cadd9", "kind": "outro", "bars": 4,
+      "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "67/4 69/4 71/2 | 72/4 71/4 67/2 | 69/4 65/4 64/2 | 60+64+67+74/1" },
+    { "id": "outro-eclatant", "kind": "outro", "bars": 4,
+      "intent": { "function": "cadence", "energy": "high" },
+      "melody": "79/4 76/4 72/2 | 74/4 71/4 67/2 | 72/4 67/4 64/2 | 36+48+55+60+64/1" },
+
+    { "id": "intro-min", "kind": "intro", "bars": 4, "minor": true,
+      "intent": { "function": "intro", "energy": "low" },
+      "melody": "64/4 62/4 60/2 | 62/4 60/4 59/2 | 60/4 59/4 57/2 | 59/4 r/4 r/2" },
+    { "id": "contre-min", "kind": "counter", "bars": 8, "minor": true,
+      "intent": { "function": "counter", "energy": "low" },
+      "melody": "72/2 69/2 | 71/1 | 69/2 67/2 | 64/1 | 72/2 71/2 | 69/1 | 67/2 65/2 | 64/1" },
+    { "id": "outro-min", "kind": "outro", "bars": 4, "minor": true,
+      "intent": { "function": "cadence", "energy": "low" },
+      "melody": "60/4 59/4 57/2 | 64/4 60/4 59/2 | 60/4 62/4 60/2 | 33+45+52+57/1" },
+
+    { "id": "intro-valse", "kind": "intro", "bars": 4, "meter": { "num": 3, "den": 4 },
+      "intent": { "function": "intro", "energy": "medium" },
+      "melody": "79/4 81/4 83/4 | 84/4 83/4 81/4 | 79/4 81/4 79/4 | 76/4 r/4 r/4" },
+    { "id": "contre-valse", "kind": "counter", "bars": 8, "meter": { "num": 3, "den": 4 },
+      "intent": { "function": "counter", "energy": "medium" },
+      "melody": "84/2 81/4 | 79/2. | 81/2 84/4 | 79/2. | 86/2 84/4 | 81/2. | 79/2 77/4 | 76/2." },
+    { "id": "outro-valse", "kind": "outro", "bars": 4, "meter": { "num": 3, "den": 4 },
+      "intent": { "function": "cadence", "energy": "medium" },
+      "melody": "79/4 76/4 74/4 | 76/4 72/4 71/4 | 72/4 74/4 76/4 | 60+64+67/2." }
+  ]
+}

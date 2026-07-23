@@ -1,0 +1,65 @@
+<Window x:Class="MusicTracker.Dialogs.InstrumentBoostDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ctrl="clr-namespace:MusicTracker.Controls"
+        mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
+        Title="Boost par instrument" Width="480" Height="600" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="{StaticResource CommonBackground}" ctrl:WindowDrag.Enable="True" CornerRadius="6,6,0,0" Padding="20,14,20,8">
+                <StackPanel>
+                    <TextBlock Text="Boost de volume par instrument" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="Bold"/>
+                    <TextBlock Text="−10 = ÷10  ·  0 = ×1  ·  +10 = ×10  (appliqué à la lecture SoundFont)" Foreground="#9AA" FontSize="11" Margin="0,3,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,10,20,16">
+                <Button Content="Réinitialiser" Name="btnReset" Style="{StaticResource cancelButton}" Padding="12,4" Margin="0,0,8,0" Cursor="Hand" Click="btnReset_Click"/>
+                <Button Content="Annuler" Name="btnCancel" Style="{StaticResource cancelButton}" Padding="16,4" Margin="0,0,8,0" Cursor="Hand" Click="btnCancel_Click"/>
+                <Button Content="OK" Name="btnOK" Style="{StaticResource okButton}" Padding="18,4" Cursor="Hand" Click="btnOK_Click"/>
+            </StackPanel>
+
+            <ListBox Name="list" Margin="12,4,12,4" Background="Transparent" BorderThickness="0"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     VirtualizingStackPanel.IsVirtualizing="True">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Focusable" Value="False"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter/>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Height="30">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="34"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="52"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding ProgramLabel}" Foreground="#889" FontSize="11" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{StaticResource CommonForeground}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                            <Slider Grid.Column="2" Minimum="-10" Maximum="10" SmallChange="1" LargeChange="1" TickFrequency="1"
+                                    IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="6,0"
+                                    Value="{Binding Slider, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding FactorText}" Foreground="{StaticResource AccentBrush}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Border>
+</Window>

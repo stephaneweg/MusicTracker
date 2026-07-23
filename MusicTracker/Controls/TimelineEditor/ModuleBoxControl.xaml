@@ -1,0 +1,35 @@
+<UserControl x:Class="MusicTracker.Controls.TimelineEditor.ModuleBoxControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignHeight="60" d:DesignWidth="200">
+    <Border x:Name="box" CornerRadius="4">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Margin="6,2,4,0">
+                <TextBlock x:Name="txtTitle" Foreground="White" FontWeight="Bold" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,0,14,0"/>
+                <TextBlock x:Name="txtInfo" Foreground="#AAAAAA" FontSize="10" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+            <!-- Play-riff: cached mini-preview of the melodic line, filling the area below the labels. -->
+            <Image x:Name="thumb" Grid.Row="1" Margin="4,2,4,4" Stretch="None"
+                   HorizontalAlignment="Left" VerticalAlignment="Center"
+                   SnapsToDevicePixels="True" IsHitTestVisible="False" Visibility="Collapsed"/>
+            <!-- Big centred label (chords: the roman degree) drawn over the thumbnail. -->
+            <TextBlock x:Name="txtBig" Grid.Row="0" Grid.RowSpan="2"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Foreground="White" FontWeight="Bold" FontSize="28"
+                       IsHitTestVisible="False" Visibility="Collapsed">
+                <TextBlock.Effect>
+                    <DropShadowEffect Color="Black" ShadowDepth="0" BlurRadius="5" Opacity="0.7"/>
+                </TextBlock.Effect>
+            </TextBlock>
+            <Button x:Name="btnDel" Grid.Row="0" Content="✕" Click="btnDel_Click" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Style="{StaticResource deleteIconButton}" FontSize="11"
+                    Cursor="Hand" ToolTip="Supprimer ce module" Visibility="Collapsed"/>
+        </Grid>
+    </Border>
+</UserControl>

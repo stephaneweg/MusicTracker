@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "_comment": "Canonical FROZEN vocabulary + per-family manifest for the theme library. The validator enforces these value sets; the (future) selector reads them; the UI can build menus from `families` without loading the heavy per-family files.",
+
+  "vocab": {
+    "moods": ["Auto", "Enjoué", "Tendre", "Calme", "Méditatif", "Mélancolique", "Majestueux"],
+    "intent": {
+      "function": ["intro", "theme", "question", "answer", "build", "climax", "relax", "cadence", "transition", "counter"],
+      "energy":   ["low", "medium", "high"],
+      "register": ["low", "mid", "high"],
+      "density":  ["sparse", "flowing", "busy"],
+      "flavor":   ["diatonic", "pentatonic", "modal", "borrowed", "chromatic"]
+    },
+    "sectionRoles":  ["intro", "theme", "restate", "develop", "climax", "bridge", "outro"],
+    "voices":        ["lead", "counter", "both"],
+    "sources":       ["theme", "fragment", "free", "rest", "recombine"],
+    "ops":           ["rhythm", "ornament", "invert", "retrograde", "moto", "run", "borrow", "refit", "refitModal", "octave", "sequence", "augment", "diminish", "expand", "contract", "retroinvert", "spin", "grow", "thuemorse", "evolve"],
+    "articulations": ["arpege-up", "arpege-down", "alberti", "block", "rolled", "pump", "walking"]
+  },
+
+  "families": [
+    { "key": "ghibli",  "label": "Ghibli",    "file": "ghibli.json",
+      "styles": ["Chantant", "Berceuse", "Valse", "Aventure", "Mélancolie"] },
+    { "key": "bach",    "label": "Bach",      "file": "bach.json",
+      "styles": ["Prélude", "Fugue", "Toccata", "Allemande", "Courante", "Sarabande", "Gigue", "Menuet", "Bourrée", "Gavotte", "Chaconne"] },
+    { "key": "vivaldi", "label": "Vivaldi",   "file": "vivaldi.json",
+      "styles": ["Vivace", "Modéré", "Lent"] },
+    { "key": "generic", "label": "Générique", "file": "generic.json",
+      "styles": ["Classique", "Romantique", "Ballade", "Contemporain", "Jazz"] }
+  ]
+}

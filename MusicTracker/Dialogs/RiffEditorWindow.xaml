@@ -1,0 +1,43 @@
+<Window x:Class="MusicTracker.Dialogs.RiffEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:controls="clr-namespace:MusicTracker.Controls"
+        mc:Ignorable="d"
+        Title="Éditeur de riff" Height="640" Width="900" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" Closed="Window_Closed">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <Grid Margin="22,18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title bar (drag to move the chrome-less window) -->
+            <StackPanel Grid.Row="0" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <TextBlock Text="Éditeur de riff" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold"/>
+                <TextBlock Text="Clique/glisse pour dessiner les notes ; reglisse sur une note pour l'effacer ; clic sur la règle = curseur." Foreground="#999999" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <!-- Toolbar -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,10">
+                <TextBlock Text="Nom :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBox x:Name="txtName" Width="180" VerticalAlignment="Center"/>
+                <TextBlock Text="Instrument (aperçu) :" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="20,0,5,0"/>
+                <ComboBox x:Name="cboPreview" Width="180" VerticalAlignment="Center" SelectionChanged="cboPreview_SelectionChanged"/>
+            </StackPanel>
+
+            <controls:RiffGridControl x:Name="grid" Grid.Row="2"/>
+
+            <!-- Footer -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="Enregistrer" Style="{StaticResource okButton}" Click="btnSave_Click" Padding="20,4" Cursor="Hand"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

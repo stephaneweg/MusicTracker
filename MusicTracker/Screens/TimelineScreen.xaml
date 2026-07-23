@@ -1,0 +1,403 @@
+<UserControl x:Class="MusicTracker.Screens.TimelineScreen"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:tle="clr-namespace:MusicTracker.Controls.TimelineEditor"
+             xmlns:local="clr-namespace:MusicTracker.Screens"
+             mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1240"
+             Background="{StaticResource CommonBackground}">
+    <UserControl.Resources>
+        <!-- Pill toggle for binary⇄ternary: amber when ternary is active. -->
+        <Style x:Key="TernaryToggle" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#DDDDDD"/>
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" CornerRadius="10" Background="#26FFFFFF" BorderBrush="#555555" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock x:Name="dot" Text="●" FontSize="9" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="#777777"/>
+                                <ContentPresenter VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#C8A24A"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#E0B85A"/>
+                                <Setter TargetName="dot" Property="Foreground" Value="#3A2E10"/>
+                                <Setter Property="Foreground" Value="#1A1A1A"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#999999"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ===== Transport bar helpers ===== -->
+        <Style x:Key="ToolLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource SecondaryForeground}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+        <!-- A chip-like dropdown BUTTON (opens a popup of grouped controls); accent border when open. -->
+        <Style x:Key="ToolDropBtn" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Padding" Value="9,4"/>
+            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" Background="{StaticResource LightBackground}" CornerRadius="6"
+                                BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource SurfaceHoverBackground}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- A rounded segment grouping related controls (DAW-style). -->
+        <Style x:Key="ToolChip" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="9,3"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="{StaticResource SubtleBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <!-- Play: filled teal circle. -->
+        <Style x:Key="PlayBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="{StaticResource AccentDeepBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="15">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrightBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Stop: neutral circle. -->
+        <Style x:Key="StopBtn" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+            <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="15" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource SurfaceHoverBackground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Small square Mute (red when active) / Solo (teal when active) toggles for track headers. -->
+        <Style x:Key="MuteToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource SecondaryForeground}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" Background="#2A2C31" CornerRadius="3" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#7A3A3E"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#C0574E"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#D77069"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SoloToggle" TargetType="ToggleButton" BasedOn="{StaticResource MuteToggle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bd" Background="#2A2C31" CornerRadius="3" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentDeepBrush}"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition Height="*" MinHeight="120"/>
+            <RowDefinition Height="5"/>
+            <RowDefinition x:Name="editorRow" Height="340" MinHeight="120"/>
+            <RowDefinition Height="auto"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <!-- Transport bar (DAW-style: transport · tempo · tonalité · mesure · levée · actions) -->
+        <Border Grid.Row="0" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
+                <Button x:Name="btnSaveMusic" Content="Enregistrer" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="Enregistrer le morceau (.sq)"/>
+                <!-- Transport -->
+                <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="Lire depuis le curseur"/>
+                <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,12,0" ToolTip="Arrêter (le curseur reste sur place)"/>
+                <!-- Tempo -->
+                <Border Style="{StaticResource ToolChip}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="BPM" Style="{StaticResource ToolLabel}"/>
+                        <TextBox x:Name="txtBpm" Width="46" VerticalAlignment="Center" Text="120" LostFocus="txtBpm_LostFocus"/>
+                    </StackPanel>
+                </Border>
+                <!-- Tonalité (dropdown popup) -->
+                <ToggleButton x:Name="tglKeyMenu" Style="{StaticResource ToolDropBtn}" ToolTip="Tonalité : tonique · altération · mode">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Tonalité" Style="{StaticResource ToolLabel}"/>
+                        <TextBlock x:Name="txtKeySummary" Foreground="{StaticResource CommonForeground}" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="▾" Foreground="{StaticResource SecondaryForeground}" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToggleButton>
+                <Popup PlacementTarget="{Binding ElementName=tglKeyMenu}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                       IsOpen="{Binding IsChecked, ElementName=tglKeyMenu, Mode=TwoWay}">
+                    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="1" CornerRadius="6" Margin="0,4,0,0" Padding="10">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <ComboBox x:Name="cboTonic" Width="54" VerticalAlignment="Center" SelectionChanged="Key_Changed"/>
+                                <ToggleButton x:Name="tglSharp" Content="♯" Style="{StaticResource toolToggleBlue}" Width="30" VerticalAlignment="Center" Margin="4,0,0,0" Click="TglSharp_Click" Cursor="Hand" ToolTip="Dièse à la tonique"/>
+                                <ToggleButton x:Name="tglFlat" Content="♭" Style="{StaticResource toolToggleBlue}" Width="30" VerticalAlignment="Center" Margin="2,0,0,0" Click="TglFlat_Click" Cursor="Hand" ToolTip="Bémol à la tonique"/>
+                                <ComboBox x:Name="cboMode" Width="200" VerticalAlignment="Center" Margin="6,0,0,0" SelectionChanged="Key_Changed"/>
+                            </StackPanel>
+                            <Button x:Name="btnTranspose" Content="Transposer…" Click="btnTranspose_Click" Margin="0,0,0,0" Padding="8,4" Cursor="Hand" ToolTip="Transposer toutes les notes vers une autre gamme (au plus près : montée ou descente, selon le plus court)"/>
+
+                        </StackPanel>
+                    </Border>
+                </Popup>
+                <!-- Mesure (dropdown popup) -->
+                <ToggleButton x:Name="tglMeterMenu" Style="{StaticResource ToolDropBtn}" ToolTip="Signature rythmique et binaire/ternaire" >
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Mesure" Style="{StaticResource ToolLabel}"/>
+                        <TextBlock x:Name="txtMeterSummary" Foreground="{StaticResource CommonForeground}" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="▾" Foreground="{StaticResource SecondaryForeground}" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </ToggleButton>
+                <Popup PlacementTarget="{Binding ElementName=tglMeterMenu}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                       IsOpen="{Binding IsChecked, ElementName=tglMeterMenu, Mode=TwoWay}">
+                    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="1" CornerRadius="6" Margin="0,4,0,0" Padding="10">
+                        <!-- Levée -->
+                        <Grid >
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="auto"/>
+                                <RowDefinition Height="auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2">
+                                <ComboBox x:Name="cboMeter" Width="62" VerticalAlignment="Center" Margin="0,0,8,0" SelectionChanged="Meter_Changed" ToolTip="Signature rythmique — changer le nombre de temps réorganise les riffs et les silences"/>
+                                <ToggleButton x:Name="tglTernary" Content="Ternaire" Style="{StaticResource TernaryToggle}" VerticalAlignment="Center" Click="TglTernary_Click" ToolTip="Basculer binaire ⇄ ternaire (x/4 ⇄ x/8) — ne change ni les riffs ni leur taille, seulement la partition (3 croches ⇄ triolets)"/>
+                            </StackPanel>
+                            <TextBlock Text="Levée" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="1"/>
+                            <ComboBox x:Name="cboPickup" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" SelectionChanged="Pickup_Changed" ToolTip="Anacrouse : durée de la mesure incomplète de début (les barres de mesure sont décalées d'autant). N'affecte pas la lecture."/>
+                        </Grid>
+                    </Border>
+                </Popup>
+                <Border Width="1" Background="{StaticResource SubtleBorderBrush}" Margin="2,4,12,4"/>
+
+                <!-- Action menus (less dense than a row of buttons). "Insérer" adapts to the selected track type. -->
+                <Menu Background="Transparent" VerticalAlignment="Center" Foreground="#DDDDDD">
+                    <MenuItem Header="Piste" Foreground="#DDDDDD">
+                        <MenuItem Header="＋ Piste instrument" Click="btnAddInstrTrack_Click"/>
+                        <MenuItem Header="＋ Piste batterie" Click="btnAddDrumTrack_Click"/>
+                        <Separator/>
+                        <MenuItem Header="🤖 Composer avec l'IA…" Click="btnAiCompose_Click" ToolTip="Décris un style + une longueur ; l'IA génère accords, sections, articulations et lignes mélodiques, posés sur la timeline (clé API gratuite : console.mistral.ai)"/>
+                        <MenuItem Header="🏛️ Créer structure…" Click="btnCreateStructure_Click" ToolTip="Génère une charpente d'arrangement éditable (Forme × Style × Humeur) : mélodie, contre-chant, accompagnement, basse, nappe — éditable ensuite"/>
+                        <MenuItem Header="🎶 Ajouter une ligne mélodique" Click="btnAddMelodicLine_Click" ToolTip="Sur une musique structurée : compose une voix mélodique supplémentaire (nouvel instrument) sur la grille et la structure existantes, insérée entre les voix mélodiques et l'accompagnement"/>
+                        <MenuItem Header="🎼 Accompagnement en accords" Click="btnChordAccomp_Click" ToolTip="Sur une musique structurée : crée une piste d'accompagnement en OBJETS ACCORD (un par mesure, par degré), avec un motif éditable partagé par section"/>
+                    </MenuItem>
+                    <MenuItem x:Name="menuInsert" Header="Insérer" Foreground="#DDDDDD">
+                        <MenuItem x:Name="miAddRiff" Header="Riff" Click="btnAddRiff_Click"/>
+                        <MenuItem x:Name="miAddPattern" Header="Accords" Click="btnAddPattern_Click"/>
+                        <MenuItem x:Name="miAddCadence" Header="Cadence…" Click="btnAddCadence_Click"/>
+                        <MenuItem x:Name="miInsertMelodicLine" Header="Ligne mélodique (rythme)" Click="btnInsertMelodicLine_Click" ToolTip="Ajoute une ligne mélodique (rythme seul, ≤ 3 voix) sur une piste dédiée ; le moteur choisit les notes selon les accords. Ré-ajouter recopie la précédente à la suite."/>
+                        <MenuItem x:Name="miAddDrum" Header="Batterie" Click="btnAddDrum_Click"/>
+                        <Separator/>
+                        <MenuItem x:Name="miGenTheme" Header="🎵 Thème…" Click="btnGenerateTheme_Click" ToolTip="Génère un thème 100 % procédural (sérielle, automate cellulaire, L-système, génétique, fractale 1/f, Thue-Morse) sur la piste active — ou remplace la section sélectionnée en structure"/>
+                        <MenuItem x:Name="miVariation" Header="🔀 Variation…" Click="btnVariation_Click" ToolTip="Applique une technique de variation au riff sélectionné (le thème) : rétrograde, inversion, ornementation, augmentation, Fortspinnung, génétique…"/>
+                    </MenuItem>
+                    <MenuItem Header="Export" Foreground="#DDDDDD">
+                        <MenuItem Header="MIDI…" Click="btnExportMidi_Click" ToolTip="Exporter la timeline en fichier MIDI (.mid)"/>
+                        <MenuItem Header="MuseScore (.mscx)…" Click="btnExportMuseScore_Click" ToolTip="Exporter la partition en fichier natif MuseScore (.mscx)"/>
+                        <MenuItem Header="Audio…" Click="btnExport_Click"/>
+                        <MenuItem Header="Partition PDF…" Click="btnExportPdf_Click" ToolTip="Exporter les pistes cochées (♫) en partition A4 (impression PDF)"/>
+                    </MenuItem>
+                </Menu>
+                <Border Width="1" Background="{StaticResource SubtleBorderBrush}" Margin="12,4"/>
+                <Button x:Name="btnImport" Content="Importer…" Click="btnImport_Click" Padding="8,4" Cursor="Hand" ToolTip="Importer un fichier MIDI ou MuseScore"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Lanes area: the scrollable tracks (which grow/shrink with the splitter) plus the permanent, content-height
+             chords lane docked at its bottom. Wrapping both in this container makes the splitter below resize THIS whole
+             block against the editor — the tracks (*) absorb the change while the chords lane keeps its Auto height. -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Tracks: a frozen measure ruler on top, then a frozen header column (left) + scrollable lanes
+             (right). Vertical scroll syncs header<->lanes; horizontal scroll syncs ruler<->lanes. -->
+            <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- corner above the header column -->
+                <Border Grid.Row="0" Grid.Column="0" Height="20" Background="{StaticResource DarkBackground}"
+                    BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,1,1">
+                    <TextBlock Text="MESURES" Foreground="{StaticResource SecondaryForeground}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                </Border>
+                <!-- measure ruler: fixed vertically, scrolls horizontally with the lanes. A transparent
+                 overlay canvas carries the draggable blue play-start handle. -->
+                <ScrollViewer x:Name="rulerScroll" Grid.Row="0" Grid.Column="1" Height="20"
+                          VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
+                    <Grid HorizontalAlignment="Left">
+                        <tle:MeasureRulerControl x:Name="measureRuler" HorizontalAlignment="Left"/>
+                        <Canvas x:Name="startCanvas" Height="20" Background="Transparent"
+                            MouseLeftButtonDown="startCanvas_MouseLeftButtonDown"/>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- Track headers: a plain clipped Border (NOT a ScrollViewer) so the mouse wheel is never
+                 captured here — it stays free for the instrument combo boxes. Vertical alignment with the
+                 lanes is done by translating headerPanel to match laneScroll's offset (see laneScroll_ScrollChanged). -->
+                <local:SyncScrollViewer  x:Name="headerScroll" Grid.Row="1" Grid.Column="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Hidden">
+                    <!-- VerticalAlignment=Top: size to CONTENT (not the Border), so lower headers overflow
+                     below the clip and the transform can bring them into view. -->
+                    <StackPanel x:Name="headerPanel" Margin="0,0,0,19">
+                    </StackPanel>
+                </local:SyncScrollViewer>
+                <ScrollViewer x:Name="laneScroll" Grid.Row="1" Grid.Column="1"
+                              VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible"
+                              Style="{StaticResource CornerlessScroll}" ScrollChanged="laneScroll_ScrollChanged">
+                    <Grid>
+                        <StackPanel x:Name="lanePanel"/>
+                        <!-- playback cursor overlay (scrolls horizontally with the lanes) -->
+                        <Canvas x:Name="cursorCanvas" IsHitTestVisible="False"/>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- The permanent CHORDS lane, docked between the lanes and the splitter; its own horizontal scroll is kept in
+             sync with the main lanes (rulerScroll/laneScroll), so it stays aligned but never scrolls off vertically. -->
+            <Grid Grid.Row="1" Background="{StaticResource DarkBackground}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <ContentControl Grid.Column="0" x:Name="chordHeaderHost" Background="{StaticResource DarkBackground}"/>
+                <ScrollViewer Grid.Column="1" x:Name="chordScroll" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
+                    <StackPanel x:Name="chordLanePanel"/>
+                </ScrollViewer>
+            </Grid>
+
+        </Grid>
+
+        <GridSplitter x:Name="editorSplitter" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Center" Height="5" Background="{StaticResource DarkBackground}"/>
+
+        <!-- Bottom: editor of the selected module -->
+        <Border Grid.Row="3" Background="{StaticResource DarkBackground}" Padding="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                    <Button x:Name="btnEditorCollapse" DockPanel.Dock="Left" Style="{StaticResource iconButton}" Content="▾"
+                            VerticalAlignment="Center" Margin="0,0,6,0" Click="btnEditorCollapse_Click" ToolTip="Réduire / afficher l'éditeur"/>
+                    <ToggleButton x:Name="tglViewScore" DockPanel.Dock="Right" Content="🎼 Partition" Padding="10,2" Cursor="Hand"
+                                  Style="{StaticResource toolToggle}" IsEnabled="False" Click="tglViewScore_Click" VerticalAlignment="Center"
+                                  ToolTip="Basculer entre la PARTITION (des pistes cochées ♫) et l'ÉDITEUR du module sélectionné"/>
+                    <CheckBox x:Name="chkArpeggio" DockPanel.Dock="Right" Content="Arpegiato" Foreground="#CCCCCC" Cursor="Hand"
+                              VerticalAlignment="Center" Margin="0,0,10,0" Click="chkArpeggio_Click"
+                              ToolTip="Coché : les accords roulés (départs échelonnés + tenue commune) sont notés en UN accord + vague d'arpège.&#10;Décoché (défaut) : chaque note est affichée séparément (croches/noires réelles)."/>
+                    <TextBlock x:Name="txtEditorTitle" Text="Éditeur — (aucun module sélectionné)" Foreground="#CCCCCC" FontWeight="Bold" Margin="2,0,0,0" VerticalAlignment="Center"/>
+                </DockPanel>
+                <ScrollViewer Grid.Row="1" x:Name="editorScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Style="{StaticResource CornerlessScroll}">
+                    <ContentControl x:Name="editorHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+                </ScrollViewer>
+               
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="4" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
+             
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</UserControl>

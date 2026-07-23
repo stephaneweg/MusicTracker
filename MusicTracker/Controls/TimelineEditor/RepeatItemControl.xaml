@@ -1,0 +1,15 @@
+<UserControl x:Class="MusicTracker.Controls.TimelineEditor.RepeatItemControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignHeight="80" d:DesignWidth="240">
+    <Border x:Name="back" CornerRadius="5" Cursor="Hand">
+        <Grid>
+            <TextBlock x:Name="txtTitle" Foreground="#CCBBEE" FontSize="10" Margin="5,1,16,0" VerticalAlignment="Top"/>
+            <Button x:Name="btnDel" Content="✕" Click="btnDel_Click" HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Background="Transparent" BorderThickness="0" Foreground="#CC6666" FontSize="11" Padding="3,0,3,0"
+                    Cursor="Hand" ToolTip="Supprimer ce repeat"/>
+        </Grid>
+    </Border>
+</UserControl>
