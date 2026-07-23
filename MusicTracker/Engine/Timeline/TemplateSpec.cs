@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace MusicTracker.Engine.Timeline
@@ -74,8 +75,11 @@ namespace MusicTracker.Engine.Timeline
         public List<TplArticulation> ChordArticulations { get; set; } = new List<TplArticulation>();
         /// <summary>Bank of melodic cells attached to the chords (2nd voice, diatonic degrees, transposed per chord).</summary>
         public List<TplMelodicCell> ChordMelodicCells { get; set; } = new List<TplMelodicCell>();
-        /// <summary>Riff phrase banks, one entry per track (by <see cref="TplRiffTrack.TrackNum"/>).</summary>
+        /// <summary>Riff phrase banks, one entry per track (by <see cref="TplRiffTrack.TrackNum"/>) — EXPLICIT notes.</summary>
         public List<TplRiffTrack> Riffs { get; set; } = new List<TplRiffTrack>();
+        /// <summary>Melodic-line banks, one entry per track — RHYTHM ONLY (the engine picks the pitches on the chords).
+        /// The alternative to <see cref="Riffs"/>; a track falls back to its line when it has no riff phrase.</summary>
+        public List<TplMelodicTrack> MelodicLines { get; set; } = new List<TplMelodicTrack>();
         /// <summary>Bank of drum grooves (short motifs that repeat).</summary>
         public List<TplDrumGroove> Drums { get; set; } = new List<TplDrumGroove>();
     }
@@ -126,6 +130,24 @@ namespace MusicTracker.Engine.Timeline
     {
         public int SlicesPerBeat { get; set; } = 4;
         public int[] Motif { get; set; }
+    }
+
+    /// <summary>The melodic-line bank for one track (the rhythm-only alternative to a riff phrase bank).</summary>
+    public class TplMelodicTrack
+    {
+        public int TrackNum { get; set; }
+        public List<TplLine> Lines { get; set; } = new List<TplLine>();
+    }
+
+    /// <summary>A rhythm-only melodic line: <see cref="Durations"/> in BEATS (a NEGATIVE value is a rest). The engine
+    /// chooses the pitches from the chord in effect, steered by <see cref="Contour"/> / <see cref="Anchor"/> /
+    /// <see cref="Register"/> — so the same line sounds different (but always right) over each progression.</summary>
+    public class TplLine
+    {
+        public double[] Durations { get; set; }
+        public int Contour { get; set; }   // index into MelodicLineEngine.ContourNames
+        public int Anchor { get; set; }    // index into MelodicLineEngine.AnchorNames
+        public int Register { get; set; }  // semitone shift (bass ≈ -24, lead 0, high +12)
     }
 
     /// <summary>A drum groove. <see cref="Motif"/> is flat triplets [gmKey, start, length, …]; gmKey = GM drum note
@@ -256,7 +278,9 @@ namespace MusicTracker.Engine.Timeline
     /// <summary>The prompt that asks an LLM for a generative <see cref="TemplateSpec"/> JSON ("Ajouter avec l'IA").</summary>
     public static class TemplatePrompt
     {
-        public static string[] Build(string styleIntention)
+        /// <param name="melodicMode">true → ask for rhythm-only MELODIC LINES (the engine picks the pitches);
+        /// false → ask for explicit RIFF phrases (the model writes the actual notes).</param>
+        public static string[] Build(string styleIntention, bool melodicMode = false)
         {
             var sys = new System.Text.StringBuilder();
             sys.AppendLine("Tu es arrangeur. Tu renvoies UNIQUEMENT un objet JSON STRICT (aucune prose) décrivant un MODÈLE de style musical GÉNÉRATIF et réutilisable.");
@@ -277,17 +301,36 @@ namespace MusicTracker.Engine.Timeline
             sys.AppendLine(@"        { ""beatCount"": int, ""slicesPerBeat"": int, ""motif"": [voix,début,durée, voix,début,durée, ...] } ],   // voix 0=basse,1=fond.,2=tierce,3=quinte,4=7e,5=fond.+8,6=9e,7=tierce+8,... ; début/durée en SLICES");
             sys.AppendLine(@"     ""chordMelodicCells"": [   // BANQUE (optionnelle) : 2e voix chantante attachée aux accords");
             sys.AppendLine(@"        { ""beatCount"": int, ""slicesPerBeat"": int(le MÊME que l'articulation), ""cell"": [degré,début,durée, ...] } ],   // degré DIATONIQUE 1-7 (8-14 = octave au-dessus), transposé modalement sur chaque accord");
-            sys.AppendLine(@"     ""riffs"": [   // une entrée par piste utilisée");
-            sys.AppendLine(@"        { ""trackNum"": int(index de piste), ""phrases"": [   // BANQUE de 4 à 8 phrases de 4 MESURES PAR PISTE");
-            sys.AppendLine(@"           { ""slicesPerBeat"": int, ""motif"": [note,début,durée, note,début,durée, ...] } ] } ],");
-            sys.AppendLine(@"           // note = demi-tons CHROMATIQUES au-dessus de la TONIQUE (0=tonique, 12=octave), écrite comme si l'accord était le degré 1 ; l'app transpose modalement par accord + voice-leading. Durée NÉGATIVE = silence. Les notes peuvent se chevaucher (polyphonie). début/durée en SLICES.");
+            if (melodicMode)
+            {
+                var contours = string.Join(", ", MelodicLineEngine.ContourNames.Select((n, i) => i + "=" + First(n)));
+                var anchors = string.Join(", ", MelodicLineEngine.AnchorNames.Select((n, i) => i + "=" + First(n)));
+                sys.AppendLine(@"     ""melodicLines"": [   // une entrée par piste utilisée — RYTHME SEUL, le moteur choisit les hauteurs sur les accords");
+                sys.AppendLine(@"        { ""trackNum"": int(index de piste), ""lines"": [   // BANQUE de 4 à 8 lignes PAR PISTE");
+                sys.AppendLine(@"           { ""durations"": [durées en TEMPS: 0.5=croche 1=noire 2=blanche ; une valeur NÉGATIVE = un SILENCE de cette durée],");
+                sys.AppendLine(@"             ""contour"": int, ""anchor"": int, ""register"": int(demi-tons: basse ≈ -24, mélodie 0, aigu +12) } ] } ],");
+                sys.AppendLine("           // contour : " + contours);
+                sys.AppendLine("           // anchor  : " + anchors);
+            }
+            else
+            {
+                sys.AppendLine(@"     ""riffs"": [   // une entrée par piste utilisée");
+                sys.AppendLine(@"        { ""trackNum"": int(index de piste), ""phrases"": [   // BANQUE de 4 à 8 phrases de 4 MESURES PAR PISTE");
+                sys.AppendLine(@"           { ""slicesPerBeat"": int, ""motif"": [note,début,durée, note,début,durée, ...] } ] } ],");
+                sys.AppendLine(@"           // note = demi-tons CHROMATIQUES au-dessus de la TONIQUE (0=tonique, 12=octave), écrite comme si l'accord était le degré 1 ; l'app transpose modalement par accord + voice-leading. Durée NÉGATIVE = silence. Les notes peuvent se chevaucher (polyphonie). début/durée en SLICES.");
+            }
             sys.AppendLine(@"     ""drums"": [   // BANQUE de grooves");
             sys.AppendLine(@"        { ""bars"": int(longueur du motif en mesures, souvent 1-2), ""slicesPerBeat"": int, ""motif"": [noteGM,début,durée, ...] } ]   // noteGM = batterie 35-81 (36 grosse caisse, 38 caisse claire, 42 charley fermé, 46 ouvert, 49 crash, 51 ride) ; IMPORTANT : les notes doivent REMPLIR les 'bars' mesures entières (début/durée couvrent bars×num×slicesPerBeat slices), pas seulement la 1re mesure");
             sys.AppendLine("  } ] }");
             sys.AppendLine();
-            sys.AppendLine("Règles : 3 à 5 sections nommées (intro/theme/refrain/pont/outro selon le style) ; 4 à 8 options par banque ; POUR LES RIFFS, 4 à 8 phrases PAR PISTE et PAR SECTION, avec une DENSITÉ adaptée au rôle de la piste (mélodie/lead = phrases plus denses et actives ; basse, nappes, contrechant = plus aérées et tenues) ; une piste peut être SILENCIEUSE dans une section : soit tu l'OMETS des 'riffs' de la section, soit tu inclus des phrases VIDES (\"motif\": []) dans sa banque — ainsi la pioche laisse parfois l'instrument se taire. SERS-t'en pour la dynamique d'arrangement (intro/pont épurés où seuls 1-2 instruments jouent, montée progressive, respirations) ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
+            sys.AppendLine("Règles : 3 à 5 sections nommées (intro/theme/refrain/pont/outro selon le style) ; 4 à 8 options par banque ; " + (melodicMode
+                ? "POUR LES LIGNES MÉLODIQUES, 4 à 8 lignes PAR PISTE et PAR SECTION, avec une DENSITÉ adaptée au rôle de la piste (mélodie/lead = rythmes plus denses et actifs ; basse, nappes, contrechant = plus aérés et tenus) ; choisis 'contour' et 'anchor' selon l'INTENTION (sombre → descendant/statique + ancrage fondamentale/tierce ; joyeux → montant/vague) ; une piste peut être SILENCIEUSE dans une section : soit tu l'OMETS des 'melodicLines' de la section, soit tu inclus des lignes VIDES (\"durations\": []) dans sa banque"
+                : "POUR LES RIFFS, 4 à 8 phrases PAR PISTE et PAR SECTION, avec une DENSITÉ adaptée au rôle de la piste (mélodie/lead = phrases plus denses et actives ; basse, nappes, contrechant = plus aérées et tenues) ; une piste peut être SILENCIEUSE dans une section : soit tu l'OMETS des 'riffs' de la section, soit tu inclus des phrases VIDES (\"motif\": []) dans sa banque") + @" — ainsi la pioche laisse parfois l'instrument se taire. SERS-t'en pour la dynamique d'arrangement (intro/pont épurés où seuls 1-2 instruments jouent, montée progressive, respirations) ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
             string usr = "Style et intention : « " + (styleIntention ?? "").Trim() + " ». Produis le modèle génératif en JSON.";
             return new[] { sys.ToString(), usr };
         }
+
+        // First word of a display name ("Vague (arcs)" → "Vague"), to keep the enum lists compact in the prompt.
+        static string First(string s) { int i = s.IndexOf(' '); return i > 0 ? s.Substring(0, i) : s; }
     }
 }

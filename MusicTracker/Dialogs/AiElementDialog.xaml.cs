@@ -24,13 +24,19 @@ namespace MusicTracker.Dialogs
         /// <summary>The intention/description the user typed (read after the dialog closes, e.g. to remember it).</summary>
         public string Intention => txtIntention.Text?.Trim();
 
-        public AiElementDialog(string title, string context, Func<string, string[]> buildPrompt, string initialIntention = null)
+        /// <summary>State of the caller-supplied option checkbox (false when the caller supplied no option label).
+        /// The caller's <c>buildPrompt</c> can read it — it is evaluated when the user hits Generate.</summary>
+        public bool OptionChecked => chkOption.IsChecked == true;
+
+        /// <param name="optionLabel">When set, shows an extra checkbox with this label (see <see cref="OptionChecked"/>).</param>
+        public AiElementDialog(string title, string context, Func<string, string[]> buildPrompt, string initialIntention = null, string optionLabel = null)
         {
             InitializeComponent();
             this.buildPrompt = buildPrompt;
             Title = title;
             txtContext.Text = context ?? "";
             if (!string.IsNullOrWhiteSpace(initialIntention)) txtIntention.Text = initialIntention;
+            if (!string.IsNullOrWhiteSpace(optionLabel)) { chkOption.Content = optionLabel; chkOption.Visibility = System.Windows.Visibility.Visible; }
 
             foreach (var id in AiProviders.Ids) cboProvider.Items.Add(AiProviders.Label(id));
             currentProvider = AiProviders.Norm(AppSettings.Instance.AiProvider);

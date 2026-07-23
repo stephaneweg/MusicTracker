@@ -707,6 +707,7 @@ namespace MusicTracker.Screens
             public Engine.Timeline.TplMelodicCell Cell;
             public Engine.Timeline.TplDrumGroove Groove;
             public System.Collections.Generic.Dictionary<int, Engine.Timeline.TplPhrase> Phrase = new System.Collections.Generic.Dictionary<int, Engine.Timeline.TplPhrase>();
+            public System.Collections.Generic.Dictionary<int, Engine.Timeline.TplLine> Line = new System.Collections.Generic.Dictionary<int, Engine.Timeline.TplLine>();
         }
 
         public void LoadTemplateSpec(Engine.Timeline.TemplateSpec spec, int measures)
@@ -777,6 +778,7 @@ namespace MusicTracker.Screens
                         Groove = Engine.Timeline.TemplateComposer.Pick(sec.Drums, rng),
                     };
                     if (sec.Riffs != null) foreach (var rt in sec.Riffs) p.Phrase[rt.TrackNum] = Engine.Timeline.TemplateComposer.Pick(rt.Phrases, rng);
+                    if (sec.MelodicLines != null) foreach (var mt in sec.MelodicLines) p.Line[mt.TrackNum] = Engine.Timeline.TemplateComposer.Pick(mt.Lines, rng);
                     picks[nm] = p;
                 }
                 return p;
@@ -859,7 +861,9 @@ namespace MusicTracker.Screens
                 }
             }
 
-            // ---- riffs: per track, the picked phrase transposed modally onto each instance's chords ----
+            // ---- melody: per track, either an explicit RIFF phrase (transposed modally onto the instance's chords)
+            //      or, when the template was generated in "lignes mélodiques" mode, a rhythm-only MELODIC LINE whose
+            //      pitches the engine picks from the chords. A track with neither stays silent for that section.
             for (int ti = 0; ti < instrTracks.Count; ti++)
             {
                 var track = instrTracks[ti];
@@ -867,10 +871,29 @@ namespace MusicTracker.Screens
                 foreach (var inst in form)
                 {
                     double startBeat = inst.startBar * barTemps;
+                    double secBeats = inst.bars * barTemps;
                     inst.pick.Phrase.TryGetValue(ti, out var phrase);
-                    if (phrase == null || phrase.Motif == null || phrase.Motif.Length < 3 || inst.slots.Count == 0) continue;
+                    bool hasPhrase = phrase != null && phrase.Motif != null && phrase.Motif.Length >= 3;
 
-                    double sectionBeats = inst.bars * barTemps;
+                    if (!hasPhrase)
+                    {
+                        // Melodic line fallback: rhythm only; MelodicLineEngine resolves the pitches per chord.
+                        inst.pick.Line.TryGetValue(ti, out var line);
+                        if (line == null || line.Durations == null || line.Durations.Length == 0) continue;
+                        int lSlices = (int)Math.Round(secBeats) * spq;
+                        var ml = new MelodicLineModule
+                        {
+                            BeatsPerBar = Math.Max(1, (int)Math.Round(secBeats)), VoiceCount = 1,
+                            Contour = line.Contour, Anchor = line.Anchor, RegisterShift = line.Register, Continuity = 30,
+                        };
+                        ml.SetNotes(Engine.AI.AiTranslate.BuildRhythmNotes(new System.Collections.Generic.List<double>(line.Durations), lSlices, spq), spq, lSlices);
+                        track.Items.Add(new TimelineItem { Module = ml, SilenceBefore = Math.Max(0, startBeat - cursor) });
+                        cursor = startBeat + secBeats;
+                        continue;
+                    }
+                    if (inst.slots.Count == 0) continue;
+
+                    double sectionBeats = secBeats;
                     var slots = inst.slots;
                     Func<double, Engine.Timeline.TemplateComposer.ChordSlot> chordAt = (b) =>
                     {

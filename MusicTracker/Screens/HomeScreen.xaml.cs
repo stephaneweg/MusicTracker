@@ -443,9 +443,13 @@ namespace MusicTracker.Screens
         void GenerateTemplateWithAi(string initialIntention, string forceName)
         {
             string title = forceName != null ? "Régénérer le template — IA" : "Générer un template — IA";
-            var dlg = new Dialogs.AiElementDialog(title,
+            // The checkbox is read when the user hits Generate, hence the closure over `dlg`.
+            Dialogs.AiElementDialog dlg = null;
+            dlg = new Dialogs.AiElementDialog(title,
                 "Décris un STYLE et une intention (ex. « valse mélancolique de Chopin »). L'IA renvoie un template ; vérifie puis Confirme pour l'enregistrer.",
-                desc => Engine.Timeline.TemplatePrompt.Build(desc), initialIntention) { Owner = Window.GetWindow(this) };
+                desc => Engine.Timeline.TemplatePrompt.Build(desc, dlg != null && dlg.OptionChecked), initialIntention,
+                "Lignes mélodiques (rythme seul, le moteur choisit les notes) au lieu de riffs écrits")
+            { Owner = Window.GetWindow(this) };
             if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.ResultJson)) return;
             try
             {

@@ -89,6 +89,9 @@
 
             <TextBlock Text="Intention" Foreground="{StaticResource CommonForeground}" Margin="0,14,0,5"/>
             <TextBox x:Name="txtIntention" Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
+            <!-- Optional caller-supplied switch (label set from code; hidden when the caller passes none). -->
+            <CheckBox x:Name="chkOption" Visibility="Collapsed" Margin="0,8,0,0"
+                      Foreground="{StaticResource CommonForeground}" Cursor="Hand"/>
 
             <!-- Génération -->
             <TextBlock Text="GÉNÉRATION" Style="{StaticResource SectionLabel}" Margin="0,16,0,4"/>
