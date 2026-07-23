@@ -44,6 +44,7 @@ namespace MusicTracker.Screens
         TimelineTrack riffEditTrack;
         double riffOpenLen;              // its displayed length when editing started (to detect a length change)
         readonly Dictionary<TimelineItem, Controls.TimelineEditor.ModuleBoxControl> leafBoxes = new Dictionary<TimelineItem, Controls.TimelineEditor.ModuleBoxControl>();
+        readonly Dictionary<TimelineItem, TimelineTrack> boxOwner = new Dictionary<TimelineItem, TimelineTrack>(); // which track drew each box
 
         // ---- playback (Phase 2) ----
         NAudio.Wave.WaveOutEvent playWaveOut;
@@ -895,6 +896,23 @@ namespace MusicTracker.Screens
 
         // ---- rendering -------------------------------------------------------------
 
+        /// <summary>Re-tint one track's module boxes after its instrument changed, IN PLACE. A full <see cref="Render"/>
+        /// would rebuild headerPanel — i.e. destroy the very ComboBox currently raising SelectionChanged — so the boxes
+        /// are recoloured directly instead. Chord/cadence boxes are skipped: they are coloured by harmonic function, not
+        /// by the instrument family.</summary>
+        void RecolorTrackBoxes(TimelineTrack track)
+        {
+            if (track == null) return;
+            var fill = new SolidColorBrush(Controls.InstrumentColors.BoxFill(track.Instrument));
+            var border = new SolidColorBrush(Controls.InstrumentColors.BoxBorder(track.Instrument));
+            foreach (var kv in leafBoxes)
+            {
+                if (!boxOwner.TryGetValue(kv.Key, out var owner) || owner != track) continue;
+                if (kv.Key.Module is PatternGeneratorModule || kv.Key.Module is CadenceModule) continue;
+                kv.Value.SetColors(fill, border);
+            }
+        }
+
         void Render()
         {
             EnsureChordTrack();   // invariant: exactly one chords track, pinned at the bottom (whatever added tracks)
@@ -903,6 +921,7 @@ namespace MusicTracker.Screens
             highlighters.Clear();
             trackHeaders.Clear();
             leafBoxes.Clear();
+            boxOwner.Clear();
             TimelineProject.ResolveLoops(project, RiffById); // size looping Repeats to fill up to the end
             double laneWidth = TotalBeats() * PxPerBeat;
 
@@ -967,6 +986,7 @@ namespace MusicTracker.Screens
             highlighters.Clear();
             trackHeaders.Clear();
             leafBoxes.Clear();
+            boxOwner.Clear();
             TimelineProject.ResolveLoops(project, RiffById);
             double laneWidth = TotalBeats() * PxPerBeat;
             measureRuler.Configure(laneWidth, 20, PxPerBeat, RulerBeatsPerBar(), project.PickupBeats);
@@ -1091,6 +1111,7 @@ namespace MusicTracker.Screens
                     if (inst.SelectedIndex < 0) return;
                     track.Instrument = inst.SelectedIndex;
                     famDot.Fill = new SolidColorBrush(HeaderFamilyColor(track)); // reflect the new family colour live
+                    RecolorTrackBoxes(track);   // …and re-tint this lane's module boxes to match the new family
                     // If this track's riff editor is open, reflect the new instrument in its preview + MIDI audition.
                     if (activeRiffGrid != null && riffEditTrack == track)
                         activeRiffGrid.SetPreviewInstrument(InstrumentCatalog.GetPreset(track.Instrument), track.Instrument);
@@ -1427,6 +1448,7 @@ namespace MusicTracker.Screens
                 if (onDrop != null) { box.Draggable = true; box.Dropped += onDrop; }
                 highlighters[item] = box.SetSelected; // incremental selection
                 leafBoxes[item] = box;                // for an in-place thumbnail refresh on riff close
+                boxOwner[item] = track;               // for an in-place re-tint when the track's instrument changes
             }
             return box;
         }

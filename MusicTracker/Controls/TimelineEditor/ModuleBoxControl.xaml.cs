@@ -18,6 +18,7 @@ namespace MusicTracker.Controls.TimelineEditor
         static readonly Brush NormalBorder = new SolidColorBrush(Color.FromRgb(0x11, 0x11, 0x11));
 
         bool interactive;
+        bool isSelected;                   // kept so a recolour can restore the right border without a reconfigure
         Brush normalBorder = NormalBorder; // per-box unselected border (chords use a lighter blue)
 
         /// <summary>Raised when the user clicks the box (only when configured interactive).</summary>
@@ -92,6 +93,7 @@ namespace MusicTracker.Controls.TimelineEditor
         public void Configure(string title, string info, double width, double height, bool selected, bool interactive, double opacity, Brush fill = null, Brush border = null)
         {
             this.interactive = interactive;
+            isSelected = selected;
             normalBorder = border ?? NormalBorder;
             Width = width; Height = height; Opacity = opacity;
             box.Width = width; box.Height = height;
@@ -110,8 +112,18 @@ namespace MusicTracker.Controls.TimelineEditor
         /// <summary>Update only the selection border (cheap — no full reconfigure).</summary>
         public void SetSelected(bool selected)
         {
+            isSelected = selected;
             box.BorderBrush = selected ? SelBorder : (interactive ? normalBorder : System.Windows.Media.Brushes.Transparent);
             box.BorderThickness = new Thickness(selected ? 2 : 1);
+        }
+
+        /// <summary>Update only the instrument-family tint (cheap — no full reconfigure), preserving the selection
+        /// border. Used when a track's instrument changes, so its boxes re-tint without rebuilding the timeline.</summary>
+        public void SetColors(Brush fill, Brush border)
+        {
+            normalBorder = border ?? NormalBorder;
+            box.Background = fill ?? Fill;
+            box.BorderBrush = isSelected ? SelBorder : (interactive ? normalBorder : System.Windows.Media.Brushes.Transparent);
         }
 
         /// <summary>Show a mini melodic preview (Play-riff boxes); null hides it.</summary>

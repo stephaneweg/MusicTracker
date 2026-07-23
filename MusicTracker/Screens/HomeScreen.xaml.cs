@@ -59,6 +59,12 @@ namespace MusicTracker.Screens
             }
         }
 
+        // The downloaded changelog is cached next to the app and refreshed at most ONCE A DAY: opening the home
+        // screen repeatedly (it is rebuilt on every visit) must not hammer GitHub. The file's timestamp IS the
+        // expiry clock, so the cache also survives restarts — and keeps the news readable offline.
+        static readonly TimeSpan CacheLifetime = TimeSpan.FromDays(1);
+        static string CachePath => AppPaths.Local("userdata\\changelog.md");
+
         /// <summary>Extracts "- &lt;icon&gt; text" entries from the changelog; everything else (headings, prose, blank
         /// lines) is ignored, so the file stays readable on GitHub. Returns an empty list when nothing matches.</summary>
         static System.Collections.Generic.List<(string icon, string text)> ParseChangelog(string md)
@@ -150,6 +156,25 @@ namespace MusicTracker.Screens
         {
             string url = ChangelogUrl;
             if (string.IsNullOrWhiteSpace(url)) return;
+
+            // 1) Cached copy first: instant, and it is what keeps the news visible offline.
+            string cache = CachePath;
+            bool fresh = false;
+            try
+            {
+                var fi = new System.IO.FileInfo(cache);
+                if (fi.Exists)
+                {
+                    fresh = (DateTime.UtcNow - fi.LastWriteTimeUtc) < CacheLifetime;
+                    var cached = ParseChangelog(System.IO.File.ReadAllText(cache));
+                    if (cached.Count > 0) FillNews(host, cached);
+                }
+            }
+            catch { fresh = false; } // unreadable cache → just refetch
+            if (fresh) return;       // downloaded less than a day ago: nothing to do
+
+            // 2) Refresh from GitHub. Best-effort and silent: offline, 404, timeout or an unparsable file all
+            //    leave whatever is already displayed (cache, else the built-in list).
             try
             {
                 // A fresh HttpClient per call, like AIClient: avoids a client left in a bad state after a failure.
@@ -158,10 +183,17 @@ namespace MusicTracker.Screens
                     http.DefaultRequestHeaders.UserAgent.ParseAdd("MusicTracker");
                     string md = await http.GetStringAsync(url).ConfigureAwait(true);
                     var items = ParseChangelog(md);
-                    if (items.Count > 0) FillNews(host, items); // back on the UI thread (ConfigureAwait(true))
+                    if (items.Count == 0) return;                 // don't cache junk over a good copy
+                    FillNews(host, items);                        // back on the UI thread (ConfigureAwait(true))
+                    try
+                    {
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(cache));
+                        System.IO.File.WriteAllText(cache, md);   // timestamp = the cache's expiry clock
+                    }
+                    catch { /* read-only install dir → just don't cache */ }
                 }
             }
-            catch { /* offline / 404 / timeout → keep the built-in list */ }
+            catch { /* offline / 404 / timeout → keep what is displayed */ }
         }
 
         Button ArrowBtn(string glyph) => new Button
