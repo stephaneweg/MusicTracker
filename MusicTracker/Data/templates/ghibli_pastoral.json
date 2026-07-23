@@ -5,6 +5,7 @@
   "tags": "ghibli pastoral valse doux",
   "measure": { "num": 3, "denom": 4, "bpm": 88, "count": 32 },
   "tonality": { "note": 0, "mode": 0 },
+  "chordProgram": 46,
   "tracks": [
     { "name": "Piano", "program": 0 },
     { "name": "Cordes", "program": 48 },

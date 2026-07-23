@@ -758,6 +758,8 @@ namespace MusicTracker.Screens
             TimelineTrack drumTrack = null;
             if (anyDrums) { drumTrack = new TimelineTrack { Name = "Batterie", Instrument = InstrumentCatalog.DrumIndex, Type = TimelineTrackType.Drum }; project.Tracks.Add(drumTrack); }
             EnsureChordTrack();
+            // The chords lane is created as a piano by default; let the template choose a fitting instrument.
+            if (spec.ChordProgram >= 0 && spec.ChordProgram <= 127) ChordTrack.Instrument = spec.ChordProgram;
 
             int barTemps = RulerBeatsPerBar();
             int tonicPc = Engine.Flow.MusicTheory.TonicPc(project.Key);

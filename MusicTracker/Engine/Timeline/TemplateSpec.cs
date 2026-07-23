@@ -38,6 +38,11 @@ namespace MusicTracker.Engine.Timeline
 
         public TplMeasure Measure { get; set; } = new TplMeasure();
         public TplTonality Tonality { get; set; } = new TplTonality();
+
+        /// <summary>General MIDI program for the dedicated "Accords" lane (−1 = keep the default piano). Without this
+        /// the chord bed was always a piano whatever the style — a harp, guitar or string pad often fits far better.</summary>
+        public int ChordProgram { get; set; } = -1;
+
         public List<TplTrack> Tracks { get; set; } = new List<TplTrack>();
         public List<TplSection> Sections { get; set; } = new List<TplSection>();
     }
@@ -292,6 +297,7 @@ namespace MusicTracker.Engine.Timeline
             sys.AppendLine(@"  ""name"": string, ""description"": string, ""icon"": un emoji, ""tags"": string court,");
             sys.AppendLine(@"  ""measure"": { ""num"": int, ""denom"": int, ""bpm"": int, ""count"": int(nombre de mesures total, ex. 32) },");
             sys.AppendLine(@"  ""tonality"": { ""note"": int(0-11, 0=Do), ""mode"": int(0 Majeur,1 Mineur,2 Mineur harmonique,3 Mineur mélodique,4 Dorien,5 Phrygien,6 Lydien,7 Mixolydien,8 Locrien) },");
+            sys.AppendLine(@"  ""chordProgram"": int(GM 0-127, instrument de la piste d'ACCORDS),");
             sys.AppendLine(@"  ""tracks"": [ { ""name"": string, ""program"": int(GM 0-127) } ],   // l'ORDRE compte : les riffs référencent la piste par index (0 = 1re piste)");
             sys.AppendLine(@"  ""sections"": [ {");
             sys.AppendLine(@"     ""name"": string(ex. ""intro"",""theme"",""refrain"",""pont"",""outro""),");
@@ -325,7 +331,7 @@ namespace MusicTracker.Engine.Timeline
             sys.AppendLine();
             sys.AppendLine("Règles : 3 à 5 sections nommées (intro/theme/refrain/pont/outro selon le style) ; 4 à 8 options par banque ; " + (melodicMode
                 ? "POUR LES LIGNES MÉLODIQUES, 4 à 8 lignes PAR PISTE et PAR SECTION, avec une DENSITÉ adaptée au rôle de la piste (mélodie/lead = rythmes plus denses et actifs ; basse, nappes, contrechant = plus aérés et tenus) ; choisis 'contour' et 'anchor' selon l'INTENTION (sombre → descendant/statique + ancrage fondamentale/tierce ; joyeux → montant/vague) ; une piste peut être SILENCIEUSE dans une section : soit tu l'OMETS des 'melodicLines' de la section, soit tu inclus des lignes VIDES (\"durations\": []) dans sa banque"
-                : "POUR LES RIFFS, 4 à 8 phrases PAR PISTE et PAR SECTION, avec une DENSITÉ adaptée au rôle de la piste (mélodie/lead = phrases plus denses et actives ; basse, nappes, contrechant = plus aérées et tenues) ; une piste peut être SILENCIEUSE dans une section : soit tu l'OMETS des 'riffs' de la section, soit tu inclus des phrases VIDES (\"motif\": []) dans sa banque") + @" — ainsi la pioche laisse parfois l'instrument se taire. SERS-t'en pour la dynamique d'arrangement (intro/pont épurés où seuls 1-2 instruments jouent, montée progressive, respirations) ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
+                : "POUR LES RIFFS, 4 à 8 phrases PAR PISTE et PAR SECTION, avec une DENSITÉ adaptée au rôle de la piste (mélodie/lead = phrases plus denses et actives ; basse, nappes, contrechant = plus aérées et tenues) ; une piste peut être SILENCIEUSE dans une section : soit tu l'OMETS des 'riffs' de la section, soit tu inclus des phrases VIDES (\"motif\": []) dans sa banque") + @" — ainsi la pioche laisse parfois l'instrument se taire. SERS-t'en pour la dynamique d'arrangement (intro/pont épurés où seuls 1-2 instruments jouent, montée progressive, respirations) ; CHOISIS un 'chordProgram' ADAPTÉ AU STYLE pour la piste d'accords — ne mets PAS systématiquement le piano (ex. harpe 46 ou cordes 48/49 pour du pastoral/orchestral, guitare 24/25 pour du folk, piano électrique 4 ou orgue 16/19 pour du jazz/rock, nappe 89 pour de l'ambient) ; accords cohérents avec le style et bouclables ; les phrases de riff pensées sur 4 mesures, aérées (silences via durée négative) ; batterie = motif court qui se répète (renseigne 'bars'). 'slicesPerBeat' typique = 4 (double-croche) ou 6 (ternaire). Réponds UNIQUEMENT par le JSON minifié.");
             string usr = "Style et intention : « " + (styleIntention ?? "").Trim() + " ». Produis le modèle génératif en JSON.";
             return new[] { sys.ToString(), usr };
         }
