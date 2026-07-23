@@ -237,9 +237,12 @@ namespace MusicTracker.Screens
             templatesPanel.Children.Clear();
             foreach (var spec in Engine.Timeline.TemplateLibrary.All)
             {
-                string n = spec.Name;
+                string n = spec.Name, intention = spec.Intention;
+                // "Régénérer le template" (right-click) only for AI-made templates — it re-runs the AI with the stored
+                // intention and overwrites this template.
+                Action onRegen = spec.IsAiGenerated ? (Action)(() => RegenerateTemplate(n, intention)) : null;
                 AddTemplateCard(spec.Icon ?? "🎼", n, "Modèle — structure intro/thème/développement/outro.",
-                                spec.Tags, "#1FB6C3", () => TemplateSpecRequested?.Invoke(n), () => DeleteTemplate(n));
+                                spec.Tags, "#1FB6C3", () => TemplateSpecRequested?.Invoke(n), () => DeleteTemplate(n), onRegen);
             }
         }
 
@@ -251,10 +254,20 @@ namespace MusicTracker.Screens
             RefreshTemplateCards();
         }
 
-        void AddTemplateCard(string icon, string name, string desc, string tags, string accentHex, Action onClick, Action onDelete = null)
+        void AddTemplateCard(string icon, string name, string desc, string tags, string accentHex, Action onClick, Action onDelete = null, Action onRegenerate = null)
         {
             var card = new Button { Style = (Style)FindResource("TemplateCard"), ToolTip = desc };
             card.Click += (s, e) => onClick();
+
+            // Right-click ▸ regenerate (AI templates only). A context menu, so it doesn't clutter the card face.
+            if (onRegenerate != null)
+            {
+                var menu = new ContextMenu();
+                var mi = new MenuItem { Header = "🎲 Régénérer le template (IA)…" };
+                mi.Click += (s, e) => onRegenerate();
+                menu.Items.Add(mi);
+                card.ContextMenu = menu;
+            }
 
             var body = new StackPanel();
             Color accent; try { accent = (Color)ColorConverter.ConvertFromString(accentHex ?? "#1FB6C3"); } catch { accent = Colors.Teal; }
@@ -417,23 +430,44 @@ namespace MusicTracker.Screens
             catch (Exception ex) { MessageBox.Show("Impossible d'ajouter ce template : " + ex.Message, "Ajouter un template", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
-        // "Ajouter avec l'IA…" — style + intention → the template prompt → provider call → validate → save.
-        void btnAddWithAi_Click(object sender, RoutedEventArgs e)
+        // "Ajouter avec l'IA…" — style + intention → the template prompt → provider call → validate → save (new template).
+        void btnAddWithAi_Click(object sender, RoutedEventArgs e) => GenerateTemplateWithAi(null, null);
+
+        // Right-click ▸ "Régénérer le template" — reuse the stored intention (editable) and OVERWRITE the same template.
+        void RegenerateTemplate(string name, string intention)
+            => GenerateTemplateWithAi(intention, name);
+
+        // Shared AI-template flow. `initialIntention` pre-fills the dialog; `forceName` (non-null) overwrites that
+        // existing template (keeps its file) instead of creating a new one. The user's intention is stamped onto the
+        // saved template (IsAiGenerated=true) so it can be regenerated later.
+        void GenerateTemplateWithAi(string initialIntention, string forceName)
         {
-            var dlg = new Dialogs.AiElementDialog("Générer un template — IA",
+            string title = forceName != null ? "Régénérer le template — IA" : "Générer un template — IA";
+            var dlg = new Dialogs.AiElementDialog(title,
                 "Décris un STYLE et une intention (ex. « valse mélancolique de Chopin »). L'IA renvoie un template ; vérifie puis Confirme pour l'enregistrer.",
-                desc => Engine.Timeline.TemplatePrompt.Build(desc)) { Owner = Window.GetWindow(this) };
+                desc => Engine.Timeline.TemplatePrompt.Build(desc), initialIntention) { Owner = Window.GetWindow(this) };
             if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.ResultJson)) return;
             try
             {
                 string json = Engine.AI.AiArrangement.CleanJson(dlg.ResultJson);
                 var spec = System.Text.Json.JsonSerializer.Deserialize<Engine.Timeline.TemplateSpec>(json, TemplateJsonOpts);
                 if (spec == null || string.IsNullOrWhiteSpace(spec.Name)) throw new Exception("Réponse sans template valide.");
-                Engine.Timeline.TemplateLibrary.Save(json, spec.Name);
+                // Remember it was AI-made + the intention (so it can be regenerated), and keep the original file when
+                // regenerating (force the name → same slug → TemplateLibrary.Save overwrites it).
+                spec.IsAiGenerated = true;
+                spec.Intention = dlg.Intention;
+                if (!string.IsNullOrWhiteSpace(forceName)) spec.Name = forceName;
+                Engine.Timeline.TemplateLibrary.Save(System.Text.Json.JsonSerializer.Serialize(spec, TemplateSaveOpts), spec.Name);
                 RefreshTemplateCards();
             }
-            catch (Exception ex) { MessageBox.Show("Template IA invalide : " + ex.Message, "Ajouter avec l'IA", MessageBoxButton.OK, MessageBoxImage.Warning); }
+            catch (Exception ex) { MessageBox.Show("Template IA invalide : " + ex.Message, "Template IA", MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
+
+        static readonly System.Text.Json.JsonSerializerOptions TemplateSaveOpts = new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // keep emojis/accents readable
+        };
 
         private void ListRecent_DoubleClick(object sender, MouseButtonEventArgs e)
         {

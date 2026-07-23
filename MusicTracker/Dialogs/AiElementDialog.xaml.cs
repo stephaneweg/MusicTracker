@@ -21,12 +21,16 @@ namespace MusicTracker.Dialogs
         string currentProvider;
         bool ready;
 
-        public AiElementDialog(string title, string context, Func<string, string[]> buildPrompt)
+        /// <summary>The intention/description the user typed (read after the dialog closes, e.g. to remember it).</summary>
+        public string Intention => txtIntention.Text?.Trim();
+
+        public AiElementDialog(string title, string context, Func<string, string[]> buildPrompt, string initialIntention = null)
         {
             InitializeComponent();
             this.buildPrompt = buildPrompt;
             Title = title;
             txtContext.Text = context ?? "";
+            if (!string.IsNullOrWhiteSpace(initialIntention)) txtIntention.Text = initialIntention;
 
             foreach (var id in AiProviders.Ids) cboProvider.Items.Add(AiProviders.Label(id));
             currentProvider = AiProviders.Norm(AppSettings.Instance.AiProvider);

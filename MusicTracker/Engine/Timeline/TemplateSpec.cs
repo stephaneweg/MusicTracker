@@ -24,6 +24,14 @@ namespace MusicTracker.Engine.Timeline
         public string Description { get; set; }
         public string Icon { get; set; }   // optional home-card glyph
         public string Tags { get; set; }   // optional home-card tag line
+
+        /// <summary>True when this template was produced by the AI (not hand-written / imported). Enables the
+        /// "Régénérer le template" action, which re-runs the AI with <see cref="Intention"/> and overwrites the file.</summary>
+        public bool IsAiGenerated { get; set; }
+        /// <summary>The style/intention the user typed when the AI generated this template — reused (and editable) when
+        /// regenerating it.</summary>
+        public string Intention { get; set; }
+
         /// <summary>The .json file it was loaded from (for deletion). Not serialized.</summary>
         [System.Text.Json.Serialization.JsonIgnore] public string SourcePath { get; set; }
 
