@@ -362,6 +362,12 @@ namespace MusicTracker.Engine.Flow
         /// 0 or unset = the engine default (12 = one octave up and down). Applies to every contour.</summary>
         public int Amplitude { get; set; } = 12;
 
+        /// <summary>ORNEMENTATION (0..100): how often accented ornaments (a suspension/retard or a proper appoggiatura,
+        /// resolved by step onto a chord tone on the next note) replace the plain chord tone on a strong/secondary beat.
+        /// 0 (default) = none → strong beats are clean chord tones; higher = more ornaments. Off by default so the line
+        /// stays predictable.</summary>
+        public int Ornaments { get; set; } = 0;
+
         /// <summary>WAVE LENGTH: for the "Vague" contour, number of notes per arc before the direction flips. Small = tight,
         /// fast ripples; large = broad, slow swells. 0 = the engine's per-voice default. Ignored by the other contours.</summary>
         public int WaveLength { get; set; } = 0;

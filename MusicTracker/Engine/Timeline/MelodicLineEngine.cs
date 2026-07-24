@@ -37,6 +37,7 @@ namespace MusicTracker.Engine.Timeline
             int slope = m.TensionSlope;  // register drift from the first note to the last
             int variation = m.Variation; // 0 none · 1 Split · 2 Gate · 3 Rétrograde · 4 Miroir
             int amp = Math.Max(2, Math.Min(24, m.Amplitude > 0 ? m.Amplitude : 12)); // half-width of the register band
+            int ornaments = Math.Max(0, Math.Min(100, m.Ornaments));                 // accented-ornament density (0 = off)
             var rng = new Random(unchecked(1013 * (m.Notes.Count + 7) + contour * 131 + (int)Math.Round(startBeat)));
             int[] arcLen = { 4, 6, 5 };
             int totalSlices = Math.Max(1, m.BeatsPerBar) * spq;
@@ -134,14 +135,20 @@ namespace MusicTracker.Engine.Timeline
                             int chordChoice = PickTone(contour, ref dir, ref step, waveLen, prev, strongPcs, chordPcs, band, false, rng, idx, moves, frac, amp);
                             midi = chordChoice;
 
-                            // ACCENTED ORNAMENTS on fort/demi-fort only: a suspension (retard: hold prev, resolve a step
-                            // down) or an appoggiatura (a step neighbour), resolved onto the chord tone on the NEXT note.
-                            bool canOrn = cls <= 1 && prev >= 0 && chordChoice >= 0 && next.HasValue && nextContig;
-                            if (canOrn && rng.NextDouble() < (cls == 0 ? 0.22 : 0.13))
+                            // ACCENTED ORNAMENTS on fort/demi-fort — OFF by default (Ornaments = 0). A suspension (retard:
+                            // hold prev if it is a step ABOVE a current chord tone, then resolve down onto it) or a proper
+                            // APPOGGIATURA (a scale tone a step ABOVE a chord tone, resolving DOWN to it on the next note).
+                            // Both keep the chord tone as the RESOLUTION; the ornament only delays it.
+                            bool canOrn = ornaments > 0 && cls <= 1 && prev >= 0 && chordChoice >= 0 && next.HasValue && nextContig;
+                            if (canOrn && rng.NextDouble() < (ornaments / 100.0) * (cls == 0 ? 0.55 : 0.30))
                             {
-                                int sus = StepDownChordTone(prev, chordPcs);
-                                if (sus >= 0) { midi = prev; forceMidi = sus; }              // retard
-                                else { int appo = ScaleStepNeighbor(chordChoice, scalePcs, rng); if (appo >= 0) { midi = appo; forceMidi = chordChoice; } } // appoggiature
+                                int sus = StepDownChordTone(prev, chordPcs);       // prev is a step above a chord tone → retard
+                                if (sus >= 0 && Math.Abs(prev - sus) <= 2) { midi = prev; forceMidi = sus; }
+                                else
+                                {
+                                    int appo = ScaleStepAbove(chordChoice, scalePcs);   // a step ABOVE the chord tone…
+                                    if (appo >= 0) { midi = appo; forceMidi = chordChoice; }  // …resolving DOWN to it
+                                }
                             }
                         }
                     }
@@ -333,6 +340,13 @@ namespace MusicTracker.Engine.Timeline
             var cand = new List<int>();
             foreach (int d in new[] { 2, -2, 1, -1 }) { int m = targetMidi + d; if (pcs.Contains(((m % 12) + 12) % 12)) cand.Add(m); }
             return cand.Count == 0 ? -1 : cand[rng.Next(cand.Count)];
+        }
+
+        // The scale tone a STEP ABOVE targetMidi (a proper appoggiatura position — it resolves DOWN to the chord tone).
+        static int ScaleStepAbove(int targetMidi, HashSet<int> pcs)
+        {
+            for (int d = 1; d <= 2; d++) { int m = targetMidi + d; if (pcs.Contains(((m % 12) + 12) % 12)) return m; }
+            return -1;
         }
 
         // A note BETWEEN two beats — the a/b/else rules. (a) the beat started with a note: a passing tone toward the
