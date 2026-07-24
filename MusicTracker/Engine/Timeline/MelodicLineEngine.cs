@@ -16,8 +16,10 @@ namespace MusicTracker.Engine.Timeline
     {
         static readonly int[] Band = { 74, 66, 58 }; // register centres per voice (~D5 / F#4 / A#3)
 
-        /// <param name="carry">Optional per-voice pitch of the PREVIOUS module's last note (cross-module continuity): the
-        /// line starts near it and, on return, holds this module's last note per voice. Null = independent module.</param>
+        /// <param name="carry">Optional cross-module continuity state, per voice. Length 3 = last-note pitch only ([0..2]).
+        /// Length 9 also carries the last DOWNBEAT chord tone ([3..5]) and its chord root ([6..8]) so a downbeat that
+        /// repeats the previous bar's downbeat under the SAME chord — even across a module boundary — gets nudged.
+        /// Null = independent module.</param>
         public static Riff GenerateLine(MelodicLineModule m, TimelineProject project, Func<Guid, Riff> resolve, KeySignature key, double startBeat, int[] carry = null)
         {
             if (m?.Notes == null || m.Notes.Count == 0) return null;
@@ -60,7 +62,10 @@ namespace MusicTracker.Engine.Timeline
                 bool anchorUsed = false;
                 var starts = new HashSet<int>(vnotes.Select(x => x.Start));         // note onsets (does a beat start with a note?)
                 int forceMidi = -1;                                                 // pending resolution of an accented ornament
-                int lastStrongMidi = -1, lastStrongRoot = -1, lastStrongQual = -1;  // previous on-beat chord tone (to avoid repeating it)
+                int lastStrongMidi = -1, lastStrongRoot = -1;                       // previous ON-BEAT chord tone (avoid repeat within a bar)
+                bool hasFortCarry = carry != null && carry.Length >= 9;             // extended carry also remembers the last downbeat
+                int lastFortMidi = hasFortCarry ? carry[3 + v] : -1;               // previous DOWNBEAT chord tone (bar-to-bar, across modules)
+                int lastFortRoot = hasFortCarry ? carry[6 + v] : -1;              // …and the root of the chord it sat on
                 int waveLen = Math.Max(2, m.WaveLength > 0 ? m.WaveLength : arcLen[v]); // notes per arc for the Vague contour
                 string moves = contour == 7 ? LSystem(vnotes.Count) : null;
                 int[] frac = contour == 8 ? FractalCurve(vnotes.Count, band0, rng, amp) : null;
@@ -136,16 +141,21 @@ namespace MusicTracker.Engine.Timeline
                             }
                             int chordChoice = PickTone(contour, ref dir, ref step, waveLen, prev, strongPcs, chordPcs, band, false, rng, idx, moves, frac, amp);
 
-                            // Avoid RE-LANDING on the same on-beat note when the chord hasn't changed, so a static chord
-                            // makes the line MOVE (Ré → Si, filled by a passing Do) instead of bouncing back (Ré … Ré).
-                            // A soft nudge to a different chord tone — only when the anchor didn't force this note.
-                            if (!anchorForced && chordChoice >= 0 && chordChoice == lastStrongMidi
-                                && root == lastStrongRoot && quality == lastStrongQual && chordPcs.Count > 1)
+                            // Avoid RE-LANDING on the same note when the chord hasn't really moved (compared by ROOT, so
+                            // Sol7 and Sol both count as "V"), so a static/held harmony makes the line MOVE instead of
+                            // bouncing back. Two cases: adjacent on-beats within a bar (Ré … Ré), and — the one the ear
+                            // notices most — two consecutive DOWNBEATS on the same chord, INCLUDING across a module
+                            // boundary (bar 4 fort = bar 5 fort = Ré under V). A soft nudge to a different chord tone,
+                            // only when the anchor didn't force this note.
+                            bool repeatOnBeat  = chordChoice == lastStrongMidi && root == lastStrongRoot;
+                            bool repeatDownbeat = cls == 0 && chordChoice == lastFortMidi && root == lastFortRoot;
+                            if (!anchorForced && chordChoice >= 0 && chordPcs.Count > 1 && (repeatOnBeat || repeatDownbeat))
                             {
                                 int alt = MovedChordTone(chordChoice, chordPcs, band, dir);
                                 if (alt >= 0) chordChoice = alt;
                             }
-                            lastStrongMidi = chordChoice; lastStrongRoot = root; lastStrongQual = quality;
+                            lastStrongMidi = chordChoice; lastStrongRoot = root;
+                            if (cls == 0) { lastFortMidi = chordChoice; lastFortRoot = root; }   // remember this downbeat (carried on)
                             midi = chordChoice;
 
                             // ACCENTED ORNAMENTS on fort/demi-fort — OFF by default (Ornaments = 0). A suspension (retard:
@@ -189,6 +199,7 @@ namespace MusicTracker.Engine.Timeline
                     int lastMidi = gen[0].midi, lastStart = gen[0].start;
                     foreach (var g in gen) if (g.start >= lastStart) { lastStart = g.start; lastMidi = g.midi; }
                     carry[v] = lastMidi;
+                    if (hasFortCarry) { carry[3 + v] = lastFortMidi; carry[6 + v] = lastFortRoot; } // hand the last downbeat to the next module
                 }
             }
             outNotes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
