@@ -56,7 +56,8 @@ if (-not $msbuild) { throw "MSBuild introuvable (installe Visual Studio 2022 ou 
 
 $iscc = Find-Tool @(
   "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-  "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+  "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+  "${env:LOCALAPPDATA}\Programs\Inno Setup 6\ISCC.exe"  # winget per-user install
 ) 'ISCC.exe'
 if (-not $iscc) { throw "ISCC.exe (Inno Setup 6) introuvable. Installe-le : https://jrsoftware.org/isdl.php" }
 
