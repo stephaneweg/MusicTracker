@@ -63,6 +63,7 @@ namespace MusicTracker.Engine.Timeline
         public double Volume = 1.0;            // base volume
         public bool Mute = false;              // silenced
         public bool Solo = false;              // when any track is soloed, only soloed tracks are heard
+        public bool Collapsed = false;         // header + lane shrunk to a minimal height (title + expand button) to save vertical space
         public List<VolumePoint> VolumeAutomation = new List<VolumePoint>(); // changes at T
         public List<TimelineItem> Items = new List<TimelineItem>();
     }
