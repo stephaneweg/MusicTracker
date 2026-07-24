@@ -285,18 +285,21 @@ namespace MusicTracker
             RecentFiles.Instance.Add(path, editor.ModeName);
         }
 
-        // "Composer avec l'IA" (from Home or an editor's menu) → open the dialog and lay the result on a NEW tab.
-        void ComposeWithAiNewTab()
+        // "Composer avec l'IA" (from Home or an editor's menu) → the AI SOURCE builds a document (owning its dialog);
+        // the shell just loads it on a NEW tab, agnostic to how it was produced.
+        void ComposeWithAiNewTab() => OpenFromSource(new Sources.AiComposeSource());
+
+        // Run a project source (it may show its own dialog), and if it produced a document, load it on a new tab.
+        void OpenFromSource(Sources.IProjectSource source)
         {
-            var dlg = new Dialogs.AiComposeDialog { Owner = this };
-            if (dlg.ShowDialog() != true || dlg.Result == null) return;
-            var result = dlg.Result; bool fix = dlg.FixNotes; bool chordVoice = dlg.ChordVoice;
+            var doc = source.Produce(this);
+            if (doc == null) return;
             var editor = new TimelineScreen();
             OpenEditor(editor, null);
             Defer(() =>
             {
-                try { editor.ComposeFresh(result, fix, chordVoice); }
-                catch (Exception ex) { MessageBox.Show("Composition impossible : " + ex.Message); }
+                try { editor.LoadDocument(doc); }
+                catch (Exception ex) { MessageBox.Show("Chargement impossible : " + ex.Message); }
             });
         }
 

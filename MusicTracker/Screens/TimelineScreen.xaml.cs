@@ -1006,35 +1006,54 @@ namespace MusicTracker.Screens
                     System.Text.Json.JsonSerializer.Deserialize<TimelineDocument>(System.IO.File.ReadAllText(path), JsonOpts) ?? new TimelineDocument());
 
                 prog.Set(0.7, "Chargement…");
-                RiffLibrary.Instance.Riffs.Clear();
-                foreach (var r in doc.Riffs) RiffLibrary.Instance.Riffs.Add(r);
-
-                project.Tempo = (doc.Project.Tempo != null && doc.Project.Tempo.Count > 0)
-                    ? doc.Project.Tempo : new System.Collections.Generic.List<TempoChange> { new TempoChange() };
-                project.Key = doc.Project.Key ?? new Engine.Score.KeySignature();
-                project.TimeSigNum = doc.Project.TimeSigNum > 0 ? doc.Project.TimeSigNum : 4;
-                project.TimeSigDen = doc.Project.TimeSigDen > 0 ? doc.Project.TimeSigDen : 4;
-                project.TimeSigScale = doc.Project.TimeSigScale > 0 ? doc.Project.TimeSigScale : 1.0; // was dropped on load
-                project.Arrangement = doc.Project.Arrangement;   // restore the chord trame + sections + theme (was dropped on load)
-                project.UserChordStyles = doc.Project.UserChordStyles ?? new System.Collections.Generic.List<UserChordStyle>(); // restore user chord styles (was dropped on load)
-                project.UserMelodicLines = doc.Project.UserMelodicLines ?? new System.Collections.Generic.List<UserChordStyle>(); // restore saved melodic-line motifs
-                project.UserDrumStyles = doc.Project.UserDrumStyles ?? new System.Collections.Generic.List<UserChordStyle>();     // restore saved custom drum motifs
-                project.PickupBeats = doc.Project.PickupBeats;   // restore the anacrusis (levée)
-                project.Tracks.Clear();
-                foreach (var t in doc.Project.Tracks) project.Tracks.Add(t);
-                SyncUserStyleRefs();   // make chords that reference a user style authoritative from it
-                EnsureChordTrack();    // adopt/create the permanent chords track (bottom-pinned) from what was loaded
-                scoreTracks.Clear(); activeScore = null;
-                selectedTrack = project.Tracks.Count > 0 ? project.Tracks[0] : null;
-                selectedItem = null;
-                editorHost.Content = null;
-                CurrentPath = path;
-                txtBpm.Text = ((int)project.MainBpm).ToString();
+                ApplyDocument(doc, path);
                 await RenderBatched(prog); // add the lane controls in batches so the UI stays responsive
                 prog.Set(1.0, "Terminé");
             }
             catch (Exception ex) { MessageBox.Show("Erreur d'ouverture : " + ex.Message); }
             finally { prog.Close(); }
+        }
+
+        /// <summary>Load a project document into this editor — the single path shared by opening a .sq, importing, and the
+        /// generative SOURCES (AI arrangement, structure, template). The editor stays agnostic to where <paramref name="doc"/>
+        /// came from. <paramref name="path"/> is the backing file (null for an unsaved, source-generated document).</summary>
+        public void LoadDocument(TimelineDocument doc, string path = null)
+        {
+            ApplyDocument(doc, path);
+            Render();
+        }
+
+        // Apply a document's project + riffs onto this editor's live state (no render — the caller renders, batched or not).
+        void ApplyDocument(TimelineDocument doc, string path)
+        {
+            if (doc == null) return;
+            RiffLibrary.Instance.Riffs.Clear();
+            if (doc.Riffs != null) foreach (var r in doc.Riffs) RiffLibrary.Instance.Riffs.Add(r);
+
+            var dp = doc.Project ?? new TimelineProject();
+            project.Tempo = (dp.Tempo != null && dp.Tempo.Count > 0)
+                ? dp.Tempo : new System.Collections.Generic.List<TempoChange> { new TempoChange() };
+            project.Key = dp.Key ?? new Engine.Score.KeySignature();
+            project.TimeSigNum = dp.TimeSigNum > 0 ? dp.TimeSigNum : 4;
+            project.TimeSigDen = dp.TimeSigDen > 0 ? dp.TimeSigDen : 4;
+            project.TimeSigScale = dp.TimeSigScale > 0 ? dp.TimeSigScale : 1.0;
+            project.Arrangement = dp.Arrangement;
+            project.UserChordStyles = dp.UserChordStyles ?? new System.Collections.Generic.List<UserChordStyle>();
+            project.UserMelodicLines = dp.UserMelodicLines ?? new System.Collections.Generic.List<UserChordStyle>();
+            project.UserDrumStyles = dp.UserDrumStyles ?? new System.Collections.Generic.List<UserChordStyle>();
+            project.PickupBeats = dp.PickupBeats;
+            project.MinBeats = dp.MinBeats;
+            project.Tracks.Clear();
+            if (dp.Tracks != null) foreach (var t in dp.Tracks) project.Tracks.Add(t);
+            SyncUserStyleRefs();   // make chords that reference a user style authoritative from it
+            EnsureChordTrack();    // adopt/create the permanent chords track (bottom-pinned)
+            SyncKeyToolbar();
+            scoreTracks.Clear(); activeScore = null;
+            selectedTrack = project.Tracks.Count > 0 ? project.Tracks[0] : null;
+            selectedItem = null;
+            editorHost.Content = null;
+            CurrentPath = path;
+            txtBpm.Text = ((int)project.MainBpm).ToString();
         }
 
         static Riff RiffById(Guid id)
@@ -2731,23 +2750,6 @@ namespace MusicTracker.Screens
         }
 
 
-        // A user-style name that is free in this project. Prefers the model's own 'name' (or the section name),
-        // sanitised, then appends _2, _3… on collision so re-composing never overwrites an existing style.
-        string UniqueUserStyleName(string preferred, string section)
-        {
-            var used = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            if (project.UserChordStyles != null) foreach (var u in project.UserChordStyles) if (u?.Name != null) used.Add(u.Name);
-
-            string b = !string.IsNullOrWhiteSpace(preferred) ? preferred : section;
-            var sb = new System.Text.StringBuilder();
-            foreach (char c in (b ?? "").Trim()) sb.Append(char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '_');
-            string base_ = sb.ToString().Trim('_');
-            if (base_.Length == 0) base_ = "ia";
-            if (base_.Length > 24) base_ = base_.Substring(0, 24);
-
-            if (!used.Contains(base_)) return base_;
-            for (int n = 2; ; n++) { string nm = base_ + "_" + n; if (!used.Contains(nm)) return nm; }
-        }
 
         // "cadence_1", "cadence_2", … — the first number not already used by a project user style.
         string NextCadenceStyleName()
@@ -3850,337 +3852,7 @@ namespace MusicTracker.Screens
         public event Action SaveRequested;
         void btnSaveMusic_Click(object sender, RoutedEventArgs e) => SaveRequested?.Invoke();
 
-        /// <summary>Lay a fresh AI arrangement onto THIS (empty) editor — used by the shell when opening a new tab.</summary>
-        public void ComposeFresh(Engine.AI.AiArrangement a, bool fixNotes, bool silentChords = false) => ApplyAiArrangement(a, fixNotes, false, silentChords);
 
-        // Lay a parsed Mistral arrangement onto the timeline: meter+key, one chord module per bar on the Accords track
-        // (articulation style per section), and one MelodicLineModule per part grouped into an instrument track per role.
-        // REPLACES the current timeline (asks first if it isn't empty).
-        void ApplyAiArrangement(Engine.AI.AiArrangement a, bool fixRiffNotes = true, bool append = false, bool silentChords = false)
-        {
-            CommitRiffEditor();
-
-            if (!append)
-            {
-                bool hasContent = project.Tracks != null && project.Tracks.Exists(t => t?.Items != null && t.Items.Count > 0);
-                if (hasContent && MessageBox.Show("Remplacer la timeline actuelle par le morceau généré ?", "Composer avec l'IA",
-                        MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
-
-                // 1) meter + key + bpm (fresh piece only — a development keeps the current ones)
-                int num = a.meter?.num ?? 4, den = a.meter?.den ?? 4;
-                if (num < 1) num = 4;
-                if (den != 2 && den != 4 && den != 8 && den != 16) den = 4;
-                project.TimeSigNum = num; project.TimeSigDen = den;
-                project.Key = Engine.AI.AiTranslate.ParseKey(a.key);
-                SyncKeyToolbar();
-                if (a.bpm >= 20 && a.bpm <= 400 && project.Tempo != null && project.Tempo.Count > 0)
-                { project.Tempo[0].Bpm = a.bpm; txtBpm.Text = a.bpm.ToString(); }
-            }
-            int barTemps = RulerBeatsPerBar();
-
-            // Develop mode: place the result AFTER the existing content, aligned to the next bar.
-            double baseBeats = 0;
-            if (append)
-            {
-                double maxEnd = 0;
-                foreach (var t in project.Tracks) maxEnd = Math.Max(maxEnd, TrackEndBeats(t));
-                baseBeats = (int)Math.Ceiling(maxEnd / Math.Max(1, barTemps) - 1e-6) * barTemps;
-            }
-
-            // 2) sections → measure→section map + section→articulation style
-            var secOfMeasure = new System.Collections.Generic.Dictionary<int, string>();
-            int m = 1;
-            foreach (var s in a.sections)
-            {
-                int len = Math.Max(1, s.measures);
-                for (int k = 0; k < len; k++) secOfMeasure[m + k] = s.name;
-                m += len;
-            }
-            // Articulation per section: a CUSTOM voiced motif (preferred) built to note-rows, else a named built-in Style.
-            const int artSpq = 4; // slices per temps for the custom chord grid
-            var styleOfSection = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var motifOfSection = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<RiffNote>>(StringComparer.OrdinalIgnoreCase);
-            // Each AI articulation is ALSO registered as a NAMED user style, and every chord of the section references it
-            // (UserStyleName). The per-chord grid stays duplicated (as before), but the shared name makes the motif
-            // editable/reusable afterwards: "Appliquer le motif" then propagates one edit — and its MELODIC CELL — to the
-            // whole section, exactly like a hand-drawn cadence style.
-            var nameOfSection = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var cellOfSection = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<RiffNote>>(StringComparer.OrdinalIgnoreCase);
-            var userStylesAi = project.UserChordStyles ?? (project.UserChordStyles = new System.Collections.Generic.List<UserChordStyle>());
-            foreach (var art in a.articulation)
-            {
-                if (string.IsNullOrWhiteSpace(art.section)) continue;
-                if (art.motif != null && art.motif.Count > 0)
-                {
-                    var mnotes = Engine.AI.AiTranslate.BuildArticulationNotes(art.motif, artSpq);
-                    motifOfSection[art.section] = mnotes;
-                    string nm = UniqueUserStyleName(art.name, art.section);
-                    nameOfSection[art.section] = nm;
-                    int beats = Math.Max(1, barTemps);
-                    userStylesAi.Add(new UserChordStyle
-                    {
-                        Name = nm,
-                        Spb = artSpq,
-                        Beats = beats,
-                        Notes = new System.Collections.Generic.List<RiffNote>(mnotes),
-                        Slices = RiffNotes.ToSlices(mnotes, Math.Max(1, beats * artSpq)),
-                    });
-                }
-                else if (!string.IsNullOrWhiteSpace(art.style))
-                    styleOfSection[art.section] = Engine.AI.AiTranslate.StyleIndex(art.style);
-
-                if (art.melodicCell != null && art.melodicCell.Count > 0)
-                    cellOfSection[art.section] = Engine.AI.AiTranslate.BuildMelodicCellNotes(art.melodicCell, artSpq);
-            }
-
-            // fresh timeline (replace mode); develop mode keeps existing tracks and appends
-            if (!append) project.Tracks.Clear();
-            EnsureChordTrack();
-            var chordTrack = ChordTrack;
-            if (!append && a.chordInstrument >= 0 && a.chordInstrument <= 127) chordTrack.Instrument = a.chordInstrument;
-            double chordEndBefore = TrackEndBeats(chordTrack);
-            int chordPreCount = chordTrack.Items.Count;
-
-            // 3) chords → one module per bar (holding the last degree across bars with no new chord; a bar with several
-            //    chords is split evenly among them).
-            var byMeasure = new System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<Engine.AI.AiChord>>();
-            int lastMeasure = 0;
-            foreach (var c in a.chords)
-            {
-                int meas = Math.Max(1, c.measure);
-                if (!byMeasure.TryGetValue(meas, out var list)) { list = new System.Collections.Generic.List<Engine.AI.AiChord>(); byMeasure[meas] = list; }
-                list.Add(c);
-                if (meas > lastMeasure) lastMeasure = meas;
-            }
-            int totalMeasures = Math.Max(lastMeasure, secOfMeasure.Count > 0 ? Max(secOfMeasure.Keys) : 0);
-            PatternGeneratorModule prevPg = null; Engine.AI.AiChord lastSingle = null;
-            var chordAtMeasure = new Engine.AI.AiChord[totalMeasures + 1]; // effective chord per bar (for riff harmony fix)
-            for (int meas = 1; meas <= totalMeasures; meas++)
-            {
-                byMeasure.TryGetValue(meas, out var list);
-                chordAtMeasure[meas] = (list != null && list.Count > 0) ? list[0] : lastSingle;
-                string sec = secOfMeasure.TryGetValue(meas, out var sn) ? sn : null;
-                int style = (sec != null && styleOfSection.TryGetValue(sec, out int st)) ? st : -1;
-                System.Collections.Generic.List<RiffNote> motif = (sec != null && motifOfSection.TryGetValue(sec, out var mo)) ? mo : null;
-                string artName = (sec != null && nameOfSection.TryGetValue(sec, out var an)) ? an : null;
-                System.Collections.Generic.List<RiffNote> cell = (sec != null && cellOfSection.TryGetValue(sec, out var ce)) ? ce : null;
-                if (list != null && list.Count > 0)
-                {
-                    int k = list.Count;
-                    for (int ci = 0; ci < k; ci++)
-                    {
-                        int part = Math.Max(1, barTemps / k + (ci < barTemps % k ? 1 : 0));
-                        prevPg = AddAiChord(chordTrack, list[ci], part, style, motif, artSpq, prevPg, silentChords, artName, cell);
-                        lastSingle = list[ci];
-                    }
-                }
-                else if (lastSingle != null)
-                    prevPg = AddAiChord(chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords, artName, cell);
-            }
-            // Develop mode: shift the newly-appended chords so they start at baseBeats (a gap on the first new chord).
-            if (append && chordTrack.Items.Count > chordPreCount)
-                chordTrack.Items[chordPreCount].SilenceBefore += Math.Max(0, baseBeats - chordEndBefore);
-
-            // 4) melodic lines → grouped by role into one instrument track each
-            const int spq = 4;
-            var groups = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Engine.AI.AiMelodicLine>>(StringComparer.OrdinalIgnoreCase);
-            var order = new System.Collections.Generic.List<string>();
-            foreach (var line in a.melodicLines)
-            {
-                string role = string.IsNullOrWhiteSpace(line.track) ? "Mélodie" : line.track.Trim();
-                if (!groups.TryGetValue(role, out var list)) { list = new System.Collections.Generic.List<Engine.AI.AiMelodicLine>(); groups[role] = list; order.Add(role); }
-                list.Add(line);
-            }
-            foreach (var role in order)
-            {
-                var lines = groups[role];
-                lines.Sort((p, q) => p.fromMeasure.CompareTo(q.fromMeasure));
-                int instr = 73; foreach (var l in lines) if (l.instrument >= 0 && l.instrument <= 127) { instr = l.instrument; break; }
-                var track = GetOrCreateInstrTrack(role, instr, append);
-                double cursor = TrackEndBeats(track);
-                foreach (var line in lines)
-                {
-                    double lineStart = baseBeats + (Math.Max(1, line.fromMeasure) - 1) * barTemps;
-                    int lineBars = Math.Max(1, line.measures);
-                    int contour = Engine.AI.AiTranslate.ContourIndex(line.contour), anchor = Engine.AI.AiTranslate.AnchorIndex(line.anchor);
-                    for (int b = 0; b < lineBars; b += 4)   // lay in 4-bar blocks (easier to edit than one per section)
-                    {
-                        int cb = Math.Min(4, lineBars - b);
-                        int cBeats = cb * barTemps, cSlices = cBeats * spq;
-                        double startBeat = lineStart + b * barTemps;
-                        var ml = new MelodicLineModule { BeatsPerBar = cBeats, VoiceCount = 1, Contour = contour, Anchor = anchor, RegisterShift = line.register };
-                        ml.SetNotes(Engine.AI.AiTranslate.BuildRhythmNotes(line.durations, cSlices, spq), spq, cSlices);
-                        track.Items.Add(new TimelineItem { Module = ml, SilenceBefore = Math.Max(0, startBeat - cursor) });
-                        cursor = startBeat + cBeats;
-                    }
-                }
-            }
-
-            // 4b) riffs (explicit-note mode) → grouped by role into one instrument track each, as Riff objects.
-            if (a.riffs != null && a.riffs.Count > 0)
-            {
-                const int rspq = 24; // matches the app's timeline riffs (1 temps = SlicesPerQuarter slices)
-                int[] scalePcs = Engine.AI.AiTranslate.ScalePcs(project.Key);
-                var rgroups = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Engine.AI.AiRiff>>(StringComparer.OrdinalIgnoreCase);
-                var rorder = new System.Collections.Generic.List<string>();
-                foreach (var rf in a.riffs)
-                {
-                    string role = string.IsNullOrWhiteSpace(rf.track) ? "Mélodie" : rf.track.Trim();
-                    if (!rgroups.TryGetValue(role, out var list)) { list = new System.Collections.Generic.List<Engine.AI.AiRiff>(); rgroups[role] = list; rorder.Add(role); }
-                    list.Add(rf);
-                }
-                foreach (var role in rorder)
-                {
-                    var list = rgroups[role];
-                    list.Sort((p, q) => p.fromMeasure.CompareTo(q.fromMeasure));
-                    int instr = 73; foreach (var l in list) if (l.instrument >= 0 && l.instrument <= 127) { instr = l.instrument; break; }
-                    var track = GetOrCreateInstrTrack(role, instr, append);
-                    double cursor = TrackEndBeats(track);
-                    foreach (var rf in list)
-                    {
-                        int relBeat = (Math.Max(1, rf.fromMeasure) - 1) * barTemps;   // dev-relative (for harmony lookup)
-                        double rfStart = baseBeats + relBeat;                          // absolute (for placement)
-                        int rfBars = Math.Max(1, rf.measures);
-                        int lenSlices = rfBars * barTemps * rspq;
-                        // Some models give ABSOLUTE note starts (from the piece start) instead of relative to the riff.
-                        // Detect: if the earliest note is at/after this riff's bar offset, subtract it to make them relative.
-                        double sub = 0;
-                        if (relBeat > 0 && rf.notes != null && rf.notes.Count > 0)
-                        {
-                            double minStart = double.MaxValue;
-                            foreach (var nn in rf.notes) if (nn.start < minStart) minStart = nn.start;
-                            if (minStart >= relBeat - 0.5) sub = relBeat;
-                        }
-                        // Build the whole riff once, correct harmony, then cut it into 4-bar blocks (easier to edit).
-                        var full = Engine.AI.AiTranslate.BuildRiffNotes(rf.notes, lenSlices, rspq, barTemps * rspq, sub);
-                        if (fixRiffNotes) CorrectRiffHarmony(full, relBeat, barTemps, rspq, chordAtMeasure, scalePcs);
-                        int barSlices = barTemps * rspq;
-                        for (int b = 0; b < rfBars; b += 4)
-                        {
-                            int cb = Math.Min(4, rfBars - b);
-                            int blockStart = b * barSlices, blockLen = cb * barSlices;
-                            var bn = new System.Collections.Generic.List<Engine.RiffNote>();
-                            foreach (var n in full)
-                            {
-                                if (n.Start < blockStart || n.Start >= blockStart + blockLen) continue;
-                                int ns = n.Start - blockStart;
-                                int nl = Math.Min(n.Length, blockLen - ns);
-                                if (nl >= 1) bn.Add(new Engine.RiffNote(n.Note, ns, nl));
-                            }
-                            var riff = new Riff
-                            {
-                                Name = role + " " + (rf.section ?? ""),
-                                SlicesPerQuarter = rspq,
-                                LengthSlices = blockLen,
-                                Notes = bn,
-                            };
-                            RiffLibrary.Instance.Riffs.Add(riff);
-                            double startBeat = rfStart + b * barTemps;
-                            track.Items.Add(new TimelineItem { Module = new PlayRiffModule { RiffId = riff.Id }, SilenceBefore = Math.Max(0, startBeat - cursor) });
-                            cursor = startBeat + cb * barTemps;
-                        }
-                    }
-                }
-            }
-
-            // 4c) drums → one dedicated drum-kit track, each section a DRUM MODULE holding an explicit percussion
-            // phrase (Note = drum lane; edited later in the riff-like rhythm editor). 16th-note grid keeps it light.
-            if (a.drums != null && a.drums.Count > 0)
-            {
-                const int dspq = 4;
-                var dtrack = GetOrCreateDrumTrack(append);
-                var dlist = new System.Collections.Generic.List<Engine.AI.AiRiff>(a.drums);
-                dlist.Sort((p, q) => p.fromMeasure.CompareTo(q.fromMeasure));
-                double cursor = TrackEndBeats(dtrack);
-                foreach (var rf in dlist)
-                {
-                    int relBeat = (Math.Max(1, rf.fromMeasure) - 1) * barTemps;
-                    double startBeat = baseBeats + relBeat;
-                    int totalBeats = Math.Max(1, rf.measures) * barTemps;
-                    int lenSlices = totalBeats * dspq;
-                    double sub = 0;
-                    if (relBeat > 0 && rf.notes != null && rf.notes.Count > 0)
-                    {
-                        double minStart = double.MaxValue;
-                        foreach (var nn in rf.notes) if (nn.start < minStart) minStart = nn.start;
-                        if (minStart >= relBeat - 0.5) sub = relBeat;
-                    }
-                    var dnotes = new System.Collections.Generic.List<Engine.RiffNote>();
-                    if (rf.notes != null)
-                        foreach (var nn in rf.notes)
-                        {
-                            int start = Math.Max(0, (int)Math.Round((nn.start - sub) * dspq));
-                            if (start >= lenSlices) continue;
-                            int len = Math.Max(1, (int)Math.Round(nn.length * dspq));
-                            if (start + len > lenSlices) len = lenSlices - start;
-                            if (len < 1) continue;
-                            dnotes.Add(new Engine.RiffNote(DrumPattern.LaneForKey(nn.pitch), start, len)); // GM key → lane
-                        }
-                    // A drum groove is ONE short motif looped, not notes filling the whole section. Prefer the model's
-                    // declared motif length + repeat count ('motifBars'/'repeats'); else detect the motif's real length
-                    // (rounded up to whole bars) and loop it to fill the section. Store the UNIT + Repeats (no dup).
-                    int barSlices = Math.Max(1, barTemps * dspq);
-                    int sectionBars = Math.Max(1, rf.measures);
-                    int unitLen, reps;
-                    if (rf.motifBars > 0)
-                    {
-                        unitLen = rf.motifBars * barSlices;
-                        reps = rf.repeats > 0 ? rf.repeats : Math.Max(1, sectionBars / Math.Max(1, rf.motifBars));
-                    }
-                    else
-                    {
-                        int maxEnd = 0; foreach (var n in dnotes) maxEnd = Math.Max(maxEnd, n.Start + n.Length);
-                        int contentBars = Math.Max(1, (int)Math.Ceiling((double)maxEnd / barSlices));
-                        unitLen = contentBars * barSlices; reps = 1;
-                        if (unitLen < lenSlices && lenSlices % unitLen == 0) reps = lenSlices / unitLen;
-                        else unitLen = lenSlices;   // content fills the section (or doesn't divide evenly) — one unit
-                    }
-                    var unitNotes = new System.Collections.Generic.List<Engine.RiffNote>();
-                    foreach (var n in dnotes) if (n.Start < unitLen) unitNotes.Add(new Engine.RiffNote(n.Note, n.Start, Math.Min(n.Length, unitLen - n.Start)));
-                    DrumPattern.CompressPeriodic(unitNotes, unitLen, dspq, out var u2, out int u2len, out int u2reps);
-
-                    // Lay the groove in 4-bar blocks (like the melody/riffs) when the unit aligns on a bar; else one module.
-                    bool canSplit = u2len > 0 && barSlices % u2len == 0 && sectionBars > 4;
-                    if (!canSplit)
-                    {
-                        var dpm = new DrumPatternModule { Kit = 0, Style = DrumPattern.CustomStyle, BeatsPerBar = Math.Max(1, u2len / dspq), Repeats = reps * u2reps };
-                        dpm.SetCustomNotes(u2, dspq, u2len);
-                        dtrack.Items.Add(new TimelineItem { Module = dpm, SilenceBefore = Math.Max(0, startBeat - cursor) });
-                        cursor = startBeat + totalBeats;
-                    }
-                    else
-                    {
-                        int perBar = barSlices / u2len;   // unit repeats per bar
-                        for (int b = 0; b < sectionBars; b += 4)
-                        {
-                            int cb = Math.Min(4, sectionBars - b);
-                            var dpm = new DrumPatternModule { Kit = 0, Style = DrumPattern.CustomStyle, BeatsPerBar = Math.Max(1, u2len / dspq), Repeats = perBar * cb };
-                            dpm.SetCustomNotes(u2, dspq, u2len);
-                            double bStart = startBeat + b * barTemps;
-                            dtrack.Items.Add(new TimelineItem { Module = dpm, SilenceBefore = Math.Max(0, bStart - cursor) });
-                            cursor = bStart + cb * barTemps;
-                        }
-                    }
-                }
-            }
-
-            EnsureChordTrack();  // re-pin the chords track at the bottom
-            selectedTrack = null; selectedItem = null;
-            Render();
-        }
-
-        // Reuse the existing drum track (develop/append), else create the dedicated GM-kit drum track.
-        TimelineTrack GetOrCreateDrumTrack(bool reuse)
-        {
-            if (reuse)
-            {
-                var ex = project.Tracks.Find(x => x != null && x.Type == TimelineTrackType.Drum);
-                if (ex != null) return ex;
-            }
-            var t = new TimelineTrack { Name = "Batterie", Type = TimelineTrackType.Drum, Instrument = InstrumentCatalog.DrumIndex };
-            project.Tracks.Add(t);
-            return t;
-        }
 
         // Total beats occupied by a track (silences + item lengths) — the append cursor for "develop the theme".
         double TrackEndBeats(TimelineTrack t)
@@ -4189,72 +3861,6 @@ namespace MusicTracker.Screens
             double cur = 0;
             foreach (var it in t.Items) cur += it.SilenceBefore + Engine.Timeline.TimelineProject.ItemLength(it, RiffById);
             return cur;
-        }
-
-        // Reuse an existing instrument track with this role name (develop/append mode), else create a new one.
-        TimelineTrack GetOrCreateInstrTrack(string role, int instr, bool reuse)
-        {
-            if (reuse)
-            {
-                var ex = project.Tracks.Find(x => x != null && x.Type == TimelineTrackType.Instrument && string.Equals(x.Name, role, StringComparison.OrdinalIgnoreCase));
-                if (ex != null) return ex;
-            }
-            var t = new TimelineTrack { Name = role, Type = TimelineTrackType.Instrument, Instrument = instr };
-            project.Tracks.Add(t);
-            return t;
-        }
-
-        // Build a compact text of the selected theme (its chords + its notes) to feed the AI for a development.
-        string BuildThemeContext(TimelineTrack track, TimelineItem item, Riff riff)
-        {
-            var key = project.Key ?? new Engine.Score.KeySignature();
-            int barTemps = RulerBeatsPerBar();
-            int spq = Math.Max(1, riff.SlicesPerQuarter);
-            double themeStart = ItemStartBeat(track, item);
-            double themeLen = riff.LengthSlices / (double)spq;
-            System.Globalization.CultureInfo inv = System.Globalization.CultureInfo.InvariantCulture;
-            string Num(double v) => v.ToString("0.##", inv);
-
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"THÈME à développer — tonalité {Engine.Score.KeySig.Derive(key, 0).Name} {(key.Mode == 1 ? "mineur" : "majeur")}, mesure {project.TimeSigNum}/{project.TimeSigDen}, {Num(themeLen / Math.Max(1, barTemps))} mesures.");
-
-            var ct = ChordTrack;
-            if (ct != null)
-            {
-                double cur = 0; var chords = new System.Collections.Generic.List<string>();
-                foreach (var it in ct.Items)
-                {
-                    cur += it.SilenceBefore;
-                    double len = Engine.Timeline.TimelineProject.ItemLength(it, RiffById);
-                    if (it.Module is PatternGeneratorModule pg && cur + len > themeStart + 0.01 && cur < themeStart + themeLen - 0.01)
-                    {
-                        int deg = pg.Degree >= 0 ? pg.Degree + 1 : Engine.Flow.MusicTheory.DegreeOf(key, ((pg.Root % 12) + 12) % 12) + 1;
-                        int mRel = (int)Math.Round((cur - themeStart) / Math.Max(1, barTemps)) + 1;
-                        chords.Add($"m{mRel}=degré {deg} {Get(PatternGenerator.QualityNames, pg.Quality)}");
-                    }
-                    cur += len;
-                }
-                if (chords.Count > 0) sb.AppendLine("Accords du thème : " + string.Join(", ", chords) + ".");
-            }
-
-            var notes = new System.Collections.Generic.List<string>();
-            foreach (var n in riff.Notes) notes.Add($"{n.Note + 12}@{Num(n.Start / (double)spq)}x{Num(n.Length / (double)spq)}");
-            sb.AppendLine("Notes du thème (pitchMIDI@débutEnTemps x duréeEnTemps) : " + string.Join(" ", notes) + ".");
-            return sb.ToString();
-        }
-
-        // "Varier le thème avec l'IA" — the selected riff is the theme; the AI composes a development appended after it.
-        void VaryThemeWithAi(TimelineTrack track, TimelineItem item)
-        {
-            if (!(item?.Module is PlayRiffModule pr)) { MessageBox.Show("Sélectionne un riff (le thème)."); return; }
-            var riff = RiffById(pr.RiffId);
-            if (riff == null || riff.Notes == null || riff.Notes.Count == 0) { MessageBox.Show("Ce riff est vide."); return; }
-            var dlg = new Dialogs.AiComposeDialog { Owner = Window.GetWindow(this), ThemeContext = BuildThemeContext(track, item, riff) };
-            if (dlg.ShowDialog() == true && dlg.Result != null)
-            {
-                try { ApplyAiArrangement(dlg.Result, dlg.FixNotes, append: true, silentChords: dlg.ChordVoice); }
-                catch (Exception ex) { MessageBox.Show("Impossible d'appliquer le développement : " + ex.Message); }
-            }
         }
 
         PatternGeneratorModule AddAiChord(TimelineTrack chordTrack, Engine.AI.AiChord c, int beats, int style,
@@ -4328,32 +3934,60 @@ namespace MusicTracker.Screens
             return pg;
         }
 
-        static int Max(System.Collections.Generic.IEnumerable<int> xs) { int mx = 0; foreach (var x in xs) if (x > mx) mx = x; return mx; }
 
-        // Snap out-of-harmony riff notes: a note ON a beat must be a CHORD tone; off-beat notes must be in the SCALE. Only
-        // notes already outside the target set move (to the nearest tone), so in-key material is left intact.
-        void CorrectRiffHarmony(System.Collections.Generic.List<RiffNote> notes, int riffStartBeat, int barTemps, int rspq,
-            Engine.AI.AiChord[] chordAtMeasure, int[] scalePcs)
+        // Build a compact text of the selected theme (its chords + its notes) to feed the AI for a development.
+        string BuildThemeContext(TimelineTrack track, TimelineItem item, Riff riff)
         {
-            if (notes == null) return;
-            for (int i = 0; i < notes.Count; i++)
+            var key = project.Key ?? new Engine.Score.KeySignature();
+            int barTemps = RulerBeatsPerBar();
+            int spq = Math.Max(1, riff.SlicesPerQuarter);
+            double themeStart = ItemStartBeat(track, item);
+            double themeLen = riff.LengthSlices / (double)spq;
+            System.Globalization.CultureInfo inv = System.Globalization.CultureInfo.InvariantCulture;
+            string Num(double v) => v.ToString("0.##", inv);
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"THÈME à développer — tonalité {Engine.Score.KeySig.Derive(key, 0).Name} {(key.Mode == 1 ? "mineur" : "majeur")}, mesure {project.TimeSigNum}/{project.TimeSigDen}, {Num(themeLen / Math.Max(1, barTemps))} mesures.");
+
+            var ct = ChordTrack;
+            if (ct != null)
             {
-                var n = notes[i];
-                double absBeat = (riffStartBeat * rspq + n.Start) / (double)rspq;
-                int meas = (int)Math.Floor(absBeat / barTemps) + 1;                 // 1-based bar
-                if (meas < 1 || meas >= chordAtMeasure.Length || chordAtMeasure[meas] == null) continue;
-                double beatInBar = absBeat - (meas - 1) * barTemps;
-                bool onBeat = Math.Abs(beatInBar - Math.Round(beatInBar)) < 0.06;
-                int[] target = onBeat ? Engine.AI.AiTranslate.ChordPcs(project.Key, chordAtMeasure[meas].degree, chordAtMeasure[meas].quality) : scalePcs;
-                int midi = n.Note + 12;
-                int pc = ((midi % 12) + 12) % 12;
-                bool inTarget = false; foreach (int t in target) if (t == pc) { inTarget = true; break; }
-                if (inTarget) continue;
-                int fixedMidi = Engine.AI.AiTranslate.SnapMidiToPcs(midi, target);
-                n.Note = Math.Max(0, Math.Min(95, fixedMidi - 12));
-                notes[i] = n;
+                double cur = 0; var chords = new System.Collections.Generic.List<string>();
+                foreach (var it in ct.Items)
+                {
+                    cur += it.SilenceBefore;
+                    double len = Engine.Timeline.TimelineProject.ItemLength(it, RiffById);
+                    if (it.Module is PatternGeneratorModule pg && cur + len > themeStart + 0.01 && cur < themeStart + themeLen - 0.01)
+                    {
+                        int deg = pg.Degree >= 0 ? pg.Degree + 1 : Engine.Flow.MusicTheory.DegreeOf(key, ((pg.Root % 12) + 12) % 12) + 1;
+                        int mRel = (int)Math.Round((cur - themeStart) / Math.Max(1, barTemps)) + 1;
+                        chords.Add($"m{mRel}=degré {deg} {Get(PatternGenerator.QualityNames, pg.Quality)}");
+                    }
+                    cur += len;
+                }
+                if (chords.Count > 0) sb.AppendLine("Accords du thème : " + string.Join(", ", chords) + ".");
+            }
+
+            var notes = new System.Collections.Generic.List<string>();
+            foreach (var n in riff.Notes) notes.Add($"{n.Note + 12}@{Num(n.Start / (double)spq)}x{Num(n.Length / (double)spq)}");
+            sb.AppendLine("Notes du thème (pitchMIDI@débutEnTemps x duréeEnTemps) : " + string.Join(" ", notes) + ".");
+            return sb.ToString();
+        }
+
+        // "Varier le thème avec l'IA" — the selected riff is the theme; the AI composes a development appended after it.
+        void VaryThemeWithAi(TimelineTrack track, TimelineItem item)
+        {
+            if (!(item?.Module is PlayRiffModule pr)) { MessageBox.Show("Sélectionne un riff (le thème)."); return; }
+            var riff = RiffById(pr.RiffId);
+            if (riff == null || riff.Notes == null || riff.Notes.Count == 0) { MessageBox.Show("Ce riff est vide."); return; }
+            var dlg = new Dialogs.AiComposeDialog { Owner = Window.GetWindow(this), ThemeContext = BuildThemeContext(track, item, riff) };
+            if (dlg.ShowDialog() == true && dlg.Result != null)
+            {
+                try { Engine.AI.AiArrangementPlacer.Develop(project, dlg.Result, dlg.FixNotes, dlg.ChordVoice); selectedTrack = null; selectedItem = null; Render(); }
+                catch (Exception ex) { MessageBox.Show("Impossible d'appliquer le développement : " + ex.Message); }
             }
         }
+
 
         // Right-click on a timeline box → a small context menu. Chord boxes get "Proposer la suite…" (the context-aware
         // diagram, inserting the choice right AFTER this chord).

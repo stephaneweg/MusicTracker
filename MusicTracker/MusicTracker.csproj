@@ -260,6 +260,9 @@
     <Compile Include="Engine\AI\GrokClient.cs" />
     <Compile Include="Engine\AI\QwenClient.cs" />
     <Compile Include="Engine\AI\AiArrangement.cs" />
+    <Compile Include="Engine\AI\AiArrangementPlacer.cs" />
+    <Compile Include="Sources\IProjectSource.cs" />
+    <Compile Include="Sources\AiComposeSource.cs" />
     <Compile Include="Engine\BugReport\GitHubIssueClient.cs" />
     <Compile Include="Engine\BugReport\BugReportConfig.cs" />
     <Compile Include="Engine\BugReport\BugReportContext.cs" />
