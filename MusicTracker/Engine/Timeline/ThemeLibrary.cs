@@ -31,7 +31,7 @@ namespace MusicTracker.Engine.Timeline
         {
             try
             {
-                string path = Path.Combine(ThemesDir, (string.IsNullOrWhiteSpace(family) ? "generic" : family.ToLowerInvariant()) + ".json");
+                string path = AppPaths.DataRead(Path.Combine("Data", "themes", (string.IsNullOrWhiteSpace(family) ? "generic" : family.ToLowerInvariant()) + ".json"));
                 if (File.Exists(path))
                 {
                     var lib = JsonSerializer.Deserialize<ThemeLibrary>(File.ReadAllText(path), Opts);

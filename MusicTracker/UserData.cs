@@ -21,13 +21,13 @@ namespace MusicTracker
 
         public void Save()
         {
-            try { System.IO.File.WriteAllText(AppPaths.Local("userdata.json"), System.Text.Json.JsonSerializer.Serialize(this)); }
+            try { System.IO.File.WriteAllText(AppPaths.Roaming("userdata.json"), System.Text.Json.JsonSerializer.Serialize(this)); }
             catch { /* best-effort */ }
         }
         public static UserData Load()
         {
             UserData result = new UserData();
-            string path = AppPaths.Local("userdata.json");
+            string path = AppPaths.UserFile("userdata.json"); // roaming, migrating a legacy next-to-exe copy on first run
             if (System.IO.File.Exists(path))
             {
                 result = System.Text.Json.JsonSerializer.Deserialize<UserData>(System.IO.File.ReadAllText(path));

@@ -15,8 +15,14 @@ namespace MusicTracker.Engine.ComposerV2
         static readonly Dictionary<string, CorpusModelV2> Cache = new Dictionary<string, CorpusModelV2>();
         static readonly JsonSerializerOptions Opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-        /// <summary>The folder holding the bundled + user-created corpus models (next to the assembly).</summary>
+        /// <summary>The folder holding the BUNDLED corpus models (next to the assembly, read-only once installed).</summary>
         public static string ModelsDir => AppPaths.Local(Path.Combine("Data", "models"));
+
+        /// <summary>Where a user-created / re-analyzed model is written: the roaming user folder (writable).</summary>
+        public static string ModelsWriteDir => AppPaths.Roaming(Path.Combine("Data", "models"));
+
+        /// <summary>All model files, bundled + user-created, merged by name (a user copy shadows a bundled one).</summary>
+        public static List<string> ModelFiles() => AppPaths.DataFiles(Path.Combine("Data", "models"), "*.json");
 
         /// <summary>Load (and cache) a model by its file name within Data\models\, e.g. "bach_solo_model_v2.json".
         /// Throws if the file is missing/invalid.</summary>
@@ -24,7 +30,7 @@ namespace MusicTracker.Engine.ComposerV2
         {
             CorpusModelV2 m;
             if (Cache.TryGetValue(fileName, out m)) return m;
-            string path = Path.Combine(ModelsDir, fileName);
+            string path = AppPaths.DataRead(Path.Combine("Data", "models", fileName)); // user copy wins over bundled
             m = JsonSerializer.Deserialize<CorpusModelV2>(File.ReadAllText(path), Opts);
             Cache[fileName] = m;
             return m;

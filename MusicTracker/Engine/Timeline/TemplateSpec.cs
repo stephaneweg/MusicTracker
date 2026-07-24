@@ -221,18 +221,15 @@ namespace MusicTracker.Engine.Timeline
             var list = new List<TemplateSpec>();
             try
             {
-                string dir = AppPaths.Local(Path.Combine("Data", "templates"));
-                if (Directory.Exists(dir))
-                {
-                    var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true };
-                    foreach (var f in Directory.GetFiles(dir, "*.json"))
-                        try
-                        {
-                            var t = JsonSerializer.Deserialize<TemplateSpec>(File.ReadAllText(f), opts);
-                            if (t != null && !string.IsNullOrWhiteSpace(t.Name)) { t.SourcePath = f; list.Add(t); }
-                        }
-                        catch { /* skip a bad file */ }
-                }
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowTrailingCommas = true };
+                // Bundled templates (next to the .exe) + user templates (AI-generated / imported, in the roaming folder).
+                foreach (var f in AppPaths.DataFiles(Path.Combine("Data", "templates"), "*.json"))
+                    try
+                    {
+                        var t = JsonSerializer.Deserialize<TemplateSpec>(File.ReadAllText(f), opts);
+                        if (t != null && !string.IsNullOrWhiteSpace(t.Name)) { t.SourcePath = f; list.Add(t); }
+                    }
+                    catch { /* skip a bad file */ }
             }
             catch { }
             return list;
@@ -244,8 +241,9 @@ namespace MusicTracker.Engine.Timeline
             return null;
         }
 
-        /// <summary>The writable folder holding the templates (assembly-relative, like the other app data).</summary>
-        public static string Dir => AppPaths.Local(Path.Combine("Data", "templates"));
+        /// <summary>The WRITABLE folder for user templates (AI-generated / imported): the roaming user folder, since
+        /// the bundled Data\templates next to the .exe is read-only once installed.</summary>
+        public static string Dir => AppPaths.Roaming(Path.Combine("Data", "templates"));
 
         public static void Reload() => _all = null;
 

@@ -187,9 +187,9 @@ namespace MusicTracker.Dialogs
             string name = Sanitize(nameBox.Text);
             if (name.Length == 0) { MessageBox.Show(this, "Donne un nom au modèle.", "Nouveau modèle"); return; }
 
-            Directory.CreateDirectory(ComposerV2Runtime.ModelsDir);
+            Directory.CreateDirectory(ComposerV2Runtime.ModelsWriteDir); // user models are writable → roaming
             string file = name + ".json";
-            string json = Path.Combine(ComposerV2Runtime.ModelsDir, file);
+            string json = Path.Combine(ComposerV2Runtime.ModelsWriteDir, file);
             var dirs = folders.ToArray();
             var orders = CollectOrders();   // on the UI thread
 

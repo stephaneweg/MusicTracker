@@ -63,7 +63,7 @@ namespace MusicTracker.Screens
         // screen repeatedly (it is rebuilt on every visit) must not hammer GitHub. The file's timestamp IS the
         // expiry clock, so the cache also survives restarts — and keeps the news readable offline.
         static readonly TimeSpan CacheLifetime = TimeSpan.FromDays(1);
-        static string CachePath => AppPaths.Local("userdata\\changelog.md");
+        static string CachePath => AppPaths.Roaming("userdata\\changelog.md");
 
         // One hue per news line. WPF (.NET Framework) does NOT render colour emoji fonts: the glyph falls back to a
         // monochrome outline, which simply takes the Foreground — so tinting is the only way to get colour here, and

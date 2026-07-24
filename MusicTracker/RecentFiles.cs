@@ -44,13 +44,13 @@ namespace MusicTracker
 
         public void Save()
         {
-            try { System.IO.File.WriteAllText(AppPaths.Local("recent.json"), System.Text.Json.JsonSerializer.Serialize(this)); }
+            try { System.IO.File.WriteAllText(AppPaths.Roaming("recent.json"), System.Text.Json.JsonSerializer.Serialize(this)); }
             catch { /* best-effort */ }
         }
 
         public static RecentFiles Load()
         {
-            string path = AppPaths.Local("recent.json");
+            string path = AppPaths.UserFile("recent.json"); // roaming, migrating a legacy next-to-exe copy on first run
             if (System.IO.File.Exists(path))
             {
                 try { return System.Text.Json.JsonSerializer.Deserialize<RecentFiles>(System.IO.File.ReadAllText(path)); }

@@ -50,7 +50,7 @@ namespace MusicTracker.Engine.Flow
             DrumCatalog cat = null;
             try
             {
-                string path = AppPaths.Local(Path.Combine("Data", "drums", "catalog.json"));
+                string path = AppPaths.DataRead(Path.Combine("Data", "drums", "catalog.json"));
                 if (File.Exists(path))
                     cat = JsonSerializer.Deserialize<DrumCatalog>(File.ReadAllText(path),
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });

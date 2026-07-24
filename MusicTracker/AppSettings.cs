@@ -158,7 +158,7 @@ namespace MusicTracker
 
         public void Save()
         {
-            try { File.WriteAllText(AppPaths.Local(FileName), System.Text.Json.JsonSerializer.Serialize(this)); }
+            try { File.WriteAllText(AppPaths.Roaming(FileName), System.Text.Json.JsonSerializer.Serialize(this)); }
             catch { /* settings are best-effort; ignore write failures */ }
         }
 
@@ -166,7 +166,7 @@ namespace MusicTracker
         {
             try
             {
-                string path = AppPaths.Local(FileName);
+                string path = AppPaths.UserFile(FileName); // roaming, migrating a legacy next-to-exe copy on first run
                 if (File.Exists(path))
                     return System.Text.Json.JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path))
                            ?? new AppSettings();

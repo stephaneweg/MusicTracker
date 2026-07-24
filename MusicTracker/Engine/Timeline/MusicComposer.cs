@@ -265,9 +265,9 @@ namespace MusicTracker.Engine.Timeline
         static List<MusicComposer> Build()
         {
             var list = new List<MusicComposer>();
-            string dir = MusicTracker.Engine.ComposerV2.ComposerV2Runtime.ModelsDir;
-            if (!System.IO.Directory.Exists(dir)) return list;
-            var files = System.IO.Directory.GetFiles(dir, "*.json").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+            var files = MusicTracker.Engine.ComposerV2.ComposerV2Runtime.ModelFiles()
+                            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+            if (files.Count == 0) return list;
 
 
             // TEMPLATE-ONLY: one entry per FAMILY that has a curated theme library; pick the model whose emitter exposes
@@ -279,7 +279,7 @@ namespace MusicTracker.Engine.Timeline
             {
                 string file = System.IO.Path.GetFileName(f);
                 string family = MusicTracker.Engine.ComposerV3.ComposerV3Factory.For(file).FamilyKey;
-                if (!System.IO.File.Exists(System.IO.Path.Combine(ThemeLibrary.ThemesDir, family + ".json"))) continue;
+                if (!System.IO.File.Exists(AppPaths.DataRead(System.IO.Path.Combine("Data", "themes", family + ".json")))) continue;
                 int sc = 0; try { sc = MusicTracker.Engine.ComposerV3.ComposerV3Factory.For(file).Styles.Count; } catch { }
                 if (!pickFile.ContainsKey(family) || sc > pickStyles[family]) { pickFile[family] = file; pickStyles[family] = sc; }
             }

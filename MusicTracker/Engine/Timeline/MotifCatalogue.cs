@@ -25,7 +25,7 @@ namespace MusicTracker.Engine.Timeline
             try
             {
                 string fam = string.IsNullOrWhiteSpace(family) ? "generic" : family.ToLowerInvariant();
-                string path = Path.Combine(Dir, fam + ".json");
+                string path = AppPaths.DataRead(Path.Combine("Data", "catalogue", fam + ".json"));
                 if (File.Exists(path))
                 {
                     var c = JsonSerializer.Deserialize<FamilyCatalogue>(File.ReadAllText(path), Opts);
