@@ -267,10 +267,28 @@ namespace MusicTracker
             dlg.ShowDialog();
         }
 
+        // "Aide": open the help menu (Signaler un bug + À propos) anchored under the button.
+        private void btnHelp_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.ContextMenu != null)
+            {
+                fe.ContextMenu.PlacementTarget = fe;
+                fe.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                fe.ContextMenu.IsOpen = true;
+            }
+        }
+
         // "Signaler un bug": files a GitHub issue with an optional attachment of the current project (+ its template).
-        private void btnReportBug_Click(object sender, RoutedEventArgs e)
+        private void miReportBug_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Dialogs.ReportBugDialog(current as TimelineScreen) { Owner = this };
+            dlg.ShowDialog();
+        }
+
+        // "À propos": app name/version, author and third-party credits (MeltySynth, …).
+        private void miAbout_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Dialogs.AboutDialog { Owner = this };
             dlg.ShowDialog();
         }
 

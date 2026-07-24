@@ -256,6 +256,9 @@
     <Compile Include="Dialogs\ReportBugDialog.xaml.cs">
       <DependentUpon>ReportBugDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Dialogs\AboutDialog.xaml.cs">
+      <DependentUpon>AboutDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Engine\AI\AiProviders.cs" />
     <Compile Include="Engine\AI\MistralClient.cs" />
     <Compile Include="Engine\AI\GeminiClient.cs" />
@@ -406,6 +409,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\ReportBugDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\AboutDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

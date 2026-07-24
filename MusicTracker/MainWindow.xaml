@@ -120,11 +120,19 @@
                         Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="6,0"
                         Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-                <!-- Signaler un bug, just left of the settings gear. -->
-                <Button DockPanel.Dock="Right" Click="btnReportBug_Click" ToolTip="Signaler un bug" Cursor="Hand"
-                        Content="&#xE939;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="0"
+                <!-- Aide : menu déroulant (Signaler un bug + À propos), just left of the settings gear. -->
+                <Button x:Name="btnHelp" DockPanel.Dock="Right" Click="btnHelp_Click" ToolTip="Aide" Cursor="Hand"
+                        Content="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="0"
                         Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
-                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Signaler un bug…" Click="miReportBug_Click"/>
+                            <Separator/>
+                            <MenuItem Header="À propos de MusicTracker…" Click="miAbout_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
                 <!-- Accueil + one button per open music (flush, full height). -->
                 <StackPanel x:Name="tabStrip" DockPanel.Dock="Left" Orientation="Horizontal"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
