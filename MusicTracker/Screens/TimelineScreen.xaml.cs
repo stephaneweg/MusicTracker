@@ -26,6 +26,7 @@ namespace MusicTracker.Screens
         // while still leaving a clear title strip (top 14) above them — the Repeat box is taller than
         // a plain leaf needs, but uniform lane height keeps the layout simple.
         const double LaneH = 88, TempoH = 40, VolLaneH = 48, HeaderW = 160, ChordH = 26;
+        const double CollapsedH = 26; // a collapsed track shrinks header + lane to this minimal height (issue #5)
         const double PxPerBeat = 60; // box width per beat (a 4/4 measure ≈ 240 px); RiffThumbnail must match
 
         bool autoTransposeChords;        // chord lane: when on, editing a chord also transposes the melody (else only bass+accompaniment)
@@ -797,13 +798,9 @@ namespace MusicTracker.Screens
             {
                 var track = project.Tracks[i];
                 if (track.Type == TimelineTrackType.Chord) continue;   // rendered separately in the docked chords lane
-                headerPanel.Children.Add(MakeHeader(null, VolLaneH + LaneH, track));
-                var stack = new StackPanel();
-                var vol = new Controls.TimelineEditor.VolumeLaneControl();
-                vol.Configure(track, PxPerBeat, VolLaneH, laneWidth); // volume sub-track on top
-                stack.Children.Add(vol);
-                stack.Children.Add(MakeTrackLane(track, laneWidth));
-                lanePanel.Children.Add(LaneRow(stack, VolLaneH + LaneH));
+                double rh = TrackRowH(track);
+                headerPanel.Children.Add(MakeHeader(null, rh, track));
+                lanePanel.Children.Add(LaneRow(MakeTrackRow(track, laneWidth), rh));
             }
             RenderChordDock(laneWidth);
             UpdateToolbar();
@@ -821,13 +818,9 @@ namespace MusicTracker.Screens
             chordLanePanel.Children.Clear();
             var chord = TimelineHelper.ChordTrack(project);
             if (chord == null) return;
-            chordHeaderHost.Content = MakeHeader(null, VolLaneH + LaneH, chord);
-            var stack = new StackPanel();
-            var vol = new Controls.TimelineEditor.VolumeLaneControl();
-            vol.Configure(chord, PxPerBeat, VolLaneH, laneWidth);
-            stack.Children.Add(vol);
-            stack.Children.Add(MakeTrackLane(chord, laneWidth));
-            chordLanePanel.Children.Add(LaneRow(stack, VolLaneH + LaneH));
+            double rh = TrackRowH(chord);
+            chordHeaderHost.Content = MakeHeader(null, rh, chord);
+            chordLanePanel.Children.Add(LaneRow(MakeTrackRow(chord, laneWidth), rh));
         }
 
         // Like Render but the (heavy) module boxes are added in BATCHES with dispatcher yields, so loading a big
@@ -858,14 +851,16 @@ namespace MusicTracker.Screens
             foreach (var track in project.Tracks)
             {
                 if (track.Type == TimelineTrackType.Chord) continue;   // rendered separately in the docked chords lane
-                headerPanel.Children.Add(MakeHeader(null, VolLaneH + LaneH, track));
+                double rh = TrackRowH(track);
+                headerPanel.Children.Add(MakeHeader(null, rh, track));
+                if (track.Collapsed) { lanePanel.Children.Add(LaneRow(MakeTrackRow(track, laneWidth), rh)); continue; } // no items to batch-fill
                 var stack = new StackPanel();
                 var vol = new Controls.TimelineEditor.VolumeLaneControl();
                 vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
                 stack.Children.Add(vol);
                 var lane = MakeTrackLane(track, laneWidth, fillItems: false);
                 stack.Children.Add(lane);
-                lanePanel.Children.Add(LaneRow(stack, VolLaneH + LaneH));
+                lanePanel.Children.Add(LaneRow(stack, rh));
                 lanes.Add((lane, track));
             }
             RenderChordDock(laneWidth);
@@ -919,6 +914,22 @@ namespace MusicTracker.Screens
         Border LaneRow(UIElement content, double height)
             => new Border { Height = height, Child = content, BorderBrush = TrackSeparatorBrush, BorderThickness = new Thickness(0, 0, 0, 1) };
 
+        // Height of a track's header + lane row: minimal when collapsed (issue #5), else the full volume + lane stack.
+        double TrackRowH(TimelineTrack track) => track != null && track.Collapsed ? CollapsedH : VolLaneH + LaneH;
+
+        // The lane-column content for a track: a thin filler when collapsed, else the volume sub-track + module lane.
+        UIElement MakeTrackRow(TimelineTrack track, double laneWidth, bool fillItems = true)
+        {
+            if (track.Collapsed)
+                return new Border { Background = new SolidColorBrush(LaneBgColor(track)), Width = laneWidth };
+            var stack = new StackPanel();
+            var vol = new Controls.TimelineEditor.VolumeLaneControl();
+            vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
+            stack.Children.Add(vol);
+            stack.Children.Add(MakeTrackLane(track, laneWidth, fillItems));
+            return stack;
+        }
+
         Border MakeHeader(string fixedTitle, double height, TimelineTrack track)
         {
             var border = new Border { Height = height, BorderBrush = TrackSeparatorBrush, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6, 4, 6, 4) };
@@ -932,12 +943,34 @@ namespace MusicTracker.Screens
 
             var panel = new StackPanel();
             var top = new StackPanel { Orientation = Orientation.Horizontal };
+            // Collapse / expand toggle (issue #5): shrinks this track's header + lane to a minimal height (title + button)
+            // so many tracks fit on screen without scrolling. State lives on the track (persisted with the project).
+            var collapseBtn = new Button
+            {
+                Content = track.Collapsed ? "▸" : "▾", Width = 18, Height = 18, Padding = new Thickness(0), FontSize = 10,
+                Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand,
+                Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = Brushes.White,
+                ToolTip = track.Collapsed ? "Déplier la piste" : "Replier la piste (gagner de la hauteur)"
+            };
+            collapseBtn.Click += (s, e) => { track.Collapsed = !track.Collapsed; Render(); };
+            top.Children.Add(collapseBtn);
             // Instrument-family colour dot (fixed in the header, so always visible even when the lane scrolls).
             var famDot = new Ellipse { Width = 9, Height = 9, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0), Fill = new SolidColorBrush(HeaderFamilyColor(track)) };
             top.Children.Add(famDot);
             var name = new TextBox { Text = track.Name, Width = 88, FontSize = 11 };
             name.LostFocus += (s, e) => track.Name = name.Text;
             top.Children.Add(name);
+
+            // Collapsed: minimal header (expand button + colour dot + name), skip instrument/volume/mute controls.
+            if (track.Collapsed)
+            {
+                border.Padding = new Thickness(6, 2, 6, 2);
+                top.VerticalAlignment = VerticalAlignment.Center;
+                border.Child = top;
+                trackHeaders[track] = border;
+                border.PreviewMouseLeftButtonDown += (s, e) => SelectTrack(track);
+                return border;
+            }
             var scoreChk = new CheckBox { Content = "♫", FontFamily = new FontFamily("Segoe UI Symbol"), IsChecked = scoreTracks.Contains(track), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), Cursor = Cursors.Hand, ToolTip = "Afficher cette piste dans la partition" };
             scoreChk.Checked += (s, e) => { scoreTracks.Add(track); viewScore = true; RefreshScore(); }; // checking ♫ shows the score
             scoreChk.Unchecked += (s, e) => { scoreTracks.Remove(track); RefreshScore(); };
@@ -1962,15 +1995,11 @@ namespace MusicTracker.Screens
             measureRuler.Configure(laneWidth, 20, PxPerBeat, TimelineHelper.RulerBeatsPerBar(project), project.PickupBeats);
             if (startCanvas != null) startCanvas.Width = laneWidth;
 
+            double rh = TrackRowH(track);
             headerPanel.Children.RemoveAt(idx);
-            headerPanel.Children.Insert(idx, MakeHeader(null, VolLaneH + LaneH, track));
-            var stack = new StackPanel();
-            var vol = new Controls.TimelineEditor.VolumeLaneControl();
-            vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
-            stack.Children.Add(vol);
-            stack.Children.Add(MakeTrackLane(track, laneWidth));
+            headerPanel.Children.Insert(idx, MakeHeader(null, rh, track));
             lanePanel.Children.RemoveAt(idx);
-            lanePanel.Children.Insert(idx, LaneRow(stack, VolLaneH + LaneH));
+            lanePanel.Children.Insert(idx, LaneRow(MakeTrackRow(track, laneWidth), rh));
 
             // The total may have grown (this riff became the longest) -> stretch the OTHER lanes' width too,
             // cheaply (O(tracks)): their modules are unchanged, only the background/volume span widens. Each lane
