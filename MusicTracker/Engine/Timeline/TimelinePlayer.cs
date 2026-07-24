@@ -153,7 +153,7 @@ namespace MusicTracker.Engine.Timeline
                     Autom = (tr.VolumeAutomation != null ? tr.VolumeAutomation.OrderBy(p => p.Beat).ToList() : new List<VolumePoint>()),
                 };
                 double cursor = 0;
-                var carry = new[] { -1, -1, -1 };   // cross-module continuity: last melodic-line pitch per voice on this track
+                var carry = new[] { -1, -1, -1, -1, -1, -1, -1, -1, -1 };   // cross-module continuity per voice: [0..2] last pitch, [3..5] last downbeat, [6..8] its chord root
                 foreach (var item in tr.Items)
                 {
                     cursor += item.SilenceBefore;

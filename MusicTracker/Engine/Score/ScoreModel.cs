@@ -288,7 +288,7 @@ namespace MusicTracker.Engine.Score
             if (resolveLoops) TimelineProject.ResolveLoops(project, resolveRiff); // size looping Repeats to fill up to the end
             double scale = project.TimeSigScale > 0 ? project.TimeSigScale : 1.0; // 1.5 for 4/4-in-triplets → 12/8
             double cursor = 0;
-            var carry = new[] { -1, -1, -1 };   // cross-module continuity: last melodic-line pitch per voice (matches playback)
+            var carry = new[] { -1, -1, -1, -1, -1, -1, -1, -1, -1 };   // cross-module continuity per voice: [0..2] last pitch, [3..5] last downbeat, [6..8] its chord root (matches playback)
             foreach (var item in track.Items)
             {
                 cursor += item.SilenceBefore;

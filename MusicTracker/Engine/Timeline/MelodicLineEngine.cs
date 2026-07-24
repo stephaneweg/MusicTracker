@@ -16,8 +16,10 @@ namespace MusicTracker.Engine.Timeline
     {
         static readonly int[] Band = { 74, 66, 58 }; // register centres per voice (~D5 / F#4 / A#3)
 
-        /// <param name="carry">Optional per-voice pitch of the PREVIOUS module's last note (cross-module continuity): the
-        /// line starts near it and, on return, holds this module's last note per voice. Null = independent module.</param>
+        /// <param name="carry">Optional cross-module continuity state, per voice. Length 3 = last-note pitch only ([0..2]).
+        /// Length 9 also carries the last DOWNBEAT chord tone ([3..5]) and its chord root ([6..8]) so a downbeat that
+        /// repeats the previous bar's downbeat under the SAME chord — even across a module boundary — gets nudged.
+        /// Null = independent module.</param>
         public static Riff GenerateLine(MelodicLineModule m, TimelineProject project, Func<Guid, Riff> resolve, KeySignature key, double startBeat, int[] carry = null)
         {
             if (m?.Notes == null || m.Notes.Count == 0) return null;
@@ -47,6 +49,7 @@ namespace MusicTracker.Engine.Timeline
             // Slices per MAIN beat (dotted quarter in compound, else the notated beat) — the pulse the a/b and syncope
             // rules reason about, kept consistent with ClassifyMetric.
             int beatSlices = Math.Max(1, (int)Math.Round(spq * (meterCompound ? 1.5 : 4.0 / meterDen)));
+            bool hasFortCarry = carry != null && carry.Length >= 9;                 // extended carry also remembers the last downbeat
             for (int v = 0; v < MelodicLineModule.MaxVoices; v++)
             {
                 int band0 = Band[v] + reg;                                          // register centre for this voice (shifted)
@@ -54,129 +57,130 @@ namespace MusicTracker.Engine.Timeline
                 if (variation == 1) vnotes = SplitRhythm(vnotes, spq);              // rhythm variations act on the SKELETON
                 else if (variation == 2) vnotes = GateRhythm(vnotes);
                 if (vnotes.Count == 0) continue;
+                int nc = vnotes.Count;
 
-                int prev = (carry != null && v < carry.Length) ? carry[v] : -1;     // continue from the previous module
-                int dir = v == 1 ? -1 : 1, step = 0;
-                bool anchorUsed = false;
-                var starts = new HashSet<int>(vnotes.Select(x => x.Start));         // note onsets (does a beat start with a note?)
-                int forceMidi = -1;                                                 // pending resolution of an accented ornament
-                int lastStrongMidi = -1, lastStrongRoot = -1, lastStrongQual = -1;  // previous on-beat chord tone (to avoid repeating it)
-                int waveLen = Math.Max(2, m.WaveLength > 0 ? m.WaveLength : arcLen[v]); // notes per arc for the Vague contour
-                string moves = contour == 7 ? LSystem(vnotes.Count) : null;
-                int[] frac = contour == 8 ? FractalCurve(vnotes.Count, band0, rng, amp) : null;
-
-                var gen = new List<(int start, int len, int midi)>();
-                for (int idx = 0; idx < vnotes.Count; idx++)
+                // ---- context per note (one harmony lookup each) --------------------------------------------------
+                var cls = new int[nc]; var roots = new int[nc]; var chords = new HashSet<int>[nc];
+                var bandOf = new int[nc]; var ok = new bool[nc];
+                for (int i = 0; i < nc; i++)
                 {
-                    var n = vnotes[idx];
-                    double absBeat = startBeat + n.Start / (double)spq;
-                    if (!Harmony.ChordAt(project, resolve, absBeat, out int root, out int quality, out _)) continue;
-                    var chordPcs = new HashSet<int>();
-                    foreach (var p in PatternGenerator.ChordNotes(root, 4, quality, 0)) chordPcs.Add(((p % 12) + 12) % 12);
-                    double phased = absBeat - pickup;
-                    int band = band0 + (vnotes.Count > 1 ? slope * idx / (vnotes.Count - 1) : 0); // TENSION SLOPE drift
+                    double absBeat = startBeat + vnotes[i].Start / (double)spq;
+                    if (!Harmony.ChordAt(project, resolve, absBeat, out int root, out int quality, out _)) { ok[i] = false; continue; }
+                    ok[i] = true; roots[i] = root;
+                    var pcs = new HashSet<int>();
+                    foreach (var p in PatternGenerator.ChordNotes(root, 4, quality, 0)) pcs.Add(((p % 12) + 12) % 12);
+                    chords[i] = pcs;
+                    cls[i] = ClassifyMetric(absBeat - pickup, meterNum, meterDen);  // 0 fort · 1 demi-fort · 2 faible · 3 entre-deux
+                    bandOf[i] = band0 + (nc > 1 ? slope * i / (nc - 1) : 0);        // TENSION SLOPE drift
+                }
+                var starts = new HashSet<int>(vnotes.Select(x => x.Start));         // note onsets (does a beat start with a note?)
 
-                    // ---- harmonic rules by METRIC position -----------------------------------------------------------
-                    // fort (temps 1) = note d'accord (± appoggiature/retard résolus) ; demi-fort (temps fort secondaire)
-                    // = idem, plus souple ; faible (autre temps sur le temps) = note d'accord ; entre deux temps = notes
-                    // de passage / broderies / appoggiatures selon le contexte (a/b) ; syncope = accent déplacé = accord.
-                    int midi;
-                    bool forcedResolution = false;
-                    if (forceMidi >= 0) { midi = forceMidi; forceMidi = -1; forcedResolution = true; }
-                    else
+                // pitch[i] = MinValue while UNPLACED; the passes fill it level by level so each fill sees its neighbours.
+                var pitch = new int[nc]; for (int i = 0; i < nc; i++) pitch[i] = int.MinValue;
+                int carryPrev = (carry != null && v < carry.Length) ? carry[v] : -1;
+                int lastFortMidi = hasFortCarry ? carry[3 + v] : -1;               // previous DOWNBEAT chord tone (bar-to-bar, across modules)
+                int lastFortRoot = hasFortCarry ? carry[6 + v] : -1;
+                Func<int, int> leftOf  = i => { for (int j = i - 1; j >= 0; j--) if (pitch[j] != int.MinValue) return pitch[j]; return carryPrev; };
+                Func<int, int> rightOf = i => { for (int j = i + 1; j < nc; j++) if (pitch[j] != int.MinValue) return pitch[j]; return -1; };
+
+                int dir = v == 1 ? -1 : 1, step = 0; bool anchorUsed = false;
+                int waveLen = Math.Max(2, m.WaveLength > 0 ? m.WaveLength : arcLen[v]); // notes per arc for the Vague contour
+                string moves = contour == 7 ? LSystem(nc) : null;
+                int[] frac = contour == 8 ? FractalCurve(nc, band0, rng, amp) : null;
+
+                // ---- PASS 1 : DOWNBEATS (temps forts) = the harmonic skeleton. The CONTOUR shapes this level; each fort
+                //      voice-leads from the previous one (across modules via the carry) and avoids repeating it. ----------
+                int prevFort = carryPrev;
+                for (int i = 0; i < nc; i++)
+                {
+                    if (!ok[i] || cls[i] != 0) continue;
+                    int root = roots[i], band = bandOf[i]; var pcs = chords[i];
+                    HashSet<int> strongPcs = pcs; bool anchorForced = false;
+                    if (anchor > 0 && !anchorUsed && pcs.Count > 0)
                     {
-                        int cls = ClassifyMetric(phased, meterNum, meterDen);       // 0 fort · 1 demi-fort · 2 faible · 3 entre-deux
-
-                        // Context shared by the rules.
-                        int beatStartSlice = (n.Start / beatSlices) * beatSlices;
-                        bool beatStartsWithNote = starts.Contains(beatStartSlice);
-                        var next = idx + 1 < vnotes.Count ? vnotes[idx + 1] : (RiffNote?)null;
-                        bool nextContig = next.HasValue && next.Value.Start <= n.Start + n.Length; // no rest before the next note
-                        int nextTarget = -1;
-                        if (next.HasValue)
-                        {
-                            double nAbs = startBeat + next.Value.Start / (double)spq;
-                            if (Harmony.ChordAt(project, resolve, nAbs, out int nr, out int nq, out _))
-                            {
-                                var nc = new HashSet<int>();
-                                foreach (var p in PatternGenerator.ChordNotes(nr, 4, nq, 0)) nc.Add(((p % 12) + 12) % 12);
-                                nextTarget = NearestTone(prev >= 0 ? prev : band, nc, band);
-                            }
-                        }
-
-                        if (cls == 3)
-                        {
-                            // SYNCOPE : une note de contretemps qui se PROLONGE par-dessus le temps suivant devient un
-                            // accent déplacé → elle doit être une note de l'accord courant, ou de l'accord suivant s'il
-                            // change sur ce temps fort.
-                            int nextBeat = (n.Start / beatSlices + 1) * beatSlices;
-                            bool syncope = (n.Start % beatSlices) != 0 && n.Start + n.Length > nextBeat;
-                            if (syncope)
-                            {
-                                var sPcs = new HashSet<int>(chordPcs);
-                                double bAbs = startBeat + nextBeat / (double)spq;
-                                if (Harmony.ChordAt(project, resolve, bAbs, out int br, out int bq, out _))
-                                    foreach (var p in PatternGenerator.ChordNotes(br, 4, bq, 0)) sPcs.Add(((p % 12) + 12) % 12);
-                                midi = NearestTone(prev >= 0 ? prev : band, sPcs.Count > 0 ? sPcs : chordPcs, band);
-                            }
-                            else
-                                midi = PickBetween(prev, nextTarget, chordPcs, scalePcs, band, beatStartsWithNote, nextContig, rng);
-                        }
-                        else
-                        {
-                            // ON A BEAT (fort / demi-fort / faible) → a CHORD tone. The first fort/demi note may take the anchor.
-                            HashSet<int> strongPcs = chordPcs;
-                            bool anchorForced = false;
-                            if (anchor > 0 && !anchorUsed && cls <= 1 && chordPcs.Count > 0)
-                            {
-                                int targetPc = (((root + AnchorGuide[Math.Min(anchor - 1, AnchorGuide.Length - 1)]) % 12) + 12) % 12;
-                                int bestPc = -1, bestD = 99;
-                                foreach (var p in chordPcs) { int d = PcDist(p, targetPc); if (d < bestD) { bestD = d; bestPc = p; } }
-                                if (bestPc >= 0) { strongPcs = new HashSet<int> { bestPc }; anchorUsed = true; anchorForced = true; }
-                            }
-                            int chordChoice = PickTone(contour, ref dir, ref step, waveLen, prev, strongPcs, chordPcs, band, false, rng, idx, moves, frac, amp);
-
-                            // Avoid RE-LANDING on the same on-beat note when the chord hasn't changed, so a static chord
-                            // makes the line MOVE (Ré → Si, filled by a passing Do) instead of bouncing back (Ré … Ré).
-                            // A soft nudge to a different chord tone — only when the anchor didn't force this note.
-                            if (!anchorForced && chordChoice >= 0 && chordChoice == lastStrongMidi
-                                && root == lastStrongRoot && quality == lastStrongQual && chordPcs.Count > 1)
-                            {
-                                int alt = MovedChordTone(chordChoice, chordPcs, band, dir);
-                                if (alt >= 0) chordChoice = alt;
-                            }
-                            lastStrongMidi = chordChoice; lastStrongRoot = root; lastStrongQual = quality;
-                            midi = chordChoice;
-
-                            // ACCENTED ORNAMENTS on fort/demi-fort — OFF by default (Ornaments = 0). A suspension (retard:
-                            // hold prev if it is a step ABOVE a current chord tone, then resolve down onto it) or a proper
-                            // APPOGGIATURA (a scale tone a step ABOVE a chord tone, resolving DOWN to it on the next note).
-                            // Both keep the chord tone as the RESOLUTION; the ornament only delays it.
-                            bool canOrn = ornaments > 0 && cls <= 1 && prev >= 0 && chordChoice >= 0 && next.HasValue && nextContig;
-                            if (canOrn && rng.NextDouble() < (ornaments / 100.0) * (cls == 0 ? 0.55 : 0.30))
-                            {
-                                int sus = StepDownChordTone(prev, chordPcs);       // prev is a step above a chord tone → retard
-                                if (sus >= 0 && Math.Abs(prev - sus) <= 2) { midi = prev; forceMidi = sus; }
-                                else
-                                {
-                                    int appo = ScaleStepAbove(chordChoice, scalePcs);   // a step ABOVE the chord tone…
-                                    if (appo >= 0) { midi = appo; forceMidi = chordChoice; }  // …resolving DOWN to it
-                                }
-                            }
-                        }
+                        int apc = AnchorPc(anchor, root, pcs);
+                        if (apc >= 0) { strongPcs = new HashSet<int> { apc }; anchorUsed = true; anchorForced = true; }
                     }
-                    if (midi < 0) continue;
+                    int choice = PickTone(contour, ref dir, ref step, waveLen, prevFort, strongPcs, pcs, band, false, rng, i, moves, frac, amp);
+                    // avoid repeating the previous downbeat under the SAME chord (compared by root: Sol7 == Sol == "V")
+                    if (!anchorForced && choice >= 0 && pcs.Count > 1 && choice == lastFortMidi && root == lastFortRoot)
+                    {
+                        int alt = MovedChordTone(choice, pcs, band, dir); if (alt >= 0) choice = alt;
+                    }
+                    pitch[i] = choice;
+                    if (choice >= 0) { prevFort = choice; lastFortMidi = choice; lastFortRoot = root; }
+                }
 
-                    // CONTINUITÉ: cap the leap from the previous note (favours a common tone at chord changes). An
-                    // ornament's forced resolution is already a step away, so it is left untouched.
-                    if (prev >= 0 && continuity > 0 && !forcedResolution)
+                // ---- PASS 2 then 3 : demi-forts, then faibles = CHORD tones threaded BETWEEN the fixed neighbours -------
+                foreach (int level in new[] { 1, 2 })
+                    for (int i = 0; i < nc; i++)
+                    {
+                        if (!ok[i] || cls[i] != level) continue;
+                        int band = bandOf[i]; var pcs = chords[i]; int L = leftOf(i), R = rightOf(i);
+                        int choice = -1;
+                        if (anchor > 0 && !anchorUsed && level == 1 && pcs.Count > 0)   // no downbeat took the anchor → the first demi does
+                        {
+                            int apc = AnchorPc(anchor, roots[i], pcs);
+                            if (apc >= 0) { choice = NearestTone(L >= 0 && R >= 0 ? (L + R) / 2 : (L >= 0 ? L : band), new HashSet<int> { apc }, band); anchorUsed = true; }
+                        }
+                        if (choice < 0) choice = ChordToneConnect(L, R, pcs, band);
+                        pitch[i] = choice;
+                    }
+
+                // ---- PASS 4 : between-beat fills = passing / neighbour / appoggiatura connecting two FIXED notes, or a
+                //      chord tone when the note is a SYNCOPE (a contretemps held over the next beat = a displaced accent). --
+                for (int i = 0; i < nc; i++)
+                {
+                    if (!ok[i] || cls[i] != 3) continue;
+                    int band = bandOf[i]; var pcs = chords[i]; int L = leftOf(i), R = rightOf(i);
+                    int nextBeat = (vnotes[i].Start / beatSlices + 1) * beatSlices;
+                    bool syncope = (vnotes[i].Start % beatSlices) != 0 && vnotes[i].Start + vnotes[i].Length > nextBeat;
+                    if (syncope)
+                    {
+                        var sPcs = new HashSet<int>(pcs);
+                        double bAbs = startBeat + nextBeat / (double)spq;
+                        if (Harmony.ChordAt(project, resolve, bAbs, out int br, out int bq, out _))
+                            foreach (var p in PatternGenerator.ChordNotes(br, 4, bq, 0)) sPcs.Add(((p % 12) + 12) % 12);
+                        pitch[i] = NearestTone(L >= 0 ? L : band, sPcs.Count > 0 ? sPcs : pcs, band);
+                        continue;
+                    }
+                    int beatStartSlice = (vnotes[i].Start / beatSlices) * beatSlices;
+                    bool beatStartsWithNote = starts.Contains(beatStartSlice);
+                    pitch[i] = PassingBetween(L, R, pcs, scalePcs, band, beatStartsWithNote, rng);
+                }
+
+                // ---- ORNAMENTS (opt-in, Ornaments = 0 by default) : decorate the approach to a fort/demi with an
+                //      APPOGGIATURA (a step above the chord tone on the accent, resolving DOWN onto it on the next, weaker
+                //      note) or a SUSPENSION (hold the previous note if it is a step above a chord tone, then resolve). ----
+                if (ornaments > 0)
+                    for (int i = 0; i < nc; i++)
+                    {
+                        if (!ok[i] || cls[i] > 1 || pitch[i] < 0) continue;
+                        int k = i + 1;
+                        if (k >= nc || !ok[k] || pitch[k] < 0 || cls[k] < cls[i]) continue;     // resolve onto a note that is NOT stronger
+                        if (vnotes[k].Start > vnotes[i].Start + vnotes[i].Length) continue;     // must be contiguous
+                        if (rng.NextDouble() >= (ornaments / 100.0) * (cls[i] == 0 ? 0.55 : 0.30)) continue;
+                        int chordTone = pitch[i], prevP = leftOf(i);
+                        int sus = prevP >= 0 ? StepDownChordTone(prevP, chords[i]) : -1;
+                        if (sus >= 0 && Math.Abs(prevP - sus) <= 2) { pitch[i] = prevP; pitch[k] = sus; }        // suspension
+                        else { int appo = ScaleStepAbove(chordTone, scalePcs); if (appo >= 0) { pitch[i] = appo; pitch[k] = chordTone; } } // appoggiatura
+                    }
+
+                // ---- assemble in time order, cap leaps on the STRUCTURAL notes (passing tones stay free) ---------------
+                var gen = new List<(int start, int len, int midi)>();
+                int prevEmit = carryPrev;
+                for (int i = 0; i < nc; i++)
+                {
+                    if (!ok[i] || pitch[i] == int.MinValue || pitch[i] < 0) continue;
+                    int midi = pitch[i];
+                    if (prevEmit >= 0 && continuity > 0 && cls[i] <= 2)
                     {
                         int maxLeap = 12 - continuity * 11 / 100;                    // 0 → 12 (free) … 100 → 1 (very smooth)
-                        var capPcs = chordPcs.Count > 0 ? chordPcs : scalePcs;
-                        if (Math.Abs(midi - prev) > maxLeap) { int near = NearestTone(prev, capPcs, band); if (near >= 0) midi = near; }
+                        var capPcs = chords[i].Count > 0 ? chords[i] : scalePcs;
+                        if (Math.Abs(midi - prevEmit) > maxLeap) { int near = NearestTone(prevEmit, capPcs, bandOf[i]); if (near >= 0) midi = near; }
                     }
-                    prev = midi;
-                    gen.Add((n.Start, n.Length, midi));
+                    prevEmit = midi;
+                    gen.Add((vnotes[i].Start, vnotes[i].Length, midi));
                 }
 
                 if (variation == 3) Retrograde(gen, totalSlices);                   // reverse in time
@@ -189,6 +193,7 @@ namespace MusicTracker.Engine.Timeline
                     int lastMidi = gen[0].midi, lastStart = gen[0].start;
                     foreach (var g in gen) if (g.start >= lastStart) { lastStart = g.start; lastMidi = g.midi; }
                     carry[v] = lastMidi;
+                    if (hasFortCarry) { carry[3 + v] = lastFortMidi; carry[6 + v] = lastFortRoot; } // hand the last downbeat to the next module
                 }
             }
             outNotes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
@@ -376,30 +381,63 @@ namespace MusicTracker.Engine.Timeline
             return best;
         }
 
-        // A note BETWEEN two beats — the a/b/else rules. (a) the beat started with a note: a passing tone toward the
-        // next note, else a neighbour/repetition. (b) the beat started with a rest: an appoggiatura a step from the
-        // next note (if it isn't followed by a rest). Otherwise: a chord tone.
-        static int PickBetween(int prev, int nextTarget, HashSet<int> chordPcs, HashSet<int> scalePcs, int band, bool beatStartsWithNote, bool nextContig, Random rng)
+        // The chord-tone pitch class for an anchor degree (root · 3rd · 5th · 7th · 9th), snapped to the NEAREST tone the
+        // chord actually has (a triad's missing 7th/9th, a sus chord's 3rd → the closest real chord tone). −1 if none.
+        static int AnchorPc(int anchor, int root, HashSet<int> chordPcs)
+        {
+            if (chordPcs.Count == 0) return -1;
+            int targetPc = (((root + AnchorGuide[Math.Min(anchor - 1, AnchorGuide.Length - 1)]) % 12) + 12) % 12;
+            int bestPc = -1, bestD = 99;
+            foreach (var p in chordPcs) { int d = PcDist(p, targetPc); if (d < bestD) { bestD = d; bestPc = p; } }
+            return bestPc;
+        }
+
+        // A CHORD tone that threads BETWEEN two fixed neighbours (the note's left and right in the melody): the chord tone
+        // nearest their midpoint, PREFERRING one that isn't an endpoint so the line keeps moving (a static harmony still
+        // walks the arpeggio: Ré [fort] → Si → Sol [fort]). Falls back to the nearest tone / the band centre when a side
+        // is missing. −1 only if the chord has no tone in range.
+        static int ChordToneConnect(int left, int right, HashSet<int> pcs, int band)
+        {
+            if (pcs.Count == 0) return -1;
+            bool both = left >= 0 && right >= 0;
+            double target = both ? (left + right) / 2.0 : (left >= 0 ? left : (right >= 0 ? right : band));
+            int best = -1, bestAny = -1; double bestD = double.MaxValue, bestAnyD = double.MaxValue;
+            for (int mi = band - 24; mi <= band + 24; mi++)
+            {
+                if (!pcs.Contains(((mi % 12) + 12) % 12)) continue;
+                double d = Math.Abs(mi - target);
+                if (d < bestAnyD) { bestAnyD = d; bestAny = mi; }
+                if (mi == left || mi == right) continue;              // skip either fixed endpoint so the line keeps moving
+                if (d < bestD) { bestD = d; best = mi; }
+            }
+            return best >= 0 ? best : bestAny;
+        }
+
+        // A note BETWEEN two beats, now knowing BOTH fixed neighbours (left = the note before, right = the note after).
+        // First choice: a real PASSING tone — a scale step from `left` toward `right`, strictly between them. If they are
+        // only a step apart (no room), fall back on the a/b rules: a beat that STARTED with a note takes a neighbour
+        // (broderie) or repeats; a beat that started with a REST takes an appoggiatura a step from the right target.
+        static int PassingBetween(int left, int right, HashSet<int> chordPcs, HashSet<int> scalePcs, int band, bool beatStartsWithNote, Random rng)
         {
             var fallback = chordPcs.Count > 0 ? chordPcs : scalePcs;
-            if (prev < 0) return NearestTone(band, fallback, band);
+            if (left < 0) return NearestTone(right >= 0 ? right : band, fallback, band);
+            if (right >= 0 && right != left)
+            {
+                int dir = Math.Sign(right - left);
+                int pass = ToneInDir(left, scalePcs, band, dir, true, 12);             // conjunct passing tone toward the target
+                if (pass >= 0 && (dir > 0 ? pass < right : pass > right)) return pass;  // …strictly between the two
+            }
             if (beatStartsWithNote)
             {
-                if (nextContig && nextTarget >= 0 && nextTarget != prev)
-                {
-                    int dir = Math.Sign(nextTarget - prev);
-                    int pass = ToneInDir(prev, scalePcs, band, dir, true, 12);         // note de passage conjointe vers la cible
-                    if (pass >= 0 && (dir > 0 ? pass < nextTarget : pass > nextTarget)) return pass;
-                }
-                int nb = ScaleStepNeighbor(prev, scalePcs, rng);                       // broderie / note conjointe, sinon répétition
-                return (nb >= 0 && rng.NextDouble() < 0.6) ? nb : prev;
+                int nb = ScaleStepNeighbor(left, scalePcs, rng);                       // broderie / neighbour, else repeat
+                return (nb >= 0 && rng.NextDouble() < 0.6) ? nb : left;
             }
-            if (nextContig && nextTarget >= 0)                                         // (b) appoggiature vers la note suivante
+            if (right >= 0)                                                            // (b) rest before → appoggiatura on the target
             {
-                int appo = ScaleStepNeighbor(nextTarget, scalePcs, rng);
+                int appo = ScaleStepNeighbor(right, scalePcs, rng);
                 if (appo >= 0) return appo;
             }
-            return NearestTone(prev, fallback, band);                                  // sinon : note de l'accord
+            return NearestTone(left, fallback, band);                                  // otherwise: a chord tone
         }
 
         // Thue-Morse t(n): parity of the bit count of n → the aperiodic 0110100110010110… sequence.
