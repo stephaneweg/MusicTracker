@@ -3030,6 +3030,9 @@ namespace MusicTracker.Screens
             CommitRiffEditor();
             TimelineHelper.ConvertMelodicLineToRiff(project,track, item, ml);
             Render();
+            // The module was swapped IN PLACE (same TimelineItem stays selected), so the bottom editor still shows
+            // the ligne-mélodique editor. Rebuild it for the new module so the riff editor replaces it (issue #4).
+            if (selectedItem == item && !ScoreVisible) OpenModuleEditor(track, item);
         }
 
         // Open the context-aware diagram for the chord `item` and insert the chosen chord right AFTER it.
