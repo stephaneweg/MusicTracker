@@ -13,6 +13,24 @@ namespace MusicTracker.Engine.Timeline
     /// </summary>
     public static class ChordModelOps
     {
+        /// <summary>Beats (temps) per bar for the project's meter: num in x/4, num/3 in x/8.</summary>
+        public static int BarTemps(TimelineProject project)
+            => project.TimeSigDen == 8 ? Math.Max(1, project.TimeSigNum / 3) : Math.Max(1, project.TimeSigNum);
+
+        /// <summary>The permanent "Accords" chord track, or null if not present.</summary>
+        public static TimelineTrack ChordTrack(TimelineProject project)
+            => project.Tracks?.Find(t => t.Type == TimelineTrackType.Chord);
+
+        /// <summary>Ensure a bottom-pinned "Accords" chord track exists on a FRESH project (create if absent, pin last).
+        /// The load-time ADOPTION of a legacy all-chords track lives in the editor's own EnsureChordTrack.</summary>
+        public static void EnsureChordTrackSimple(TimelineProject project)
+        {
+            if (project?.Tracks == null) return;
+            var chord = project.Tracks.Find(t => t.Type == TimelineTrackType.Chord);
+            if (chord == null) { chord = new TimelineTrack { Name = "Accords", Type = TimelineTrackType.Chord, Instrument = 0 }; project.Tracks.Add(chord); }
+            if (project.Tracks[project.Tracks.Count - 1] != chord) { project.Tracks.Remove(chord); project.Tracks.Add(chord); }
+        }
+
         /// <summary>Add a chord module (degree/quality + optional voiced articulation and melodic cell) to a chords track,
         /// inheriting the previous chord's params. Returns the created module (pass it as <paramref name="prev"/> next time).</summary>
         public static PatternGeneratorModule AddAiChord(TimelineProject project, int barTemps, TimelineTrack chordTrack,

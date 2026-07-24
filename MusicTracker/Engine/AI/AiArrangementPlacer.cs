@@ -44,7 +44,7 @@ namespace MusicTracker.Engine.AI
 
         static void Place(TimelineProject project, IList<Riff> riffSink, AiArrangement a, bool fixRiffNotes, bool append, bool silentChords)
         {
-            int barTemps = BarTemps(project);
+            int barTemps = ChordModelOps.BarTemps(project);
             Func<Guid, Riff> riffById = id => { foreach (var r in riffSink) if (r.Id == id) return r; return null; };
 
             // Develop mode: place the result AFTER the existing content, aligned to the next bar.
@@ -104,8 +104,8 @@ namespace MusicTracker.Engine.AI
 
             // fresh timeline (replace mode); develop mode keeps existing tracks and appends
             if (!append) project.Tracks.Clear();
-            EnsureChordTrack(project);
-            var chordTrack = ChordTrack(project);
+            ChordModelOps.EnsureChordTrackSimple(project);
+            var chordTrack = ChordModelOps.ChordTrack(project);
             if (!append && a.chordInstrument >= 0 && a.chordInstrument <= 127) chordTrack.Instrument = a.chordInstrument;
             double chordEndBefore = TrackEndBeats(chordTrack, riffById);
             int chordPreCount = chordTrack.Items.Count;
@@ -333,25 +333,11 @@ namespace MusicTracker.Engine.AI
                 }
             }
 
-            EnsureChordTrack(project);  // re-pin the chords track at the bottom
+            ChordModelOps.EnsureChordTrackSimple(project);  // re-pin the chords track at the bottom
         }
 
         // ---- model helpers (self-contained copies of the pure ones TimelineScreen also uses) -------------------------
 
-        static int BarTemps(TimelineProject project)
-            => project.TimeSigDen == 8 ? Math.Max(1, project.TimeSigNum / 3) : Math.Max(1, project.TimeSigNum);
-
-        static TimelineTrack ChordTrack(TimelineProject project)
-            => project.Tracks?.Find(t => t.Type == TimelineTrackType.Chord);
-
-        // Ensure the permanent, bottom-pinned "Accords" track exists (a fresh source has none yet).
-        static void EnsureChordTrack(TimelineProject project)
-        {
-            if (project?.Tracks == null) return;
-            var chord = project.Tracks.Find(t => t.Type == TimelineTrackType.Chord);
-            if (chord == null) { chord = new TimelineTrack { Name = "Accords", Type = TimelineTrackType.Chord, Instrument = 0 }; project.Tracks.Add(chord); }
-            if (project.Tracks[project.Tracks.Count - 1] != chord) { project.Tracks.Remove(chord); project.Tracks.Add(chord); }
-        }
 
         // Reuse the existing drum track (develop/append), else create the dedicated GM-kit drum track.
         static TimelineTrack GetOrCreateDrumTrack(TimelineProject project, bool reuse)
