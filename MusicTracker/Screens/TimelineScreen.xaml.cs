@@ -302,18 +302,31 @@ namespace MusicTracker.Screens
                 return curQuality;
             }
 
+            // A FIXED-root chord (Degree < 0: secondary dominants, borrowed chords, hand-set chords) keeps its quality;
+            // its root is TRANSPOSED by the tonic interval so its FUNCTION is preserved (a V/V = D major in Do stays a
+            // V/V = Mi major in Ré). A mode-only change keeps the tonic, so the root doesn't move (D major is still V/V
+            // in Do minor). Diatonic (Degree ≥ 0) chords are instead re-derived so they flip major↔minor with the mode.
+            int tonicShift = ((Engine.Flow.MusicTheory.TonicPc(newKey) - Engine.Flow.MusicTheory.TonicPc(oldKey)) % 12 + 12) % 12;
+
             foreach (var t in project.Tracks)
             {
                 if (t.Type == TimelineTrackType.Drum) continue;   // chord + instrument tracks carry pitched/degree chords
                 foreach (var m in EnumModules(t.Items))
                 {
-                    if (m is PatternGeneratorModule pg && pg.Degree >= 0)
+                    if (m is PatternGeneratorModule pg)
                     {
-                        // The module stores its exact colour/suspension/mode → recompute the chord for the new key,
-                        // honoring them. A plain V triad flips major↔minor with the mode; a forced/coloured chord keeps
-                        // its flavour. (This is why a V that was "sol majeur" in Do majeur becomes "sol mineur" in Do mineur.)
-                        var nd = Engine.Flow.MusicTheory.DiatonicChord(newKey, pg.Degree, pg.DiatonicColour, pg.Suspension, pg.ModeOverride);
-                        if (pg.Root != nd.root || pg.Quality != nd.quality) { pg.Root = nd.root; pg.Quality = nd.quality; any = true; }
+                        if (pg.Degree >= 0)
+                        {
+                            // The module stores its exact colour/suspension/mode → recompute the chord for the new key,
+                            // honoring them. A plain V triad flips major↔minor with the mode; a forced/coloured chord keeps
+                            // its flavour. (This is why a V "sol majeur" in Do majeur becomes "sol mineur" in Do mineur.)
+                            var nd = Engine.Flow.MusicTheory.DiatonicChord(newKey, pg.Degree, pg.DiatonicColour, pg.Suspension, pg.ModeOverride);
+                            if (pg.Root != nd.root || pg.Quality != nd.quality) { pg.Root = nd.root; pg.Quality = nd.quality; any = true; }
+                        }
+                        else if (tonicShift != 0)
+                        {
+                            pg.Root = ((pg.Root + tonicShift) % 12 + 12) % 12; any = true;   // transpose the fixed chord
+                        }
                     }
                     else if (m is CadenceModule cm && cm.Chords != null)
                     {
@@ -324,6 +337,7 @@ namespace MusicTracker.Screens
                                 int nq = NewCadenceQuality(c.Degree, c.Quality);
                                 if (c.Root != nd.root || c.Quality != nq) { c.Root = nd.root; c.Quality = nq; any = true; }
                             }
+                            else if (tonicShift != 0) { c.Root = ((c.Root + tonicShift) % 12 + 12) % 12; any = true; }
                     }
                 }
             }
