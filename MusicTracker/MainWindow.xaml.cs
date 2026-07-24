@@ -1,5 +1,5 @@
-using MusicTracker.Screens;
 using MusicTracker.Dialogs;
+using MusicTracker.Screens;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;

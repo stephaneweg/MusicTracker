@@ -143,6 +143,7 @@
     </ApplicationDefinition>
     <Compile Include="Converters.cs" />
     <Compile Include="Engine\AI\AIClient.cs" />
+    <Compile Include="Engine\AI\RiffAiResult.cs" />
     <Compile Include="Engine\ComposerV2\MusicMathV2.cs" />
     <Compile Include="Engine\ComposerV2\CorpusModelV2.cs" />
     <Compile Include="Engine\ComposerV2\CorpusAnalyzerV2.cs" />
@@ -177,6 +178,7 @@
     <Compile Include="Engine\Flow\LoopingRiffProvider.cs" />
     <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
     <Compile Include="Engine\Flow\ModuleDuration.cs" />
+    <Compile Include="Engine\Timeline\TimelineHelper.cs" />
     <Compile Include="Engine\Timeline\TimelineProject.cs" />
     <Compile Include="Engine\Timeline\ChordModelOps.cs" />
     <Compile Include="Engine\Timeline\TemplateProjectBuilder.cs" />
@@ -620,8 +622,7 @@
        XOR-scrambled + base64. The token is NEVER committed; a build without one yields an empty constant
        (the in-app bug reporter then reports itself as "not configured"). The XOR key below MUST stay in
        sync with MusicTracker.Engine.BugReport.BugReportConfig.XorKey. -->
-  <UsingTask TaskName="GenerateBuildSecrets" TaskFactory="CodeTaskFactory"
-             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+  <UsingTask TaskName="GenerateBuildSecrets" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <TokenFile ParameterType="System.String" Required="false" />
       <EnvToken ParameterType="System.String" Required="false" />
@@ -656,9 +657,7 @@
   </UsingTask>
   <Target Name="GenerateBuildSecrets" BeforeTargets="CoreCompile">
     <MakeDir Directories="$(IntermediateOutputPath)" />
-    <GenerateBuildSecrets TokenFile="$(ProjectDir)bugreport.token"
-                          EnvToken="$(MUSICTRACKER_GH_TOKEN)"
-                          OutputFile="$(IntermediateOutputPath)BuildSecrets.g.cs" />
+    <GenerateBuildSecrets TokenFile="$(ProjectDir)bugreport.token" EnvToken="$(MUSICTRACKER_GH_TOKEN)" OutputFile="$(IntermediateOutputPath)BuildSecrets.g.cs" />
     <ItemGroup>
       <Compile Include="$(IntermediateOutputPath)BuildSecrets.g.cs" />
     </ItemGroup>

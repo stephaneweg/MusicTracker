@@ -31,6 +31,88 @@ namespace MusicTracker.Engine.AI
             NumberHandling = JsonNumberHandling.AllowReadingFromString, // a numeric field given as "72" still parses
         };
 
+        public static string[] BuildDrumGroovePrompt(string keyStr, string meterStr, int barTemps, string intention)
+        {
+            var sys = new System.Text.StringBuilder();
+            sys.AppendLine("Tu es un batteur/percussionniste assistant. Tu renvoies UNIQUEMENT un objet JSON (aucune prose) décrivant UN GROOVE de batterie/percussions.");
+            sys.AppendLine("Schéma EXACT : { \"motifBars\": int, \"repeats\": int, \"notes\": [ [note GM, début, durée], ... ] }");
+            sys.AppendLine("- Écris UN MOTIF de 'motifBars' mesures (souvent 1 ou 2) qui se RÉPÈTE 'repeats' fois. 'début' et 'durée' sont en TEMPS ; 'début' est relatif au début du motif (0 à motifBars×" + barTemps + ").");
+            sys.AppendLine("- 'note GM' KIT : 36 grosse caisse, 38 caisse claire, 42 charley fermé, 46 charley ouvert, 44 charley pied, 49 crash, 51 ride, 39 clap, 37 rimshot, 41/43/45/47/48/50 toms.");
+            sys.AppendLine("- PERCUSSION SECONDAIRE (texture, selon l'intention) : 54 tambourin, 56 cowbell, 69 cabasa, 70 maracas, 75 claves, 60/61 bongos, 62/63/64 congas, 76/77 wood block, 80/81 triangle.");
+            sys.AppendLine("- FORMAT COMPACT : chaque note est un TABLEAU ordonné [note, début, durée] (JSON minifié). motifBars × repeats = longueur totale voulue.");
+            string usr = $"Mesure {meterStr} ({barTemps} temps par mesure), tonalité {keyStr}. Intention du groove : « {(intention ?? "").Trim()} ». Compose un groove cohérent et musical. Renvoie UNIQUEMENT le JSON.";
+            return new[] { sys.ToString(), usr };
+        }
+
+        public static string[] BuildRiffPrompt(string keyStr, string meterStr, int barTemps, int measures,
+            System.Collections.Generic.List<Engine.AI.AiChord> chords, string intention)
+        {
+            bool has = chords != null && chords.Count > 0;
+            var sys = new System.Text.StringBuilder();
+            sys.AppendLine("Tu es un compositeur assistant. Tu renvoies UNIQUEMENT un objet JSON (aucune prose).");
+            if (has)
+            {
+                sys.AppendLine("Schéma EXACT : { \"notes\": [ [hauteur MIDI, début, durée], ... ] }  (la MÉLODIE du riff)");
+                sys.AppendLine("- Écris la mélodie d'un riff de " + measures + " mesure(s) qui SUIT les accords fournis : notes d'accord sur les temps forts, notes de passage/gamme ailleurs.");
+            }
+            else
+            {
+                sys.AppendLine("Schéma EXACT : { \"notes\": [ [hauteur MIDI, début, durée], ... ], \"chords\": [ [mesure, degré, \"qualité\"], ... ], \"articulation\": \"style\" }");
+                sys.AppendLine("- Aucun accord n'est présent : propose une PROGRESSION (degré 1..7 relatif à la tonalité, un accord par mesure ou par changement) sur " + measures + " mesure(s) ET la mélodie du riff dessus. Donne une 'articulation' d'accompagnement (ex. plaqué, arpège, valse, alberti…).");
+            }
+            sys.AppendLine("- 'hauteur' = MIDI (60 = Do central). 'début'/'durée' en TEMPS ; 'début' relatif au début du riff (0 à " + measures + "×" + barTemps + "). Reste dans la tonalité et cohérent avec la métrique.");
+            sys.AppendLine("- FORMAT COMPACT : chaque note/accord est un TABLEAU ordonné, JSON minifié.");
+
+            var usr = new System.Text.StringBuilder();
+            usr.Append($"Mesure {meterStr} ({barTemps} temps par mesure), tonalité {keyStr}, {measures} mesure(s). ");
+            if (has)
+            {
+                usr.Append("Accords présents [mesure, degré, qualité] : ");
+                foreach (var c in chords) usr.Append("[" + c.measure + "," + c.degree + "," + c.quality + "] ");
+                usr.Append(". ");
+            }
+            usr.Append($"Intention : « {(intention ?? "").Trim()} ». Renvoie UNIQUEMENT le JSON.");
+            return new[] { sys.ToString(), usr.ToString() };
+        }
+
+        // Build a compact text of the selected theme (its chords + its notes) to feed the AI for a development.
+        public static string BuildThemeContext(TimelineProject project, TimelineTrack track, TimelineItem item, Riff riff)
+        {
+            var key = project.Key ?? new Engine.Score.KeySignature();
+            int barTemps = TimelineHelper.RulerBeatsPerBar(project);
+            int spq = Math.Max(1, riff.SlicesPerQuarter);
+            double themeStart = TimelineHelper.ItemStartBeat(track, item);
+            double themeLen = riff.LengthSlices / (double)spq;
+            System.Globalization.CultureInfo inv = System.Globalization.CultureInfo.InvariantCulture;
+            string Num(double v) => v.ToString("0.##", inv);
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"THÈME à développer — tonalité {Engine.Score.KeySig.Derive(key, 0).Name} {(key.Mode == 1 ? "mineur" : "majeur")}, mesure {project.TimeSigNum}/{project.TimeSigDen}, {Num(themeLen / Math.Max(1, barTemps))} mesures.");
+
+            var ct = TimelineHelper.ChordTrack(project);
+            if (ct != null)
+            {
+                double cur = 0; var chords = new System.Collections.Generic.List<string>();
+                foreach (var it in ct.Items)
+                {
+                    cur += it.SilenceBefore;
+                    double len = Engine.Timeline.TimelineProject.ItemLength(it, TimelineHelper.RiffById);
+                    if (it.Module is PatternGeneratorModule pg && cur + len > themeStart + 0.01 && cur < themeStart + themeLen - 0.01)
+                    {
+                        int deg = pg.Degree >= 0 ? pg.Degree + 1 : Engine.Flow.MusicTheory.DegreeOf(key, ((pg.Root % 12) + 12) % 12) + 1;
+                        int mRel = (int)Math.Round((cur - themeStart) / Math.Max(1, barTemps)) + 1;
+                        chords.Add($"m{mRel}=degré {deg} {TimelineHelper.Get(PatternGenerator.QualityNames, pg.Quality)}");
+                    }
+                    cur += len;
+                }
+                if (chords.Count > 0) sb.AppendLine("Accords du thème : " + string.Join(", ", chords) + ".");
+            }
+
+            var notes = new System.Collections.Generic.List<string>();
+            foreach (var n in riff.Notes) notes.Add($"{n.Note + 12}@{Num(n.Start / (double)spq)}x{Num(n.Length / (double)spq)}");
+            sb.AppendLine("Notes du thème (pitchMIDI@débutEnTemps x duréeEnTemps) : " + string.Join(" ", notes) + ".");
+            return sb.ToString();
+        }
         /// <summary>Parse the model's reply into an arrangement. Tolerates ```json fences. Throws on invalid JSON/shape.</summary>
         public static AiArrangement Parse(string content)
         {
