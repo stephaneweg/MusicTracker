@@ -54,3 +54,5 @@ SoundFont/
 corpus/
 midi/
 releases/
+# Inno Setup build output (the .exe is published to the releases repo, not here)
+/installer/Output/
