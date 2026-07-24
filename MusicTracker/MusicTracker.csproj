@@ -259,6 +259,9 @@
     <Compile Include="Dialogs\AboutDialog.xaml.cs">
       <DependentUpon>AboutDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Dialogs\UpdateDialog.xaml.cs">
+      <DependentUpon>UpdateDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Engine\AI\AiProviders.cs" />
     <Compile Include="Engine\AI\MistralClient.cs" />
     <Compile Include="Engine\AI\GeminiClient.cs" />
@@ -272,6 +275,7 @@
     <Compile Include="Sources\IProjectSource.cs" />
     <Compile Include="Sources\AiComposeSource.cs" />
     <Compile Include="Engine\BugReport\GitHubIssueClient.cs" />
+    <Compile Include="Engine\Update\UpdateChecker.cs" />
     <Compile Include="Engine\BugReport\BugReportConfig.cs" />
     <Compile Include="Engine\BugReport\BugReportContext.cs" />
     <Compile Include="Dialogs\TransposeDialog.xaml.cs">
@@ -413,6 +417,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\AboutDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\UpdateDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

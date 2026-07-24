@@ -126,13 +126,61 @@ namespace MusicTracker
             finally { dlg.Close(); }
 
             // Fresh install with no SoundFont: offer to download the MuseScore default (≈206 MB) so audio works out
-            // of the box. If the user accepts and it succeeds, it's installed + selected and we're ready.
-            if (!SoundFontGuard.IsReady && await TryDownloadDefaultSoundFontAsync())
-                return;
+            // of the box. If the user declines or it fails, say so up front instead of letting them discover it as
+            // unexplained silence on the first Play (SoundFonts ship separately — see SoundFontGuard).
+            if (!SoundFontGuard.IsReady && !await TryDownloadDefaultSoundFontAsync())
+                SoundFontGuard.CheckAtStartup(this);
 
-            // Otherwise say so up front instead of letting the user discover it as unexplained silence on the first
-            // Play (SoundFonts ship separately — see SoundFontGuard).
-            SoundFontGuard.CheckAtStartup(this);
+            // Then, best-effort, see whether a newer build has been published.
+            await CheckForUpdatesAsync();
+        }
+
+        /// <summary>
+        /// Startup update check (best-effort, non-blocking of the UI thread's responsiveness): read the manifest, and
+        /// if a newer version exists, offer to download + launch the installer and quit. Any failure is swallowed so a
+        /// flaky network never nags the user.
+        /// </summary>
+        private async System.Threading.Tasks.Task CheckForUpdatesAsync()
+        {
+            Engine.Update.UpdateInfo info;
+            try { info = await Engine.Update.UpdateChecker.CheckAsync(System.Threading.CancellationToken.None); }
+            catch { return; }
+            if (info == null || !info.IsNewer) return;
+
+            var prompt = new Dialogs.UpdateDialog(info) { Owner = this };
+            if (prompt.ShowDialog() != true) return;
+
+            var dlg = new Dialogs.ImportProgressDialog { Owner = this };
+            dlg.SetBusy("Téléchargement de la mise à jour…");
+            dlg.Show();
+            var progress = new Progress<Engine.Update.UpdateChecker.DownloadProgress>(p =>
+            {
+                long got = p.Received / (1024 * 1024);
+                if (p.Total > 0)
+                    dlg.Set((double)p.Received / p.Total, "Téléchargement de la mise à jour… " + got + " / " + (p.Total / (1024 * 1024)) + " Mo");
+                else
+                    dlg.SetBusy("Téléchargement de la mise à jour… " + got + " Mo");
+            });
+
+            string dest = System.IO.Path.Combine(System.IO.Path.GetTempPath(), info.InstallerFileName);
+            try { await Engine.Update.UpdateChecker.DownloadInstallerAsync(info, dest, progress, System.Threading.CancellationToken.None); }
+            catch (Exception ex)
+            {
+                dlg.Close();
+                MessageBox.Show(this, "Le téléchargement de la mise à jour a échoué :\n" + ex.Message,
+                                "Mise à jour", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            dlg.Close();
+
+            try { Engine.Update.UpdateChecker.LaunchInstaller(dest); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Impossible de lancer l'installeur :\n" + ex.Message,
+                                "Mise à jour", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            Application.Current.Shutdown(); // quit so the installer can replace the running app
         }
 
         /// <summary>
