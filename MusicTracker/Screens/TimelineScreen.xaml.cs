@@ -87,7 +87,7 @@ namespace MusicTracker.Screens
         // Leading anacrusis remainder (in beats) of a motif of `totalBeats`, when a levée is set and the motif isn't
         // bar-aligned (e.g. 7 in 3/4 → 1). 0 when there's no levée (so non-anacrusis projects are untouched). Used to
         // trim the lead-in off DUPLICATED motifs — melodic line, chord rhythm, chord melodic cell.
-        int CopyLeadRem(double totalBeats) => project.PickupBeats > 1e-6 ? Engine.Timeline.MotifCopy.LeadRemainder(totalBeats, RulerBeatsPerBar()) : 0;
+        int CopyLeadRem(double totalBeats) => Engine.Timeline.ChordModelOps.CopyLeadRem(project, totalBeats, RulerBeatsPerBar());
 
         // ---- key signature (toolbar) ----
         bool syncingKey;
@@ -275,7 +275,7 @@ namespace MusicTracker.Screens
             };
             // Degree-locked chords follow the tonality: re-select them from the new key, then redraw (the placed
             // chords change without being touched). Render so the timeline chord labels reflect them too.
-            if (ResolveChordDegrees(oldKey)) Render();
+            if (Engine.Timeline.ChordModelOps.ResolveChordDegrees(project, oldKey)) Render();
             if (activeScore != null) RefreshScore(); // rebuild the armure live
             UpdateKeySummary();
         }
@@ -285,64 +285,6 @@ namespace MusicTracker.Screens
         // follows the degree's scale position. The QUALITY only adapts when the chord was a PLAIN diatonic
         // chord in the old key (so I↔i, ii↔iiø flip with the mode); an explicitly coloured chord (V9, V13,
         // borrowed…) keeps its colour and just moves its root. Returns true if any chord changed.
-        bool ResolveChordDegrees(Engine.Score.KeySignature oldKey)
-        {
-            var newKey = project.Key ?? new Engine.Score.KeySignature();
-            oldKey = oldKey ?? newKey;
-            bool any = false;
-
-            // Cadence chords carry no colour, so infer it: find the primary colour that reproduced the chord's quality
-            // in the OLD key, then re-derive with that colour in the NEW key. Non-diatonic (borrowed/secondary) qualities
-            // aren't matched → the chord keeps its quality and only its root follows the degree.
-            int NewCadenceQuality(int degree, int curQuality)
-            {
-                for (int col = 0; col < Engine.Flow.MusicTheory.DiatonicColourNames.Length; col++)
-                    if (Engine.Flow.MusicTheory.DiatonicChord(oldKey, degree, col).quality == curQuality)
-                        return Engine.Flow.MusicTheory.DiatonicChord(newKey, degree, col).quality;
-                return curQuality;
-            }
-
-            // A FIXED-root chord (Degree < 0: secondary dominants, borrowed chords, hand-set chords) keeps its quality;
-            // its root is TRANSPOSED by the tonic interval so its FUNCTION is preserved (a V/V = D major in Do stays a
-            // V/V = Mi major in Ré). A mode-only change keeps the tonic, so the root doesn't move (D major is still V/V
-            // in Do minor). Diatonic (Degree ≥ 0) chords are instead re-derived so they flip major↔minor with the mode.
-            int tonicShift = ((Engine.Flow.MusicTheory.TonicPc(newKey) - Engine.Flow.MusicTheory.TonicPc(oldKey)) % 12 + 12) % 12;
-
-            foreach (var t in project.Tracks)
-            {
-                if (t.Type == TimelineTrackType.Drum) continue;   // chord + instrument tracks carry pitched/degree chords
-                foreach (var m in EnumModules(t.Items))
-                {
-                    if (m is PatternGeneratorModule pg)
-                    {
-                        if (pg.Degree >= 0)
-                        {
-                            // The module stores its exact colour/suspension/mode → recompute the chord for the new key,
-                            // honoring them. A plain V triad flips major↔minor with the mode; a forced/coloured chord keeps
-                            // its flavour. (This is why a V "sol majeur" in Do majeur becomes "sol mineur" in Do mineur.)
-                            var nd = Engine.Flow.MusicTheory.DiatonicChord(newKey, pg.Degree, pg.DiatonicColour, pg.Suspension, pg.ModeOverride);
-                            if (pg.Root != nd.root || pg.Quality != nd.quality) { pg.Root = nd.root; pg.Quality = nd.quality; any = true; }
-                        }
-                        else if (tonicShift != 0)
-                        {
-                            pg.Root = ((pg.Root + tonicShift) % 12 + 12) % 12; any = true;   // transpose the fixed chord
-                        }
-                    }
-                    else if (m is CadenceModule cm && cm.Chords != null)
-                    {
-                        foreach (var c in cm.Chords)
-                            if (c.Degree >= 0)
-                            {
-                                var nd = Engine.Flow.MusicTheory.DiatonicChord(newKey, c.Degree);
-                                int nq = NewCadenceQuality(c.Degree, c.Quality);
-                                if (c.Root != nd.root || c.Quality != nq) { c.Root = nd.root; c.Quality = nq; any = true; }
-                            }
-                            else if (tonicShift != 0) { c.Root = ((c.Root + tonicShift) % 12 + 12) % 12; any = true; }
-                    }
-                }
-            }
-            return any;
-        }
 
         static readonly int[] TonicPc = { 0, 2, 4, 5, 7, 9, 11 }; // Do Ré Mi Fa Sol La Si
         static readonly string[] BassModeNames = { "Aucune", "Par mesure (tenue)", "Par temps" };
@@ -354,67 +296,21 @@ namespace MusicTracker.Screens
         static int KeyPc(Engine.Score.KeySignature k)
             => ((TonicPc[Math.Max(0, Math.Min(6, k.TonicLetter))] + k.Accidental) % 12 + 12) % 12;
 
-        // Toolbar "Transposer…": pick a target key, then shift every melodic note by the NEAREST interval and,
-        // if the mode flips, raise/lower the differing degrees (major↔minor: 3rd/6th/7th).
+        // Toolbar "Transposer…": pick a target key, apply the transposition to the whole project (the interval/mode
+        // maths + chord re-derivation live in the shared Engine.Timeline.ChordModelOps), then refresh toolbar + score.
         private void btnTranspose_Click(object sender, RoutedEventArgs e)
         {
             var cur = project.Key ?? new Engine.Score.KeySignature();
             var dlg = new Dialogs.TransposeDialog(cur) { Owner = Window.GetWindow(this) };
             if (dlg.ShowDialog() != true) return;
-            var to = dlg.Result;
-
-            // All the interval/mode-remap maths lives in MusicTheory now, so transposition behaves consistently
-            // with the rest of the harmony (cadences, degree-locked chords). direction: 0=nearest, 1=up, 2=down.
-            int interval = Engine.Flow.MusicTheory.NearestInterval(
-                Engine.Flow.MusicTheory.TonicPc(cur), Engine.Flow.MusicTheory.TonicPc(to), dlg.ResultDirection);
-            int srcMode = Engine.Score.MusicalMode.Effective(cur), tgtMode = dlg.ResultMode;
-            int[] degDelta = Engine.Flow.MusicTheory.ModeDelta(srcMode, tgtMode);
-            if (interval == 0 && degDelta == null) return; // nothing to do
-
             CommitRiffEditor();
-            int toPc = Engine.Flow.MusicTheory.TonicPc(to);
-            var seen = new System.Collections.Generic.HashSet<Riff>();
-            foreach (var t in project.Tracks)
-            {
-                if (t.Type == Engine.Timeline.TimelineTrackType.Drum) continue; // drums keep their pitches; chords transpose
-                foreach (var m in EnumModules(t.Items))
-                {
-                    if (m is PlayRiffModule pr) { var r = RiffById(pr.RiffId); if (r != null && seen.Add(r)) TransposeRiff(r, interval, degDelta, toPc); }
-                    else if (m is PatternGeneratorModule pg && pg.Degree < 0) pg.Root = ((pg.Root + interval) % 12 + 12) % 12; // shift absolute chords (degree-locked ones follow the new key below)
-                    else if (m is CadenceModule cm && cm.Chords != null)
-                        foreach (var c in cm.Chords) if (c.Degree < 0) c.Root = ((c.Root + interval) % 12 + 12) % 12; // shift absolute cadence chords
-                }
-            }
-
-            project.Key = new Engine.Score.KeySignature { TonicLetter = to.TonicLetter, Accidental = to.Accidental, Mode = to.Mode, FullMode = tgtMode };
-            ResolveChordDegrees(cur); // degree-locked chords re-select themselves in the target key
+            if (!Engine.Timeline.ChordModelOps.TransposeProject(project, RiffById, dlg.Result, dlg.ResultDirection, dlg.ResultMode)) return;
             SyncKeyToolbar();
             Render();
             RefreshScore();
         }
 
-        static System.Collections.Generic.IEnumerable<Engine.Flow.FlowModule> EnumModules(System.Collections.Generic.IList<Engine.Timeline.TimelineItem> items)
-        {
-            if (items == null) yield break;
-            foreach (var it in items)
-            {
-                if (it.Module != null) yield return it.Module;
-            }
-        }
 
-        static void TransposeRiff(Riff r, int interval, int[] degDelta, int toPc)
-        {
-            if (r?.Notes == null) return;
-            var outn = new System.Collections.Generic.List<RiffNote>(r.Notes.Count);
-            foreach (var n in r.Notes)
-            {
-                int p = n.Note + interval;
-                if (degDelta != null) { int deg = (((p % 12) + 12) % 12 - toPc + 12) % 12; p += degDelta[deg]; }
-                while (p < 0) p += 12; while (p > 95) p -= 12; // keep within the 0..95 note range (octave-wrap)
-                outn.Add(new RiffNote(p, n.Start, n.Length));
-            }
-            r.Notes = outn;
-        }
 
         private void Key_Changed(object sender, SelectionChangedEventArgs e) => ApplyKeyFromToolbar();
         private void TglSharp_Click(object sender, RoutedEventArgs e) { if (tglSharp.IsChecked == true) tglFlat.IsChecked = false; ApplyKeyFromToolbar(); }
@@ -851,7 +747,7 @@ namespace MusicTracker.Screens
                     int beats = Math.Max(1, ch.BeatCount);
                     int qi = Engine.Timeline.TemplateChords.QualityIndex(ch.Mode, ch.Quality, ch.Color);
                     var chord = new Engine.AI.AiChord { degree = ch.Degree, quality = Get(PatternGenerator.QualityNames, qi) };
-                    prevChord = AddAiChord(ct, chord, beats, -1, artNotes, artSpq, prevChord, false, null, cellNotes);
+                    prevChord = Engine.Timeline.ChordModelOps.AddAiChord(project, RulerBeatsPerBar(), ct, chord, beats, -1, artNotes, artSpq, prevChord, false, null, cellNotes);
                 }
             }
 
@@ -3458,9 +3354,9 @@ namespace MusicTracker.Screens
                     if (list != null && list.Count > 0)
                     {
                         int k = list.Count;
-                        for (int ci = 0; ci < k; ci++) { int part = Math.Max(1, barTemps / k + (ci < barTemps % k ? 1 : 0)); prev = AddAiChord(ct, list[ci], part, style, null, 4, prev, false); lastSingle = list[ci]; }
+                        for (int ci = 0; ci < k; ci++) { int part = Math.Max(1, barTemps / k + (ci < barTemps % k ? 1 : 0)); prev = Engine.Timeline.ChordModelOps.AddAiChord(project, RulerBeatsPerBar(), ct, list[ci], part, style, null, 4, prev, false); lastSingle = list[ci]; }
                     }
-                    else if (lastSingle != null) prev = AddAiChord(ct, lastSingle, barTemps, style, null, 4, prev, false);
+                    else if (lastSingle != null) prev = Engine.Timeline.ChordModelOps.AddAiChord(project, RulerBeatsPerBar(), ct, lastSingle, barTemps, style, null, 4, prev, false);
                 }
                 if (ct.Items.Count > preCount) ct.Items[preCount].SilenceBefore += Math.Max(0, startBeat - chordEndBefore);
                 Engine.Flow.ChordDegrees.Revoice(ct);
@@ -3817,31 +3713,10 @@ namespace MusicTracker.Screens
             Render();
         }
 
-        // A fresh chord module: meter-length default, and — from a source chord — a copy of its style/voicing params
-        // (with auto voice-leading turned on). Used by "Insérer ▸ Accords" and the chord context menu.
+        // A fresh chord module inheriting a source chord's style/voicing params (auto voice-leading on). The logic lives
+        // in the shared Engine.Timeline.ChordModelOps; used here by "Insérer ▸ Accords" and the chord context menu.
         PatternGeneratorModule NewChordLike(PatternGeneratorModule prev)
-        {
-            var pg = new PatternGeneratorModule { BeatsPerBar = RulerBeatsPerBar(), Repeats = 1 };
-            if (prev != null)
-            {
-                pg.Style = prev.Style; pg.UserStyleName = prev.UserStyleName;
-                // Bar-align: if the previous chord carries an anacrusis lead-in (7 in 3/4), the new one drops it (7 → 6).
-                int spq = Math.Max(1, prev.CustomSlicesPerQuarter);
-                int gridCut = CopyLeadRem(prev.CustomSlices != null ? prev.CustomSlices.Length / (double)spq : 0) * spq;
-                pg.CustomSlices = prev.CustomSlices != null ? Engine.Timeline.MotifCopy.TrimSlices(prev.CustomSlices, gridCut) : null;
-                pg.CustomNotes = gridCut > 0 ? Engine.Timeline.MotifCopy.TrimNotes(prev.CustomNotes, gridCut)
-                                             : (prev.CustomNotes != null ? new System.Collections.Generic.List<RiffNote>(prev.CustomNotes) : null);
-                pg.CustomSlicesPerQuarter = prev.CustomSlicesPerQuarter;
-                pg.OpenVoicing = prev.OpenVoicing;
-                pg.VoiceLeadMode = prev.VoiceLeadMode != 0 ? prev.VoiceLeadMode : 1;
-                pg.Bass = prev.Bass; pg.BassPerBeat = prev.BassPerBeat;
-                pg.ClimbMode = prev.ClimbMode; pg.HeldMode = prev.HeldMode; pg.HalveDurations = prev.HalveDurations;
-                pg.DiatonicColour = prev.DiatonicColour; pg.Suspension = prev.Suspension; pg.ModeOverride = prev.ModeOverride; pg.Octave = prev.Octave;
-                int prevTotal = Math.Max(1, prev.BeatsPerBar * Math.Max(1, prev.Repeats));
-                pg.BeatsPerBar = Math.Max(1, prevTotal - CopyLeadRem(prevTotal)); // default-style duration follows the same trim
-            }
-            return pg;
-        }
+            => Engine.Timeline.ChordModelOps.NewChordLike(project, prev, RulerBeatsPerBar());
 
         // ---- AI arrangement (Mistral) ----
         /// <summary>Raised by the "Composer avec l'IA" menu — the shell opens the dialog and lays the result on a NEW tab.</summary>
@@ -3861,77 +3736,6 @@ namespace MusicTracker.Screens
             double cur = 0;
             foreach (var it in t.Items) cur += it.SilenceBefore + Engine.Timeline.TimelineProject.ItemLength(it, RiffById);
             return cur;
-        }
-
-        PatternGeneratorModule AddAiChord(TimelineTrack chordTrack, Engine.AI.AiChord c, int beats, int style,
-            System.Collections.Generic.List<RiffNote> motifNotes, int artSpq, PatternGeneratorModule prev, bool silent = false,
-            string userStyleName = null, System.Collections.Generic.List<RiffNote> melodicCell = null)
-        {
-            var pg = NewChordLike(prev);
-            pg.BeatsPerBar = Math.Max(1, beats); pg.Repeats = 1;
-            int deg = Math.Max(1, Math.Min(7, c.degree));
-            pg.Degree = deg - 1;
-            pg.Root = Engine.AI.AiTranslate.RootPc(project.Key, deg);
-            pg.Quality = Engine.AI.AiTranslate.QualityIndex(c.quality);
-            // When the requested chord ISN'T the diatonic chord of its degree (a secondary dominant like V/V = a MAJOR
-            // chord on degree ii, a borrowed chord, a modal mixture…), store it as a FIXED chord (Degree = −1). Otherwise
-            // its major/dim quality would be silently re-derived back to the diatonic one on the next edit or key change,
-            // and the editor combo would mislabel it. As a fixed chord, its FUNCTION (V/V…) is read from root+quality.
-            {
-                var k = project.Key ?? new Engine.Score.KeySignature();
-                Engine.Flow.MusicTheory.ChordShape(pg.Quality, out bool reqMin, out bool reqDim, out _, out _);
-                bool diaDim = Engine.Flow.MusicTheory.DiatonicIsDim(k, pg.Degree);
-                bool diaMin = !diaDim && Engine.Flow.MusicTheory.DiatonicThird(k, pg.Degree) == 3;
-                if (reqMin != diaMin || reqDim != diaDim) pg.Degree = -1;
-            }
-            if (silent)
-            {
-                // "Accords en voix dédiée" : custom style with an EMPTY motif → the chord plays nothing but still carries
-                // its degree/quality so MelodicLineModule (and the riff harmony fix) know the harmony under each bar.
-                int chordSlices = Math.Max(1, pg.BeatsPerBar * artSpq);
-                pg.Style = PatternGenerator.CustomStyle;
-                pg.CustomSlicesPerQuarter = artSpq;
-                pg.CustomNotes = new System.Collections.Generic.List<RiffNote>();
-                pg.CustomSlices = RiffNotes.ToSlices(pg.CustomNotes, chordSlices);
-            }
-            else if (motifNotes != null && motifNotes.Count > 0)
-            {
-                // Custom voiced articulation: trim the one-bar motif to this chord's length, set the "Personnalisé" style.
-                int chordSlices = Math.Max(1, pg.BeatsPerBar * artSpq);
-                var mnotes = new System.Collections.Generic.List<RiffNote>();
-                foreach (var n in motifNotes)
-                {
-                    if (n.Start >= chordSlices) continue;
-                    int len = Math.Min(n.Length, chordSlices - n.Start);
-                    if (len >= 1) mnotes.Add(new RiffNote(n.Note, n.Start, len));
-                }
-                pg.Style = PatternGenerator.CustomStyle;
-                pg.CustomSlicesPerQuarter = artSpq;
-                pg.CustomNotes = mnotes;
-                pg.CustomSlices = RiffNotes.ToSlices(mnotes, chordSlices);
-                // Reference the shared, project-saved articulation: the grid above stays per-chord (each chord may be
-                // trimmed to its own length), but the name links them so a later edit propagates over the whole section.
-                pg.UserStyleName = userStyleName;
-            }
-            else if (style >= 0) pg.Style = style;
-
-            // Melodic cell: the SAME diatonic-degree phrase on every chord of the section. It is stored as grid rows
-            // (degrees), so GenerateMelodic resolves it against THIS chord's anchor — i.e. it transposes modally.
-            if (melodicCell != null && melodicCell.Count > 0 && !silent)
-            {
-                int cellSlices = Math.Max(1, pg.BeatsPerBar * artSpq);
-                var cnotes = new System.Collections.Generic.List<RiffNote>();
-                foreach (var n in melodicCell)
-                {
-                    if (n.Start >= cellSlices) continue;
-                    int len = Math.Min(n.Length, cellSlices - n.Start);
-                    if (len >= 1) cnotes.Add(new RiffNote(n.Note, n.Start, len));
-                }
-                if (cnotes.Count > 0) pg.SetMelodicNotes(cnotes, artSpq, cellSlices);
-            }
-
-            chordTrack.Items.Add(new TimelineItem { Module = pg });
-            return pg;
         }
 
 

@@ -178,6 +178,7 @@
     <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
     <Compile Include="Engine\Flow\ModuleDuration.cs" />
     <Compile Include="Engine\Timeline\TimelineProject.cs" />
+    <Compile Include="Engine\Timeline\ChordModelOps.cs" />
     <Compile Include="Engine\Timeline\ScoreSlicing.cs" />
     <Compile Include="Engine\Timeline\MidiTimelineExporter.cs" />
     <Compile Include="Engine\Timeline\MuseScoreExporter.cs" />

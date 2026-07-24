@@ -139,12 +139,12 @@ namespace MusicTracker.Engine.AI
                     for (int ci = 0; ci < k; ci++)
                     {
                         int part = Math.Max(1, barTemps / k + (ci < barTemps % k ? 1 : 0));
-                        prevPg = AddAiChord(project, barTemps, chordTrack, list[ci], part, style, motif, artSpq, prevPg, silentChords, artName, cell);
+                        prevPg = ChordModelOps.AddAiChord(project, barTemps, chordTrack, list[ci], part, style, motif, artSpq, prevPg, silentChords, artName, cell);
                         lastSingle = list[ci];
                     }
                 }
                 else if (lastSingle != null)
-                    prevPg = AddAiChord(project, barTemps, chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords, artName, cell);
+                    prevPg = ChordModelOps.AddAiChord(project, barTemps, chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords, artName, cell);
             }
             // Develop mode: shift the newly-appended chords so they start at baseBeats (a gap on the first new chord).
             if (append && chordTrack.Items.Count > chordPreCount)
@@ -353,34 +353,6 @@ namespace MusicTracker.Engine.AI
             if (project.Tracks[project.Tracks.Count - 1] != chord) { project.Tracks.Remove(chord); project.Tracks.Add(chord); }
         }
 
-        static int CopyLeadRem(TimelineProject project, double totalBeats, int barTemps)
-            => project.PickupBeats > 1e-6 ? Engine.Timeline.MotifCopy.LeadRemainder(totalBeats, barTemps) : 0;
-
-        // A fresh chord module inheriting the previous chord's params (voice-leading defaults, bar-aligned).
-        static PatternGeneratorModule NewChordLike(TimelineProject project, PatternGeneratorModule prev, int barTemps)
-        {
-            var pg = new PatternGeneratorModule { BeatsPerBar = barTemps, Repeats = 1 };
-            if (prev != null)
-            {
-                pg.Style = prev.Style; pg.UserStyleName = prev.UserStyleName;
-                // Bar-align: if the previous chord carries an anacrusis lead-in (7 in 3/4), the new one drops it (7 → 6).
-                int spq = Math.Max(1, prev.CustomSlicesPerQuarter);
-                int gridCut = CopyLeadRem(project, prev.CustomSlices != null ? prev.CustomSlices.Length / (double)spq : 0, barTemps) * spq;
-                pg.CustomSlices = prev.CustomSlices != null ? Engine.Timeline.MotifCopy.TrimSlices(prev.CustomSlices, gridCut) : null;
-                pg.CustomNotes = gridCut > 0 ? Engine.Timeline.MotifCopy.TrimNotes(prev.CustomNotes, gridCut)
-                                             : (prev.CustomNotes != null ? new List<RiffNote>(prev.CustomNotes) : null);
-                pg.CustomSlicesPerQuarter = prev.CustomSlicesPerQuarter;
-                pg.OpenVoicing = prev.OpenVoicing;
-                pg.VoiceLeadMode = prev.VoiceLeadMode != 0 ? prev.VoiceLeadMode : 1;
-                pg.Bass = prev.Bass; pg.BassPerBeat = prev.BassPerBeat;
-                pg.ClimbMode = prev.ClimbMode; pg.HeldMode = prev.HeldMode; pg.HalveDurations = prev.HalveDurations;
-                pg.DiatonicColour = prev.DiatonicColour; pg.Suspension = prev.Suspension; pg.ModeOverride = prev.ModeOverride; pg.Octave = prev.Octave;
-                int prevTotal = Math.Max(1, prev.BeatsPerBar * Math.Max(1, prev.Repeats));
-                pg.BeatsPerBar = Math.Max(1, prevTotal - CopyLeadRem(project, prevTotal, barTemps)); // default-style duration follows the same trim
-            }
-            return pg;
-        }
-
         // Reuse the existing drum track (develop/append), else create the dedicated GM-kit drum track.
         static TimelineTrack GetOrCreateDrumTrack(TimelineProject project, bool reuse)
         {
@@ -414,77 +386,6 @@ namespace MusicTracker.Engine.AI
             double cur = 0;
             foreach (var it in t.Items) cur += it.SilenceBefore + TimelineProject.ItemLength(it, riffById);
             return cur;
-        }
-
-        static PatternGeneratorModule AddAiChord(TimelineProject project, int barTemps, TimelineTrack chordTrack, AiChord c, int beats, int style,
-            List<RiffNote> motifNotes, int artSpq, PatternGeneratorModule prev, bool silent = false,
-            string userStyleName = null, List<RiffNote> melodicCell = null)
-        {
-            var pg = NewChordLike(project, prev, barTemps);
-            pg.BeatsPerBar = Math.Max(1, beats); pg.Repeats = 1;
-            int deg = Math.Max(1, Math.Min(7, c.degree));
-            pg.Degree = deg - 1;
-            pg.Root = AiTranslate.RootPc(project.Key, deg);
-            pg.Quality = AiTranslate.QualityIndex(c.quality);
-            // When the requested chord ISN'T the diatonic chord of its degree (a secondary dominant like V/V = a MAJOR
-            // chord on degree ii, a borrowed chord, a modal mixture…), store it as a FIXED chord (Degree = −1). Otherwise
-            // its major/dim quality would be silently re-derived back to the diatonic one on the next edit or key change,
-            // and the editor combo would mislabel it. As a fixed chord, its FUNCTION (V/V…) is read from root+quality.
-            {
-                var k = project.Key ?? new Engine.Score.KeySignature();
-                MusicTheory.ChordShape(pg.Quality, out bool reqMin, out bool reqDim, out _, out _);
-                bool diaDim = MusicTheory.DiatonicIsDim(k, pg.Degree);
-                bool diaMin = !diaDim && MusicTheory.DiatonicThird(k, pg.Degree) == 3;
-                if (reqMin != diaMin || reqDim != diaDim) pg.Degree = -1;
-            }
-            if (silent)
-            {
-                // "Accords en voix dédiée" : custom style with an EMPTY motif → the chord plays nothing but still carries
-                // its degree/quality so MelodicLineModule (and the riff harmony fix) know the harmony under each bar.
-                int chordSlices = Math.Max(1, pg.BeatsPerBar * artSpq);
-                pg.Style = PatternGenerator.CustomStyle;
-                pg.CustomSlicesPerQuarter = artSpq;
-                pg.CustomNotes = new List<RiffNote>();
-                pg.CustomSlices = RiffNotes.ToSlices(pg.CustomNotes, chordSlices);
-            }
-            else if (motifNotes != null && motifNotes.Count > 0)
-            {
-                // Custom voiced articulation: trim the one-bar motif to this chord's length, set the "Personnalisé" style.
-                int chordSlices = Math.Max(1, pg.BeatsPerBar * artSpq);
-                var mnotes = new List<RiffNote>();
-                foreach (var n in motifNotes)
-                {
-                    if (n.Start >= chordSlices) continue;
-                    int len = Math.Min(n.Length, chordSlices - n.Start);
-                    if (len >= 1) mnotes.Add(new RiffNote(n.Note, n.Start, len));
-                }
-                pg.Style = PatternGenerator.CustomStyle;
-                pg.CustomSlicesPerQuarter = artSpq;
-                pg.CustomNotes = mnotes;
-                pg.CustomSlices = RiffNotes.ToSlices(mnotes, chordSlices);
-                // Reference the shared, project-saved articulation: the grid above stays per-chord (each chord may be
-                // trimmed to its own length), but the name links them so a later edit propagates over the whole section.
-                pg.UserStyleName = userStyleName;
-            }
-            else if (style >= 0) pg.Style = style;
-
-            // Melodic cell: the SAME diatonic-degree phrase on every chord of the section. It is stored as grid rows
-            // (degrees), so GenerateMelodic resolves it against THIS chord's anchor — i.e. it transposes modally.
-            if (melodicCell != null && melodicCell.Count > 0 && !silent)
-            {
-                int cellSlices = Math.Max(1, pg.BeatsPerBar * artSpq);
-                var cnotes = new List<RiffNote>();
-                foreach (var n in melodicCell)
-                {
-                    if (n.Start >= cellSlices) continue;
-                    int len = Math.Min(n.Length, cellSlices - n.Start);
-                    if (len >= 1) cnotes.Add(new RiffNote(n.Note, n.Start, len));
-                }
-                if (cnotes.Count > 0) pg.SetMelodicNotes(cnotes, artSpq, cellSlices);
-            }
-
-            chordTrack.Items.Add(new TimelineItem { Module = pg });
-            return pg;
         }
 
         // Snap out-of-harmony riff notes: a note ON a beat must be a CHORD tone; off-beat notes must be in the SCALE. Only
