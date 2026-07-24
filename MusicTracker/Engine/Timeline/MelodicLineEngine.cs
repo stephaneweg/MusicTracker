@@ -60,6 +60,7 @@ namespace MusicTracker.Engine.Timeline
                 bool anchorUsed = false;
                 var starts = new HashSet<int>(vnotes.Select(x => x.Start));         // note onsets (does a beat start with a note?)
                 int forceMidi = -1;                                                 // pending resolution of an accented ornament
+                int lastStrongMidi = -1, lastStrongRoot = -1, lastStrongQual = -1;  // previous on-beat chord tone (to avoid repeating it)
                 int waveLen = Math.Max(2, m.WaveLength > 0 ? m.WaveLength : arcLen[v]); // notes per arc for the Vague contour
                 string moves = contour == 7 ? LSystem(vnotes.Count) : null;
                 int[] frac = contour == 8 ? FractalCurve(vnotes.Count, band0, rng, amp) : null;
@@ -125,14 +126,26 @@ namespace MusicTracker.Engine.Timeline
                         {
                             // ON A BEAT (fort / demi-fort / faible) → a CHORD tone. The first fort/demi note may take the anchor.
                             HashSet<int> strongPcs = chordPcs;
+                            bool anchorForced = false;
                             if (anchor > 0 && !anchorUsed && cls <= 1 && chordPcs.Count > 0)
                             {
                                 int targetPc = (((root + AnchorGuide[Math.Min(anchor - 1, AnchorGuide.Length - 1)]) % 12) + 12) % 12;
                                 int bestPc = -1, bestD = 99;
                                 foreach (var p in chordPcs) { int d = PcDist(p, targetPc); if (d < bestD) { bestD = d; bestPc = p; } }
-                                if (bestPc >= 0) { strongPcs = new HashSet<int> { bestPc }; anchorUsed = true; }
+                                if (bestPc >= 0) { strongPcs = new HashSet<int> { bestPc }; anchorUsed = true; anchorForced = true; }
                             }
                             int chordChoice = PickTone(contour, ref dir, ref step, waveLen, prev, strongPcs, chordPcs, band, false, rng, idx, moves, frac, amp);
+
+                            // Avoid RE-LANDING on the same on-beat note when the chord hasn't changed, so a static chord
+                            // makes the line MOVE (Ré → Si, filled by a passing Do) instead of bouncing back (Ré … Ré).
+                            // A soft nudge to a different chord tone — only when the anchor didn't force this note.
+                            if (!anchorForced && chordChoice >= 0 && chordChoice == lastStrongMidi
+                                && root == lastStrongRoot && quality == lastStrongQual && chordPcs.Count > 1)
+                            {
+                                int alt = MovedChordTone(chordChoice, chordPcs, band, dir);
+                                if (alt >= 0) chordChoice = alt;
+                            }
+                            lastStrongMidi = chordChoice; lastStrongRoot = root; lastStrongQual = quality;
                             midi = chordChoice;
 
                             // ACCENTED ORNAMENTS on fort/demi-fort — OFF by default (Ornaments = 0). A suspension (retard:
@@ -347,6 +360,20 @@ namespace MusicTracker.Engine.Timeline
         {
             for (int d = 1; d <= 2; d++) { int m = targetMidi + d; if (pcs.Contains(((m % 12) + 12) % 12)) return m; }
             return -1;
+        }
+
+        // The CLOSEST chord tone to fromMidi that is DIFFERENT from it, preferring the current melodic direction so the
+        // line keeps moving (Ré → Si down, or Si → Ré up) rather than re-landing on the same pitch. −1 if none.
+        static int MovedChordTone(int fromMidi, HashSet<int> chordPcs, int band, int dir)
+        {
+            int best = -1, bestScore = int.MaxValue;
+            for (int m = band - 24; m <= band + 24; m++)
+            {
+                if (m == fromMidi || !chordPcs.Contains(((m % 12) + 12) % 12)) continue;
+                int score = Math.Abs(m - fromMidi) + (dir != 0 && Math.Sign(m - fromMidi) != dir ? 5 : 0); // small penalty against the contour
+                if (score < bestScore) { bestScore = score; best = m; }
+            }
+            return best;
         }
 
         // A note BETWEEN two beats — the a/b/else rules. (a) the beat started with a note: a passing tone toward the
