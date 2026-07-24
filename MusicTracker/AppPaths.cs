@@ -40,6 +40,22 @@ namespace MusicTracker
             return full;
         }
 
+        /// <summary>The per-user, NON-roaming local app-data folder (<c>%LocalAppData%\MusicTracker</c>), created on
+        /// demand. For large, machine-specific, writable data that must NOT roam across a domain (e.g. the ~206 MB
+        /// downloaded SoundFont).</summary>
+        public static string LocalDataDir { get; } =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MusicTracker");
+
+        /// <summary>Resolve <paramref name="relative"/> against <see cref="LocalDataDir"/>, ensuring the parent folder
+        /// exists. An already-rooted path is returned unchanged.</summary>
+        public static string LocalData(string relative)
+        {
+            if (string.IsNullOrEmpty(relative)) { TryCreate(LocalDataDir); return LocalDataDir; }
+            string full = Path.IsPathRooted(relative) ? relative : Path.Combine(LocalDataDir, relative);
+            TryCreate(Path.GetDirectoryName(full));
+            return full;
+        }
+
         /// <summary>Roaming path for a user-data file, migrating a legacy copy (an older build wrote it next to the
         /// .exe) into the roaming folder on first use, so upgrading users keep their settings/recents.</summary>
         public static string UserFile(string relative)

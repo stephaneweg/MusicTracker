@@ -37,7 +37,7 @@ namespace MusicTracker
         /// <summary>The diagnostic text, exposed separately so a status bar / startup notice can reuse it.</summary>
         public static string BuildMessage()
         {
-            string folder = AppPaths.Local(AppSettings.SoundFontFolder);
+            string folder = AppPaths.LocalData(AppSettings.SoundFontFolder);
             string attempted = InstrumentCatalog.LastAttemptedSoundFont;
             string reason = InstrumentCatalog.SoundFontProblem ?? "Aucun SoundFont chargé.";
 

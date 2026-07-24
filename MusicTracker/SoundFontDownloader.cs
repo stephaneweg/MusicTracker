@@ -30,8 +30,9 @@ namespace MusicTracker
         /// <summary>Progress report: bytes received so far and the total (Total ≤ 0 when the server omits Content-Length).</summary>
         public struct Progress { public long Received; public long Total; }
 
-        /// <summary>Absolute path the font is written to (the SoundFont folder next to the executable).</summary>
-        public static string TargetPath => AppPaths.Local(Path.Combine(AppSettings.SoundFontFolder, FileName));
+        /// <summary>Absolute path the font is written to: the writable per-user local SoundFont folder
+        /// (%LocalAppData%\MusicTracker\SoundFont), since Program Files is read-only once installed.</summary>
+        public static string TargetPath => AppPaths.LocalData(Path.Combine(AppSettings.SoundFontFolder, FileName));
 
         /// <summary>
         /// Download the SoundFont to <see cref="TargetPath"/>, streaming to a temporary ".part" file and moving it
@@ -40,7 +41,7 @@ namespace MusicTracker
         /// </summary>
         public static async Task DownloadAsync(IProgress<Progress> progress, CancellationToken ct = default(CancellationToken))
         {
-            string dir = AppPaths.Local(AppSettings.SoundFontFolder);
+            string dir = AppPaths.LocalData(AppSettings.SoundFontFolder);
             Directory.CreateDirectory(dir);
             string target = TargetPath;
             string part = target + ".part";

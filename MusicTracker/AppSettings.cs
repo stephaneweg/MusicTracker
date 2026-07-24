@@ -180,17 +180,14 @@ namespace MusicTracker
         /// <summary>The .sf2 files available under <see cref="SoundFontFolder"/> (file names only).</summary>
         public static List<string> AvailableSoundFonts()
         {
-            try
+            // Merge the bundled folder (next to the exe) and the writable local folder (downloaded fonts).
+            var names = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var folder in new[] { AppPaths.Local(SoundFontFolder), AppPaths.LocalData(SoundFontFolder) })
             {
-                string folder = AppPaths.Local(SoundFontFolder);
-                if (Directory.Exists(folder))
-                    return Directory.GetFiles(folder, "*.sf2")
-                                    .Select(Path.GetFileName)
-                                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
-                                    .ToList();
+                try { if (Directory.Exists(folder)) foreach (var f in Directory.GetFiles(folder, "*.sf2")) names.Add(Path.GetFileName(f)); }
+                catch { }
             }
-            catch { }
-            return new List<string>();
+            return names.ToList();
         }
 
         /// <summary>Absolute path to the chosen SoundFont (resolved against the assembly directory), or the
@@ -201,14 +198,22 @@ namespace MusicTracker
             {
                 // An absolute path chosen directly.
                 if (Path.IsPathRooted(SoundFont) && File.Exists(SoundFont)) return SoundFont;
-                // A bundled file name inside the SoundFont folder (assembly-relative).
+                // A file name inside the SoundFont folder: prefer the writable local copy (downloaded), then bundled.
+                string dl = AppPaths.LocalData(Path.Combine(SoundFontFolder, SoundFont));
+                if (File.Exists(dl)) return dl;
                 string inFolder = AppPaths.Local(Path.Combine(SoundFontFolder, SoundFont));
                 if (File.Exists(inFolder)) return inFolder;
-                // A relative path from the assembly directory.
+                // A relative path from either root.
+                string localBare = AppPaths.LocalData(SoundFont);
+                if (File.Exists(localBare)) return localBare;
                 string local = AppPaths.Local(SoundFont);
                 if (File.Exists(local)) return local;
             }
-            return AppPaths.Local(Engine.InstrumentCatalog.DefaultSoundFont);
+            // Default: a downloaded copy (writable local folder) wins over a bundled one shipped next to the exe.
+            string defRel = Engine.InstrumentCatalog.DefaultSoundFont;
+            string defDl = AppPaths.LocalData(defRel);
+            if (File.Exists(defDl)) return defDl;
+            return AppPaths.Local(defRel);
         }
 
         // ---- applying --------------------------------------------------------------
