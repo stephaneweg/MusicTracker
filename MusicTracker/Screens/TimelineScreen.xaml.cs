@@ -4247,6 +4247,17 @@ namespace MusicTracker.Screens
             pg.Degree = deg - 1;
             pg.Root = Engine.AI.AiTranslate.RootPc(project.Key, deg);
             pg.Quality = Engine.AI.AiTranslate.QualityIndex(c.quality);
+            // When the requested chord ISN'T the diatonic chord of its degree (a secondary dominant like V/V = a MAJOR
+            // chord on degree ii, a borrowed chord, a modal mixture…), store it as a FIXED chord (Degree = −1). Otherwise
+            // its major/dim quality would be silently re-derived back to the diatonic one on the next edit or key change,
+            // and the editor combo would mislabel it. As a fixed chord, its FUNCTION (V/V…) is read from root+quality.
+            {
+                var k = project.Key ?? new Engine.Score.KeySignature();
+                Engine.Flow.MusicTheory.ChordShape(pg.Quality, out bool reqMin, out bool reqDim, out _, out _);
+                bool diaDim = Engine.Flow.MusicTheory.DiatonicIsDim(k, pg.Degree);
+                bool diaMin = !diaDim && Engine.Flow.MusicTheory.DiatonicThird(k, pg.Degree) == 3;
+                if (reqMin != diaMin || reqDim != diaDim) pg.Degree = -1;
+            }
             if (silent)
             {
                 // "Accords en voix dédiée" : custom style with an EMPTY motif → the chord plays nothing but still carries
