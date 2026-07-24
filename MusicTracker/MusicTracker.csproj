@@ -8,6 +8,7 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>MusicTracker</RootNamespace>
     <AssemblyName>MusicTracker</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -619,6 +620,14 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="gridbg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- app.ico is embedded in the exe via <ApplicationIcon>; document.ico ships next to the
+         exe and is referenced by the .sq file association (see FileAssociations.cs). -->
+    <None Include="app.ico" />
+    <None Include="document.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Data\themes\_generated\" />

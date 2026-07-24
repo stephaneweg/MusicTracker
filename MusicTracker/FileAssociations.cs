@@ -12,7 +12,7 @@ namespace MusicTracker
     /// </summary>
     public static class FileAssociations
     {
-        const string ProgId = "MusicTracker.Music";
+        const string ProgId = "MusicTracker.MusicFile";
         static readonly string[] OwnedExtensions = { ".sq" }; // .sq = Timeline (the app's native format)
         static readonly string[] SharedExtensions = { ".mid", ".midi", ".mscz", ".mscx" };
 
@@ -28,13 +28,18 @@ namespace MusicTracker
                 string exe = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
                 bool changed = false;
 
+                // The document (.sq) icon: a dedicated document.ico shipped next to the exe.
+                // Falls back to the exe's own icon if that file is missing.
+                string docIcoPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(exe) ?? "", "document.ico");
+                string docIcon = System.IO.File.Exists(docIcoPath) ? "\"" + docIcoPath + "\",0" : "\"" + exe + "\",0";
+
                 using (var classes = Registry.CurrentUser.CreateSubKey(@"Software\Classes"))
                 {
                     // The ProgId: display name, icon and the launch command.
                     using (var prog = classes.CreateSubKey(ProgId))
                     {
                         prog.SetValue(null, "MusicTracker — Musique");
-                        using (var icon = prog.CreateSubKey("DefaultIcon")) icon.SetValue(null, "\"" + exe + "\",0");
+                        using (var icon = prog.CreateSubKey("DefaultIcon")) icon.SetValue(null, docIcon);
                         using (var cmd = prog.CreateSubKey(@"shell\open\command")) cmd.SetValue(null, "\"" + exe + "\" \"%1\"");
                     }
 
