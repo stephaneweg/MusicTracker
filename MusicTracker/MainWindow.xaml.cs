@@ -125,9 +125,62 @@ namespace MusicTracker
             catch (Exception ex) { MessageBox.Show("SoundFont load error : " + ex.Message); }
             finally { dlg.Close(); }
 
-            // Say so up front if no SoundFont could be loaded, instead of letting the user discover it as
-            // unexplained silence on the first Play (SoundFonts ship separately — see SoundFontGuard).
+            // Fresh install with no SoundFont: offer to download the MuseScore default (≈206 MB) so audio works out
+            // of the box. If the user accepts and it succeeds, it's installed + selected and we're ready.
+            if (!SoundFontGuard.IsReady && await TryDownloadDefaultSoundFontAsync())
+                return;
+
+            // Otherwise say so up front instead of letting the user discover it as unexplained silence on the first
+            // Play (SoundFonts ship separately — see SoundFontGuard).
             SoundFontGuard.CheckAtStartup(this);
+        }
+
+        /// <summary>
+        /// No SoundFont installed: ask, then download the MuseScore default with a progress dialog, select it as the
+        /// default and hot-reload the engine. Returns true only when playback is ready afterwards.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> TryDownloadDefaultSoundFontAsync()
+        {
+            long mb = SoundFontDownloader.ApproxBytes / (1024 * 1024);
+            var ask = MessageBox.Show(this,
+                "Aucun SoundFont n'est installé : aucun son ne peut être produit.\n\n" +
+                "Télécharger le SoundFont par défaut de MuseScore (" + SoundFontDownloader.FileName + ", ≈ " + mb + " Mo) " +
+                "maintenant ? Il sera installé et sélectionné automatiquement.",
+                "SoundFont manquant", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (ask != MessageBoxResult.Yes) return false;
+
+            var dlg = new Dialogs.ImportProgressDialog { Owner = this };
+            dlg.SetBusy("Téléchargement du SoundFont…");
+            dlg.Show();
+            var progress = new Progress<SoundFontDownloader.Progress>(p =>
+            {
+                long got = p.Received / (1024 * 1024);
+                if (p.Total > 0)
+                    dlg.Set((double)p.Received / p.Total, "Téléchargement du SoundFont… " + got + " / " + (p.Total / (1024 * 1024)) + " Mo");
+                else
+                    dlg.SetBusy("Téléchargement du SoundFont… " + got + " Mo");
+            });
+
+            try { await SoundFontDownloader.DownloadAsync(progress); }
+            catch (Exception ex)
+            {
+                dlg.Close();
+                MessageBox.Show(this,
+                    "Le téléchargement du SoundFont a échoué :\n" + ex.Message +
+                    "\n\nVous pourrez réessayer au prochain démarrage, ou placer un fichier .sf2 manuellement (voir Réglages → Audio).",
+                    "SoundFont", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            // Installed: make it the default and (re)load the engine at the current sample rate.
+            dlg.SetBusy("Chargement des instruments (SoundFont)…");
+            AppSettings.Instance.SoundFont = SoundFontDownloader.FileName;
+            AppSettings.Instance.Save();
+            try { await System.Threading.Tasks.Task.Run(() => AppSettings.Instance.Apply()); }
+            catch (Exception ex) { MessageBox.Show("SoundFont load error : " + ex.Message); }
+            finally { dlg.Close(); }
+
+            return SoundFontGuard.IsReady;
         }
 
         // ===== Tabs ==================================================================

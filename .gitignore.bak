@@ -53,4 +53,3 @@ SoundFont/
 # app needs them at runtime and they can no longer be rebuilt from a fresh clone.
 corpus/
 midi/
-releases/
