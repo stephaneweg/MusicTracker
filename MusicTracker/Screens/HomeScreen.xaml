@@ -274,7 +274,7 @@
                             </Canvas>
                         </Grid>
                         <StackPanel>
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="440" Margin="0,30,0,30">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="440" Margin="0,30,0,0">
                                 <!-- Wordmark -->
                                 <StackPanel Orientation="Horizontal" Margin="2,0,0,4" HorizontalAlignment="Center">
                                     <Ellipse Width="16" Height="16" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
@@ -283,7 +283,7 @@
                                 <TextBlock Text="Composez, arrangez et séquencez vos morceaux." HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"
                             FontSize="13" Margin="2,0,0,26"/>
                             </StackPanel>
-                            <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="0,0,0,30" Gap="12">
+                            <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="30,30,30,10" Gap="30">
                                 <!-- Nouvelle musique (primary — accent chip) -->
                                 <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnNewSequencer_Click">
                                     <DockPanel>

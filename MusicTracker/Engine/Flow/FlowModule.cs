@@ -357,6 +357,15 @@ namespace MusicTracker.Engine.Flow
         /// = the line rises across the module, -5 = falls). 0 = flat (default). Layers on top of RegisterShift.</summary>
         public int TensionSlope { get; set; } = 0;
 
+        /// <summary>AMPLITUDE: half-width (in semitones) of the register band the contour is allowed to roam within, around
+        /// each voice's centre. Small = the line hovers near its centre (calm), large = wide leaps / broad tessitura.
+        /// 0 or unset = the engine default (12 = one octave up and down). Applies to every contour.</summary>
+        public int Amplitude { get; set; } = 12;
+
+        /// <summary>WAVE LENGTH: for the "Vague" contour, number of notes per arc before the direction flips. Small = tight,
+        /// fast ripples; large = broad, slow swells. 0 = the engine's per-voice default. Ignored by the other contours.</summary>
+        public int WaveLength { get; set; } = 0;
+
         public void SetNotes(List<RiffNote> notes, int slicesPerQuarter, int lengthSlices)
         {
             Notes = notes ?? new List<RiffNote>();

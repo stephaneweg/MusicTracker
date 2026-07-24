@@ -2,9 +2,11 @@ using MusicTracker.Screens;
 using MusicTracker.Dialogs;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace MusicTracker
@@ -45,6 +47,74 @@ namespace MusicTracker
                 Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)(() => OpenPath(file)));
             }
         }
+
+        // ===== Custom window chrome (title bar buttons + drag/resize) ================
+
+        private void btnMinimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+        private void btnMaxRestore_Click(object sender, RoutedEventArgs e) =>
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+        private void btnClose_Click(object sender, RoutedEventArgs e) => Close();
+
+        // Keep the maximize/restore glyph in sync, and compensate the WindowChrome overflow
+        // that would otherwise push a few pixels of content off-screen when maximized.
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            bool max = WindowState == WindowState.Maximized;
+            if (btnMaxRestore != null)
+            {
+                btnMaxRestore.Content = max ? "" : "";   // Restore : Maximize (Segoe MDL2 Assets)
+                btnMaxRestore.ToolTip = max ? "Restaurer" : "Agrandir";
+            }
+            if (rootDock != null)
+                rootDock.Margin = max ? new Thickness(SystemParameters.WindowResizeBorderThickness.Left + 1) : new Thickness(0);
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            var src = (HwndSource)PresentationSource.FromVisual(this);
+            src?.AddHook(WindowProc);
+            Window_StateChanged(this, EventArgs.Empty); // apply the maximized margin/glyph on first show
+        }
+
+        // Constrain a maximized window to the current monitor's WORK AREA (respects the taskbar,
+        // DPI-safe on multi-monitor setups). Without this a WindowChrome maximize covers the taskbar.
+        private IntPtr WindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WM_GETMINMAXINFO = 0x0024;
+            if (msg == WM_GETMINMAXINFO)
+            {
+                var mmi = (MINMAXINFO)Marshal.PtrToStructure(lParam, typeof(MINMAXINFO));
+                IntPtr monitor = MonitorFromWindow(hwnd, 0x00000002 /*MONITOR_DEFAULTTONEAREST*/);
+                if (monitor != IntPtr.Zero)
+                {
+                    var info = new MONITORINFO { cbSize = Marshal.SizeOf(typeof(MONITORINFO)) };
+                    GetMonitorInfo(monitor, ref info);
+                    RECT work = info.rcWork, mon = info.rcMonitor;
+                    mmi.ptMaxPosition.X = work.Left - mon.Left;
+                    mmi.ptMaxPosition.Y = work.Top - mon.Top;
+                    mmi.ptMaxSize.X = work.Right - work.Left;
+                    mmi.ptMaxSize.Y = work.Bottom - work.Top;
+                    Marshal.StructureToPtr(mmi, lParam, true);
+                    handled = true;
+                }
+            }
+            return IntPtr.Zero;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int X; public int Y; }
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int Left, Top, Right, Bottom; }
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MINMAXINFO { public POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize; }
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public int dwFlags; }
+
+        [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hwnd, int flags);
+        [DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO info);
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {

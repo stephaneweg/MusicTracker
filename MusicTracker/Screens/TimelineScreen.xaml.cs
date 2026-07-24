@@ -4579,6 +4579,10 @@ namespace MusicTracker.Screens
             left.Children.Add(ParamCombo(Engine.Timeline.MelodicLineEngine.VariationNames, Math.Max(0, Math.Min(Engine.Timeline.MelodicLineEngine.VariationNames.Length - 1, ml.Variation)), v => ml.Variation = v, refresh));
             left.Children.Add(EdLabel("Tension (pente de registre, ± demi-tons)"));
             left.Children.Add(ParamNum(ml.TensionSlope, v => ml.TensionSlope = v, refresh));
+            left.Children.Add(EdLabel("Amplitude (tessiture ± demi-tons, 2-24)"));
+            left.Children.Add(ParamNum(ml.Amplitude, v => ml.Amplitude = Math.Max(2, Math.Min(24, v)), refresh));
+            left.Children.Add(EdLabel("Vague : notes par arc (0 = auto ; petit = ondule vite)"));
+            left.Children.Add(ParamNum(ml.WaveLength, v => ml.WaveLength = Math.Max(0, Math.Min(32, v)), refresh));
             var preserve = new CheckBox { Content = "Préserver (non écrasé par « Appliquer »)", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 8, 0, 0), IsChecked = ml.Preserve };
             preserve.Checked += (s, e) => ml.Preserve = true; preserve.Unchecked += (s, e) => ml.Preserve = false;
             left.Children.Add(preserve);

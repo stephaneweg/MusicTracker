@@ -6,8 +6,17 @@
         xmlns:local="clr-namespace:MusicTracker"
         xmlns:controls="clr-namespace:MusicTracker.Controls"
         xmlns:screens="clr-namespace:MusicTracker.Screens"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d" WindowState="Maximized"
-        Title="MusicTracker" Height="600" Width="800" Loaded="Window_Loaded">
+        Title="MusicTracker" Height="600" Width="800" Loaded="Window_Loaded"
+        StateChanged="Window_StateChanged"
+        Background="{StaticResource DarkBackground}"
+        UseLayoutRounding="True">
+    <!-- Custom chrome: no native title bar; the tab strip IS the title bar (draggable via CaptionHeight). -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="34" ResizeBorderThickness="6"
+                            CornerRadius="0" GlassFrameThickness="0,0,0,1" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
     <Window.Resources>
         <!-- A tab = a button (name + optional ✕). Blue when selected, grey otherwise. -->
         <Style x:Key="TabButton" TargetType="Button">
@@ -38,17 +47,76 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Window caption buttons (minimize / maximize-restore / close): flat, hover highlight. -->
+        <Style x:Key="CaptionButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3F4049"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Close button: same, but red on hover. -->
+        <Style x:Key="CaptionCloseButton" TargetType="Button" BasedOn="{StaticResource CaptionButton}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#E81123"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
-    <DockPanel>
+    <DockPanel x:Name="rootDock">
+        <!-- Title bar = tab strip. The empty stretch is draggable (WindowChrome CaptionHeight);
+             the interactive children opt back in with IsHitTestVisibleInChrome. -->
         <Border DockPanel.Dock="Top" x:Name="topBar" Background="{StaticResource DarkBackground}"
                 BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1" Height="34">
             <DockPanel>
-                <!-- Gear / settings button, pinned to the top-right corner. -->
+                <!-- Window buttons, pinned to the top-right corner. -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Stretch">
+                    <Button x:Name="btnMinimize" Style="{StaticResource CaptionButton}" Click="btnMinimize_Click"
+                            ToolTip="Réduire" Content="&#xE921;"/>
+                    <Button x:Name="btnMaxRestore" Style="{StaticResource CaptionButton}" Click="btnMaxRestore_Click"
+                            ToolTip="Agrandir" Content="&#xE922;"/>
+                    <Button x:Name="btnClose" Style="{StaticResource CaptionCloseButton}" Click="btnClose_Click"
+                            ToolTip="Fermer" Content="&#xE8BB;"/>
+                </StackPanel>
+                <!-- Gear / settings button, just left of the window buttons. -->
                 <Button DockPanel.Dock="Right" Click="btnSettings_Click" ToolTip="Paramètres" Cursor="Hand"
                         Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="6,0"
-                        Background="Transparent" BorderThickness="0" VerticalAlignment="Center"/>
+                        Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 <!-- Accueil + one button per open music (flush, full height). -->
-                <StackPanel x:Name="tabStrip" Orientation="Horizontal"/>
+                <StackPanel x:Name="tabStrip" DockPanel.Dock="Left" Orientation="Horizontal"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <!-- Draggable filler: fills the space between tabs and window buttons. -->
+                <Border Background="Transparent"/>
             </DockPanel>
         </Border>
         <ContentControl x:Name="host"/>
