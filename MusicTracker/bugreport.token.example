@@ -1,0 +1,22 @@
+Jeton GitHub pour le menu « Signaler un bug »
+=============================================
+
+Ce fichier est un MODÈLE. Le vrai jeton ne doit JAMAIS être committé.
+
+1. Crée un fine-grained Personal Access Token sur GitHub :
+   Settings ▸ Developer settings ▸ Personal access tokens ▸ Fine-grained tokens
+   - Resource owner : stephaneweg
+   - Repository access : seulement le dépôt MusicTracker
+   - Permissions ▸ Repository ▸ Issues : Read and write
+   (aucune autre permission)
+
+2. Fournis-le au build de l'UNE de ces deux façons :
+   a) Copie ce fichier en « bugreport.token » (même dossier que MusicTracker.csproj)
+      et remplace la ligne ci-dessous par le jeton seul.
+   b) OU définis la variable d'environnement MUSICTRACKER_GH_TOKEN avant de compiler.
+
+3. Compile. La cible MSBuild GenerateBuildSecrets embarque le jeton (XOR + base64)
+   dans BuildSecrets.g.cs (sous obj\, gitignoré). Un build sans jeton compile aussi :
+   le rapport de bug s'affiche alors comme « non configuré ».
+
+github_pat_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

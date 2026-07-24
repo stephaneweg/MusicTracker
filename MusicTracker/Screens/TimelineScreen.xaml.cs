@@ -692,6 +692,12 @@ namespace MusicTracker.Screens
             return true;
         }
 
+        /// <summary>Gather this project's state as attachable context for a GitHub bug report (see
+        /// <see cref="Dialogs.ReportBugDialog"/>). The serialization/formatting lives in the decoupled
+        /// <see cref="Engine.BugReport.BugReportContext"/>; this only forwards the screen's state.</summary>
+        public Engine.BugReport.BugReportContext BuildBugReportContext()
+            => Engine.BugReport.BugReportContext.Build(project, RiffLibrary.Instance.Riffs, templateSpec, CurrentPath, TemplateSeed);
+
         // Open a .sq (native) or import a .mid/.mscz/.mscx into the timeline.
         public void LoadFile(string path)
         {

@@ -1,0 +1,46 @@
+<Window x:Class="MusicTracker.Dialogs.ReportBugDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
+        Title="Signaler un bug" Width="520" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <StackPanel Margin="24,18">
+            <TextBlock x:Name="titleBar" Text="Signaler un bug ou une suggestion" Foreground="{StaticResource CommonForeground}"
+                       FontSize="16" FontWeight="Bold" Margin="0,0,0,4"/>
+            <TextBlock Text="Décris ce que tu faisais, ce qui était attendu, et ce qui s'est passé (ou ton idée)."
+                       Foreground="{StaticResource CommonForeground}" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,14"/>
+
+            <TextBlock Text="Type" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <ComboBox x:Name="cboType" HorizontalAlignment="Left" Width="220" SelectedIndex="0" Margin="0,0,0,12">
+                <ComboBoxItem Content="Bug"/>
+                <ComboBoxItem Content="Suggestion"/>
+            </ComboBox>
+
+            <TextBlock Text="Titre" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <TextBox x:Name="txtTitle" Style="{StaticResource labelTextBox}" HorizontalAlignment="Stretch" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Description" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <TextBox x:Name="txtDescription" Style="{StaticResource labelTextBox}" HorizontalAlignment="Stretch"
+                     Height="120" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                     VerticalContentAlignment="Top" Margin="0,0,0,12"/>
+
+            <CheckBox x:Name="chkAttachProject" Content="Joindre le projet en cours (JSON, replié dans l'issue)"
+                      IsChecked="True" Margin="0,0,0,4"/>
+            <CheckBox x:Name="chkAttachTemplate" Content="Joindre aussi le modèle associé" IsChecked="True" Margin="18,0,0,10"/>
+
+            <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="11" Margin="0,0,0,4"
+                       Text="⚠ Le rapport est publié comme une issue publique sur GitHub. N'y mets rien de confidentiel."/>
+
+            <TextBlock x:Name="txtStatus" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <Button Content="Annuler" Style="{StaticResource cancelButton}" x:Name="btnCancel" Padding="16,4" Margin="0,0,8,0" Cursor="Hand" Click="btnCancel_Click"/>
+                <Button Content="Envoyer" x:Name="btnSend" Style="{StaticResource okButton}" Padding="18,4" Cursor="Hand" Click="btnSend_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

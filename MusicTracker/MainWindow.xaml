@@ -75,15 +75,23 @@
 
         <!-- Close button: same, but red on hover. -->
         <Style x:Key="CaptionCloseButton" TargetType="Button" BasedOn="{StaticResource CaptionButton}">
+            <Setter Property="Background" Value="#492E32"/>
+            <Setter Property="Foreground" Value="#FFB4B4"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" BorderThickness="1" BorderBrush="{TemplateBinding BorderBrush}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#E81123"/>
+                                <Setter TargetName="bd" Property="Background" Value="#7A3A3E"/>
+                                <Setter Property="Foreground" Value="#FFCECE"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#5A3236"/>
+                                <Setter Property="BorderBrush" Value="#FFCECE"/>
                                 <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -110,6 +118,11 @@
                 <!-- Gear / settings button, just left of the window buttons. -->
                 <Button DockPanel.Dock="Right" Click="btnSettings_Click" ToolTip="Paramètres" Cursor="Hand"
                         Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="6,0"
+                        Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <!-- Signaler un bug, just left of the settings gear. -->
+                <Button DockPanel.Dock="Right" Click="btnReportBug_Click" ToolTip="Signaler un bug" Cursor="Hand"
+                        Content="&#xE939;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="0"
                         Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 <!-- Accueil + one button per open music (flush, full height). -->

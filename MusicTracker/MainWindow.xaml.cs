@@ -214,6 +214,13 @@ namespace MusicTracker
             dlg.ShowDialog();
         }
 
+        // "Signaler un bug": files a GitHub issue with an optional attachment of the current project (+ its template).
+        private void btnReportBug_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Dialogs.ReportBugDialog(current as TimelineScreen) { Owner = this };
+            dlg.ShowDialog();
+        }
+
         // The editor's own "Enregistrer" button (in its toolbar) calls back here.
         void SaveEditor(IMusicEditor editor)
         {
