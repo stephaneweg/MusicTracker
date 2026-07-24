@@ -1225,7 +1225,7 @@ namespace MusicTracker.Screens
                 var tick = new Rectangle { Width = 1, Height = CollapsedH, Fill = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x29)) };
                 Canvas.SetLeft(tick, b * PxPerBeat); canvas.Children.Add(tick);
             }
-            const double h = 12, top = (CollapsedH - h) / 2;
+            const double h = 18, top = (CollapsedH - h) / 2;   // thicker bars, small top/bottom margin
             double cursor = 0;
             foreach (var item in track.Items)
             {
