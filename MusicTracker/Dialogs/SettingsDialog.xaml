@@ -29,7 +29,12 @@
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="SoundFont :" Foreground="{StaticResource CommonForeground}"
                            VerticalAlignment="Center" Margin="0,0,12,10"/>
-                <ComboBox Grid.Row="0" Grid.Column="1" x:Name="cboSoundFont" Margin="0,0,0,10"/>
+                <DockPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,10">
+                    <Button DockPanel.Dock="Right" x:Name="btnBrowseSoundFont" Content="…" Width="28" Margin="6,0,0,0"
+                            Click="btnBrowseSoundFont_Click" Cursor="Hand"
+                            ToolTip="Choisir un fichier .sf2 sur le disque (copié dans vos données et sélectionné)"/>
+                    <ComboBox x:Name="cboSoundFont"/>
+                </DockPanel>
 
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="Fréquence d'échantillonnage :" Foreground="{StaticResource CommonForeground}"
                            VerticalAlignment="Center" Margin="0,0,12,10"/>

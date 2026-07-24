@@ -101,6 +101,35 @@ namespace MusicTracker.Dialogs
             DialogResult = true;
         }
 
+        // "…": pick a .sf2 from disk, copy it into the writable local SoundFont folder (%LocalAppData%) and select it.
+        private void btnBrowseSoundFont_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new FileBrowserDialog { Owner = this, Filter = "SoundFont (*.sf2)|*.sf2" };
+            if (dlg.ShowDialog() != true) return;
+            string src = dlg.FileName;
+            if (string.IsNullOrWhiteSpace(src) || !System.IO.File.Exists(src)) return;
+
+            string name = System.IO.Path.GetFileName(src);
+            string dest = AppPaths.LocalData(System.IO.Path.Combine(AppSettings.SoundFontFolder, name));
+            try
+            {
+                if (!string.Equals(System.IO.Path.GetFullPath(src), System.IO.Path.GetFullPath(dest), StringComparison.OrdinalIgnoreCase))
+                {
+                    System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait; // .sf2 can be hundreds of MB
+                    System.IO.File.Copy(src, dest, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Impossible de copier le SoundFont :\n" + ex.Message, "SoundFont", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            finally { System.Windows.Input.Mouse.OverrideCursor = null; }
+
+            if (!cboSoundFont.Items.Contains(name)) cboSoundFont.Items.Add(name);
+            cboSoundFont.SelectedItem = name; // applied on "Appliquer" (resolves to the local copy)
+        }
+
         private void btnApiKeys_Click(object sender, RoutedEventArgs e)
         {
             new ApiKeysDialog { Owner = this }.ShowDialog();
