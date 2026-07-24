@@ -921,7 +921,7 @@ namespace MusicTracker.Screens
         UIElement MakeTrackRow(TimelineTrack track, double laneWidth, bool fillItems = true)
         {
             if (track.Collapsed)
-                return new Border { Background = new SolidColorBrush(LaneBgColor(track)), Width = laneWidth };
+                return MakeCollapsedLane(track, laneWidth);
             var stack = new StackPanel();
             var vol = new Controls.TimelineEditor.VolumeLaneControl();
             vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
@@ -1205,6 +1205,44 @@ namespace MusicTracker.Screens
         // Lanes use the standard dark background; the instrument FAMILY colour is carried by the module BOXES instead.
         static Color LaneBgColor(TimelineTrack track) => Color.FromRgb(0x16, 0x16, 0x1B);
 
+        // The fill colour of a module box (and its collapsed mini-rectangle): chords by harmonic function, cadence blue,
+        // everything else tinted by the track's instrument family. Shared by MakeLeafBox and the collapsed strip.
+        System.Windows.Media.Brush ItemFillBrush(TimelineTrack track, TimelineItem item)
+        {
+            if (item.Module is PatternGeneratorModule cpg) return ChordFill(ChordFunction(cpg));
+            if (item.Module is CadenceModule) return ChordBlueBase;
+            return new SolidColorBrush(Controls.InstrumentColors.BoxFill(track.Instrument));
+        }
+
+        // A collapsed track still shows WHERE its modules are: a thin strip of colour rectangles at each module's
+        // position + length (same colours as the full boxes), so the lane doesn't read as empty (issue #5 follow-up).
+        Canvas MakeCollapsedLane(TimelineTrack track, double width)
+        {
+            var canvas = new Canvas { Height = CollapsedH, Width = width, Background = new SolidColorBrush(LaneBgColor(track)) };
+            canvas.MouseLeftButtonDown += (s, e) => SelectTrack(track);
+            for (int b = 0; b * PxPerBeat < width; b += 4)   // faint bar ticks, like the full lane
+            {
+                var tick = new Rectangle { Width = 1, Height = CollapsedH, Fill = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x29)) };
+                Canvas.SetLeft(tick, b * PxPerBeat); canvas.Children.Add(tick);
+            }
+            const double h = 12, top = (CollapsedH - h) / 2;
+            double cursor = 0;
+            foreach (var item in track.Items)
+            {
+                cursor += item.SilenceBefore;
+                double len = TimelineHelper.DispLen(item);
+                var rect = new Rectangle
+                {
+                    Width = Math.Max(3, len * PxPerBeat - 2), Height = h, RadiusX = 2, RadiusY = 2,
+                    Fill = ItemFillBrush(track, item), ToolTip = ItemTitle(item)
+                };
+                Canvas.SetLeft(rect, cursor * PxPerBeat); Canvas.SetTop(rect, top);
+                canvas.Children.Add(rect);
+                cursor += len;
+            }
+            return canvas;
+        }
+
         // The header family dot: the chords track is blue (like its boxes); everything else follows its GM family.
         static Color HeaderFamilyColor(TimelineTrack track)
             => track.Type == TimelineTrackType.Chord ? Color.FromRgb(0x44, 0x88, 0xFF) : Controls.InstrumentColors.FamilyHue(track.Instrument);
@@ -1330,20 +1368,19 @@ namespace MusicTracker.Screens
             var box = new Controls.TimelineEditor.ModuleBoxControl();
             // CHORDS render in BLUE: a distinct blue for the TONIC (I), a mid blue for the DOMINANT (V), the base blue for
             // the rest (and a whole cadence). Other module types keep the default box colour.
-            System.Windows.Media.Brush fill = null, border = null;
+            System.Windows.Media.Brush fill = ItemFillBrush(track, item), border = null;
             string title = ItemTitle(item), info = ItemInfo(item, len), bigLabel = null;
             if (item.Module is PatternGeneratorModule cpg)
             {
-                fill = ChordFill(ChordFunction(cpg)); border = ChordBorder;
+                border = ChordBorder;
                 // Just the chord NAME as the top title — no "· N temps" (the ruler shows the length visually).
                 title = $"{Engine.Score.KeySig.SpellPc(cpg.Root, project.Key)} {TimelineHelper.Get(PatternGenerator.QualityNames, cpg.Quality)}";
                 info = "";
                 bigLabel = ChordRoman(cpg);       // roman degree shown BIG in the centre, over the thumbnail
             }
-            else if (item.Module is CadenceModule) { fill = ChordBlueBase; border = ChordBorder; }
+            else if (item.Module is CadenceModule) { border = ChordBorder; }
             else   // riff / drum / melodic-line boxes: background + border tinted by the track's INSTRUMENT FAMILY
             {
-                fill = new System.Windows.Media.SolidColorBrush(Controls.InstrumentColors.BoxFill(track.Instrument));
                 border = new System.Windows.Media.SolidColorBrush(Controls.InstrumentColors.BoxBorder(track.Instrument));
             }
             box.Configure(title, info, w, height, sel, interactive, opacity, fill, border);
