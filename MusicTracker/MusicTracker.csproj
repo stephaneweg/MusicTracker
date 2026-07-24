@@ -632,14 +632,16 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets'))" />
   </Target>
-  <!-- ================= Bug-report token injection (build-time secret) =================
-       Reads the GitHub token from a gitignored bugreport.token file (next to the .csproj) OR from the
-       MUSICTRACKER_GH_TOKEN environment variable, and generates BuildSecrets.g.cs into obj\ holding it
-       XOR-scrambled + base64. The token is NEVER committed; a build without one yields an empty constant
-       (the in-app bug reporter then reports itself as "not configured"). The XOR key below MUST stay in
-       sync with MusicTracker.Engine.BugReport.BugReportConfig.XorKey. -->
+  <!-- ================= GitHub token injection (build-time secret) =================
+       Reads the GitHub token, in priority order, from: the gitignored releases\releases.token file (in the
+       nested MusicTracker_Releases checkout — this token also needs Contents:read on that repo for the update
+       check), then a gitignored bugreport.token next to the .csproj, then the MUSICTRACKER_GH_TOKEN env var.
+       Generates BuildSecrets.g.cs into obj\ holding it XOR-scrambled + base64. The token is NEVER committed; a
+       build without one yields an empty constant (bug reporter + update check then report as "not configured").
+       The XOR key below MUST stay in sync with MusicTracker.Engine.BugReport.BugReportConfig.XorKey. -->
   <UsingTask TaskName="GenerateBuildSecrets" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
+      <ReleaseTokenFile ParameterType="System.String" Required="false" />
       <TokenFile ParameterType="System.String" Required="false" />
       <EnvToken ParameterType="System.String" Required="false" />
       <OutputFile ParameterType="System.String" Required="true" />
@@ -647,7 +649,11 @@
     <Task>
       <Code Type="Fragment" Language="cs"><![CDATA[
           string raw = "";
-          if (!string.IsNullOrEmpty(TokenFile) && System.IO.File.Exists(TokenFile))
+          // Priority: releases/releases.token (private releases-repo token, also used by the update check) →
+          // bugreport.token (legacy location) → MUSICTRACKER_GH_TOKEN env var.
+          if (!string.IsNullOrEmpty(ReleaseTokenFile) && System.IO.File.Exists(ReleaseTokenFile))
+              raw = System.IO.File.ReadAllText(ReleaseTokenFile).Trim();
+          if (string.IsNullOrEmpty(raw) && !string.IsNullOrEmpty(TokenFile) && System.IO.File.Exists(TokenFile))
               raw = System.IO.File.ReadAllText(TokenFile).Trim();
           if (string.IsNullOrEmpty(raw) && !string.IsNullOrEmpty(EnvToken))
               raw = EnvToken.Trim();
@@ -673,7 +679,7 @@
   </UsingTask>
   <Target Name="GenerateBuildSecrets" BeforeTargets="CoreCompile">
     <MakeDir Directories="$(IntermediateOutputPath)" />
-    <GenerateBuildSecrets TokenFile="$(ProjectDir)bugreport.token" EnvToken="$(MUSICTRACKER_GH_TOKEN)" OutputFile="$(IntermediateOutputPath)BuildSecrets.g.cs" />
+    <GenerateBuildSecrets ReleaseTokenFile="$(ProjectDir)..\releases\releases.token" TokenFile="$(ProjectDir)bugreport.token" EnvToken="$(MUSICTRACKER_GH_TOKEN)" OutputFile="$(IntermediateOutputPath)BuildSecrets.g.cs" />
     <ItemGroup>
       <Compile Include="$(IntermediateOutputPath)BuildSecrets.g.cs" />
     </ItemGroup>
