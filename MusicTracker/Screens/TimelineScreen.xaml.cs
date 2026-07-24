@@ -4376,6 +4376,13 @@ namespace MusicTracker.Screens
                 menu.Items.Add(toDrum);
                 menu.Items.Add(new Separator());
             }
+            if (item.Module is MelodicLineModule mlm)
+            {
+                var toRiff = new MenuItem { Header = "🎵 Convertir en notes éditables", ToolTip = "Fige les hauteurs que le moteur a choisies sur les accords en un riff normal : chaque note devient éditable individuellement (la ligne rythme-seule est remplacée à la même position)." };
+                toRiff.Click += (s, e) => ConvertMelodicLineToRiff(track, item, mlm);
+                menu.Items.Add(toRiff);
+                menu.Items.Add(new Separator());
+            }
             var del = new MenuItem { Header = "🗑 Supprimer" };
             del.Click += (s, e) => DeleteItem(track, item);
             menu.Items.Add(del);
@@ -4410,6 +4417,28 @@ namespace MusicTracker.Screens
             if (track.Type != TimelineTrackType.Drum)
                 MessageBox.Show("Converti en module batterie. Pour entendre les percussions, place-le sur une piste Batterie (sinon il joue avec l'instrument de cette piste).",
                                 "Convertir en batterie", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        // "Convertir en notes éditables": FREEZE a rhythm-only melodic line into a normal, editable riff. The engine
+        // resolves the pitches it would play (the same line shown in the box thumbnail and heard at playback — chord
+        // tones on the beats, passing tones between, at this item's position in the progression), and we swap the
+        // MelodicLineModule for a PlayRiffModule carrying those exact notes. Same track/position; any multiple voices
+        // collapse into the one riff (each note on its pitch row). Replacing in place mirrors "Convertir en batterie"
+        // and is the least-confusing option here: a track holds items sequentially, so a parallel riff would either
+        // shift the timeline or double the audio on a second track.
+        void ConvertMelodicLineToRiff(TimelineTrack track, TimelineItem item, MelodicLineModule ml)
+        {
+            CommitRiffEditor();
+            double startBeat = ItemStartBeat(track, item);
+            var key = project.Key ?? new Engine.Score.KeySignature();
+            var riff = Engine.Timeline.MelodicLineEngine.GenerateLine(ml, project, RiffById, key, startBeat);
+            if (riff?.Notes == null || riff.Notes.Count == 0)
+            { MessageBox.Show("Cette ligne est vide, ou aucun accord n'est actif à cette position — les hauteurs ne peuvent pas être figées.", "Convertir en notes éditables", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+
+            riff.Name = !string.IsNullOrWhiteSpace(ml.LineName) ? ml.LineName : ("Ligne " + (RiffLibrary.Instance.Riffs.Count + 1));
+            RiffLibrary.Instance.Riffs.Add(riff);
+            item.Module = new PlayRiffModule { RiffId = riff.Id };
+            Render();
         }
 
         // Open the context-aware diagram for the chord `item` and insert the chosen chord right AFTER it.
