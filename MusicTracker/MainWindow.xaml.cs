@@ -1,4 +1,5 @@
-using MusicTracker.Dialogs;
+﻿using MusicTracker.Dialogs;
+using MusicTracker.Localization;
 using MusicTracker.Screens;
 using System;
 using System.Collections.Generic;
@@ -34,7 +35,7 @@ namespace MusicTracker
             homeScreen.OpenRecentRequested += (entry) => OpenPath(entry.Path);
             homeScreen.ComposeAiRequested += ComposeWithAiNewTab;
             homeScreen.TemplateSpecRequested += OpenTemplateSpec;
-            homeBtn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(16, 0, 16, 0), Content = "Accueil",
+            homeBtn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(16, 0, 16, 0), Content = Loc.T("Home"),
                                    Background = new SolidColorBrush(Color.FromRgb(0x24, 0x25, 0x2C)) }; // a bit darker than the music tabs
             homeBtn.Click += (s, e) => Select(homeScreen);
             tabStrip.Children.Add(homeBtn);
@@ -65,7 +66,7 @@ namespace MusicTracker
             if (btnMaxRestore != null)
             {
                 btnMaxRestore.Content = max ? "" : "";   // Restore : Maximize (Segoe MDL2 Assets)
-                btnMaxRestore.ToolTip = max ? "Restaurer" : "Agrandir";
+                btnMaxRestore.ToolTip = max ? Loc.T("Restore") : Loc.T("Maximize");
             }
             if (rootDock != null)
                 rootDock.Margin = max ? new Thickness(SystemParameters.WindowResizeBorderThickness.Left + 1) : new Thickness(0);
@@ -119,7 +120,7 @@ namespace MusicTracker
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             var dlg = new Dialogs.ImportProgressDialog { Owner = this };
-            dlg.SetBusy("Chargement des instruments (SoundFont)…");
+            dlg.SetBusy(Loc.T("LoadingInstrumentsSoundFont"));
             dlg.Show();
             try { await System.Threading.Tasks.Task.Run(() => AppSettings.Instance.Apply()); }
             catch (Exception ex) { MessageBox.Show("SoundFont load error : " + ex.Message); }
@@ -151,15 +152,15 @@ namespace MusicTracker
             if (prompt.ShowDialog() != true) return;
 
             var dlg = new Dialogs.ImportProgressDialog { Owner = this };
-            dlg.SetBusy("Téléchargement de la mise à jour…");
+            dlg.SetBusy(Loc.T("DownloadingTheUpdate"));
             dlg.Show();
             var progress = new Progress<Engine.Update.UpdateChecker.DownloadProgress>(p =>
             {
                 long got = p.Received / (1024 * 1024);
                 if (p.Total > 0)
-                    dlg.Set((double)p.Received / p.Total, "Téléchargement de la mise à jour… " + got + " / " + (p.Total / (1024 * 1024)) + " Mo");
+                    dlg.Set((double)p.Received / p.Total, Loc.T("DownloadingTheUpdate2") + got + " / " + (p.Total / (1024 * 1024)) + Loc.T("MB"));
                 else
-                    dlg.SetBusy("Téléchargement de la mise à jour… " + got + " Mo");
+                    dlg.SetBusy(Loc.T("DownloadingTheUpdate2") + got + Loc.T("MB"));
             });
 
             string dest = System.IO.Path.Combine(System.IO.Path.GetTempPath(), info.InstallerFileName);
@@ -167,8 +168,8 @@ namespace MusicTracker
             catch (Exception ex)
             {
                 dlg.Close();
-                MessageBox.Show(this, "Le téléchargement de la mise à jour a échoué :\n" + ex.Message,
-                                "Mise à jour", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("TheUpdateDownloadFailed") + ex.Message,
+                                Loc.T("Update2"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             dlg.Close();
@@ -176,8 +177,8 @@ namespace MusicTracker
             try { Engine.Update.UpdateChecker.LaunchInstaller(dest); }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Impossible de lancer l'installeur :\n" + ex.Message,
-                                "Mise à jour", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("CouldNotLaunchTheInstaller") + ex.Message,
+                                Loc.T("Update2"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             Application.Current.Shutdown(); // quit so the installer can replace the running app
@@ -191,22 +192,21 @@ namespace MusicTracker
         {
             long mb = SoundFontDownloader.ApproxBytes / (1024 * 1024);
             var ask = MessageBox.Show(this,
-                "Aucun SoundFont n'est installé : aucun son ne peut être produit.\n\n" +
-                "Télécharger le SoundFont par défaut de MuseScore (" + SoundFontDownloader.FileName + ", ≈ " + mb + " Mo) " +
-                "maintenant ? Il sera installé et sélectionné automatiquement.",
-                "SoundFont manquant", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                Loc.T("NoSoundFontIsInstalledNoSound") +
+                Loc.T("DownloadMuseScoreSDefaultSoundFont") + SoundFontDownloader.FileName + ", ≈ " + mb + Loc.T("MBNowItWillBeInstalled"),
+                Loc.T("SoundFontMissing"), MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (ask != MessageBoxResult.Yes) return false;
 
             var dlg = new Dialogs.ImportProgressDialog { Owner = this };
-            dlg.SetBusy("Téléchargement du SoundFont…");
+            dlg.SetBusy(Loc.T("DownloadingTheSoundFont"));
             dlg.Show();
             var progress = new Progress<SoundFontDownloader.Progress>(p =>
             {
                 long got = p.Received / (1024 * 1024);
                 if (p.Total > 0)
-                    dlg.Set((double)p.Received / p.Total, "Téléchargement du SoundFont… " + got + " / " + (p.Total / (1024 * 1024)) + " Mo");
+                    dlg.Set((double)p.Received / p.Total, Loc.T("DownloadingTheSoundFont2") + got + " / " + (p.Total / (1024 * 1024)) + Loc.T("MB"));
                 else
-                    dlg.SetBusy("Téléchargement du SoundFont… " + got + " Mo");
+                    dlg.SetBusy(Loc.T("DownloadingTheSoundFont2") + got + Loc.T("MB"));
             });
 
             try { await SoundFontDownloader.DownloadAsync(progress); }
@@ -214,14 +214,14 @@ namespace MusicTracker
             {
                 dlg.Close();
                 MessageBox.Show(this,
-                    "Le téléchargement du SoundFont a échoué :\n" + ex.Message +
-                    "\n\nVous pourrez réessayer au prochain démarrage, ou placer un fichier .sf2 manuellement (voir Réglages → Audio).",
+                    Loc.T("TheSoundFontDownloadFailed") + ex.Message +
+                    Loc.T("YouCanTryAgainAtThe"),
                     "SoundFont", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
             // Installed: make it the default and (re)load the engine at the current sample rate.
-            dlg.SetBusy("Chargement des instruments (SoundFont)…");
+            dlg.SetBusy(Loc.T("LoadingInstrumentsSoundFont"));
             AppSettings.Instance.SoundFont = SoundFontDownloader.FileName;
             AppSettings.Instance.Save();
             try { await System.Threading.Tasks.Task.Run(() => AppSettings.Instance.Apply()); }
@@ -264,7 +264,7 @@ namespace MusicTracker
                     Foreground = new SolidColorBrush(Color.FromRgb(0xCC, 0xAA, 0xAA)),
                     Cursor = Cursors.Hand,
                     VerticalAlignment = VerticalAlignment.Center,
-                    ToolTip = "Fermer",
+                    ToolTip = Loc.T("Close"),
                 };
                 close.PreviewMouseLeftButtonDown += (s, e) => { e.Handled = true; CloseEditor(editor); };
                 sp.Children.Add(close);
@@ -297,7 +297,7 @@ namespace MusicTracker
                 Select(editorTabs.Count > 0 ? (object)editorTabs[Math.Min(i, editorTabs.Count - 1)].editor : homeScreen);
         }
 
-        static string TabTitle(string path) => string.IsNullOrEmpty(path) ? "(nouveau)" : System.IO.Path.GetFileName(path);
+        static string TabTitle(string path) => string.IsNullOrEmpty(path) ? Loc.T("New") : System.IO.Path.GetFileName(path);
 
         void SetEditorTitle(IMusicEditor editor, string path)
         {
@@ -382,7 +382,7 @@ namespace MusicTracker
             var dlg = new Dialogs.FileBrowserDialog
             {
                 Owner = this,
-                Filter = "Musiques (*.sq;*.mid;*.mscz;*.mscx)|*.sq;*.mid;*.mscz;*.mscx|Tous les fichiers (*.*)|*.*",
+                Filter = Loc.T("MusicSqMidMsczMscxSq"),
             };
             if (dlg.ShowDialog() == true) OpenPath(dlg.FileName);
         }
@@ -395,7 +395,7 @@ namespace MusicTracker
                 case ".sq": case ".mid": case ".midi": case ".mscz": case ".mscx":
                     break;
                 default:
-                    MessageBox.Show("Type de fichier non reconnu : " + ext);
+                    MessageBox.Show(Loc.T("UnrecognisedFileType") + ext);
                     return;
             }
             var editor = new TimelineScreen();
@@ -418,7 +418,7 @@ namespace MusicTracker
             Defer(() =>
             {
                 try { editor.LoadDocument(doc); }
-                catch (Exception ex) { MessageBox.Show("Chargement impossible : " + ex.Message); }
+                catch (Exception ex) { MessageBox.Show(Loc.T("CouldNotLoad") + ex.Message); }
             });
         }
 

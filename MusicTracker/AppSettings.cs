@@ -34,6 +34,10 @@ namespace MusicTracker
         /// <summary>The engine sample rate (one of <see cref="StandardSampleRates"/>).</summary>
         public int SampleRate { get; set; } = Engine.AudioFormat.DefaultSampleRate;
 
+        /// <summary>UI language code: "fr" (default, the source language) or "en". Drives <see cref="Localization.LocalizationManager"/>
+        /// and picks the changelog language. Applied at startup (App.OnStartup) before the main window is built.</summary>
+        public string Language { get; set; } = "fr";
+
         /// <summary>Last-used settings of the riff recorder dialogs (remembered between sessions).</summary>
         public RecorderSettings Recorder { get; set; } = new RecorderSettings();
 

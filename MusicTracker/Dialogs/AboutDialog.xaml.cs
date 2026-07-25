@@ -1,5 +1,6 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Windows;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -10,7 +11,7 @@ namespace MusicTracker.Dialogs
         {
             InitializeComponent();
             var v = Assembly.GetExecutingAssembly().GetName().Version;
-            if (v != null) txtVersion.Text = "Version " + v;
+            if (v != null) txtVersion.Text = Loc.T("Version") + v;
         }
 
         private void btnClose_Click(object sender, RoutedEventArgs e) => Close();

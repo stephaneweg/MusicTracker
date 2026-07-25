@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using MusicTracker.Engine.Score;
 using MusicTracker.Engine.Timeline;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -66,7 +67,7 @@ namespace MusicTracker.Dialogs
             // Instrument pickers: "Auto (style)" (= keep the style's default) then the full instrument list.
             foreach (var box in new[] { melInstBox, accInstBox, padInstBox })
             {
-                box.Items.Add("Auto (style)");
+                box.Items.Add(Loc.T("AutoStyle"));
                 foreach (var n in Engine.InstrumentCatalog.Names()) box.Items.Add(n);
                 box.SelectedIndex = 0;
             }

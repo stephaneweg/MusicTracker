@@ -1,9 +1,10 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using MusicTracker.Engine.AI;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -39,7 +40,7 @@ namespace MusicTracker.Dialogs
         {
             string prov = AiProviders.Norm(AppSettings.Instance.AiProvider);
             int n = Keys.Count(k => AiProviders.Norm(k.Provider) == prov) + 1;
-            Keys.Add(new ApiKeyEntry { Provider = prov, Name = "Clé " + n, Key = "" });
+            Keys.Add(new ApiKeyEntry { Provider = prov, Name = Loc.T("Key") + n, Key = "" });
         }
 
         void btnDeleteRow_Click(object sender, RoutedEventArgs e)
@@ -55,7 +56,7 @@ namespace MusicTracker.Dialogs
                 .Select(k => new ApiKeyEntry
                 {
                     Provider = AiProviders.Norm(k.Provider),
-                    Name = string.IsNullOrWhiteSpace(k.Name) ? "Sans nom" : k.Name.Trim(),
+                    Name = string.IsNullOrWhiteSpace(k.Name) ? Loc.T("Untitled") : k.Name.Trim(),
                     Key = k.Key.Trim(),
                 })
                 .ToList();

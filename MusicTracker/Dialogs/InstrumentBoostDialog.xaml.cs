@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using MusicTracker.Engine;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -49,7 +50,7 @@ namespace MusicTracker.Dialogs
             for (int p = 0; p < names.Count; p++)
                 rows.Add(new BoostRow { Program = p, Name = names[p], Slider = boosts.TryGetValue(p, out int s) ? s : 0 });
             // Drum kit (program 128 in the app's convention).
-            rows.Add(new BoostRow { Program = InstrumentCatalog.DrumIndex, Name = "🥁 Batterie", Slider = boosts.TryGetValue(InstrumentCatalog.DrumIndex, out int sd) ? sd : 0 });
+            rows.Add(new BoostRow { Program = InstrumentCatalog.DrumIndex, Name = Loc.T("Drums2"), Slider = boosts.TryGetValue(InstrumentCatalog.DrumIndex, out int sd) ? sd : 0 });
 
             list.ItemsSource = rows;
         }

@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using MusicTracker.Engine.AI;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -96,12 +97,12 @@ namespace MusicTracker.Dialogs
             if (keyName != null) AiProviders.SetSelectedKeyName(provider, keyName);
             string key = AiProviders.KeyByName(provider, keyName)?.Trim() ?? "";
             string model = cboModel.Text?.Trim(); if (string.IsNullOrWhiteSpace(model)) model = AiProviders.DefaultModel(provider);
-            if (string.IsNullOrWhiteSpace(key)) { Status("Aucune clé " + AiProviders.Label(provider) + ". Ajoute-en une via « Gérer… ».", true); expModel.IsExpanded = true; return; }
+            if (string.IsNullOrWhiteSpace(key)) { Status(Loc.T("NoKey") + AiProviders.Label(provider) + Loc.T("AddOneViaManage"), true); expModel.IsExpanded = true; return; }
 
             SaveProviderFields(provider); AppSettings.Instance.AiProvider = provider; AppSettings.Instance.Save();
 
             string[] pr = buildPrompt(txtIntention.Text ?? "");
-            SetBusy(true); Status("Génération en cours…", false);
+            SetBusy(true); Status(Loc.T("Generating"), false);
             ResultJson = null; btnApply.IsEnabled = false; txtResult.Clear();
             try
             {
@@ -109,9 +110,9 @@ namespace MusicTracker.Dialogs
                 txtResult.Text = Pretty(json);
                 ResultJson = json;
                 btnApply.IsEnabled = true;
-                Status("Réponse reçue. Vérifie le JSON (Avancé) puis clique Confirmer.", false);
+                Status(Loc.T("ResponseReceivedCheckTheJSONAdvanced"), false);
             }
-            catch (Exception ex) { Status("Échec : " + ex.Message, true); }
+            catch (Exception ex) { Status(Loc.T("Failed") + ex.Message, true); }
             finally { SetBusy(false); }
         }
 
@@ -122,9 +123,9 @@ namespace MusicTracker.Dialogs
             {
                 string[] pr = buildPrompt(txtIntention.Text ?? "");
                 Clipboard.SetText(pr[0] + "\n\n" + pr[1]);
-                Status("Prompt copié. Colle-le dans un chat IA, puis reviens avec « Coller la réponse ».", false);
+                Status(Loc.T("PromptCopiedPasteItIntoAn"), false);
             }
-            catch (Exception ex) { Status("Impossible de copier le prompt : " + ex.Message, true); }
+            catch (Exception ex) { Status(Loc.T("CouldNotCopyThePrompt") + ex.Message, true); }
         }
 
         // "Coller la réponse" — treat the clipboard JSON as the result and hand it to the caller to apply.
@@ -132,18 +133,18 @@ namespace MusicTracker.Dialogs
         {
             string clip;
             try { clip = Clipboard.ContainsText() ? Clipboard.GetText() : null; }
-            catch (Exception ex) { Status("Presse-papiers illisible : " + ex.Message, true); return; }
-            if (string.IsNullOrWhiteSpace(clip)) { Status("Le presse-papiers est vide — copie d'abord la réponse JSON de l'IA.", true); return; }
+            catch (Exception ex) { Status(Loc.T("ClipboardIsUnreadable") + ex.Message, true); return; }
+            if (string.IsNullOrWhiteSpace(clip)) { Status(Loc.T("TheClipboardIsEmptyCopyThe"), true); return; }
             txtResult.Text = Pretty(clip);
             ResultJson = clip;
             btnApply.IsEnabled = true;
-            Status("Réponse collée. Vérifie le JSON (Avancé) puis clique Confirmer.", false);
+            Status(Loc.T("ResponsePastedCheckTheJSONAdvanced"), false);
         }
 
         // "Confirmer" — hand the generated/pasted JSON to the caller to parse and apply.
         void btnApply_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(ResultJson)) { Status("Génère ou colle d'abord une réponse.", true); return; }
+            if (string.IsNullOrWhiteSpace(ResultJson)) { Status(Loc.T("GenerateOrPasteAResponseFirst"), true); return; }
             DialogResult = true;   // caller parses/applies ResultJson
         }
 

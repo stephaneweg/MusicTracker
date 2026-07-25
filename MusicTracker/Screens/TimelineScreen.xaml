@@ -1,10 +1,11 @@
-<UserControl x:Class="MusicTracker.Screens.TimelineScreen"
+﻿<UserControl x:Class="MusicTracker.Screens.TimelineScreen"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:tle="clr-namespace:MusicTracker.Controls.TimelineEditor"
              xmlns:local="clr-namespace:MusicTracker.Screens"
+             xmlns:loc="clr-namespace:MusicTracker.Localization"
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1240"
              Background="{StaticResource CommonBackground}">
     <UserControl.Resources>
@@ -195,18 +196,18 @@
         <!-- Transport bar (DAW-style: transport · tempo · tonalité · mesure · levée · actions) -->
         <Border Grid.Row="0" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
-                <Button x:Name="btnSaveMusic" Content="Enregistrer" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="Enregistrer le morceau (.sq)"/>
+                <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}"/>
                 <!-- Transport -->
-                <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="Lire depuis le curseur"/>
-                <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,12,0" ToolTip="Arrêter (le curseur reste sur place)"/>
+                <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="{loc:Tr 'PlayFromTheCursor'}"/>
+                <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,12,0" ToolTip="{loc:Tr 'StopTheCursorStaysPut'}"/>
                 <!-- Template chip: only shown when the project was opened from a generative template. Shows the pick
                      seed and re-rolls it (rebuilds the project from the template's banks). -->
                 <Border x:Name="tplBar" Style="{StaticResource ToolChip}" Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Modèle" Style="{StaticResource ToolLabel}"/>
+                        <TextBlock Text="{loc:Tr 'Model'}" Style="{StaticResource ToolLabel}"/>
                         <TextBlock x:Name="txtTplSeed" Foreground="{StaticResource SecondaryForeground}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                        <Button x:Name="btnRegen" Content="🎲 Régénérer" Click="btnRegen_Click" Padding="8,3" Cursor="Hand"
-                                ToolTip="Repiocher dans les banques du modèle avec un nouveau tirage"/>
+                        <Button x:Name="btnRegen" Content="{loc:Tr 'Regenerate'}" Click="btnRegen_Click" Padding="8,3" Cursor="Hand"
+                                ToolTip="{loc:Tr 'DrawAgainFromTheModelS'}"/>
                     </StackPanel>
                 </Border>
                 <!-- Tempo -->
@@ -217,9 +218,9 @@
                     </StackPanel>
                 </Border>
                 <!-- Tonalité (dropdown popup) -->
-                <ToggleButton x:Name="tglKeyMenu" Style="{StaticResource ToolDropBtn}" ToolTip="Tonalité : tonique · altération · mode">
+                <ToggleButton x:Name="tglKeyMenu" Style="{StaticResource ToolDropBtn}" ToolTip="{loc:Tr 'KeyTonicAccidentalMode'}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Tonalité" Style="{StaticResource ToolLabel}"/>
+                        <TextBlock Text="{loc:Tr 'Key3'}" Style="{StaticResource ToolLabel}"/>
                         <TextBlock x:Name="txtKeySummary" Foreground="{StaticResource CommonForeground}" FontSize="12" VerticalAlignment="Center"/>
                         <TextBlock Text="▾" Foreground="{StaticResource SecondaryForeground}" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -230,19 +231,19 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <ComboBox x:Name="cboTonic" Width="54" VerticalAlignment="Center" SelectionChanged="Key_Changed"/>
-                                <ToggleButton x:Name="tglSharp" Content="♯" Style="{StaticResource toolToggleBlue}" Width="30" VerticalAlignment="Center" Margin="4,0,0,0" Click="TglSharp_Click" Cursor="Hand" ToolTip="Dièse à la tonique"/>
-                                <ToggleButton x:Name="tglFlat" Content="♭" Style="{StaticResource toolToggleBlue}" Width="30" VerticalAlignment="Center" Margin="2,0,0,0" Click="TglFlat_Click" Cursor="Hand" ToolTip="Bémol à la tonique"/>
+                                <ToggleButton x:Name="tglSharp" Content="♯" Style="{StaticResource toolToggleBlue}" Width="30" VerticalAlignment="Center" Margin="4,0,0,0" Click="TglSharp_Click" Cursor="Hand" ToolTip="{loc:Tr 'SharpOnTheTonic'}"/>
+                                <ToggleButton x:Name="tglFlat" Content="♭" Style="{StaticResource toolToggleBlue}" Width="30" VerticalAlignment="Center" Margin="2,0,0,0" Click="TglFlat_Click" Cursor="Hand" ToolTip="{loc:Tr 'FlatOnTheTonic'}"/>
                                 <ComboBox x:Name="cboMode" Width="200" VerticalAlignment="Center" Margin="6,0,0,0" SelectionChanged="Key_Changed"/>
                             </StackPanel>
-                            <Button x:Name="btnTranspose" Content="Transposer…" Click="btnTranspose_Click" Margin="0,0,0,0" Padding="8,4" Cursor="Hand" ToolTip="Transposer toutes les notes vers une autre gamme (au plus près : montée ou descente, selon le plus court)"/>
+                            <Button x:Name="btnTranspose" Content="{loc:Tr 'Transpose'}" Click="btnTranspose_Click" Margin="0,0,0,0" Padding="8,4" Cursor="Hand" ToolTip="{loc:Tr 'TransposeAllNotesToAnotherScale'}"/>
 
                         </StackPanel>
                     </Border>
                 </Popup>
                 <!-- Mesure (dropdown popup) -->
-                <ToggleButton x:Name="tglMeterMenu" Style="{StaticResource ToolDropBtn}" ToolTip="Signature rythmique et binaire/ternaire" >
+                <ToggleButton x:Name="tglMeterMenu" Style="{StaticResource ToolDropBtn}" ToolTip="{loc:Tr 'TimeSignatureAndSimpleCompound'}" >
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Mesure" Style="{StaticResource ToolLabel}"/>
+                        <TextBlock Text="{loc:Tr 'Bar'}" Style="{StaticResource ToolLabel}"/>
                         <TextBlock x:Name="txtMeterSummary" Foreground="{StaticResource CommonForeground}" FontSize="12" VerticalAlignment="Center"/>
                         <TextBlock Text="▾" Foreground="{StaticResource SecondaryForeground}" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
@@ -261,11 +262,11 @@
                                 <RowDefinition Height="auto"/>
                             </Grid.RowDefinitions>
                             <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2">
-                                <ComboBox x:Name="cboMeter" Width="62" VerticalAlignment="Center" Margin="0,0,8,0" SelectionChanged="Meter_Changed" ToolTip="Signature rythmique — changer le nombre de temps réorganise les riffs et les silences"/>
-                                <ToggleButton x:Name="tglTernary" Content="Ternaire" Style="{StaticResource TernaryToggle}" VerticalAlignment="Center" Click="TglTernary_Click" ToolTip="Basculer binaire ⇄ ternaire (x/4 ⇄ x/8) — ne change ni les riffs ni leur taille, seulement la partition (3 croches ⇄ triolets)"/>
+                                <ComboBox x:Name="cboMeter" Width="62" VerticalAlignment="Center" Margin="0,0,8,0" SelectionChanged="Meter_Changed" ToolTip="{loc:Tr 'TimeSignatureChangingTheNumberOf'}"/>
+                                <ToggleButton x:Name="tglTernary" Content="{loc:Tr 'Compound'}" Style="{StaticResource TernaryToggle}" VerticalAlignment="Center" Click="TglTernary_Click" ToolTip="{loc:Tr 'ToggleSimpleCompoundX4X'}"/>
                             </StackPanel>
-                            <TextBlock Text="Levée" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="1"/>
-                            <ComboBox x:Name="cboPickup" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" SelectionChanged="Pickup_Changed" ToolTip="Anacrouse : durée de la mesure incomplète de début (les barres de mesure sont décalées d'autant). N'affecte pas la lecture."/>
+                            <TextBlock Text="{loc:Tr 'Pickup'}" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="1"/>
+                            <ComboBox x:Name="cboPickup" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" SelectionChanged="Pickup_Changed" ToolTip="{loc:Tr 'PickupLengthOfTheIncompleteOpening'}"/>
                         </Grid>
                     </Border>
                 </Popup>
@@ -273,34 +274,34 @@
 
                 <!-- Action menus (less dense than a row of buttons). "Insérer" adapts to the selected track type. -->
                 <Menu Background="Transparent" VerticalAlignment="Center" Foreground="#DDDDDD">
-                    <MenuItem Header="Piste" Foreground="#DDDDDD">
-                        <MenuItem Header="＋ Piste instrument" Click="btnAddInstrTrack_Click"/>
-                        <MenuItem Header="＋ Piste batterie" Click="btnAddDrumTrack_Click"/>
+                    <MenuItem Header="{loc:Tr 'Track'}" Foreground="#DDDDDD">
+                        <MenuItem Header="{loc:Tr 'InstrumentTrack'}" Click="btnAddInstrTrack_Click"/>
+                        <MenuItem Header="{loc:Tr 'DrumTrack2'}" Click="btnAddDrumTrack_Click"/>
                         <Separator/>
-                        <MenuItem Header="🤖 Composer avec l'IA…" Click="btnAiCompose_Click" ToolTip="Décris un style + une longueur ; l'IA génère accords, sections, articulations et lignes mélodiques, posés sur la timeline (clé API gratuite : console.mistral.ai)"/>
-                        <MenuItem Header="🏛️ Créer structure…" Click="btnCreateStructure_Click" ToolTip="Génère une charpente d'arrangement éditable (Forme × Style × Humeur) : mélodie, contre-chant, accompagnement, basse, nappe — éditable ensuite"/>
-                        <MenuItem Header="🎶 Ajouter une ligne mélodique" Click="btnAddMelodicLine_Click" ToolTip="Sur une musique structurée : compose une voix mélodique supplémentaire (nouvel instrument) sur la grille et la structure existantes, insérée entre les voix mélodiques et l'accompagnement"/>
-                        <MenuItem Header="🎼 Accompagnement en accords" Click="btnChordAccomp_Click" ToolTip="Sur une musique structurée : crée une piste d'accompagnement en OBJETS ACCORD (un par mesure, par degré), avec un motif éditable partagé par section"/>
+                        <MenuItem Header="{loc:Tr 'ComposeWithAI2'}" Click="btnAiCompose_Click" ToolTip="{loc:Tr 'DescribeAStyleALengthThe'}"/>
+                        <MenuItem Header="{loc:Tr 'CreateStructure'}" Click="btnCreateStructure_Click" ToolTip="{loc:Tr 'GeneratesAnEditableArrangementFrameworkF'}"/>
+                        <MenuItem Header="{loc:Tr 'AddAMelodicLine'}" Click="btnAddMelodicLine_Click" ToolTip="{loc:Tr 'OnStructuredMusicComposesAnExtra'}"/>
+                        <MenuItem Header="{loc:Tr 'ChordAccompaniment'}" Click="btnChordAccomp_Click" ToolTip="{loc:Tr 'OnStructuredMusicCreatesAnAccompaniment'}"/>
                     </MenuItem>
-                    <MenuItem x:Name="menuInsert" Header="Insérer" Foreground="#DDDDDD">
+                    <MenuItem x:Name="menuInsert" Header="{loc:Tr 'Insert'}" Foreground="#DDDDDD">
                         <MenuItem x:Name="miAddRiff" Header="Riff" Click="btnAddRiff_Click"/>
-                        <MenuItem x:Name="miAddPattern" Header="Accords" Click="btnAddPattern_Click"/>
-                        <MenuItem x:Name="miAddCadence" Header="Cadence…" Click="btnAddCadence_Click"/>
-                        <MenuItem x:Name="miInsertMelodicLine" Header="Ligne mélodique (rythme)" Click="btnInsertMelodicLine_Click" ToolTip="Ajoute une ligne mélodique (rythme seul, ≤ 3 voix) sur une piste dédiée ; le moteur choisit les notes selon les accords. Ré-ajouter recopie la précédente à la suite."/>
-                        <MenuItem x:Name="miAddDrum" Header="Batterie" Click="btnAddDrum_Click"/>
+                        <MenuItem x:Name="miAddPattern" Header="{loc:Tr 'Chords'}" Click="btnAddPattern_Click"/>
+                        <MenuItem x:Name="miAddCadence" Header="{loc:Tr 'Cadence'}" Click="btnAddCadence_Click"/>
+                        <MenuItem x:Name="miInsertMelodicLine" Header="{loc:Tr 'MelodicLineRhythm'}" Click="btnInsertMelodicLine_Click" ToolTip="{loc:Tr 'AddsAMelodicLineRhythmOnly'}"/>
+                        <MenuItem x:Name="miAddDrum" Header="{loc:Tr 'Drums'}" Click="btnAddDrum_Click"/>
                         <Separator/>
-                        <MenuItem x:Name="miGenTheme" Header="🎵 Thème…" Click="btnGenerateTheme_Click" ToolTip="Génère un thème 100 % procédural (sérielle, automate cellulaire, L-système, génétique, fractale 1/f, Thue-Morse) sur la piste active — ou remplace la section sélectionnée en structure"/>
-                        <MenuItem x:Name="miVariation" Header="🔀 Variation…" Click="btnVariation_Click" ToolTip="Applique une technique de variation au riff sélectionné (le thème) : rétrograde, inversion, ornementation, augmentation, Fortspinnung, génétique…"/>
+                        <MenuItem x:Name="miGenTheme" Header="{loc:Tr 'Theme'}" Click="btnGenerateTheme_Click" ToolTip="{loc:Tr 'GeneratesA100ProceduralThemeSerial'}"/>
+                        <MenuItem x:Name="miVariation" Header="{loc:Tr 'Variation'}" Click="btnVariation_Click" ToolTip="{loc:Tr 'AppliesAVariationTechniqueToThe'}"/>
                     </MenuItem>
                     <MenuItem Header="Export" Foreground="#DDDDDD">
-                        <MenuItem Header="MIDI…" Click="btnExportMidi_Click" ToolTip="Exporter la timeline en fichier MIDI (.mid)"/>
-                        <MenuItem Header="MuseScore (.mscx)…" Click="btnExportMuseScore_Click" ToolTip="Exporter la partition en fichier natif MuseScore (.mscx)"/>
+                        <MenuItem Header="MIDI…" Click="btnExportMidi_Click" ToolTip="{loc:Tr 'ExportTheTimelineAsAMIDI'}"/>
+                        <MenuItem Header="MuseScore (.mscx)…" Click="btnExportMuseScore_Click" ToolTip="{loc:Tr 'ExportTheScoreAsANative'}"/>
                         <MenuItem Header="Audio…" Click="btnExport_Click"/>
-                        <MenuItem Header="Partition PDF…" Click="btnExportPdf_Click" ToolTip="Exporter les pistes cochées (♫) en partition A4 (impression PDF)"/>
+                        <MenuItem Header="{loc:Tr 'PDFScore'}" Click="btnExportPdf_Click" ToolTip="{loc:Tr 'ExportTheCheckedTracksAsAn'}"/>
                     </MenuItem>
                 </Menu>
                 <Border Width="1" Background="{StaticResource SubtleBorderBrush}" Margin="12,4"/>
-                <Button x:Name="btnImport" Content="Importer…" Click="btnImport_Click" Padding="8,4" Cursor="Hand" ToolTip="Importer un fichier MIDI ou MuseScore"/>
+                <Button x:Name="btnImport" Content="{loc:Tr 'Import2'}" Click="btnImport_Click" Padding="8,4" Cursor="Hand" ToolTip="{loc:Tr 'ImportAMIDIOrMuseScoreFile'}"/>
             </StackPanel>
         </Border>
 
@@ -328,7 +329,7 @@
                 <!-- corner above the header column -->
                 <Border Grid.Row="0" Grid.Column="0" Height="20" Background="{StaticResource DarkBackground}"
                     BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,1,1">
-                    <TextBlock Text="MESURES" Foreground="{StaticResource SecondaryForeground}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBlock Text="{loc:Tr 'BARS'}" Foreground="{StaticResource SecondaryForeground}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
                 </Border>
                 <!-- measure ruler: fixed vertically, scrolls horizontally with the lanes. A transparent
                  overlay canvas carries the draggable blue play-start handle. -->
@@ -387,14 +388,14 @@
                 </Grid.RowDefinitions>
                 <DockPanel Grid.Row="0" Margin="0,0,0,6">
                     <Button x:Name="btnEditorCollapse" DockPanel.Dock="Left" Style="{StaticResource iconButton}" Content="▾"
-                            VerticalAlignment="Center" Margin="0,0,6,0" Click="btnEditorCollapse_Click" ToolTip="Réduire / afficher l'éditeur"/>
-                    <ToggleButton x:Name="tglViewScore" DockPanel.Dock="Right" Content="🎼 Partition" Padding="10,2" Cursor="Hand"
+                            VerticalAlignment="Center" Margin="0,0,6,0" Click="btnEditorCollapse_Click" ToolTip="{loc:Tr 'CollapseShowTheEditor'}"/>
+                    <ToggleButton x:Name="tglViewScore" DockPanel.Dock="Right" Content="{loc:Tr 'Score'}" Padding="10,2" Cursor="Hand"
                                   Style="{StaticResource toolToggle}" IsEnabled="False" Click="tglViewScore_Click" VerticalAlignment="Center"
-                                  ToolTip="Basculer entre la PARTITION (des pistes cochées ♫) et l'ÉDITEUR du module sélectionné"/>
-                    <CheckBox x:Name="chkArpeggio" DockPanel.Dock="Right" Content="Arpegiato" Foreground="#CCCCCC" Cursor="Hand"
+                                  ToolTip="{loc:Tr 'SwitchBetweenTheSCOREOfThe'}"/>
+                    <CheckBox x:Name="chkArpeggio" DockPanel.Dock="Right" Content="{loc:Tr 'Arpeggiato'}" Foreground="#CCCCCC" Cursor="Hand"
                               VerticalAlignment="Center" Margin="0,0,10,0" Click="chkArpeggio_Click"
-                              ToolTip="Coché : les accords roulés (départs échelonnés + tenue commune) sont notés en UN accord + vague d'arpège.&#10;Décoché (défaut) : chaque note est affichée séparément (croches/noires réelles)."/>
-                    <TextBlock x:Name="txtEditorTitle" Text="Éditeur — (aucun module sélectionné)" Foreground="#CCCCCC" FontWeight="Bold" Margin="2,0,0,0" VerticalAlignment="Center"/>
+                              ToolTip="{loc:Tr 'CheckedRolledChordsStaggeredStartsCommon'}"/>
+                    <TextBlock x:Name="txtEditorTitle" Text="{loc:Tr 'EditorNoModuleSelected'}" Foreground="#CCCCCC" FontWeight="Bold" Margin="2,0,0,0" VerticalAlignment="Center"/>
                 </DockPanel>
                 <ScrollViewer Grid.Row="1" x:Name="editorScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Style="{StaticResource CornerlessScroll}">
                     <ContentControl x:Name="editorHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>

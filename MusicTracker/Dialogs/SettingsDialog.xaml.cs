@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Windows;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -69,11 +70,29 @@ namespace MusicTracker.Dialogs
                 if (d < fbest) { fbest = d; fi = i; }
             }
             cboFrameSize.SelectedIndex = fi;
+
+            // Language selector, driven by the languages discovered on disk (adding a lang.<code>.json needs no code change).
+            var langs = LocalizationManager.Instance.Available;
+            foreach (var l in langs) cboLanguage.Items.Add(l.Name);
+            int li = 0;
+            for (int i = 0; i < langs.Count; i++)
+                if (langs[i].Code == LocalizationManager.Instance.Language) { li = i; break; }
+            cboLanguage.SelectedIndex = li;
         }
 
         private void btnOk_Click(object sender, RoutedEventArgs e)
         {
             var settings = AppSettings.Instance;
+
+            // Language: persist + live-switch every open window's {loc:Tr} bindings.
+            var langs = LocalizationManager.Instance.Available;
+            int lidx = cboLanguage.SelectedIndex;
+            if (lidx >= 0 && lidx < langs.Count)
+            {
+                string lang = langs[lidx].Code;
+                settings.Language = lang;
+                LocalizationManager.Instance.SetLanguageCode(lang);
+            }
 
             string font = cboSoundFont.SelectedItem as string;
             settings.SoundFont = (font == null || font == DefaultLabel) ? "" : font;
@@ -96,7 +115,7 @@ namespace MusicTracker.Dialogs
             settings.Save();
 
             try { settings.Apply(); } // hot-reload the SoundFont at the (possibly new) sample rate
-            catch (Exception ex) { MessageBox.Show("Erreur lors du rechargement du SoundFont : " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("ErrorReloadingTheSoundFont") + ex.Message); }
 
             DialogResult = true;
         }
@@ -121,7 +140,7 @@ namespace MusicTracker.Dialogs
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Impossible de copier le SoundFont :\n" + ex.Message, "SoundFont", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, Loc.T("CouldNotCopyTheSoundFont") + ex.Message, "SoundFont", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             finally { System.Windows.Input.Mouse.OverrideCursor = null; }

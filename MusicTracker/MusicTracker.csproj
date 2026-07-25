@@ -212,6 +212,7 @@
     <Compile Include="Engine\Score\ScoreModel.cs" />
     <Resource Include="Fonts\Bravura.otf" />
     <Compile Include="FileAssociations.cs" />
+    <Compile Include="Localization\Loc.cs" />
     <Compile Include="RiffLibrary.cs" />
     <Compile Include="RecentFiles.cs" />
     <Compile Include="Screens\IMusicEditor.cs" />
@@ -602,6 +603,29 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="packages.config" />
+    <!-- Language tables ship as loose files next to the exe (Localization\lang.<code>.json), NOT embedded, so
+         a new translation can be dropped in the install folder and picked up at next launch with no rebuild. -->
+    <Content Include="Localization\lang.fr.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Localization\lang.en.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Localization\lang.de.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Localization\lang.it.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Localization\lang.es.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Localization\lang.nl.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Localization\lang.pt.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

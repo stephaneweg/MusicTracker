@@ -330,7 +330,7 @@ namespace MusicTracker.Screens
         void StartPlayback()
         {
             CommitRiffEditor(); // stop any riff preview first
-            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Lecture")) return;
+            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Playback")) return;
             try
             {
                 player = new Engine.Timeline.TimelinePlayer(project, TimelineHelper.RiffById, AudioFormat.SampleRate);

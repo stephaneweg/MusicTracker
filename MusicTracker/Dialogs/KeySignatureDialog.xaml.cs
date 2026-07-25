@@ -1,6 +1,7 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using MusicTracker.Engine.Score;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -15,7 +16,7 @@ namespace MusicTracker.Dialogs
         {
             InitializeComponent();
             foreach (var t in new[] { "Do", "Ré", "Mi", "Fa", "Sol", "La", "Si" }) cboTonic.Items.Add(t);
-            cboMode.Items.Add("Majeur"); cboMode.Items.Add("Mineur");
+            cboMode.Items.Add(Loc.T("Major")); cboMode.Items.Add(Loc.T("Minor"));
 
             var k = detected ?? new KeySignature();
             cboTonic.SelectedIndex = System.Math.Max(0, System.Math.Min(6, k.TonicLetter));

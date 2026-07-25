@@ -1,0 +1,34 @@
+# MusicTracker — What's New
+
+This file feeds the **"What's New"** widget on the app's home screen.
+MusicTracker downloads it straight from GitHub (raw URL), so news can be announced
+**without shipping a new build**: just edit this file and push it.
+
+The app fetches a language-specific file — `CHANGELOG.md` (French, the source) or `CHANGELOG.<code>.md`
+(e.g. `CHANGELOG.en.md`) — based on the UI language. The base URL is configured in
+`MusicTracker/App.config`, key `ChangelogUrl`.
+
+## Expected format
+
+One entry per line: `- <emoji> <text>`.
+The first "thing" after the dash is taken as the icon, the rest as the text.
+Everything else (headings, blank lines, paragraphs) is **ignored** — so this file stays readable on GitHub.
+The most **recent** entries go **first**; the app only shows the first few.
+
+## Entries
+
+- 🌍 Language selection (French, English, German, Italian, Spanish, Dutch, Portuguese) in Settings: the interface, the what's-new feed and AI-generated titles all follow the chosen language. More languages can be added by dropping a `lang.xx.json` file.
+- 🎲 Generative project templates: a template now holds banks of material per section (progressions, accompaniment patterns, melodic cells, per-instrument phrases, grooves). On opening, the app draws from them and assembles the piece — a "Regenerate" button pulls a new version.
+- 🤖 Generate your own styles with AI: describe an intention and the AI builds the template. Right-click a card to regenerate it reusing your intention.
+- 🎻 A template's phrases are transposed modally over each chord (with voice leading), and the AI can leave an instrument silent on a section to give the arrangement air.
+- 🎹 Much-improved audio rendering: instrument balance fixed (de-duplicated SoundFont modulators and filter-modulator support), no more gap on the piano.
+- 🎚️ Velocity-based dynamics: strong beats stand out, off-beats recede — playback breathes instead of being flat.
+- 🎶 The AI generates a melodic cell on top of the accompaniment pattern; it is transposed modally over each chord.
+- 🏷️ Chord patterns produced by the AI are saved under a name: editable and reusable from the styles picker.
+- ↔️ The timeline scrolls continuously during playback, cursor kept centred.
+- 🔊 A clear message when no SoundFont is found, at startup as well as on playback.
+- 🎛️ Project templates: from a file, with AI, or added to the folder — with deletion.
+- 🥁 Catalogue of drum patterns (Standard, Africa, Australia) + your saved, reusable patterns.
+- 🔑 Several API keys per provider, chosen by name in the compose screens.
+- 🎼 Structured AI templates (intro/theme/development/outro), expanded to the desired length.
+- 🎨 Dark & teal interface, movable dialogs, richer editors.

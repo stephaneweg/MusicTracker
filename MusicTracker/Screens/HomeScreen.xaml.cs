@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Screens
 {
@@ -34,15 +35,15 @@ namespace MusicTracker.Screens
 
         static readonly string[] Tips =
         {
-            "Un modèle crée un morceau complet en un clic — ou génère-en un sur mesure avec « Ajouter avec l'IA ».",
-            "Dans l'éditeur batterie, choisis un motif par catégorie, ou dessine le tien et enregistre-le pour le réutiliser partout.",
-            "Stocke plusieurs clés API par fournisseur (Paramètres ▸ Clés API) et bascule de l'une à l'autre par leur nom.",
-            "Une ligne mélodique ne fixe que le rythme : le moteur choisit les notes sur les accords en cours.",
-            "Dans un motif rythmique, une durée négative = un silence — pour aérer et structurer les phrases.",
-            "Le bouton ♫ d'une piste affiche sa partition ; M coupe la piste, S l'isole.",
-            "Importe un MIDI ou un fichier MuseScore directement dans la timeline (Importer…).",
-            "Les accords vont sur la piste « Accords » en bas ; insère une cadence pour une suite toute prête.",
-            "Change un motif de batterie et les répétitions s'ajustent pour garder la même durée.",
+            Loc.T("ATemplateCreatesACompletePiece"),
+            Loc.T("InTheDrumEditorPickA"),
+            Loc.T("StoresSeveralAPIKeysPerProvider"),
+            Loc.T("AMelodicLineOnlyFixesThe"),
+            Loc.T("InARhythmicPatternANegative"),
+            Loc.T("ATrackSButtonShowsIts"),
+            Loc.T("ImportsAMIDIOrMuseScoreFile"),
+            Loc.T("ChordsGoOnTheChordsTrack"),
+            Loc.T("ChangeADrumPatternAndThe"),
         };
 
         // The "Nouveautés" list is downloaded from the repo's CHANGELOG.md (raw URL, key ChangelogUrl in App.config),
@@ -63,7 +64,20 @@ namespace MusicTracker.Screens
         // screen repeatedly (it is rebuilt on every visit) must not hammer GitHub. The file's timestamp IS the
         // expiry clock, so the cache also survives restarts — and keeps the news readable offline.
         static readonly TimeSpan CacheLifetime = TimeSpan.FromDays(1);
-        static string CachePath => AppPaths.Roaming("userdata\\changelog.md");
+        // Per-language cache so switching language doesn't show the other language's cached news.
+        static string CachePath => AppPaths.Roaming("userdata\\changelog." + LocalizationManager.Instance.TwoLetter + ".md");
+
+        // The changelog is fetched per language: the source language keeps CHANGELOG.md; every other language inserts
+        // its code before the extension (…/CHANGELOG.md → …/CHANGELOG.en.md), so translations are just extra files
+        // pushed next to CHANGELOG.md — no app change needed.
+        static string LocalizedUrl(string baseUrl)
+        {
+            if (string.IsNullOrWhiteSpace(baseUrl)) return baseUrl;
+            string code = LocalizationManager.Instance.TwoLetter;
+            if (code == LocalizationManager.SourceLanguage) return baseUrl;
+            int dot = baseUrl.LastIndexOf('.');
+            return dot > 0 ? baseUrl.Substring(0, dot) + "." + code + baseUrl.Substring(dot) : baseUrl + "." + code;
+        }
 
         // One hue per news line. WPF (.NET Framework) does NOT render colour emoji fonts: the glyph falls back to a
         // monochrome outline, which simply takes the Foreground — so tinting is the only way to get colour here, and
@@ -109,11 +123,11 @@ namespace MusicTracker.Screens
 
         static readonly (string icon, string text)[] News =
         {
-            ("🎛️", "Modèles de projet : depuis un fichier, avec l'IA, ou à ajouter dans le dossier — avec suppression."),
-            ("🥁", "Catalogue de motifs batterie (Standard, Afrique, Australie) + tes motifs enregistrés, réutilisables."),
-            ("🔑", "Plusieurs clés API par fournisseur, choisies par nom dans les écrans de composition."),
-            ("🎼", "Templates IA structurés (intro/thème/développement/outro), étendus à la longueur voulue."),
-            ("🎨", "Interface sombre & teal, dialogues déplaçables, éditeurs enrichis."),
+            ("🎛️", Loc.T("ProjectTemplatesFromAFileWith")),
+            ("🥁", Loc.T("CatalogueOfDrumPatternsStandardAfrica")),
+            ("🔑", Loc.T("SeveralAPIKeysPerProviderChosen")),
+            ("🎼", Loc.T("StructuredAITemplatesIntroThemeDevelopme")),
+            ("🎨", Loc.T("DarkTealInterfaceMovableDialogsRicher")),
         };
 
         // The widget's LAYOUT lives in HomeScreen.xaml; only these two dynamic parts are driven from here.
@@ -165,7 +179,7 @@ namespace MusicTracker.Screens
         /// the home screen must never block or complain because GitHub is unreachable.</summary>
         async void LoadChangelogAsync(StackPanel host)
         {
-            string url = ChangelogUrl;
+            string url = LocalizedUrl(ChangelogUrl);
             if (string.IsNullOrWhiteSpace(url)) return;
 
             // 1) Cached copy first: instant, and it is what keeps the news visible offline.
@@ -241,14 +255,14 @@ namespace MusicTracker.Screens
                 // "Régénérer le template" (right-click) only for AI-made templates — it re-runs the AI with the stored
                 // intention and overwrites this template.
                 Action onRegen = spec.IsAiGenerated ? (Action)(() => RegenerateTemplate(n, intention)) : null;
-                AddTemplateCard(spec.Icon ?? "🎼", n, "Modèle — structure intro/thème/développement/outro.",
+                AddTemplateCard(spec.Icon ?? "🎼", n, Loc.T("TemplateIntroThemeDevelopmentOutroStruct"),
                                 spec.Tags, "#1FB6C3", () => TemplateSpecRequested?.Invoke(n), () => DeleteTemplate(n), onRegen);
             }
         }
 
         void DeleteTemplate(string name)
         {
-            if (MessageBox.Show("Supprimer le modèle « " + name + " » ?\nLe fichier .json sera effacé.", "Supprimer un modèle",
+            if (MessageBox.Show(Loc.T("DeleteTheModel") + name + Loc.T("TheJsonFileWillBeDeleted"), Loc.T("DeleteAModel"),
                     MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             Engine.Timeline.TemplateLibrary.Delete(name);
             RefreshTemplateCards();
@@ -263,7 +277,7 @@ namespace MusicTracker.Screens
             if (onRegenerate != null)
             {
                 var menu = new ContextMenu();
-                var mi = new MenuItem { Header = "🎲 Régénérer le template (IA)…" };
+                var mi = new MenuItem { Header = Loc.T("RegenerateTheTemplateAI2") };
                 mi.Click += (s, e) => onRegenerate();
                 menu.Items.Add(mi);
                 card.ContextMenu = menu;
@@ -295,7 +309,7 @@ namespace MusicTracker.Screens
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
                 // Inset past the card's 1px border AND its 10px corner radius, so the ✕ sits clearly INSIDE the card
                 // instead of straddling the rounded corner.
-                Margin = new Thickness(0, 9, 9, 0), ToolTip = "Supprimer ce modèle",
+                Margin = new Thickness(0, 9, 9, 0), ToolTip = Loc.T("DeleteThisModel"),
             };
             del.Click += (s, e) => onDelete();
             wrap.Children.Add(card);
@@ -417,17 +431,17 @@ namespace MusicTracker.Screens
         // "Ajouter depuis un fichier…" — pick a .json template, validate it, copy it into Data/templates, refresh.
         void btnAddFromFile_Click(object sender, RoutedEventArgs e)
         {
-            var dlg = new Dialogs.FileBrowserDialog { Owner = Window.GetWindow(this), Title = "Ajouter un template", Filter = "Template (*.json)|*.json|Tous les fichiers (*.*)|*.*" };
+            var dlg = new Dialogs.FileBrowserDialog { Owner = Window.GetWindow(this), Title = Loc.T("AddATemplate"), Filter = Loc.T("TemplateJsonJsonAllFiles") };
             if (dlg.ShowDialog() != true) return;
             try
             {
                 string json = System.IO.File.ReadAllText(dlg.FileName);
                 var spec = System.Text.Json.JsonSerializer.Deserialize<Engine.Timeline.TemplateSpec>(json, TemplateJsonOpts);
-                if (spec == null || string.IsNullOrWhiteSpace(spec.Name)) throw new Exception("Template invalide (« name » manquant).");
+                if (spec == null || string.IsNullOrWhiteSpace(spec.Name)) throw new Exception(Loc.T("InvalidTemplateNameMissing"));
                 Engine.Timeline.TemplateLibrary.Save(json, spec.Name);
                 RefreshTemplateCards();
             }
-            catch (Exception ex) { MessageBox.Show("Impossible d'ajouter ce template : " + ex.Message, "Ajouter un template", MessageBoxButton.OK, MessageBoxImage.Warning); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("CouldNotAddThisTemplate") + ex.Message, Loc.T("AddATemplate"), MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
         // "Ajouter avec l'IA…" — style + intention → the template prompt → provider call → validate → save (new template).
@@ -442,20 +456,20 @@ namespace MusicTracker.Screens
         // saved template (IsAiGenerated=true) so it can be regenerated later.
         void GenerateTemplateWithAi(string initialIntention, string forceName)
         {
-            string title = forceName != null ? "Régénérer le template — IA" : "Générer un template — IA";
+            string title = forceName != null ? Loc.T("RegenerateTheTemplateAI") : Loc.T("GenerateATemplateAI");
             // The checkbox is read when the user hits Generate, hence the closure over `dlg`.
             Dialogs.AiElementDialog dlg = null;
             dlg = new Dialogs.AiElementDialog(title,
-                "Décris un STYLE et une intention (ex. « valse mélancolique de Chopin »). L'IA renvoie un template ; vérifie puis Confirme pour l'enregistrer.",
+                Loc.T("DescribeASTYLEAndAnIntention"),
                 desc => Engine.Timeline.TemplatePrompt.Build(desc, dlg != null && dlg.OptionChecked), initialIntention,
-                "Lignes mélodiques (rythme seul, le moteur choisit les notes) au lieu de riffs écrits")
+                Loc.T("MelodicLinesRhythmOnlyTheEngine"))
             { Owner = Window.GetWindow(this) };
             if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.ResultJson)) return;
             try
             {
                 string json = Engine.AI.AiArrangement.CleanJson(dlg.ResultJson);
                 var spec = System.Text.Json.JsonSerializer.Deserialize<Engine.Timeline.TemplateSpec>(json, TemplateJsonOpts);
-                if (spec == null || string.IsNullOrWhiteSpace(spec.Name)) throw new Exception("Réponse sans template valide.");
+                if (spec == null || string.IsNullOrWhiteSpace(spec.Name)) throw new Exception(Loc.T("ResponseContainsNoValidTemplate"));
                 // Remember it was AI-made + the intention (so it can be regenerated), and keep the original file when
                 // regenerating (force the name → same slug → TemplateLibrary.Save overwrites it).
                 spec.IsAiGenerated = true;
@@ -464,7 +478,7 @@ namespace MusicTracker.Screens
                 Engine.Timeline.TemplateLibrary.Save(System.Text.Json.JsonSerializer.Serialize(spec, TemplateSaveOpts), spec.Name);
                 RefreshTemplateCards();
             }
-            catch (Exception ex) { MessageBox.Show("Template IA invalide : " + ex.Message, "Template IA", MessageBoxButton.OK, MessageBoxImage.Warning); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("InvalidAITemplate") + ex.Message, Loc.T("AITemplate"), MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
         static readonly System.Text.Json.JsonSerializerOptions TemplateSaveOpts = new System.Text.Json.JsonSerializerOptions

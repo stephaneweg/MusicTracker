@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Windows;
 using MusicTracker.Engine;
+using MusicTracker.Localization;
 
 namespace MusicTracker
 {
@@ -25,12 +26,12 @@ namespace MusicTracker
         /// </summary>
         /// <param name="owner">Window to centre the message on (may be null).</param>
         /// <param name="action">What the user was trying to do, e.g. "Lecture", "Export". Used as the title.</param>
-        public static bool EnsureReady(Window owner = null, string action = "Lecture")
+        public static bool EnsureReady(Window owner = null, string action = "Playback")
         {
             if (IsReady) return true;
 
             MessageBox.Show(owner ?? Application.Current?.MainWindow,
-                            BuildMessage(), action, MessageBoxButton.OK, MessageBoxImage.Warning);
+                            BuildMessage(), Loc.T(action), MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
         }
 
@@ -39,21 +40,21 @@ namespace MusicTracker
         {
             string folder = AppPaths.LocalData(AppSettings.SoundFontFolder);
             string attempted = InstrumentCatalog.LastAttemptedSoundFont;
-            string reason = InstrumentCatalog.SoundFontProblem ?? "Aucun SoundFont chargé.";
+            string reason = InstrumentCatalog.SoundFontProblem ?? Loc.T("NoSoundFontLoaded");
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("Aucun SoundFont utilisable : aucun son ne peut être produit.");
+            sb.AppendLine(Loc.T("NoUsableSoundFontNoSoundCan"));
             sb.AppendLine();
-            sb.AppendLine("Raison : " + reason);
+            sb.AppendLine(Loc.T("Reason") + reason);
             if (!string.IsNullOrEmpty(attempted))
-                sb.AppendLine("Fichier attendu : " + attempted);
+                sb.AppendLine(Loc.T("ExpectedFile") + attempted);
             sb.AppendLine();
-            sb.AppendLine("Pour corriger, placez un fichier .sf2 dans :");
+            sb.AppendLine(Loc.T("ToFixThisPlaceASf2"));
             sb.AppendLine("    " + folder);
-            sb.AppendLine("puis sélectionnez-le dans Réglages → Audio.");
+            sb.AppendLine(Loc.T("ThenSelectItInSettingsAudio"));
             sb.AppendLine();
-            sb.Append("Les SoundFonts ne sont pas livrés avec l'application (plusieurs centaines de Mo). ");
-            sb.Append("MuseScore_General.sf2 est un bon choix par défaut.");
+            sb.Append(Loc.T("SoundFontsAreNotShippedWithThe"));
+            sb.Append(Loc.T("MuseScoreGeneralSf2IsAGood"));
             return sb.ToString();
         }
 

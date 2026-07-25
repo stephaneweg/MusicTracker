@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,6 +10,7 @@ using System.Windows.Shapes;
 using NAudio.Wave;
 using MusicTracker.Engine;
 using MusicTracker.Engine.Flow;
+using MusicTracker.Localization;
 using MeltySynth;
 
 namespace MusicTracker.Controls
@@ -552,7 +553,7 @@ namespace MusicTracker.Controls
                 Stroke = MarkerStroke,
                 StrokeThickness = 1,
                 Cursor = Cursors.SizeWE,
-                ToolTip = "Glisser pour définir le point de départ de la lecture",
+                ToolTip = Loc.T("DragToSetThePlaybackStart"),
             };
             startMarker.MouseLeftButtonDown += StartMarker_MouseLeftButtonDown;
             startMarker.MouseMove += StartMarker_MouseMove;
@@ -806,9 +807,9 @@ namespace MusicTracker.Controls
             var dlg = new Dialogs.FileBrowserDialog
             {
                 Owner = Window.GetWindow(this),
-                Title = "Importer un fichier dans le riff",
-                Filter = "Fichiers musicaux (*.mid;*.midi;*.mscz;*.mscx)|*.mid;*.midi;*.mscz;*.mscx|"
-                       + "MIDI (*.mid;*.midi)|*.mid;*.midi|MuseScore (*.mscz;*.mscx)|*.mscz;*.mscx|Tous les fichiers (*.*)|*.*",
+                Title = Loc.T("ImportAFileIntoTheRiff"),
+                Filter = Loc.T("MusicFilesMidMidiMsczMscx")
+                       + Loc.T("MIDIMidMidiMidMidiMuseScore"),
             };
             if (dlg.ShowDialog() != true) return;
 
@@ -820,12 +821,12 @@ namespace MusicTracker.Controls
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Impossible de lire ce fichier :\n" + ex.Message, "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Loc.T("CouldNotReadThisFile") + ex.Message, Loc.T("Import"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (score?.Tracks == null || score.Tracks.Count == 0)
             {
-                MessageBox.Show("Aucune piste trouvée dans ce fichier.", "Import", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Loc.T("NoTrackFoundInThisFile"), Loc.T("Import"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -923,7 +924,7 @@ namespace MusicTracker.Controls
         {
             EndRun();
             if (waveOut != null) { StopPreview(); return; }
-            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Lecture")) return;
+            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Playback")) return;
             try
             {
                 Func<Riff> melody = () => new Riff { Notes = CurrentNotes(), LengthSlices = Cols, SlicesPerQuarter = spb };
@@ -948,7 +949,7 @@ namespace MusicTracker.Controls
                 }
                 waveOut = new WaveOutEvent { DesiredLatency = 120 };
                 waveOut.Init(wp); waveOut.Play();
-                btnPlay.Content = "■ Stop";
+                btnPlay.Content = Loc.T("Stop");
                 playTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
                 playTimer.Tick += (s, ev) => { if (currentSliceFn != null) { int cs = currentSliceFn(); MoveCursor(cs); FollowCursor(cs); } };
                 playTimer.Start();
@@ -961,7 +962,7 @@ namespace MusicTracker.Controls
             if (playTimer != null) { playTimer.Stop(); playTimer = null; }
             if (waveOut != null) { try { waveOut.Stop(); waveOut.Dispose(); } catch { } waveOut = null; }
             provider = null; currentSliceFn = null;
-            if (btnPlay != null) btnPlay.Content = "▶ Écouter";
+            if (btnPlay != null) btnPlay.Content = Loc.T("Play");
             MoveCursor(startSlice);
         }
 
@@ -971,7 +972,7 @@ namespace MusicTracker.Controls
         // is no longer chosen here — it's set by how long the cursor advances while a note is held.
         void BuildKbBar()
         {
-            kbBar.Children.Add(KbLabel("Octave :"));
+            kbBar.Children.Add(KbLabel(Loc.T("Octave")));
             for (int o = 1; o <= 7; o++) OctRadio(o, o == kbOctave);
 
             kbBar.Children.Add(KbSep());
@@ -979,7 +980,7 @@ namespace MusicTracker.Controls
             btnFlat = AccToggle("♭", -1);
 
             kbBar.Children.Add(KbSep());
-            kbBar.Children.Add(KbLabel("Gamme :"));
+            kbBar.Children.Add(KbLabel(Loc.T("Scale")));
             var cboRoot = new ComboBox { Width = 56, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 0, 1, 0), ItemsSource = new[] { "Do", "Ré", "Mi", "Fa", "Sol", "La", "Si" }, SelectedIndex = 0 };
             cboRoot.SelectionChanged += (s, e) => { if (cboRoot.SelectedIndex >= 0) scaleRootLetter = cboRoot.SelectedIndex; };
             kbBar.Children.Add(cboRoot);
@@ -991,25 +992,25 @@ namespace MusicTracker.Controls
 
             // Live input device pickers (MIDI keyboard / audio). Populated on Loaded, remembered in settings.
             kbBar.Children.Add(KbSep());
-            kbBar.Children.Add(KbLabel("MIDI in :"));
-            cboMidiIn = new ComboBox { Width = 130, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 0, 1, 0), ToolTip = "Périphérique MIDI joué dans l'éditeur" };
+            kbBar.Children.Add(KbLabel(Loc.T("MIDIIn")));
+            cboMidiIn = new ComboBox { Width = 130, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 0, 1, 0), ToolTip = Loc.T("MIDIDevicePlayedInTheEditor") };
             cboMidiIn.SelectionChanged += CboMidiIn_SelectionChanged;
             kbBar.Children.Add(cboMidiIn);
-            kbBar.Children.Add(KbLabel("Audio in :"));
-            cboAudioIn = new ComboBox { Width = 150, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 0, 1, 0), ToolTip = "Périphérique audio pour l'entrée 🎤" };
+            kbBar.Children.Add(KbLabel(Loc.T("AudioIn")));
+            cboAudioIn = new ComboBox { Width = 150, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 0, 1, 0), ToolTip = Loc.T("AudioDeviceForTheInput") };
             cboAudioIn.SelectionChanged += CboAudioIn_SelectionChanged;
             kbBar.Children.Add(cboAudioIn);
 
             kbBar.Children.Add(KbSep());
             var chkEcho = new CheckBox
             {
-                Content = "Écho MIDI",
+                Content = Loc.T("MIDIEcho"),
                 IsChecked = auditionEnabled,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xAA, 0xAA, 0xAA)),
                 VerticalAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(2, 0, 2, 0),
                 Cursor = Cursors.Hand,
-                ToolTip = "Rejoue en MIDI les notes détectées. Décoche-le si tu joues déjà l'instrument en entrée audio (🎤).",
+                ToolTip = Loc.T("ReplaysTheDetectedNotesOverMIDI"),
             };
             chkEcho.Checked += (s, e) => SetAudition(true);
             chkEcho.Unchecked += (s, e) => SetAudition(false);

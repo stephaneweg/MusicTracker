@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MusicTracker"
+        xmlns:loc="clr-namespace:MusicTracker.Localization"
         xmlns:controls="clr-namespace:MusicTracker.Controls"
         xmlns:screens="clr-namespace:MusicTracker.Screens"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
@@ -109,27 +110,27 @@
                 <!-- Window buttons, pinned to the top-right corner. -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Stretch">
                     <Button x:Name="btnMinimize" Style="{StaticResource CaptionButton}" Click="btnMinimize_Click"
-                            ToolTip="Réduire" Content="&#xE921;"/>
+                            ToolTip="{loc:Tr 'Minimize'}" Content="&#xE921;"/>
                     <Button x:Name="btnMaxRestore" Style="{StaticResource CaptionButton}" Click="btnMaxRestore_Click"
-                            ToolTip="Agrandir" Content="&#xE922;"/>
+                            ToolTip="{loc:Tr 'Maximize'}" Content="&#xE922;"/>
                     <Button x:Name="btnClose" Style="{StaticResource CaptionCloseButton}" Click="btnClose_Click"
-                            ToolTip="Fermer" Content="&#xE8BB;"/>
+                            ToolTip="{loc:Tr 'Close'}" Content="&#xE8BB;"/>
                 </StackPanel>
                 <!-- Gear / settings button, just left of the window buttons. -->
-                <Button DockPanel.Dock="Right" Click="btnSettings_Click" ToolTip="Paramètres" Cursor="Hand"
+                <Button DockPanel.Dock="Right" Click="btnSettings_Click" ToolTip="{loc:Tr 'Settings'}" Cursor="Hand"
                         Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="6,0"
                         Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 <!-- Aide : menu déroulant (Signaler un bug + À propos), just left of the settings gear. -->
-                <Button x:Name="btnHelp" DockPanel.Dock="Right" Click="btnHelp_Click" ToolTip="Aide" Cursor="Hand"
+                <Button x:Name="btnHelp" DockPanel.Dock="Right" Click="btnHelp_Click" ToolTip="{loc:Tr 'Help'}" Cursor="Hand"
                         Content="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="0"
                         Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button.ContextMenu>
                         <ContextMenu>
-                            <MenuItem Header="Signaler un bug…" Click="miReportBug_Click"/>
+                            <MenuItem Header="{loc:Tr 'ReportABug2'}" Click="miReportBug_Click"/>
                             <Separator/>
-                            <MenuItem Header="À propos de MusicTracker…" Click="miAbout_Click"/>
+                            <MenuItem Header="{loc:Tr 'AboutMusicTracker'}" Click="miAbout_Click"/>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>

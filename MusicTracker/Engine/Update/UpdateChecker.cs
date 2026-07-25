@@ -32,7 +32,10 @@ namespace MusicTracker.Engine.Update
     /// that token must have Contents:read on the releases repo. The repo is read from App.config (GitHubReleasesRepo).
     ///
     /// Manifest shape (latest.json at the repo root):
-    ///   { "version": "1.1.0.0", "installer": "MusicTrackerSetup-1.1.0.exe", "notes": "…" }
+    ///   { "version": "1.1.0.0", "installer": "MusicTrackerSetup-1.1.0.exe",
+    ///     "notes": "…(fr, fallback)…", "notesFr": "…", "notesEn": "…" }
+    /// The changelog shown in the update popup follows the UI language (notesEn in English, notesFr in French),
+    /// falling back to the language-neutral "notes" field when a localized one is absent.
     /// </summary>
     public static class UpdateChecker
     {
@@ -85,6 +88,10 @@ namespace MusicTracker.Engine.Update
                 if (!Version.TryParse(vEl.GetString(), out var v)) return null;
                 string installer = root.TryGetProperty("installer", out var iEl) && iEl.ValueKind == JsonValueKind.String ? iEl.GetString() : null;
                 string notes = root.TryGetProperty("notes", out var nEl) && nEl.ValueKind == JsonValueKind.String ? nEl.GetString() : "";
+                // Language-specific changelog (falls back to the neutral "notes" field).
+                string Field(string key) => root.TryGetProperty(key, out var el) && el.ValueKind == JsonValueKind.String ? el.GetString() : null;
+                string localized = MusicTracker.Localization.Loc.IsEnglish ? (Field("notesEn") ?? Field("notes_en")) : (Field("notesFr") ?? Field("notes_fr"));
+                if (!string.IsNullOrWhiteSpace(localized)) notes = localized;
                 return new UpdateInfo { Version = v, InstallerPath = installer, Notes = notes, IsNewer = v > CurrentVersion };
             }
         }

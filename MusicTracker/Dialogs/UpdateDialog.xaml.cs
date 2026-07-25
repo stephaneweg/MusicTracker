@@ -1,5 +1,6 @@
-using System.Windows;
+﻿using System.Windows;
 using MusicTracker.Engine.Update;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -9,7 +10,7 @@ namespace MusicTracker.Dialogs
         public UpdateDialog(UpdateInfo info)
         {
             InitializeComponent();
-            txtVersions.Text = "Version " + info.Version + " (actuelle : " + UpdateChecker.CurrentVersion + ").";
+            txtVersions.Text = Loc.T("Version") + info.Version + Loc.T("Current") + UpdateChecker.CurrentVersion + ").";
             if (string.IsNullOrWhiteSpace(info.Notes))
             {
                 txtNotesLabel.Visibility = Visibility.Collapsed;

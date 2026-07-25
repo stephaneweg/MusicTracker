@@ -1,10 +1,11 @@
-<Window x:Class="MusicTracker.Dialogs.AboutDialog"
+﻿<Window x:Class="MusicTracker.Dialogs.AboutDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:loc="clr-namespace:MusicTracker.Localization"
         mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
-        Title="À propos" Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        Title="{loc:Tr 'About'}" Width="460" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent">
     <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
@@ -13,22 +14,22 @@
                        FontSize="24" FontWeight="Bold"/>
             <TextBlock x:Name="txtVersion" Text="Version 1.0.0.0" Opacity="0.7" Margin="0,2,0,16"/>
 
-            <TextBlock Text="Séquenceur / composition musicale." TextWrapping="Wrap" Margin="0,0,0,16"/>
+            <TextBlock Text="{loc:Tr 'SequencerMusicComposition'}" TextWrapping="Wrap" Margin="0,0,0,16"/>
 
             <TextBlock Text="© 2026 Stéphan Wegener" FontWeight="SemiBold" Margin="0,0,0,16"/>
 
             <Border Background="#22000000" CornerRadius="6" Padding="14,12" Margin="0,0,0,4">
                 <StackPanel>
-                    <TextBlock Text="Crédits" FontWeight="SemiBold" Opacity="0.9" Margin="0,0,0,6"/>
+                    <TextBlock Text="{loc:Tr 'Credits'}" FontWeight="SemiBold" Opacity="0.9" Margin="0,0,0,6"/>
                     <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,0,0,6"
-                               Text="Synthèse audio SoundFont : MeltySynth — © Nobuaki Tanaka, licence MIT."/>
+                               Text="{loc:Tr 'SoundFontAudioSynthesisMeltySynthNobuaki'}"/>
                     <TextBlock TextWrapping="Wrap" Opacity="0.85"
-                               Text="Entrées/sorties audio : NAudio, licence MIT. SoundFont par défaut : MuseScore_General (MuseScore)."/>
+                               Text="{loc:Tr 'AudioInOutNAudioMITLicence'}"/>
                 </StackPanel>
             </Border>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-                <Button Content="Fermer" x:Name="btnClose" Style="{StaticResource okButton}" Padding="18,4" Cursor="Hand" Click="btnClose_Click" IsDefault="True"/>
+                <Button Content="{loc:Tr 'Close'}" x:Name="btnClose" Style="{StaticResource okButton}" Padding="18,4" Cursor="Hand" Click="btnClose_Click" IsDefault="True"/>
             </StackPanel>
         </StackPanel>
     </Border>

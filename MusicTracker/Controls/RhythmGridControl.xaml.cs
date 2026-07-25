@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,6 +8,7 @@ using System.Windows.Shapes;
 using NAudio.Wave;
 using MusicTracker.Engine;
 using MusicTracker.Engine.Flow;
+using MusicTracker.Localization;
 using MeltySynth;
 
 namespace MusicTracker.Controls
@@ -203,7 +204,7 @@ namespace MusicTracker.Controls
                 Stroke = MarkerStroke,
                 StrokeThickness = 1,
                 Cursor = Cursors.SizeWE,
-                ToolTip = "Glisser pour définir le point de départ de la lecture",
+                ToolTip = Loc.T("DragToSetThePlaybackStart"),
             };
             startMarker.MouseLeftButtonDown += startMarker_MouseLeftButtonDown;
             startMarker.MouseMove += startMarker_MouseMove;
@@ -515,7 +516,7 @@ namespace MusicTracker.Controls
         {
             if (waveOut != null) { StopPreview(); return; }
             if (makeRiff == null) return;
-            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Lecture")) return;
+            if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Playback")) return;
             try
             {
                 // Drum kits are identified by the SF2 BANK (128), not the patch number — a kit's PatchNumber is

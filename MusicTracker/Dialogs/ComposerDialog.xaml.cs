@@ -1,5 +1,6 @@
-using System.Windows;
+﻿using System.Windows;
 using MusicTracker.Engine.Timeline;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -28,11 +29,11 @@ namespace MusicTracker.Dialogs
             cboStyle.SelectedIndex = 0;
             for (int v = 1; v <= 4; v++) cboVoices.Items.Add(v);
             cboVoices.SelectedIndex = 0; // 1 voice
-            foreach (var r in new[] { "Auto (selon le style)", "Équilibré (clavier bien tempéré)", "Posé (art de la fugue)", "Virtuose (variations Goldberg)" }) cboRhythm.Items.Add(r);
+            foreach (var r in new[] { Loc.T("AutoByStyle"), Loc.T("BalancedWellTemperedClavier"), Loc.T("PoisedArtOfFugue"), Loc.T("VirtuosoGoldbergVariations") }) cboRhythm.Items.Add(r);
             cboRhythm.SelectedIndex = 0; // Auto
-            foreach (var br in new[] { "Auto", "Aucune (legato)", "Légère (détaché + respirations)", "Marquée" }) cboBreath.Items.Add(br);
+            foreach (var br in new[] { Loc.T("Auto"), Loc.T("NoneLegato"), Loc.T("LightDetacheBreaths"), Loc.T("Marked") }) cboBreath.Items.Add(br);
             cboBreath.SelectedIndex = 0; // Auto
-            foreach (var vt in new[] { "Auto (selon le style)", "Aucune (pas de 32e)", "Légère", "Moyenne", "Élevée (32e brillantes)" }) cboVirtuosity.Items.Add(vt);
+            foreach (var vt in new[] { Loc.T("AutoByStyle"), Loc.T("NoneNo32ndNotes"), Loc.T("Light"), Loc.T("Medium"), Loc.T("HighBrilliant32nds") }) cboVirtuosity.Items.Add(vt);
             cboVirtuosity.SelectedIndex = 0; // Auto
             foreach (var fm in Composer.FormNames) cboForm.Items.Add(fm);
             cboForm.SelectedIndex = 0; // Libre (the form, when ≠ Libre, drives the bar count/key plan)

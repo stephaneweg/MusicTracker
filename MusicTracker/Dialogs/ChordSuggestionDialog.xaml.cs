@@ -165,7 +165,7 @@ namespace MusicTracker.Dialogs
         {
             StopPreview();
             if (previewInstrument == null) return;
-            if (!SoundFontGuard.EnsureReady(this, "Écoute")) return;
+            if (!SoundFontGuard.EnsureReady(this, "Playback")) return;
             try
             {
                 ChordOf(c, out int rootPc, out int quality);

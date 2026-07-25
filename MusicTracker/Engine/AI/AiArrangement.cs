@@ -475,6 +475,9 @@ namespace MusicTracker.Engine.AI
             sb.AppendLine("}");
             sb.AppendLine();
             sb.AppendLine("Règles :");
+            sb.AppendLine("- LANGUE : rédige TOUS les libellés lisibles par un humain (noms de sections 'name', noms d'articulations 'name', et tout titre/intitulé) en "
+                          + (MusicTracker.Localization.Loc.IsEnglish ? "ANGLAIS" : "FRANÇAIS")
+                          + ". Les clés JSON, elles, restent inchangées (en anglais).");
             sb.AppendLine("- FORMAT COMPACT OBLIGATOIRE : réponds en JSON MINIFIÉ (aucun espace ni retour à la ligne superflu). Chaque note et chaque événement de motif est un TABLEAU ORDONNÉ (ex. [64,0,1] ou [64,0.5,1.5]), JAMAIS un objet {\"pitch\":...}. C'est ~2× plus court : tu peux ainsi écrire tout le morceau, jusqu'à la dernière section, sans être tronqué.");
             sb.AppendLine("- Tu choisis la tonalité (key), la métrique (meter) et le tempo (bpm) selon le style et l'intention.");
             sb.AppendLine("- Les accords sont donnés par DEGRÉ (chiffre 1..7 relatif à la tonalité), pas par nom absolu. Un accord par mesure (ou par changement).");

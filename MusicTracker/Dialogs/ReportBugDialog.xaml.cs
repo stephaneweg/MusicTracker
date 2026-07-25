@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using MusicTracker.Engine.BugReport;
+using MusicTracker.Localization;
 using MusicTracker.Screens;
 
 namespace MusicTracker.Dialogs
@@ -37,14 +38,14 @@ namespace MusicTracker.Dialogs
             {
                 chkAttachProject.IsChecked = false;
                 chkAttachProject.IsEnabled = false;
-                chkAttachProject.Content = "Joindre le projet en cours (aucun projet ouvert)";
+                chkAttachProject.Content = Loc.T("AttachTheCurrentProjectNoProject");
             }
             bool hasTemplate = editor != null && editor.FromTemplate;
             if (!hasTemplate)
             {
                 chkAttachTemplate.IsChecked = false;
                 chkAttachTemplate.IsEnabled = false;
-                chkAttachTemplate.Content = "Joindre aussi le modèle associé (aucun)";
+                chkAttachTemplate.Content = Loc.T("AlsoAttachTheAssociatedModelNone");
             }
 
             Loaded += (a, b) => txtTitle.Focus();
@@ -72,7 +73,7 @@ namespace MusicTracker.Dialogs
             string desc = (txtDescription.Text ?? "").Trim();
             if (string.IsNullOrWhiteSpace(title) && string.IsNullOrWhiteSpace(desc))
             {
-                ShowStatus("Ajoute au moins un titre ou une description.", error: true);
+                ShowStatus(Loc.T("AddAtLeastATitleOr"), error: true);
                 return;
             }
             if (string.IsNullOrWhiteSpace(title))
@@ -80,7 +81,7 @@ namespace MusicTracker.Dialogs
 
             if (!BugReportConfig.IsConfigured)
             {
-                ShowStatus("Cette version n'a pas de jeton GitHub intégré : impossible d'envoyer le rapport.", error: true);
+                ShowStatus(Loc.T("ThisBuildHasNoEmbeddedGitHub"), error: true);
                 return;
             }
 
@@ -91,7 +92,7 @@ namespace MusicTracker.Dialogs
             string[] labels = suggestion ? new[] { "enhancement", "in-app" } : new[] { "bug", "in-app" };
 
             SetBusy(true);
-            ShowStatus("Envoi du rapport…", error: false);
+            ShowStatus(Loc.T("SendingTheReport"), error: false);
             try
             {
                 string body = BuildBody(desc);
@@ -102,16 +103,16 @@ namespace MusicTracker.Dialogs
                 // to "OK" (close) + "Ouvrir dans le navigateur" (open the issue).
                 sent = true;
                 ShowStatus(suggestion
-                    ? "✓ Merci ! Ta suggestion a été transmise à l'équipe de développement."
-                    : "✓ Merci ! Le problème a été remonté à l'équipe de développement.", error: false);
+                    ? Loc.T("ThankYouYourSuggestionHasBeen")
+                    : Loc.T("ThankYouTheProblemHasBeen"), error: false);
                 cboType.IsEnabled = false;
                 txtTitle.IsEnabled = false;
                 txtDescription.IsEnabled = false;
                 chkAttachProject.IsEnabled = false;
                 chkAttachTemplate.IsEnabled = false;
-                btnCancel.Content = "OK";
+                btnCancel.Content = Loc.T("OK");
                 btnCancel.IsEnabled = true;
-                btnSend.Content = "Ouvrir dans le navigateur";
+                btnSend.Content = Loc.T("OpenInTheBrowser");
                 btnSend.IsEnabled = true;
                 btnSend.Visibility = string.IsNullOrWhiteSpace(issueUrl) ? Visibility.Collapsed : Visibility.Visible;
             }

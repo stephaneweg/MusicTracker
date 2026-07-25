@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using MusicTracker.Engine.AI;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -54,7 +55,7 @@ namespace MusicTracker.Dialogs
 
             Loaded += (a, b) =>
             {
-                if (!string.IsNullOrWhiteSpace(ThemeContext)) this.Title = "Varier le thème avec l'IA";
+                if (!string.IsNullOrWhiteSpace(ThemeContext)) this.Title = Loc.T("VaryTheThemeWithAI");
                 txtStyle.Focus();
             };
         }
@@ -152,7 +153,7 @@ namespace MusicTracker.Dialogs
             s.Save();
 
             SetBusy(true);
-            Status("Génération en cours…", false);
+            Status(Loc.T("Generating"), false);
             Result = null; btnApply.IsEnabled = false; txtResult.Clear();
             try
             {
@@ -175,7 +176,7 @@ namespace MusicTracker.Dialogs
             catch (Exception ex)
             {
                 Result = null; btnApply.IsEnabled = false;
-                Status("Échec : " + ex.Message, true);
+                Status(Loc.T("Failed") + ex.Message, true);
             }
             finally { SetBusy(false); }
         }
@@ -206,9 +207,9 @@ namespace MusicTracker.Dialogs
                 s.Save();
 
                 Clipboard.SetText(BuildFullPrompt());
-                Status("Prompt copié. Colle-le dans un chat IA, puis reviens avec « Coller la réponse ».", false);
+                Status(Loc.T("PromptCopiedPasteItIntoAn"), false);
             }
-            catch (Exception ex) { Status("Impossible de copier le prompt : " + ex.Message, true); }
+            catch (Exception ex) { Status(Loc.T("CouldNotCopyThePrompt") + ex.Message, true); }
         }
 
         // "Coller la réponse" — parse the JSON the user copied from a chat and treat it as a generated arrangement.
@@ -216,8 +217,8 @@ namespace MusicTracker.Dialogs
         {
             string clip;
             try { clip = Clipboard.ContainsText() ? Clipboard.GetText() : null; }
-            catch (Exception ex) { Status("Presse-papiers illisible : " + ex.Message, true); return; }
-            if (string.IsNullOrWhiteSpace(clip)) { Status("Le presse-papiers est vide — copie d'abord la réponse JSON de l'IA.", true); return; }
+            catch (Exception ex) { Status(Loc.T("ClipboardIsUnreadable") + ex.Message, true); return; }
+            if (string.IsNullOrWhiteSpace(clip)) { Status(Loc.T("TheClipboardIsEmptyCopyThe"), true); return; }
 
             Result = null; btnApply.IsEnabled = false;
             try
@@ -231,13 +232,13 @@ namespace MusicTracker.Dialogs
             catch (Exception ex)
             {
                 txtResult.Text = clip;
-                Status("JSON collé invalide : " + ex.Message, true);
+                Status(Loc.T("PastedJSONIsInvalid") + ex.Message, true);
             }
         }
 
         void btnApply_Click(object sender, RoutedEventArgs e)
         {
-            if (Result == null) { Status("Génère d'abord un morceau.", true); return; }
+            if (Result == null) { Status(Loc.T("GenerateAPieceFirst"), true); return; }
             DialogResult = true;
         }
 

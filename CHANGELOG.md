@@ -15,6 +15,7 @@ Les entrées les plus **récentes** vont **en premier** ; l'application n'en aff
 
 ## Entrées
 
+- 🌍 Choix de la langue (Français, English, Deutsch, Italiano, Español, Nederlands, Português) dans les Paramètres : l'interface, le fil des nouveautés et les titres générés par l'IA suivent la langue choisie. D'autres langues s'ajoutent en déposant un fichier `lang.xx.json`.
 - 🎲 Modèles de projet génératifs : un modèle contient désormais des banques de matière par section (progressions, motifs d'accompagnement, cellules mélodiques, phrases par instrument, grooves). À l'ouverture l'app y pioche et assemble le morceau — un bouton « Régénérer » retire une nouvelle version.
 - 🤖 Génère tes propres styles avec l'IA : décris une intention, l'IA fabrique le modèle. Clic droit sur une carte pour le régénérer en réutilisant ton intention.
 - 🎻 Les phrases d'un modèle sont transposées modalement sur chaque accord (avec conduite des voix), et l'IA peut laisser un instrument silencieux sur une section pour aérer l'arrangement.

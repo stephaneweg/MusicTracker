@@ -1,11 +1,12 @@
-<Window x:Class="MusicTracker.Dialogs.CadenceDialog"
+﻿<Window x:Class="MusicTracker.Dialogs.CadenceDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctl="clr-namespace:MusicTracker.Controls"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:loc="clr-namespace:MusicTracker.Localization"
         mc:Ignorable="d"
-        Title="Générer une cadence" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        Title="{loc:Tr 'GenerateACadence'}" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent">
     <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
@@ -13,7 +14,7 @@
             <StackPanel Background="{StaticResource CommonBackground}"  ctl:WindowDrag.Enable="True"  Orientation="Horizontal" Margin="0,0,0,2" HorizontalAlignment="Stretch" >
                 <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
             </StackPanel>
-            <TextBlock Text="Une suite d'accords dans la tonalité du morceau, depuis le degré choisi vers la tonique (pas de 7e sur la tonique). Les accords sont insérés dans la piste sélectionnée."
+            <TextBlock Text="{loc:Tr 'AChordProgressionInThePiece'}"
                        Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,16" MaxWidth="320"/>
 
             <Grid>
@@ -29,16 +30,16 @@
                     <RowDefinition Height="auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Mesures" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Tr 'Bars'}" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
                 <TextBox x:Name="txtMeasures" Grid.Row="0" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="4" Margin="0,4"/>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Accords / mesure" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Tr 'ChordsBar'}" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
                 <TextBox x:Name="txtChordsPerMeasure" Grid.Row="1" Grid.Column="1" Width="70" HorizontalAlignment="Left" Text="1" Margin="0,4"/>
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Depuis le degré" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{loc:Tr 'FromDegree'}" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
                 <ComboBox x:Name="cboDegree" Grid.Row="2" Grid.Column="1" Width="160" HorizontalAlignment="Left" Margin="0,4"/>
 
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="Style" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Tr 'Style'}" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
                 <ComboBox x:Name="cboStyle" Grid.Row="3" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
 
                 <TextBlock Grid.Row="4" Grid.Column="0" Text="Rythme / articulation" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>

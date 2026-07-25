@@ -25,6 +25,7 @@ param(
   [ValidateSet('patch', 'minor', 'major')] [string]$Bump = 'patch',
   [string]$Version,
   [string]$Notes = '',
+  [string]$NotesEn = '',
   [switch]$NoPush
 )
 
@@ -105,7 +106,9 @@ Write-Host "Installeur : $setupPath" -ForegroundColor Green
 if (-not (Test-Path $releasesDir)) { throw "Dossier releases/ absent (clone de MusicTracker_Releases attendu)." }
 Copy-Item $setupPath (Join-Path $releasesDir $setupName) -Force
 
-$manifest = [ordered]@{ version = $newVer; installer = $setupName; notes = $Notes }
+# notes = language-neutral fallback (French); notesFr/notesEn feed the language-aware changelog (UpdateChecker).
+$notesEnFinal = if ($NotesEn) { $NotesEn } else { $Notes }
+$manifest = [ordered]@{ version = $newVer; installer = $setupName; notes = $Notes; notesFr = $Notes; notesEn = $notesEnFinal }
 $json = $manifest | ConvertTo-Json -Depth 4
 [System.IO.File]::WriteAllText((Join-Path $releasesDir 'latest.json'), $json, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "latest.json mis à jour (version $newVer)." -ForegroundColor Green

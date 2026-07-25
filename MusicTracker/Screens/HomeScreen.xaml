@@ -1,9 +1,10 @@
-<UserControl x:Class="MusicTracker.Screens.HomeScreen"
+﻿<UserControl x:Class="MusicTracker.Screens.HomeScreen"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:ctl="clr-namespace:MusicTracker.Controls"
+             xmlns:loc="clr-namespace:MusicTracker.Localization"
              mc:Ignorable="d"
              d:DesignHeight="620" d:DesignWidth="1200"
              Background="{StaticResource CommonBackground}">
@@ -183,9 +184,9 @@
         <!-- ===== Left: recent musics ===== -->
         <Border Grid.Column="0" Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel Margin="16,18">
-                <TextBlock DockPanel.Dock="Top" Text="RÉCENTS" Foreground="{StaticResource AccentBrightBrush}"
+                <TextBlock DockPanel.Dock="Top" Text="{loc:Tr 'RECENT'}" Foreground="{StaticResource AccentBrightBrush}"
                            FontSize="11" FontWeight="SemiBold" Margin="4,0,0,10"/>
-                <TextBlock DockPanel.Dock="Bottom" Text="Double-cliquez pour ouvrir" Foreground="{StaticResource SecondaryForeground}" FontSize="11" Margin="4,8,0,0"/>
+                <TextBlock DockPanel.Dock="Bottom" Text="{loc:Tr 'DoubleClickToOpen'}" Foreground="{StaticResource SecondaryForeground}" FontSize="11" Margin="4,8,0,0"/>
                 <Grid>
                     <ListBox x:Name="listRecent" Background="Transparent" BorderThickness="0" Foreground="White"
                              ItemContainerStyle="{StaticResource RecentItem}"
@@ -224,8 +225,8 @@
                     </ListBox>
                     <!-- Empty state (toggled in code-behind). -->
                     <StackPanel x:Name="emptyState" VerticalAlignment="Top" Margin="4,12,0,0" Visibility="Collapsed">
-                        <TextBlock Text="Aucune musique récente." Foreground="{StaticResource SecondaryForeground}" FontSize="12"/>
-                        <TextBlock Text="Créez-en une pour commencer." Foreground="#6A6F78" FontSize="11" Margin="0,2,0,0"/>
+                        <TextBlock Text="{loc:Tr 'NoRecentMusic'}" Foreground="{StaticResource SecondaryForeground}" FontSize="12"/>
+                        <TextBlock Text="{loc:Tr 'CreateOneToGetStarted'}" Foreground="#6A6F78" FontSize="11" Margin="0,2,0,0"/>
                     </StackPanel>
                 </Grid>
             </DockPanel>
@@ -280,7 +281,7 @@
                                     <Ellipse Width="16" Height="16" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
                                     <TextBlock Text="Aria Studio" Foreground="{StaticResource CommonForeground}" FontSize="32" FontWeight="Bold"/>
                                 </StackPanel>
-                                <TextBlock Text="Composez, arrangez et séquencez vos morceaux." HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"
+                                <TextBlock Text="{loc:Tr 'ComposeArrangeAndSequenceYourPieces'}" HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"
                             FontSize="13" Margin="2,0,0,26"/>
                             </StackPanel>
                             <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="30,30,30,10" Gap="30">
@@ -292,23 +293,23 @@
                                         </Border>
                                         <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Nouvelle musique" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Partir d'une timeline vierge." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
+                                            <TextBlock Text="{loc:Tr 'NewMusic'}" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{loc:Tr 'StartFromABlankTimeline'}" Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Button>
 
                                 <!-- Composer avec l'IA -->
                                 <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnComposeAi_Click"
-            ToolTip="Décris un style + une longueur ; l'IA génère un morceau, ouvert dans un nouvel onglet.">
+            ToolTip="{loc:Tr 'DescribeAStyleALengthThe2'}">
                                     <DockPanel>
                                         <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="#2A2C31" VerticalAlignment="Center" Margin="0,0,14,0">
                                             <TextBlock Text="🤖" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                         <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Composer avec l'IA" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Décris un style, l'IA arrange le morceau." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
+                                            <TextBlock Text="{loc:Tr 'ComposeWithAI'}" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{loc:Tr 'DescribeAStyleTheAIArranges'}" Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Button>
@@ -321,8 +322,8 @@
                                         </Border>
                                         <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="Ouvrir un fichier…" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Reprendre un projet enregistré." Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
+                                            <TextBlock Text="{loc:Tr 'OpenAFile'}" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{loc:Tr 'ResumeASavedProject'}" Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </Button>
@@ -334,15 +335,15 @@
 
                 <!-- Templates from Data/templates/*.json (cards built in code-behind) + two "add" links. -->
                 <StackPanel Grid.Row="1" Margin="30,0,30,20">
-                    <TextBlock Text="MODÈLES DE PROJET" Foreground="{StaticResource AccentBrightBrush}" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
+                    <TextBlock Text="{loc:Tr 'PROJECTTEMPLATES'}" Foreground="{StaticResource AccentBrightBrush}" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
                     <!-- 4 columns at full width, then 3 / 2 / 1 as the pane narrows (cards stretch to share it). -->
                     <ctl:ResponsiveWrapPanel x:Name="templatesPanel" ItemWidth="240" MaxColumns="4" ItemSpacing="12"
                                              CapLayout="Center"/>
                     <StackPanel Orientation="Horizontal" Margin="2,4,0,0">
-                        <Button x:Name="btnAddFromFile" Content="＋ Ajouter depuis un fichier…" Style="{StaticResource LinkBtn}" Click="btnAddFromFile_Click"
-                            Foreground="{StaticResource AccentBrightBrush}" ToolTip="Choisir un fichier .json de template et l'ajouter au dossier."/>
-                        <Button x:Name="btnAddWithAi" Content="🤖 Ajouter avec l'IA…" Style="{StaticResource LinkBtn}" Click="btnAddWithAi_Click" Margin="8,0,0,0"
-                            Foreground="{StaticResource AccentBrightBrush}" ToolTip="Décris un style + une intention ; l'IA génère un template que tu confirmes et enregistres."/>
+                        <Button x:Name="btnAddFromFile" Content="{loc:Tr 'AddFromAFile'}" Style="{StaticResource LinkBtn}" Click="btnAddFromFile_Click"
+                            Foreground="{StaticResource AccentBrightBrush}" ToolTip="{loc:Tr 'PickATemplateJsonFileAnd'}"/>
+                        <Button x:Name="btnAddWithAi" Content="{loc:Tr 'AddWithAI'}" Style="{StaticResource LinkBtn}" Click="btnAddWithAi_Click" Margin="8,0,0,0"
+                            Foreground="{StaticResource AccentBrightBrush}" ToolTip="{loc:Tr 'DescribeAStyleAnIntentionThe'}"/>
                     </StackPanel>
 
                 </StackPanel>
@@ -350,7 +351,7 @@
 
                 <!-- Resources widget. Code-behind only fills txtTip (rotating tip) and newsList (changelog entries). -->
                 <StackPanel Grid.Row="2"  Margin="30,30,30,20">
-                    <TextBlock Text="RESSOURCES" Foreground="{StaticResource AccentBrightBrush}"
+                    <TextBlock Text="{loc:Tr 'RESOURCES'}" Foreground="{StaticResource AccentBrightBrush}"
                                FontSize="11" FontWeight="SemiBold" Margin="2,0,0,12"/>
                     <!-- Side by side while both fit, otherwise stacked at full width. -->
                     <ctl:ResponsiveWrapPanel ItemWidth="350" MaxColumns="2" ItemSpacing="12" CapLayout="Left">
@@ -366,7 +367,7 @@
                                         <Border Style="{StaticResource CardBadge}">
                                             <TextBlock Text="💡" Style="{StaticResource CardBadgeGlyph}"/>
                                         </Border>
-                                        <TextBlock Text="ASTUCE DU JOUR" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="{loc:Tr 'TIPOFTHEDAY'}" Style="{StaticResource CardTitle}"/>
                                     </StackPanel>
                                 </DockPanel>
                                 <!-- MinHeight (not a fixed width) keeps the card from resizing between tips of
@@ -384,7 +385,7 @@
                                         <Border Style="{StaticResource CardBadge}">
                                             <TextBlock Text="🆕" Style="{StaticResource CardBadgeGlyph}"/>
                                         </Border>
-                                        <TextBlock Text="NOUVEAUTÉS" Style="{StaticResource CardTitle}"/>
+                                        <TextBlock Text="{loc:Tr 'WHATSNEW'}" Style="{StaticResource CardTitle}"/>
                                     </StackPanel>
                                 </DockPanel>
                                 <StackPanel x:Name="newsList" Margin="0,8,0,0"/>
