@@ -8,12 +8,11 @@
 # --- Claude Code ---
 .claude/
 
-# --- Bug-report GitHub token (injected at build time, NEVER committed) ---
-# The "Signaler un bug" menu creates GitHub issues with a token baked in at compile time by the
-# GenerateBuildSecrets target. Put the token (a fine-grained PAT scoped to Issues:write on the repo)
-# in this file, or set the MUSICTRACKER_GH_TOKEN env var. See bugreport.token.example.
-bugreport.token
-MusicTracker/bugreport.token
+# --- GitHub token (injected at build time, NEVER committed) ---
+# The bug reporter + update check use a token baked in at compile time by the GenerateBuildSecrets
+# target, read from releases/releases.token (the gitignored MusicTracker_Releases checkout) or the
+# MUSICTRACKER_GH_TOKEN env var. Ignore any stray *.token just in case.
+*.token
 
 # --- NuGet ---
 # Restored from packages.config (Visual Studio restores automatically on build; from the

@@ -6,9 +6,9 @@ namespace MusicTracker.Engine.BugReport
     /// Where the bug-reporter gets its two configuration values:
     ///
     ///  • <see cref="Token"/> — the GitHub token used to create issues. It is NOT stored in the repository.
-    ///    Instead the build injects it: the <c>GenerateBuildSecrets</c> target in MusicTracker.csproj reads a
-    ///    gitignored <c>bugreport.token</c> file (or the <c>MUSICTRACKER_GH_TOKEN</c> environment variable) at
-    ///    compile time and generates <c>BuildSecrets.g.cs</c> holding the token XOR-scrambled then base64-encoded.
+    ///    Instead the build injects it: the <c>GenerateBuildSecrets</c> target in MusicTracker.csproj reads the
+    ///    gitignored <c>releases/releases.token</c> file (or the <c>MUSICTRACKER_GH_TOKEN</c> environment variable)
+    ///    at compile time and generates <c>BuildSecrets.g.cs</c> holding the token XOR-scrambled then base64-encoded.
     ///    When neither is present (e.g. a plain dev build), the constant is empty and the reporter reports itself
     ///    as unconfigured. The XOR+base64 is only light obfuscation: it (a) breaks GitHub secret-scanning's format
     ///    detection so an accidentally-committed value is NOT auto-revoked, and (b) keeps the raw token out of a
