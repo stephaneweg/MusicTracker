@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using MusicTracker.Engine.Timeline;
 using MusicTracker.Engine.Score;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Controls.TimelineEditor
 {
@@ -30,7 +31,7 @@ namespace MusicTracker.Controls.TimelineEditor
 
         /// <summary>Raised when the user edits chord #index: (index, degree 0..6, colour 0..6 = triade/7e/9e/11e/13e/sus2/sus4).</summary>
         public event Action<int, int, int> ChordEdited;
-        static readonly string[] ColorNames = { "triade", "7", "9", "11", "13", "sus2", "sus4" };
+        static readonly string[] ColorNames = { Loc.T("Triade"), "7", "9", "11", "13", "sus2", "sus4" };
 
         public ChordLaneControl() { InitializeComponent(); }
 
@@ -117,10 +118,10 @@ namespace MusicTracker.Controls.TimelineEditor
             if (i == editingIndex)
             {
                 int deg0 = Math.Max(0, DegreeOf(c.Root)), col0 = ColorIndexOf(c.Quality);
-                var degCombo = new ComboBox { Width = 46, FontSize = 11, ToolTip = "Degré" };
+                var degCombo = new ComboBox { Width = 46, FontSize = 11, ToolTip = Loc.T("Degre") };
                 for (int d = 0; d < 7; d++) degCombo.Items.Add(DegreeLabel(d));
                 degCombo.SelectedIndex = deg0;
-                var colCombo = new ComboBox { Width = 58, FontSize = 11, ToolTip = "Couleur (goût de l'accord)" };
+                var colCombo = new ComboBox { Width = 58, FontSize = 11, ToolTip = Loc.T("CouleurGoutDeLAccord") };
                 foreach (var cn in ColorNames) colCombo.Items.Add(cn);
                 colCombo.SelectedIndex = col0;
                 SelectionChangedEventHandler fire = (s, e) =>
@@ -137,7 +138,7 @@ namespace MusicTracker.Controls.TimelineEditor
                 return;
             }
 
-            var txt = new TextBlock { Text = Label(DegreeOf(c.Root), c.Quality) + ColorName(c.Quality), Foreground = ChordBrush, FontSize = 12, FontWeight = FontWeights.Bold, Cursor = Cursors.Hand, ToolTip = "Double-clic pour changer le degré et la couleur" };
+            var txt = new TextBlock { Text = Label(DegreeOf(c.Root), c.Quality) + ColorName(c.Quality), Foreground = ChordBrush, FontSize = 12, FontWeight = FontWeights.Bold, Cursor = Cursors.Hand, ToolTip = Loc.T("DoubleClicPourChangerLeDegre") };
             txt.MouseLeftButtonDown += (s, e) => { if (e.ClickCount == 2) { e.Handled = true; editingIndex = i; Redraw(); } };
             Canvas.SetLeft(txt, x + 3); Canvas.SetTop(txt, 3); canvas.Children.Add(txt);
         }

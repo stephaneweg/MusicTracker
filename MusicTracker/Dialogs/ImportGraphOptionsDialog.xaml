@@ -4,15 +4,16 @@
         xmlns:ctl="clr-namespace:MusicTracker.Controls"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:loc="clr-namespace:MusicTracker.Localization"
         mc:Ignorable="d"
-        Title="Import graphe" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
+        Title="{loc:Tr 'ImportGraphe'}" SizeToContent="WidthAndHeight" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
         Background="Transparent">
     <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
         <StackPanel Margin="26,22" MinWidth="320">
             <Border Background="{StaticResource CommonBackground}" CornerRadius="5,5,0,0"
                     Margin="-26,-22,-26,18" Padding="26,22,26,10">
-                <TextBlock Text="Découpage en riffs" Foreground="{StaticResource CommonForeground}"
+                <TextBlock Text="{loc:Tr 'DecoupageEnRiffs'}" Foreground="{StaticResource CommonForeground}"
                            FontSize="16" FontWeight="Bold"/>
             </Border>
             <Grid>
@@ -25,7 +26,7 @@
                     <RowDefinition Height="auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Mesures par riff :" Foreground="{StaticResource CommonForeground}"
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Tr 'MesuresParRiff'}" Foreground="{StaticResource CommonForeground}"
                            VerticalAlignment="Center" Margin="0,0,12,10"/>
                 <ComboBox Grid.Row="0" Grid.Column="1" x:Name="cboMeasures" IsEditable="True" Text="1" Margin="0,0,0,10">
                     <ComboBoxItem>1</ComboBoxItem>
@@ -38,7 +39,7 @@
                     <ComboBoxItem>64</ComboBoxItem>
                 </ComboBox>
 
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="Slices par temps (précision) :" Foreground="{StaticResource CommonForeground}"
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Tr 'SlicesParTempsPrecision'}" Foreground="{StaticResource CommonForeground}"
                            VerticalAlignment="Center" Margin="0,0,12,0"/>
                 <ComboBox Grid.Row="1" Grid.Column="1" x:Name="cboPrecision" IsEditable="True" Text="24">
                     <ComboBoxItem>4</ComboBoxItem>
@@ -52,16 +53,16 @@
             </Grid>
 
             <CheckBox x:Name="chkVolume" IsChecked="False" Foreground="{StaticResource CommonForeground}" Margin="0,14,0,0"
-                      Content="Importer les variations de volume (dynamiques)"/>
-            <TextBlock x:Name="txtVolumeNote" Text="Décoché = un seul riff par groupe (pas de nœuds Set-volume) → beaucoup moins de nœuds sur les longues musiques."
+                      Content="{loc:Tr 'ImporterLesVariationsDeVolumeDynamiques'}"/>
+            <TextBlock x:Name="txtVolumeNote" Text="{loc:Tr 'DecocheUnSeulRiffParGroupe'}"
                        Foreground="#888888" FontSize="10" TextWrapping="Wrap" Margin="22,2,0,0" MaxWidth="330"/>
 
-            <TextBlock Text="Le fichier est analysé à 24 slices/temps ; une autre valeur ré-échantillonne le riff."
+            <TextBlock Text="{loc:Tr 'LeFichierEstAnalyseA24'}"
                        Foreground="#888888" FontSize="10" TextWrapping="Wrap" Margin="0,12,0,0" MaxWidth="330"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
-                <Button Content="Importer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
+                <Button Content="{loc:Tr 'Annuler'}" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="{loc:Tr 'Importer'}" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
             </StackPanel>
         </StackPanel>
     </Border>

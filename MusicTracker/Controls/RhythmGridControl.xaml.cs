@@ -539,7 +539,7 @@ namespace MusicTracker.Controls
             if (playTimer != null) { playTimer.Stop(); playTimer = null; }
             if (waveOut != null) { try { waveOut.Stop(); waveOut.Dispose(); } catch { } waveOut = null; }
             provider = null;
-            if (btnPlay != null) btnPlay.Content = "▶ Écouter";
+            if (btnPlay != null) btnPlay.Content = Loc.T("Ecouter");
             MoveCursor(startSlice);
         }
 

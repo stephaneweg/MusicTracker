@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using MusicTracker.Engine.ComposerV2;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -20,7 +21,7 @@ namespace MusicTracker.Dialogs
     {
         // configurable Markov orders — harmony + melody dimensions (key, label, default)
         static readonly string[] OrderKeys = { "melody", "rhythmCell", "harmonyRoot", "harmonicRhythm", "accompCell", "accompTone" };
-        static readonly string[] OrderLabels = { "Mélodie — hauteur", "Mélodie — rythme", "Harmonie — accords", "Harmonie — rythme", "Accomp. — rythme", "Accomp. — hauteur" };
+        static readonly string[] OrderLabels = { Loc.T("MelodieHauteur"), Loc.T("MelodieRythme"), Loc.T("HarmonieAccords"), Loc.T("HarmonieRythme"), Loc.T("AccompRythme"), Loc.T("AccompHauteur") };
         static readonly int[] OrderDefaults = { 8, 8, 2, 4, 8, 3 };
 
         readonly ListBox folderList = new ListBox { Height = 88, Margin = new Thickness(0, 0, 0, 6) };
@@ -28,10 +29,10 @@ namespace MusicTracker.Dialogs
         readonly TextBox[] orderBoxes = new TextBox[OrderKeys.Length];
         readonly ProgressBar bar = new ProgressBar { Height = 16, Minimum = 0, Maximum = 1, Visibility = Visibility.Collapsed, Margin = new Thickness(0, 6, 0, 2) };
         readonly TextBlock status = new TextBlock { Foreground = Brushes.Gray, FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Visibility = Visibility.Collapsed };
-        readonly Button addBtn = new Button { Content = "＋", Width = 28, Padding = new Thickness(0, 1, 0, 1), Cursor = System.Windows.Input.Cursors.Hand, ToolTip = "Ajouter un dossier…" };
-        readonly Button loadBtn = new Button { Content = "Charger un modèle…", Padding = new Thickness(10, 3, 10, 3), Cursor = System.Windows.Input.Cursors.Hand, ToolTip = "Ré-ouvrir un modèle existant (dossiers + ordres) pour le ré-analyser" };
-        readonly Button analyzeBtn = new Button { Content = "Analyser", Padding = new Thickness(16, 4, 16, 4), Cursor = System.Windows.Input.Cursors.Hand };
-        readonly Button cancelBtn = new Button { Content = "Annuler", Padding = new Thickness(16, 4, 16, 4), Margin = new Thickness(0, 0, 8, 0), Cursor = System.Windows.Input.Cursors.Hand };
+        readonly Button addBtn = new Button { Content = "＋", Width = 28, Padding = new Thickness(0, 1, 0, 1), Cursor = System.Windows.Input.Cursors.Hand, ToolTip = Loc.T("AjouterUnDossier") };
+        readonly Button loadBtn = new Button { Content = Loc.T("ChargerUnModele"), Padding = new Thickness(10, 3, 10, 3), Cursor = System.Windows.Input.Cursors.Hand, ToolTip = Loc.T("ReOuvrirUnModeleExistantDossiers") };
+        readonly Button analyzeBtn = new Button { Content = Loc.T("Analyser"), Padding = new Thickness(16, 4, 16, 4), Cursor = System.Windows.Input.Cursors.Hand };
+        readonly Button cancelBtn = new Button { Content = Loc.T("Annuler"), Padding = new Thickness(16, 4, 16, 4), Margin = new Thickness(0, 0, 8, 0), Cursor = System.Windows.Input.Cursors.Hand };
         readonly List<string> folders = new List<string>();
 
         /// <summary>Set on success: the model file name created in Data\models\ (e.g. "chopin.json").</summary>
@@ -42,29 +43,29 @@ namespace MusicTracker.Dialogs
 
         public NewModelDialog()
         {
-            Title = "Analyser un nouveau modèle";
+            Title = Loc.T("AnalyserUnNouveauModele");
             Width = 480; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent;
             ThemeBox(nameBox);
 
             var root = new StackPanel { Margin = new Thickness(26, 22, 26, 22) };
-            root.Children.Add(new TextBlock { Text = "＋ Analyser un nouveau modèle", Foreground = Res("CommonForeground"), FontSize = 16, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 10) });
+            root.Children.Add(new TextBlock { Text = Loc.T("AnalyserUnNouveauModele2"), Foreground = Res("CommonForeground"), FontSize = 16, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 10) });
 
             // header row: "Dossiers à analyser…"  +  a "＋" button on the right
             var header = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
             DockPanel.SetDock(addBtn, Dock.Right);
             header.Children.Add(addBtn);
-            header.Children.Add(new TextBlock { Text = "Dossiers à analyser (partitions / MIDI, récursif) :", Foreground = Res("CommonForeground"), VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, FontSize = 11 });
+            header.Children.Add(new TextBlock { Text = Loc.T("DossiersAAnalyserPartitionsMIDIRecursif"), Foreground = Res("CommonForeground"), VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, FontSize = 11 });
             root.Children.Add(header);
             root.Children.Add(folderList);
 
             root.Children.Add(new TextBlock { Height = 6 });
-            root.Children.Add(Label("Nom du modèle (le nom détermine le style : « bach », « vivaldi », « clavier », sinon mélodique) :"));
+            root.Children.Add(Label(Loc.T("NomDuModeleLeNomDetermine")));
             root.Children.Add(nameBox);
 
             // order controls — two columns of (label + small number box)
-            root.Children.Add(Label("Ordres des chaînes de Markov (mélodie & harmonie) — contexte plus long = plus de caractère, mais plus proche du corpus :"));
+            root.Children.Add(Label(Loc.T("OrdresDesChainesDeMarkovMelodie")));
             var grid = new Grid { Margin = new Thickness(0, 0, 0, 4) };
             grid.ColumnDefinitions.Add(new ColumnDefinition());
             grid.ColumnDefinitions.Add(new ColumnDefinition());
@@ -118,7 +119,7 @@ namespace MusicTracker.Dialogs
         {
             using (var dlg = new System.Windows.Forms.FolderBrowserDialog())
             {
-                dlg.Description = "Choisir un dossier de partitions / MIDI à analyser";
+                dlg.Description = Loc.T("ChoisirUnDossierDePartitionsMIDI");
                 if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK && !string.IsNullOrEmpty(dlg.SelectedPath))
                 {
                     if (!folders.Contains(dlg.SelectedPath)) { folders.Add(dlg.SelectedPath); RefreshFolders(); }
@@ -132,9 +133,9 @@ namespace MusicTracker.Dialogs
         {
             using (var dlg = new System.Windows.Forms.OpenFileDialog())
             {
-                dlg.Title = "Charger un modèle existant";
+                dlg.Title = Loc.T("ChargerUnModeleExistant");
                 if (Directory.Exists(ComposerV2Runtime.ModelsDir)) dlg.InitialDirectory = ComposerV2Runtime.ModelsDir;
-                dlg.Filter = "Modèles V2 (*.json)|*.json";
+                dlg.Filter = Loc.T("ModelesV2JsonJson");
                 if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
                 try
                 {
@@ -149,7 +150,7 @@ namespace MusicTracker.Dialogs
                         orderBoxes[i].Text = (model.Orders != null && model.Orders.TryGetValue(OrderKeys[i], out v) ? v : OrderDefaults[i]).ToString();
                     }
                 }
-                catch (Exception ex) { MessageBox.Show(this, "Lecture du modèle : " + ex.Message, "Charger"); }
+                catch (Exception ex) { MessageBox.Show(this, Loc.T("LectureDuModele") + ex.Message, Loc.T("Charger")); }
             }
         }
 
@@ -183,9 +184,9 @@ namespace MusicTracker.Dialogs
 
         async Task RunAnalyze()
         {
-            if (folders.Count == 0) { MessageBox.Show(this, "Choisis au moins un dossier.", "Nouveau modèle"); return; }
+            if (folders.Count == 0) { MessageBox.Show(this, Loc.T("ChoisisAuMoinsUnDossier"), Loc.T("NouveauModele")); return; }
             string name = Sanitize(nameBox.Text);
-            if (name.Length == 0) { MessageBox.Show(this, "Donne un nom au modèle.", "Nouveau modèle"); return; }
+            if (name.Length == 0) { MessageBox.Show(this, Loc.T("DonneUnNomAuModele"), Loc.T("NouveauModele")); return; }
 
             Directory.CreateDirectory(ComposerV2Runtime.ModelsWriteDir); // user models are writable → roaming
             string file = name + ".json";
@@ -195,7 +196,7 @@ namespace MusicTracker.Dialogs
 
             addBtn.IsEnabled = loadBtn.IsEnabled = analyzeBtn.IsEnabled = nameBox.IsEnabled = false;
             bar.Visibility = status.Visibility = Visibility.Visible;
-            status.Text = "Préparation…";
+            status.Text = Loc.T("Preparation");
             try
             {
                 int analyzed = 0;
@@ -206,13 +207,13 @@ namespace MusicTracker.Dialogs
                         {
                             bar.Maximum = Math.Max(1, total);
                             bar.Value = done;
-                            status.Text = total > 0 ? string.Format("{0}/{1}  {2}", done, total, fname) : "Finalisation…";
+                            status.Text = total > 0 ? string.Format("{0}/{1}  {2}", done, total, fname) : Loc.T("Finalisation");
                         })), orders);
                     analyzed = model.FilesAnalyzed;
                 });
                 if (analyzed == 0)
                 {
-                    MessageBox.Show(this, "Aucun fichier exploitable trouvé dans les dossiers choisis.", "Nouveau modèle");
+                    MessageBox.Show(this, Loc.T("AucunFichierExploitableTrouveDansLes"), Loc.T("NouveauModele"));
                     try { File.Delete(json); } catch { }
                     addBtn.IsEnabled = loadBtn.IsEnabled = analyzeBtn.IsEnabled = nameBox.IsEnabled = true;
                     bar.Visibility = status.Visibility = Visibility.Collapsed;
@@ -224,7 +225,7 @@ namespace MusicTracker.Dialogs
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Erreur d'analyse : " + ex.Message, "Nouveau modèle");
+                MessageBox.Show(this, Loc.T("ErreurDAnalyse") + ex.Message, Loc.T("NouveauModele"));
                 addBtn.IsEnabled = loadBtn.IsEnabled = analyzeBtn.IsEnabled = nameBox.IsEnabled = true;
                 bar.Visibility = status.Visibility = Visibility.Collapsed;
             }

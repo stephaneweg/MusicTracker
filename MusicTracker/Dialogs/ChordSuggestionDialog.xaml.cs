@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -9,6 +9,7 @@ using MusicTracker.Engine.Flow;
 using MusicTracker.Engine.Score;
 using System.Collections.Generic;
 using MeltySynth;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -21,7 +22,7 @@ namespace MusicTracker.Dialogs
     /// </summary>
     public partial class ChordSuggestionDialog : Window
     {
-        static readonly string[] MoodNames = { "Auto", "Joyeux", "Serein", "Mélancolique", "Nostalgique", "Épique", "Lumineux", "Jazzy" };
+        static readonly string[] MoodNames = { "Auto", Loc.T("Joyeux"), Loc.T("Serein"), Loc.T("Melancolique"), Loc.T("Nostalgique"), Loc.T("Epique"), Loc.T("Lumineux"), "Jazzy" };
         static readonly string[] RomanU = { "I", "II", "III", "IV", "V", "VI", "VII" };
         static readonly string[] RomanL = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
         static readonly string[] ColourNames = Engine.Flow.MusicTheory.DiatonicColourNames; // Triade/Sixte/7e/9e(7+9)/9e(add9)
@@ -60,7 +61,7 @@ namespace MusicTracker.Dialogs
 
             foreach (var m in MoodNames) cboMood.Items.Add(m);
             cboMood.SelectedIndex = 0;
-            cboColour.Items.Add("Auto (suggéré)");
+            cboColour.Items.Add(Loc.T("AutoSuggere"));
             foreach (var c in ColourNames) cboColour.Items.Add(c);
             cboColour.SelectedIndex = 0;
             foreach (var sname in Engine.Flow.MusicTheory.SuspensionNames) cboSusp.Items.Add(sname);
@@ -102,7 +103,7 @@ namespace MusicTracker.Dialogs
             ChordOf(self, out int selfRoot, out int selfQual);
             var centre = Node(1, 1, RomanLabel(currentDegree), ChordName(self, selfRoot, selfQual), null, "#3A3A44", "#7A7A88", true, false);
             centre.Cursor = System.Windows.Input.Cursors.Hand;
-            centre.ToolTip = "Répéter le même accord";
+            centre.ToolTip = Loc.T("RepeterLeMemeAccord");
             centre.MouseEnter += (s, e) => Preview(self);
             centre.MouseLeave += (s, e) => StopPreview();
             centre.MouseLeftButtonUp += (s, e) =>

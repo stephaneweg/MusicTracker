@@ -39,16 +39,16 @@
                     Margin="-26,-22,-26,6" Padding="26,22,26,10">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock x:Name="txtIcon" Text="🎼" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="txtTitle" Text="Nouveau modèle" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtTitle" Text="{loc:Tr 'NouveauModele'}" Foreground="{StaticResource CommonForeground}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
                 </StackPanel>
             </Border>
 
-            <TextBlock Text="Combien de mesures créer ?" Foreground="{StaticResource CommonForeground}" Margin="0,0,0,10"/>
+            <TextBlock Text="{loc:Tr 'CombienDeMesuresCreer'}" Foreground="{StaticResource CommonForeground}" Margin="0,0,0,10"/>
             <WrapPanel x:Name="chips" MaxWidth="300"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
-                <Button Content="Créer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="18,4" Cursor="Hand" IsDefault="True"/>
+                <Button Content="{loc:Tr 'Annuler'}" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="{loc:Tr 'Creer'}" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="18,4" Cursor="Hand" IsDefault="True"/>
             </StackPanel>
         </StackPanel>
     </Border>

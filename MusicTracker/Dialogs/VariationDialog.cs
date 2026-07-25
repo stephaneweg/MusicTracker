@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using MusicTracker.Engine.Timeline;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -19,13 +20,13 @@ namespace MusicTracker.Dialogs
         // Book development ops (label → RecipeRenderer op token). Retrograde/Inversion already live in the catalogue.
         static readonly (string label, string op)[] DevelopOps =
         {
-            ("Augmentation (durées ×2)", "augment"),
-            ("Diminution (durées ÷2)", "diminish"),
-            ("Intervalles élargis", "expand"),
-            ("Fortspinnung (dévidage)", "spin"),
-            ("L-système (dév.)", "grow"),
-            ("Thue-Morse (dév.)", "thuemorse"),
-            ("Génétique (dév.)", "evolve"),
+            (Loc.T("AugmentationDurees2"), "augment"),
+            (Loc.T("DiminutionDurees2"), "diminish"),
+            (Loc.T("IntervallesElargis"), "expand"),
+            (Loc.T("FortspinnungDevidage"), "spin"),
+            (Loc.T("LSystemeDev"), "grow"),
+            (Loc.T("ThueMorseDev"), "thuemorse"),
+            (Loc.T("GenetiqueDev"), "evolve"),
         };
 
         readonly ComboBox cbo = new ComboBox();
@@ -41,7 +42,7 @@ namespace MusicTracker.Dialogs
 
         public VariationDialog()
         {
-            Title = "Générer une variation";
+            Title = Loc.T("GenererUneVariation");
             Width = 420; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = Brushes.Transparent;
@@ -54,14 +55,14 @@ namespace MusicTracker.Dialogs
             cbo.SelectedIndex = 0;
 
             var root = new StackPanel { Margin = new Thickness(26, 22, 26, 22), MinWidth = 360 };
-            root.Children.Add(new TextBlock { Text = "🔀 Variation du thème", Foreground = Res("CommonForeground"), FontSize = 16, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 4) });
-            root.Children.Add(new TextBlock { Text = "Applique une technique de variation au riff sélectionné (l'original est conservé).", Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12), MaxWidth = 360 });
-            root.Children.Add(new TextBlock { Text = "Technique", Foreground = new SolidColorBrush(Color.FromRgb(0xAA, 0xAA, 0xAA)), FontSize = 11, Margin = new Thickness(0, 0, 0, 3) });
+            root.Children.Add(new TextBlock { Text = Loc.T("VariationDuTheme"), Foreground = Res("CommonForeground"), FontSize = 16, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 4) });
+            root.Children.Add(new TextBlock { Text = Loc.T("AppliqueUneTechniqueDeVariationAu"), Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0x88, 0x88)), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12), MaxWidth = 360 });
+            root.Children.Add(new TextBlock { Text = Loc.T("Technique"), Foreground = new SolidColorBrush(Color.FromRgb(0xAA, 0xAA, 0xAA)), FontSize = 11, Margin = new Thickness(0, 0, 0, 3) });
             root.Children.Add(cbo);
 
             var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 18, 0, 0) };
-            var cancel = new Button { Content = "Annuler", Padding = new Thickness(16, 4, 16, 4), Margin = new Thickness(0, 0, 8, 0), Cursor = System.Windows.Input.Cursors.Hand };
-            var ok = new Button { Content = "Générer", Padding = new Thickness(16, 4, 16, 4), Cursor = System.Windows.Input.Cursors.Hand, IsDefault = true };
+            var cancel = new Button { Content = Loc.T("Annuler"), Padding = new Thickness(16, 4, 16, 4), Margin = new Thickness(0, 0, 8, 0), Cursor = System.Windows.Input.Cursors.Hand };
+            var ok = new Button { Content = Loc.T("Generer"), Padding = new Thickness(16, 4, 16, 4), Cursor = System.Windows.Input.Cursors.Hand, IsDefault = true };
             cancel.Click += (s, e) => { DialogResult = false; };
             ok.Click += (s, e) => Accept();
             btnRow.Children.Add(cancel); btnRow.Children.Add(ok);

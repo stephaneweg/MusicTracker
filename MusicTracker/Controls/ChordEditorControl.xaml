@@ -1,6 +1,7 @@
-<UserControl x:Class="MusicTracker.Controls.ChordEditorControl"
+﻿<UserControl x:Class="MusicTracker.Controls.ChordEditorControl"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:MusicTracker.Localization">
     <UserControl.Resources>
         <Style x:Key="Lbl" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#AAAAAA"/>
@@ -36,40 +37,40 @@
                     <ColumnDefinition Width="auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Margin="2,0,10,0" Grid.Column="0">
-                    <TextBlock Style="{StaticResource Lbl}" Text="Degré (dans la tonalité)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'DegreDansLaTonalite'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding DegreeNames}" SelectedIndex="{Binding DegreeIndex, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Fondamentale (note)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'FondamentaleNote'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding RootNames}" SelectedIndex="{Binding RootIndex, Mode=TwoWay}" IsEnabled="{Binding RootEnabled}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Couleur"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'Couleur'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding ColourNames}" SelectedIndex="{Binding ColourIndex, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Suspendu (couleur secondaire)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'SuspenduCouleurSecondaire'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding SuspensionNames}" SelectedIndex="{Binding SuspensionIndex, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Majeur / Mineur (forcer)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'MajeurMineurForcer'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding ModeNames}" SelectedIndex="{Binding ModeIndex, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Octave"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'Octave'}"/>
                     <TextBox Style="{StaticResource Num}" Text="{Binding Octave, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Renversement (0 = fondamental)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'Renversement0Fondamental'}"/>
                     <TextBox Style="{StaticResource Num}" Text="{Binding Inversion, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                 </StackPanel>
                 <StackPanel Margin="2,0,12,0" Grid.Column="1">
-                    <TextBlock Style="{StaticResource Lbl}" Text="Renversement auto (voice-leading)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'RenversementAutoVoiceLeading'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding VoiceLeadNames}" SelectedIndex="{Binding VoiceLeadIndex, Mode=TwoWay}"/>
-                    <CheckBox Style="{StaticResource Chk}" Content="Voicing ouvert (écarté)" IsChecked="{Binding OpenVoicing, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Style"/>
+                    <CheckBox Style="{StaticResource Chk}" Content="{loc:Tr 'VoicingOuvertEcarte'}" IsChecked="{Binding OpenVoicing, Mode=TwoWay}"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'Style'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding StyleNames}" SelectedIndex="{Binding StyleIndex, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Basse (fondamentale)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'BasseFondamentale'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding BassNames}" SelectedIndex="{Binding BassIndex, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Montée (styles arpège)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'MonteeStylesArpege'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding ClimbNames}" SelectedIndex="{Binding ClimbIndex, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Note tenue (styles arpège)"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'NoteTenueStylesArpege'}"/>
                     <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding HeldNames}" SelectedIndex="{Binding HeldIndex, Mode=TwoWay}"/>
-                    <CheckBox Style="{StaticResource Chk}" Content="Doubles-croches (÷2) — styles arpège" IsChecked="{Binding Halve, Mode=TwoWay}"/>
-                    <TextBlock Style="{StaticResource Lbl}" Text="Nombre de temps"/>
+                    <CheckBox Style="{StaticResource Chk}" Content="{loc:Tr 'DoublesCroches2StylesArpege'}" IsChecked="{Binding Halve, Mode=TwoWay}"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'NombreDeTemps'}"/>
                     <TextBox Style="{StaticResource Num}" Text="{Binding Beats, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
                     <Button Visibility="{Binding ApplyMotifVisibility}" Command="{Binding ApplyMotifCommand}"
               Margin="0,10,0,0" Padding="8,3,8,3" HorizontalAlignment="Stretch" Cursor="Hand" Content="{Binding ApplyMotifText}" />
                     <TextBlock Foreground="#888888" FontSize="10" TextWrapping="Wrap" Margin="0,8,0,0" MaxWidth="210"
-                 Text="Astuce : menu « Insérer ▸ Cadence… » pour générer une suite d'accords dans la tonalité (depuis cet accord vers la tonique)."/>
+                 Text="{loc:Tr 'AstuceMenuInsererCadencePourGenerer'}"/>
                 </StackPanel>
             </Grid>
            
@@ -77,17 +78,17 @@
 
 
         <TabControl Grid.Column="1" Margin="4,0,0,0">
-            <TabItem Header="Accompagnement">
+            <TabItem Header="{loc:Tr 'Accompagnement'}">
                 <ContentControl x:Name="GridHost"/>
             </TabItem>
-            <TabItem Header="Cellule mélodique">
+            <TabItem Header="{loc:Tr 'CelluleMelodique'}">
                 <DockPanel>
                     <WrapPanel DockPanel.Dock="Top" Margin="4,4,4,6">
-                        <TextBlock Style="{StaticResource Lbl}" VerticalAlignment="Center" Text="Octave mélodie :" Margin="0,0,4,0"/>
+                        <TextBlock Style="{StaticResource Lbl}" VerticalAlignment="Center" Text="{loc:Tr 'OctaveMelodie'}" Margin="0,0,4,0"/>
                         <TextBox Style="{StaticResource Num}" Text="{Binding MelodicOctave, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" VerticalAlignment="Center" VerticalContentAlignment="Center"/>
-                        <TextBlock Style="{StaticResource Lbl}" VerticalAlignment="Center" Text="Ancrage (degré 1) :" Margin="12,0,4,0"/>
+                        <TextBlock Style="{StaticResource Lbl}" VerticalAlignment="Center" Text="{loc:Tr 'AncrageDegre1'}" Margin="12,0,4,0"/>
                         <ComboBox Width="180" HorizontalAlignment="Left" ItemsSource="{Binding MelodicAnchorNames}" SelectedIndex="{Binding MelodicAnchorIndex, Mode=TwoWay}"/>
-                        <CheckBox Content="Préserver" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="White" ToolTip="Non écrasé quand on applique la cellule à tous les accords du même nom" IsChecked="{Binding MelodicPreserve, Mode=TwoWay}"/>
+                        <CheckBox Content="{loc:Tr 'Preserver'}" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="White" ToolTip="{loc:Tr 'NonEcraseQuandOnAppliqueLa'}" IsChecked="{Binding MelodicPreserve, Mode=TwoWay}"/>
                     </WrapPanel>
                     <ContentControl x:Name="MelodicHost"/>
                 </DockPanel>

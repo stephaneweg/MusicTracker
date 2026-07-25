@@ -1,5 +1,6 @@
-using System.Windows;
+﻿using System.Windows;
 using MusicTracker.Engine.Flow;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -8,7 +9,7 @@ namespace MusicTracker.Dialogs
     /// inserts the chords into the selected instrument track.</summary>
     public partial class CadenceDialog : Window
     {
-        static readonly string[] DegreeNames = { "I (tonique)", "ii", "iii", "IV", "V", "vi", "vii" };
+        static readonly string[] DegreeNames = { Loc.T("ITonique"), "ii", "iii", "IV", "V", "vi", "vii" };
 
         public int Measures { get; private set; }
         public int ChordsPerMeasure { get; private set; }
@@ -26,9 +27,9 @@ namespace MusicTracker.Dialogs
             foreach (var s in MusicTheory.CadenceStyles) cboStyle.Items.Add(s);
             // Rhythm/articulation: "Auto" (index 0 → -1, derived from the cadence style) then all built-ins EXCEPT
             // the last ("Personnalisé…", which needs a hand-drawn grid).
-            cboRhythm.Items.Add("Auto (selon le style de cadence)");
+            cboRhythm.Items.Add(Loc.T("AutoSelonLeStyleDeCadence"));
             for (int i = 0; i < PatternGenerator.CustomStyle; i++) cboRhythm.Items.Add(PatternGenerator.StyleNames[i]);
-            cboRhythm.Items.Add("Personnalisé (dessiner le motif)…"); // last → RhythmStyle == CustomStyle, edited after OK
+            cboRhythm.Items.Add(Loc.T("PersonnaliseDessinerLeMotif")); // last → RhythmStyle == CustomStyle, edited after OK
             cboDegree.SelectedIndex = System.Math.Max(0, System.Math.Min(6, startDegree));
             cboStyle.SelectedIndex = 0;
             cboRhythm.SelectedIndex = rhythmStyle < 0 ? 0 : System.Math.Min(PatternGenerator.CustomStyle, rhythmStyle + 1);

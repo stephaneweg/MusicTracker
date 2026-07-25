@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using MusicTracker.Engine.Timeline;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Controls.TimelineEditor
 {
@@ -71,7 +72,7 @@ namespace MusicTracker.Controls.TimelineEditor
                     Stroke = new SolidColorBrush(Color.FromRgb(0x10, 0x14, 0x1C)),
                     StrokeThickness = 1,
                     Cursor = Cursors.SizeAll,
-                    ToolTip = "Glisser pour déplacer · clic droit pour supprimer",
+                    ToolTip = Loc.T("GlisserPourDeplacerClicDroitPour"),
                 };
                 Canvas.SetLeft(dot, x - DotR); Canvas.SetTop(dot, y - DotR); canvas.Children.Add(dot);
             }

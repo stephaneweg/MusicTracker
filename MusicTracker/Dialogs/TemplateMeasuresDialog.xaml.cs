@@ -1,5 +1,6 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -14,7 +15,7 @@ namespace MusicTracker.Dialogs
         public TemplateMeasuresDialog(string templateName = null)
         {
             InitializeComponent();
-            if (!string.IsNullOrEmpty(templateName)) txtTitle.Text = "Modèle : " + templateName;
+            if (!string.IsNullOrEmpty(templateName)) txtTitle.Text = Loc.T("Modele") + templateName;
 
             foreach (int n in Presets)
             {

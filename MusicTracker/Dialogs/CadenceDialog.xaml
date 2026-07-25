@@ -42,20 +42,20 @@
                 <TextBlock Grid.Row="3" Grid.Column="0" Text="{loc:Tr 'Style'}" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
                 <ComboBox x:Name="cboStyle" Grid.Row="3" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"/>
 
-                <TextBlock Grid.Row="4" Grid.Column="0" Text="Rythme / articulation" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{loc:Tr 'RythmeArticulation'}" Foreground="#BBBBBB" VerticalAlignment="Center" Margin="0,4,12,4"/>
                 <ComboBox x:Name="cboRhythm" Grid.Row="4" Grid.Column="1" Width="200" HorizontalAlignment="Left" Margin="0,4"
-                          ToolTip="Comment chaque accord est joué (plaqué, arpège, jazz, bossa, funk…) au lieu de simples accords tenus"/>
+                          ToolTip="{loc:Tr 'CommentChaqueAccordEstJouePlaque'}"/>
             </Grid>
 
-            <CheckBox x:Name="chkBass" Content="Ajouter la basse (fondamentale)" Foreground="#DDDDDD" Margin="0,12,0,0"/>
-            <CheckBox x:Name="chkVoiceLead" Content="Conduite des voix (renversements automatiques)" Foreground="#DDDDDD" Margin="0,6,0,0" IsChecked="True"
-                      ToolTip="Choisit le renversement de chaque accord pour que les notes (les doigts) bougent le moins possible"/>
-            <CheckBox x:Name="chkOpen" Content="Voicing ouvert (écarté)" Foreground="#DDDDDD" Margin="0,6,0,0"
-                      ToolTip="Écarte chaque accord (position ouverte) au lieu d'un empilement serré"/>
+            <CheckBox x:Name="chkBass" Content="{loc:Tr 'AjouterLaBasseFondamentale'}" Foreground="#DDDDDD" Margin="0,12,0,0"/>
+            <CheckBox x:Name="chkVoiceLead" Content="{loc:Tr 'ConduiteDesVoixRenversementsAutomatiques'}" Foreground="#DDDDDD" Margin="0,6,0,0" IsChecked="True"
+                      ToolTip="{loc:Tr 'ChoisitLeRenversementDeChaqueAccord'}"/>
+            <CheckBox x:Name="chkOpen" Content="{loc:Tr 'VoicingOuvertEcarte'}" Foreground="#DDDDDD" Margin="0,6,0,0"
+                      ToolTip="{loc:Tr 'EcarteChaqueAccordPositionOuverteAu'}"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-                <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
-                <Button Content="Générer" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
+                <Button Content="{loc:Tr 'Annuler'}" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
+                <Button Content="{loc:Tr 'Generer'}" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="16,4" Cursor="Hand"/>
             </StackPanel>
         </StackPanel>
     </Border>

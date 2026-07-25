@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Dialogs
 {
@@ -63,11 +64,11 @@ namespace MusicTracker.Dialogs
         void FileBrowserDialog_Loaded(object sender, RoutedEventArgs e)
         {
             // Honour a caller-supplied Title; otherwise use the default for the mode.
-            string def = SaveMode ? "Enregistrer sous" : "Ouvrir un fichier";
-            string t = (string.IsNullOrWhiteSpace(Title) || Title == "Ouvrir un fichier") ? def : Title;
+            string def = SaveMode ? Loc.T("EnregistrerSous") : Loc.T("OuvrirUnFichier");
+            string t = (string.IsNullOrWhiteSpace(Title) || Title == Loc.T("OuvrirUnFichier")) ? def : Title;
             txtTitle.Text = t; Title = t;
             txtIcon.Text = SaveMode ? "💾" : "📂";
-            btnAccept.Content = SaveMode ? "Enregistrer" : "Ouvrir";
+            btnAccept.Content = SaveMode ? Loc.T("Enregistrer") : Loc.T("Ouvrir");
 
             ParseFilter();
             cboFilter.ItemsSource = filters.Select(f => f.Desc).ToList();
@@ -101,7 +102,7 @@ namespace MusicTracker.Dialogs
                 }
             }
             if (filters.Count == 0)
-                filters.Add(new FilterSpec { Desc = "Tous les fichiers (*.*)", Pats = new[] { "*.*" }, All = true });
+                filters.Add(new FilterSpec { Desc = Loc.T("TousLesFichiers"), Pats = new[] { "*.*" }, All = true });
         }
 
         static bool IsAllPattern(string p) => p == "*.*" || p == "*";
@@ -129,7 +130,7 @@ namespace MusicTracker.Dialogs
             selEntry = null;
             btnBack.IsEnabled = back.Count > 0;
 
-            if (loc == RECENT) { txtPath.Text = "Récents"; btnUp.IsEnabled = false; PopulateRecents(); }
+            if (loc == RECENT) { txtPath.Text = Loc.T("Recents"); btnUp.IsEnabled = false; PopulateRecents(); }
             else { txtPath.Text = loc; btnUp.IsEnabled = SafeParent(loc) != null; PopulateDir(loc); }
         }
 
@@ -180,11 +181,11 @@ namespace MusicTracker.Dialogs
         void BuildPlaces()
         {
             placesPanel.Children.Clear();
-            AddPlace("🕘  Récents", RECENT);
+            AddPlace(Loc.T("Recents2"), RECENT);
             AddSeparator();
-            AddKnown("🖥  Bureau", Environment.SpecialFolder.DesktopDirectory);
-            AddKnown("📄  Documents", Environment.SpecialFolder.MyDocuments);
-            AddKnown("🎵  Musique", Environment.SpecialFolder.MyMusic);
+            AddKnown(Loc.T("Bureau"), Environment.SpecialFolder.DesktopDirectory);
+            AddKnown(Loc.T("Documents"), Environment.SpecialFolder.MyDocuments);
+            AddKnown(Loc.T("Musique"), Environment.SpecialFolder.MyMusic);
             AddSeparator();
             foreach (var drv in SafeDrives())
             {
@@ -231,17 +232,17 @@ namespace MusicTracker.Dialogs
 
                 string dir = SafeDir(full);
                 if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
-                { MessageBox.Show(this, "Dossier introuvable.", "Enregistrer", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+                { MessageBox.Show(this, Loc.T("DossierIntrouvable"), Loc.T("Enregistrer"), MessageBoxButton.OK, MessageBoxImage.Warning); return; }
 
                 bool exists; try { exists = File.Exists(full); } catch { exists = false; }
-                if (exists && MessageBox.Show(this, $"« {Path.GetFileName(full)} » existe déjà.\nLe remplacer ?", "Enregistrer",
+                if (exists && MessageBox.Show(this, $"« {Path.GetFileName(full)} » existe déjà.\nLe remplacer ?", Loc.T("Enregistrer"),
                         MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                     return;
             }
             else
             {
                 bool exists; try { exists = File.Exists(full); } catch { exists = false; }
-                if (!exists) { MessageBox.Show(this, "Fichier introuvable.", "Ouvrir", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+                if (!exists) { MessageBox.Show(this, Loc.T("FichierIntrouvable"), Loc.T("Ouvrir"), MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             }
 
             FileName = full;
@@ -290,7 +291,7 @@ namespace MusicTracker.Dialogs
             if (e.Key != Key.Enter) return;
             string p = txtPath.Text?.Trim();
             if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) GoTo(p);
-            else txtPath.Text = current == RECENT ? "Récents" : current;
+            else txtPath.Text = current == RECENT ? Loc.T("Recents") : current;
         }
 
         void txtFileName_KeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) Accept(); }

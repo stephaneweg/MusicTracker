@@ -1,8 +1,9 @@
-<Window x:Class="MusicTracker.Dialogs.FileBrowserDialog"
+﻿<Window x:Class="MusicTracker.Dialogs.FileBrowserDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctl="clr-namespace:MusicTracker.Controls"
-        Title="Ouvrir un fichier" Width="800" Height="540" ResizeMode="NoResize"
+        xmlns:loc="clr-namespace:MusicTracker.Localization"
+        Title="{loc:Tr 'OuvrirUnFichier'}" Width="800" Height="540" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent">
     <Window.Resources>
         <!-- A place button in the left sidebar (Récents, Bureau, lecteurs…). -->
@@ -99,7 +100,7 @@
             <Grid Grid.Row="0" ctl:WindowDrag.Enable="True" Background="{StaticResource CommonBackground}" Margin="0">
                 <StackPanel Orientation="Horizontal" Margin="18,14,0,10">
                     <TextBlock x:Name="txtIcon" Text="📂" FontSize="15" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="txtTitle" Text="Ouvrir un fichier" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="txtTitle" Text="{loc:Tr 'OuvrirUnFichier'}" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
                 </StackPanel>
                 <Button Content="✕" Click="btnClose_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Width="34" Height="30"
                         Cursor="Hand" Foreground="{StaticResource SecondaryForeground}" Background="Transparent" BorderThickness="0" FontSize="13"/>
@@ -112,8 +113,8 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Button Grid.Column="0" x:Name="btnBack" Style="{StaticResource NavBtn}" Content="◀" Margin="0,0,6,0" Click="btnBack_Click" ToolTip="Précédent"/>
-                <Button Grid.Column="1" x:Name="btnUp" Style="{StaticResource NavBtn}" Content="▲" Margin="0,0,8,0" Click="btnUp_Click" ToolTip="Dossier parent"/>
+                <Button Grid.Column="0" x:Name="btnBack" Style="{StaticResource NavBtn}" Content="◀" Margin="0,0,6,0" Click="btnBack_Click" ToolTip="{loc:Tr 'Precedent'}"/>
+                <Button Grid.Column="1" x:Name="btnUp" Style="{StaticResource NavBtn}" Content="▲" Margin="0,0,8,0" Click="btnUp_Click" ToolTip="{loc:Tr 'DossierParent'}"/>
                 <TextBox Grid.Column="2" x:Name="txtPath" VerticalContentAlignment="Center" Padding="8,0" KeyDown="txtPath_KeyDown"
                          Background="{StaticResource LightBackground}" Foreground="{StaticResource CommonForeground}"
                          BorderBrush="{StaticResource SubtleBorderBrush}"/>
@@ -151,7 +152,7 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <TextBlock x:Name="txtEmpty" Text="Dossier vide" Foreground="{StaticResource SecondaryForeground}"
+                        <TextBlock x:Name="txtEmpty" Text="{loc:Tr 'DossierVide'}" Foreground="{StaticResource SecondaryForeground}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
                     </Grid>
                 </Border>
@@ -169,15 +170,15 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Nom :" Foreground="{StaticResource CommonForeground}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Tr 'Nom'}" Foreground="{StaticResource CommonForeground}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                 <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtFileName" VerticalContentAlignment="Center" Padding="8,4" KeyDown="txtFileName_KeyDown"
                          Background="{StaticResource LightBackground}" Foreground="{StaticResource CommonForeground}" BorderBrush="{StaticResource SubtleBorderBrush}"/>
                 <ComboBox Grid.Row="0" Grid.Column="2" x:Name="cboFilter" MinWidth="220" Margin="10,0,0,0" VerticalAlignment="Center"
                           SelectionChanged="cboFilter_SelectionChanged"/>
 
                 <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-                    <Button Content="Annuler" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="18,5" Margin="0,0,8,0" Cursor="Hand"/>
-                    <Button x:Name="btnAccept" Content="Ouvrir" Style="{StaticResource okButton}" Click="btnAccept_Click" Padding="22,5" Cursor="Hand"/>
+                    <Button Content="{loc:Tr 'Annuler'}" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="18,5" Margin="0,0,8,0" Cursor="Hand"/>
+                    <Button x:Name="btnAccept" Content="{loc:Tr 'Ouvrir'}" Style="{StaticResource okButton}" Click="btnAccept_Click" Padding="22,5" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
         </Grid>

@@ -10,6 +10,7 @@ using System.Windows.Shapes;
 using MusicTracker.Engine;
 using MusicTracker.Engine.Flow;
 using MusicTracker.Engine.Timeline;
+using MusicTracker.Localization;
 using MeltySynth;
 
 namespace MusicTracker.Screens
@@ -60,7 +61,7 @@ namespace MusicTracker.Screens
         public TimelineScreen()
         {
             InitializeComponent();
-            foreach (var t in new[] { "Do", "Ré", "Mi", "Fa", "Sol", "La", "Si" }) cboTonic.Items.Add(t);
+            foreach (var t in new[] { Loc.T("Do"), Loc.T("Re"), Loc.T("Mi"), Loc.T("Fa"), Loc.T("Sol"), Loc.T("La"), Loc.T("Si") }) cboTonic.Items.Add(t);
             foreach (var m in Engine.Score.MusicalMode.Names) cboMode.Items.Add(m); // all modes (like the Transpose dialog)
             // Start with one instrument track + the permanent chords track (always at the bottom).
             project.Tracks.Add(new TimelineTrack { Name = "Piste 1", Instrument = 0 });
@@ -185,8 +186,8 @@ namespace MusicTracker.Screens
         // playback is unchanged. Kept below a full bar (the % in ScoreView folds anything larger back into one bar).
         static readonly (string label, double beats)[] PickupOpts =
         {
-            ("Aucune", 0), ("Double croche", 0.25), ("Croche", 0.5), ("Croche pointée", 0.75),
-            ("Noire", 1.0), ("Noire pointée", 1.5), ("Blanche", 2.0),
+            (Loc.T("Aucune"), 0), (Loc.T("DoubleCroche"), 0.25), (Loc.T("Croche"), 0.5), (Loc.T("CrochePointee"), 0.75),
+            (Loc.T("Noire"), 1.0), (Loc.T("NoirePointee"), 1.5), (Loc.T("Blanche"), 2.0),
         };
         void SyncPickupCombo()
         {
@@ -278,10 +279,10 @@ namespace MusicTracker.Screens
         // borrowed…) keeps its colour and just moves its root. Returns true if any chord changed.
 
         static readonly int[] TonicPc = { 0, 2, 4, 5, 7, 9, 11 }; // Do Ré Mi Fa Sol La Si
-        static readonly string[] BassModeNames = { "Aucune", "Par mesure (tenue)", "Par temps" };
-        static readonly string[] HeldModeNames = { "Note seule", "Accord plaqué", "Fondamentale + quinte", "Fondamentale + tierce" };
-        static readonly string[] ClimbModeNames = { "Arpège montant", "Arpège descendant", "Alberti (1-5-3…)", "Mixte" };
-        static readonly string[] VoiceLeadModeNames = { "Aucun (position fond.)", "Auto (mouvement mini)", "Basse proche", "Haut proche" };
+        static readonly string[] BassModeNames = { Loc.T("Aucune"), Loc.T("ParMesureTenue"), Loc.T("ParTemps") };
+        static readonly string[] HeldModeNames = { Loc.T("NoteSeule"), Loc.T("AccordPlaque"), Loc.T("FondamentaleQuinte"), Loc.T("FondamentaleTierce") };
+        static readonly string[] ClimbModeNames = { Loc.T("ArpegeMontant"), Loc.T("ArpegeDescendant"), Loc.T("Alberti153"), Loc.T("Mixte") };
+        static readonly string[] VoiceLeadModeNames = { Loc.T("AucunPositionFond"), Loc.T("AutoMouvementMini"), Loc.T("BasseProche"), Loc.T("HautProche") };
         static readonly string[] DiatonicColourNames = Engine.Flow.MusicTheory.DiatonicColourNames; // single source of truth (also drives the DiatonicColour clamp)
 
         static int KeyPc(Engine.Score.KeySignature k)
@@ -311,7 +312,7 @@ namespace MusicTracker.Screens
         static readonly System.Text.Json.JsonSerializerOptions JsonOpts = new System.Text.Json.JsonSerializerOptions { IncludeFields = true };
 
         // ---- IMusicEditor (playback comes in Phase 2) ----
-        public string ModeName => "Séquenceur";
+        public string ModeName => Loc.T("Sequenceur");
         public string FileExtension => ".sq";
         public string CurrentPath { get; set; }
         public void StopAudio() { StopPlayback(); try { activeRiffGrid?.StopPreview(); } catch { } }
@@ -346,7 +347,7 @@ namespace MusicTracker.Screens
                 if (btnPlay != null) btnPlay.Content = "⏳"; // filling the buffer before playback
                 playBuffer.Start(); // producer fills; the device starts on Primed
             }
-            catch (Exception ex) { MessageBox.Show("Lecture : " + ex.Message); StopPlayback(); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("Lecture") + ex.Message); StopPlayback(); }
         }
 
         // Called on the UI thread once the look-ahead buffer has its head start: actually start the device.
@@ -410,7 +411,7 @@ namespace MusicTracker.Screens
                     Stroke = new SolidColorBrush(Color.FromRgb(0xCF, 0xDE, 0xFA)),
                     StrokeThickness = 1,
                     Cursor = Cursors.SizeWE,
-                    ToolTip = "Glisser pour définir le point de départ de la lecture",
+                    ToolTip = Loc.T("GlisserPourDefinirLePointDe"),
                 };
                 Panel.SetZIndex(startMarker, 10);
                 startMarker.MouseLeftButtonDown += startMarker_MouseLeftButtonDown;
@@ -492,7 +493,7 @@ namespace MusicTracker.Screens
             int myGen = ++scoreGen;
             var toBuild = new List<TimelineTrack>();
             foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) toBuild.Add(t);
-            txtEditorTitle.Text = "Partition — calcul…";
+            txtEditorTitle.Text = Loc.T("PartitionCalcul");
 
             // ResolveLoops mutates the project (sizes looping Repeats) — run it ONCE here on the UI thread, then
             // the per-track builds (parallel, background) only read.
@@ -518,10 +519,10 @@ namespace MusicTracker.Screens
                     return flat;
                 });
             }
-            catch (Exception ex) { if (myGen == scoreGen) txtEditorTitle.Text = "Partition — erreur : " + ex.Message; return; }
+            catch (Exception ex) { if (myGen == scoreGen) txtEditorTitle.Text = Loc.T("PartitionErreur") + ex.Message; return; }
 
             if (myGen != scoreGen) return;                 // a newer RefreshScore superseded this one
-            if (!ScoreVisible) { editorHost.Content = null; activeScore = null; txtEditorTitle.Text = "Éditeur"; return; }
+            if (!ScoreVisible) { editorHost.Content = null; activeScore = null; txtEditorTitle.Text = Loc.T("Editeur"); return; }
 
             var view = new Controls.Score.ScoreView();
             view.EditMode = scoreEditMode;
@@ -530,11 +531,11 @@ namespace MusicTracker.Screens
             view.NoteEditClicked += ScoreEditSelectNote;
             view.NotePlaceClicked += ScoreMousePlace;
             try { view.Configure(list, project.TimeSigNum, project.TimeSigDen, project.TimeSigScale, project.PickupBeats); }
-            catch (Exception ex) { txtEditorTitle.Text = "Partition — erreur rendu : " + ex.Message; return; } // never let a render bug break note-entry
+            catch (Exception ex) { txtEditorTitle.Text = Loc.T("PartitionErreurRendu") + ex.Message; return; } // never let a render bug break note-entry
             scoreContainer = ScoreContainer(view);
             editorHost.Content = scoreContainer;
             activeScore = view;
-            txtEditorTitle.Text = list.Count > 1 ? "Partition (" + list.Count + " portées)" : "Partition";
+            txtEditorTitle.Text = list.Count > 1 ? Loc.T("Partition2") + list.Count + Loc.T("Portees") : Loc.T("Partition");
             SetEditorScroll(true); // the score manages its own scrolling
             if (scoreEditMode) UpdateEditCursor();
             view.SetCursorBeat(player != null ? PlayedBeat() : startBeat);
@@ -677,16 +678,16 @@ namespace MusicTracker.Screens
             prog.Show();
             try
             {
-                prog.Set(0.1, "Ouverture du fichier…");
+                prog.Set(0.1, Loc.T("OuvertureDuFichier"));
                 var doc = await System.Threading.Tasks.Task.Run(() =>
                     System.Text.Json.JsonSerializer.Deserialize<TimelineDocument>(System.IO.File.ReadAllText(path), JsonOpts) ?? new TimelineDocument());
 
-                prog.Set(0.7, "Chargement…");
+                prog.Set(0.7, Loc.T("Chargement"));
                 ApplyDocument(doc, path);
                 await RenderBatched(prog); // add the lane controls in batches so the UI stays responsive
-                prog.Set(1.0, "Terminé");
+                prog.Set(1.0, Loc.T("Termine"));
             }
-            catch (Exception ex) { MessageBox.Show("Erreur d'ouverture : " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDOuverture") + ex.Message); }
             finally { prog.Close(); }
         }
 
@@ -879,7 +880,7 @@ namespace MusicTracker.Screens
                     cursor += TimelineHelper.DispLen(item);
                     if (++done % 24 == 0)
                     {
-                        prog?.Set(0.7 + 0.29 * done / Math.Max(1, total), "Affichage… (" + done + "/" + total + ")");
+                        prog?.Set(0.7 + 0.29 * done / Math.Max(1, total), Loc.T("Affichage") + done + "/" + total + ")");
                         await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
                     }
                 }
@@ -950,7 +951,7 @@ namespace MusicTracker.Screens
                 Content = track.Collapsed ? "▸" : "▾", Width = 18, Height = 18, Padding = new Thickness(0), FontSize = 10,
                 Margin = new Thickness(0, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand,
                 Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = Brushes.White,
-                ToolTip = track.Collapsed ? "Déplier la piste" : "Replier la piste (gagner de la hauteur)"
+                ToolTip = track.Collapsed ? Loc.T("DeplierLaPiste") : Loc.T("ReplierLaPisteGagnerDeLa")
             };
             collapseBtn.Click += (s, e) => { track.Collapsed = !track.Collapsed; Render(); };
             top.Children.Add(collapseBtn);
@@ -971,13 +972,13 @@ namespace MusicTracker.Screens
                 border.PreviewMouseLeftButtonDown += (s, e) => SelectTrack(track);
                 return border;
             }
-            var scoreChk = new CheckBox { Content = "♫", FontFamily = new FontFamily("Segoe UI Symbol"), IsChecked = scoreTracks.Contains(track), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), Cursor = Cursors.Hand, ToolTip = "Afficher cette piste dans la partition" };
+            var scoreChk = new CheckBox { Content = "♫", FontFamily = new FontFamily("Segoe UI Symbol"), IsChecked = scoreTracks.Contains(track), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 0, 0), Cursor = Cursors.Hand, ToolTip = Loc.T("AfficherCettePisteDansLaPartition") };
             scoreChk.Checked += (s, e) => { scoreTracks.Add(track); viewScore = true; RefreshScore(); }; // checking ♫ shows the score
             scoreChk.Unchecked += (s, e) => { scoreTracks.Remove(track); RefreshScore(); };
             top.Children.Add(scoreChk);
             if (track.Type != TimelineTrackType.Chord)   // the chords track is permanent → no delete button
             {
-                var del = new Button { Content = "✕", Margin = new Thickness(4, 0, 0, 0), Cursor = Cursors.Hand, Style = (Style)FindResource("deleteIconButton"), ToolTip = "Supprimer la piste" };
+                var del = new Button { Content = "✕", Margin = new Thickness(4, 0, 0, 0), Cursor = Cursors.Hand, Style = (Style)FindResource("deleteIconButton"), ToolTip = Loc.T("SupprimerLaPiste") };
                 del.Click += (s, e) => { project.Tracks.Remove(track); scoreTracks.Remove(track); if (selectedTrack == track) selectedTrack = null; Render(); RefreshScore(); };
                 top.Children.Add(del);
             }
@@ -1002,19 +1003,19 @@ namespace MusicTracker.Screens
             }
             else
             {
-                panel.Children.Add(new TextBlock { Text = "Batterie (kit auto)", Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 11, Margin = new Thickness(0, 4, 0, 0) });
+                panel.Children.Add(new TextBlock { Text = Loc.T("BatterieKitAuto"), Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 11, Margin = new Thickness(0, 4, 0, 0) });
             }
 
             // base volume
             var volRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
-            volRow.Children.Add(new TextBlock { Text = "Vol", Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
+            volRow.Children.Add(new TextBlock { Text = Loc.T("Vol"), Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
             var vol = new Slider { Minimum = 0, Maximum = 1.5, Value = track.Volume, Width = 80, VerticalAlignment = VerticalAlignment.Center, SmallChange = 0.05 };
             vol.ValueChanged += (s, e) => track.Volume = vol.Value;
             volRow.Children.Add(vol);
             // Mute / Solo (take effect on the next playback)
-            var mute = new System.Windows.Controls.Primitives.ToggleButton { Content = "M", IsChecked = track.Mute, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("MuteToggle"), ToolTip = "Muet (silence cette piste)" };
+            var mute = new System.Windows.Controls.Primitives.ToggleButton { Content = "M", IsChecked = track.Mute, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("MuteToggle"), ToolTip = Loc.T("MuetSilenceCettePiste") };
             mute.Checked += (s, e) => track.Mute = true; mute.Unchecked += (s, e) => track.Mute = false;
-            var solo = new System.Windows.Controls.Primitives.ToggleButton { Content = "S", IsChecked = track.Solo, Margin = new Thickness(3, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("SoloToggle"), ToolTip = "Solo (n'entendre que les pistes en solo)" };
+            var solo = new System.Windows.Controls.Primitives.ToggleButton { Content = "S", IsChecked = track.Solo, Margin = new Thickness(3, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("SoloToggle"), ToolTip = Loc.T("SoloNEntendreQueLesPistes") };
             solo.Checked += (s, e) => track.Solo = true; solo.Unchecked += (s, e) => track.Solo = false;
             volRow.Children.Add(mute); volRow.Children.Add(solo);
             panel.Children.Add(volRow);
@@ -1039,8 +1040,8 @@ namespace MusicTracker.Screens
         {
             var border = new Border { Height = height, BorderBrush = TrackSeparatorBrush, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6, 1, 4, 1) };
             var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            sp.Children.Add(new TextBlock { Text = "Accords", Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
-            var at = new CheckBox { Content = "auto transp.", Foreground = Brushes.White, FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), IsChecked = autoTransposeChords, Cursor = Cursors.Hand, ToolTip = "Coché : changer un accord transpose AUSSI la mélodie. Décoché : seuls la basse et l'accompagnement sont reconstruits (pour caler les accords sous la mélodie)." };
+            sp.Children.Add(new TextBlock { Text = Loc.T("Accords"), Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+            var at = new CheckBox { Content = Loc.T("AutoTransp"), Foreground = Brushes.White, FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0), IsChecked = autoTransposeChords, Cursor = Cursors.Hand, ToolTip = Loc.T("CocheChangerUnAccordTransposeAUSSI") };
             at.Checked += (s, e) => autoTransposeChords = true;
             at.Unchecked += (s, e) => autoTransposeChords = false;
             sp.Children.Add(at);
@@ -1081,7 +1082,7 @@ namespace MusicTracker.Screens
             var arr = project.Arrangement;
             if (!IsComposedArrangement())
             {
-                System.Windows.MessageBox.Show("Disponible uniquement sur une musique structurée (Piste → Créer structure…).", "Ajouter une ligne mélodique", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show(Loc.T("DisponibleUniquementSurUneMusiqueStructu"), Loc.T("AjouterUneLigneMelodique"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             int existing = 0;
@@ -1092,7 +1093,7 @@ namespace MusicTracker.Screens
             var line = Engine.Timeline.ArrangementEngine.BuildExtraVoice(arr, lead, seed);
             if (line == null || line.Count == 0)
             {
-                System.Windows.MessageBox.Show("Impossible de composer la ligne (arrangement incomplet).", "Ajouter une ligne mélodique", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show(Loc.T("ImpossibleDeComposerLaLigneArrangement"), Loc.T("AjouterUneLigneMelodique"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             // spread successive added lines down an octave each so they don't pile on the same register
@@ -1155,7 +1156,7 @@ namespace MusicTracker.Screens
             if (oldItem != null && highlighters.TryGetValue(oldItem, out var off)) off(false);
             SetHeaderSelected(oldTrack, false);
             SetHeaderSelected(track, true);
-            txtEditorTitle.Text = "Éditeur";
+            txtEditorTitle.Text = Loc.T("Editeur");
             editorHost.Content = null;
             UpdateToolbar();
         }
@@ -1513,7 +1514,7 @@ namespace MusicTracker.Screens
 
         string ItemInfo(TimelineItem item, double len)
         {
-            string beats = Math.Round(len, 2) + " temps";
+            string beats = Math.Round(len, 2) + Loc.T("Temps");
             switch (item.Module)
             {
                 case PatternGeneratorModule pg:
@@ -1528,7 +1529,7 @@ namespace MusicTracker.Screens
                     }
                     return $"{TimelineHelper.Get(DrumPattern.StyleNames, dp.Style)} · {beats}";
                 case PlayRiffModule pr:
-                    { var r = TimelineHelper.RiffById(pr.RiffId); return (r != null ? r.Name : "(aucun)") + " · " + beats; }
+                    { var r = TimelineHelper.RiffById(pr.RiffId); return (r != null ? r.Name : Loc.T("Aucun")) + " · " + beats; }
                 default:
                     return beats;
             }
@@ -1582,20 +1583,20 @@ namespace MusicTracker.Screens
             bool selfScroll = false; // editor manages its own scrolling -> disable the outer scroll
             if (item == null)
             {
-                txtEditorTitle.Text = "Éditeur";
+                txtEditorTitle.Text = Loc.T("Editeur");
                 editorHost.Content = new TextBlock
                 {
-                    Text = "Sélectionne un module (riff, accord, batterie, ligne mélodique) sur la timeline pour l'éditer ici.",
+                    Text = Loc.T("SelectionneUnModuleRiffAccordBatterie"),
                     Foreground = "#777C85".ToBrush(), FontSize = 12, TextWrapping = TextWrapping.Wrap,
                     HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
                     Margin = new Thickness(20), MaxWidth = 420, TextAlignment = TextAlignment.Center,
                 };
             }
-            else if (item.Module is PlayRiffModule pr) { txtEditorTitle.Text = "Éditeur — Riff"; editorHost.Content = BuildRiffEditor(track, pr); selfScroll = true; }
-            else if (item.Module is PatternGeneratorModule pg) { txtEditorTitle.Text = "Éditeur — Accords"; var ce = new Controls.ChordEditorControl(); ce.Show(project, track, pg, this); editorHost.Content = ce; selfScroll = true; }
-            else if (item.Module is CadenceModule cm) { txtEditorTitle.Text = "Éditeur — Cadence"; editorHost.Content = BuildCadenceEditor(track, cm); }
-            else if (item.Module is DrumPatternModule dp) { txtEditorTitle.Text = "Éditeur — Batterie"; editorHost.Content = BuildDrumEditor(track, item, dp); selfScroll = true; }
-            else if (item.Module is MelodicLineModule ml) { txtEditorTitle.Text = "Éditeur — Ligne mélodique"; editorHost.Content = BuildMelodicLineEditor(track, item, ml); selfScroll = true; }
+            else if (item.Module is PlayRiffModule pr) { txtEditorTitle.Text = Loc.T("EditeurRiff"); editorHost.Content = BuildRiffEditor(track, pr); selfScroll = true; }
+            else if (item.Module is PatternGeneratorModule pg) { txtEditorTitle.Text = Loc.T("EditeurAccords"); var ce = new Controls.ChordEditorControl(); ce.Show(project, track, pg, this); editorHost.Content = ce; selfScroll = true; }
+            else if (item.Module is CadenceModule cm) { txtEditorTitle.Text = Loc.T("EditeurCadence"); editorHost.Content = BuildCadenceEditor(track, cm); }
+            else if (item.Module is DrumPatternModule dp) { txtEditorTitle.Text = Loc.T("EditeurBatterie"); editorHost.Content = BuildDrumEditor(track, item, dp); selfScroll = true; }
+            else if (item.Module is MelodicLineModule ml) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodique"); editorHost.Content = BuildMelodicLineEditor(track, item, ml); selfScroll = true; }
             else editorHost.Content = null;
 
             // The riff / chord / drum editors scroll internally (options panel + grid each have their own
@@ -1655,7 +1656,7 @@ namespace MusicTracker.Screens
         {
             var toolStyle = TryFindResource("toolToggleBlue") as Style ?? TryFindResource("toolToggle") as Style;   // themed dark toggle (accent blue when active)
             var bar = new WrapPanel { Margin = new Thickness(2, 0, 2, 4) };
-            var tog = new System.Windows.Controls.Primitives.ToggleButton { Style = toolStyle, Content = "✎ Éditer", IsChecked = scoreEditMode, Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(0, 0, 8, 0), Cursor = Cursors.Hand };
+            var tog = new System.Windows.Controls.Primitives.ToggleButton { Style = toolStyle, Content = Loc.T("Editer"), IsChecked = scoreEditMode, Padding = new Thickness(10, 2, 10, 2), Margin = new Thickness(0, 0, 8, 0), Cursor = Cursors.Hand };
             tog.Checked += (s, e) => { scoreEditMode = true; HookScoreKeys(true); RefreshScore(); };
             tog.Unchecked += (s, e) => { scoreEditMode = false; HookScoreKeys(false); selNoteMidi = -1; RefreshScore(); Render(); }; // Render → refresh riff thumbnails edited on the staff
             bar.Children.Add(tog);
@@ -1665,8 +1666,8 @@ namespace MusicTracker.Screens
                 var oct = new TextBox { Width = 38, Text = editOctave.ToString(), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 8, 0) };
                 oct.LostFocus += (s, e) => { if (int.TryParse(oct.Text, out int v)) editOctave = Math.Max(0, Math.Min(9, v)); };
                 bar.Children.Add(oct);
-                bar.Children.Add(ScoreLbl("Durée"));
-                var durNames = new[] { "Double-croche", "Croche", "Noire", "Blanche", "Ronde" };
+                bar.Children.Add(ScoreLbl(Loc.T("Duree")));
+                var durNames = new[] { Loc.T("DoubleCroche2"), Loc.T("Croche"), Loc.T("Noire"), Loc.T("Blanche"), Loc.T("Ronde") };
                 var bases = DurBases();
                 for (int di = 0; di < 5; di++)
                 {
@@ -1681,10 +1682,10 @@ namespace MusicTracker.Screens
                     tb.Checked += (s, e) => { editDurIdx = ii; RefreshScore(); };   // exclusive (rebuild rechecks only the active one)
                     bar.Children.Add(tb);
                 }
-                var dot = new System.Windows.Controls.Primitives.ToggleButton { Style = toolStyle, Content = NoteIcon(0, dotOnly: true), IsChecked = editDotted, ToolTip = "Note pointée", Width = 26, Height = 28, Padding = new Thickness(0), Margin = new Thickness(4, 0, 8, 0), Cursor = Cursors.Hand };
+                var dot = new System.Windows.Controls.Primitives.ToggleButton { Style = toolStyle, Content = NoteIcon(0, dotOnly: true), IsChecked = editDotted, ToolTip = Loc.T("NotePointee"), Width = 26, Height = 28, Padding = new Thickness(0), Margin = new Thickness(4, 0, 8, 0), Cursor = Cursors.Hand };
                 dot.Checked += (s, e) => editDotted = true; dot.Unchecked += (s, e) => editDotted = false;
                 bar.Children.Add(dot);
-                bar.Children.Add(ScoreLbl("Voix"));
+                bar.Children.Add(ScoreLbl(Loc.T("Voix")));
                 for (int v = 0; v < 5; v++)
                 {
                     int vv = v;
@@ -1692,7 +1693,7 @@ namespace MusicTracker.Screens
                     tb.Checked += (s, e) => { editVoice = vv; RefreshScore(); };   // exclusive: the rebuild rechecks only the active one
                     bar.Children.Add(tb);
                 }
-                bar.Children.Add(new TextBlock { Text = "C D E F G A B · Espace=silence · Maj+lettre=empiler · ↑↓ ½t · Ctrl+↑↓ 8ve · Suppr · ←→=sélection · 1-5=durée", Foreground = "#888888".ToBrush(), FontSize = 10, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxWidth = 440, Margin = new Thickness(8, 0, 0, 0) });
+                bar.Children.Add(new TextBlock { Text = Loc.T("CDEFGA"), Foreground = "#888888".ToBrush(), FontSize = 10, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxWidth = 440, Margin = new Thickness(8, 0, 0, 0) });
             }
             return bar;
         }
@@ -1756,7 +1757,7 @@ namespace MusicTracker.Screens
             // CRITICAL: never let an exception escape a window-level PreviewKeyDown handler — WPF would corrupt keyboard
             // input GLOBALLY (keys stop working everywhere, even in other projects, until restart).
             try { ScoreEditKeyCore(e); }
-            catch (Exception ex) { txtEditorTitle.Text = "Édition partition — erreur : " + ex.Message; e.Handled = true; }
+            catch (Exception ex) { txtEditorTitle.Text = Loc.T("EditionPartitionErreur") + ex.Message; e.Handled = true; }
         }
 
         void ScoreEditKeyCore(KeyEventArgs e)
@@ -2076,13 +2077,13 @@ namespace MusicTracker.Screens
         UIElement BuildRepeatEditor(RepeatGroup g)
         {
             var sp = new StackPanel { Margin = new Thickness(2) };
-            sp.Children.Add(EdLabel("Répétitions :"));
+            sp.Children.Add(EdLabel(Loc.T("Repetitions2")));
             sp.Children.Add(ParamNum(g.Count, v => { if (v > 0) g.Count = v; }, Render));
-            var loop = new CheckBox { Content = "Boucler jusqu'à la fin", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = g.Loop };
+            var loop = new CheckBox { Content = Loc.T("BouclerJusquALaFin"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = g.Loop };
             loop.Checked += (s, e) => { g.Loop = true; Render(); };
             loop.Unchecked += (s, e) => { g.Loop = false; Render(); };
             sp.Children.Add(loop);
-            sp.Children.Add(new TextBlock { Text = "Repeat sélectionné → +Riff / +Accords / +Batterie ajoute DEDANS.", Foreground = "#888888".ToBrush(), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
+            sp.Children.Add(new TextBlock { Text = Loc.T("RepeatSelectionneRiffAccordsBatterieAjou"), Foreground = "#888888".ToBrush(), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
             return sp;
         }
 
@@ -2104,23 +2105,23 @@ namespace MusicTracker.Screens
             var top = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
             top.Children.Add(new TextBlock { Text = "Riff :", Foreground = "#AAAAAA".ToBrush(), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 5, 0) });
             var combo = new ComboBox { Width = 200, ItemsSource = RiffLibrary.Instance.Riffs, DisplayMemberPath = "Name", SelectedValuePath = "Id" };
-            var neu = new Button { Content = "Nouveau", Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand };
+            var neu = new Button { Content = Loc.T("Nouveau"), Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand };
             top.Children.Add(combo); top.Children.Add(neu);
             // "Appliquer le thème": treat THIS riff as the theme → copy it into the theme riff and regenerate the derived
             // sections (ré-expo / développement / conclusion) + the counter from the chord trame. Only for composed arrangements.
-            var applyTheme = new Button { Content = "Appliquer le thème", Margin = new Thickness(14, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand, ToolTip = "Reporter ce riff comme thème : ré-exposition / développement / conclusion + contre-chant régénérés sur les accords de chaque mesure." };
+            var applyTheme = new Button { Content = Loc.T("AppliquerLeTheme"), Margin = new Thickness(14, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand, ToolTip = Loc.T("ReporterCeRiffCommeThemeRe") };
             applyTheme.Visibility = (IsComposedArrangement()) ? Visibility.Visible : Visibility.Collapsed;
             applyTheme.Click += (s, e) => ApplyThemeFromRiff(pr);
             top.Children.Add(applyTheme);
             // "Ne pas écraser": lock THIS section's riff so "Appliquer le thème" leaves it untouched.
             var sec0 = TimelineHelper.SectionForRiff(project, pr.RiffId);
-            var protect = new CheckBox { Content = "Ne pas écraser", Foreground = Brushes.White, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(14, 0, 0, 0), Cursor = Cursors.Hand, ToolTip = "Protège ce riff de la régénération par « Appliquer le thème »." };
+            var protect = new CheckBox { Content = Loc.T("NePasEcraser"), Foreground = Brushes.White, FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(14, 0, 0, 0), Cursor = Cursors.Hand, ToolTip = Loc.T("ProtegeCeRiffDeLaRegeneration") };
             protect.Visibility = (sec0 != null) ? Visibility.Visible : Visibility.Collapsed;
             protect.IsChecked = sec0 != null && sec0.Protected;
             protect.Checked += (s, e) => { var sc = TimelineHelper.SectionForRiff(project, pr.RiffId); if (sc != null) sc.Protected = true; };
             protect.Unchecked += (s, e) => { var sc = TimelineHelper.SectionForRiff(project, pr.RiffId); if (sc != null) sc.Protected = false; };
             top.Children.Add(protect);
-            var aiBtn = new Button { Content = "🤖 Générer (IA)…", Margin = new Thickness(14, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand, Style = (Style)FindResource("okButton"), ToolTip = "Décris une intention ; l'IA écrit la mélodie du riff sur les accords présents (ou propose les accords si la zone est vide)." };
+            var aiBtn = new Button { Content = Loc.T("GenererIA"), Margin = new Thickness(14, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand, Style = (Style)FindResource("okButton"), ToolTip = Loc.T("DecrisUneIntentionLIAEcrit") };
             aiBtn.Click += (s, e) => GenerateRiffWithAi(track, pr, editedItem, rg);
             top.Children.Add(aiBtn);
             Grid.SetRow(top, 0); grid.Children.Add(top);
@@ -2195,13 +2196,13 @@ namespace MusicTracker.Screens
             var arr = project.Arrangement;
             if (arr == null || arr.Sections == null || arr.Sections.Count == 0)
             {
-                System.Windows.MessageBox.Show("Aucun arrangement à régénérer (composez d'abord une structure).", "Appliquer le thème", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show(Loc.T("AucunArrangementARegenererComposezD"), Loc.T("AppliquerLeTheme"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             var src = TimelineHelper.RiffById(pr.RiffId);
             if (src == null || src.Notes == null || src.Notes.Count == 0)
             {
-                System.Windows.MessageBox.Show("Le riff est vide — rien à appliquer.", "Appliquer le thème", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show(Loc.T("LeRiffEstVideRienA"), Loc.T("AppliquerLeTheme"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             var theme = new System.Collections.Generic.List<Engine.RiffNote>(src.Notes);
@@ -2212,7 +2213,7 @@ namespace MusicTracker.Screens
             CommitRiffEditor();      // close the inline editor; the riff boxes/score are about to be redrawn
             Render();
             RefreshScore();
-            System.Windows.MessageBox.Show("Thème reporté sur " + applied + " riff(s) (ré-exposition, développement, conclusion + contre-chant), transposé selon les accords.", "Appliquer le thème", MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(Loc.T("ThemeReporteSur") + applied + Loc.T("RiffSReExpositionDeveloppementConclusion"), Loc.T("AppliquerLeTheme"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // Chord lane: the user picked a new degree for chord #index. The engine chooses the flavour (DiatonicChord),
@@ -2488,7 +2489,7 @@ namespace MusicTracker.Screens
             outSlices = existing; outSpb = existingSpb > 0 ? existingSpb : 4; outNotes = existingNotes;
             int chordLen = Math.Max(1, PatternGenerator.ChordNotes(firstRoot, octave, firstQual, 0).Length);
             int voices = chordLen * 2;
-            var labels = new string[voices + 1]; labels[0] = "Basse";
+            var labels = new string[voices + 1]; labels[0] = Loc.T("Basse");
             for (int i = 0; i < voices; i++) { int deg = 2 * (i % chordLen) + 1; labels[i + 1] = deg + (i >= chordLen ? "'" : ""); }
 
             var userStyles = project.UserChordStyles ?? (project.UserChordStyles = new System.Collections.Generic.List<UserChordStyle>());
@@ -2507,14 +2508,14 @@ namespace MusicTracker.Screens
                            styleNames, seedFunc, PatternGenerator.SlicesPerQuarter, mk, InstrumentCatalog.GetPreset(track.Instrument), seedSpbFunc, null,
                            noteList: true, existingNotes: existingNotes);
 
-            var ok = new Button { Content = "Appliquer", Width = 96, IsDefault = true, Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(8, 3, 8, 3) };
-            var cancel = new Button { Content = "Annuler", Width = 96, IsCancel = true, Padding = new Thickness(8, 3, 8, 3) };
+            var ok = new Button { Content = Loc.T("Appliquer"), Width = 96, IsDefault = true, Margin = new Thickness(0, 0, 8, 0), Padding = new Thickness(8, 3, 8, 3) };
+            var cancel = new Button { Content = Loc.T("Annuler"), Width = 96, IsCancel = true, Padding = new Thickness(8, 3, 8, 3) };
             var btns = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(10) };
             btns.Children.Add(ok); btns.Children.Add(cancel);
             var dock = new DockPanel(); DockPanel.SetDock(btns, Dock.Bottom); dock.Children.Add(btns); dock.Children.Add(grid);
             var win = new Window
             {
-                Title = "Motif personnalisé", Width = 760, Height = 380, Owner = Window.GetWindow(this),
+                Title = Loc.T("MotifPersonnalise"), Width = 760, Height = 380, Owner = Window.GetWindow(this),
                 WindowStartupLocation = WindowStartupLocation.CenterOwner, Background = new SolidColorBrush(Color.FromRgb(0x1A, 0x1A, 0x20)), Content = dock,
             };
             bool applied = false;
@@ -2538,7 +2539,7 @@ namespace MusicTracker.Screens
         {
             var parts = new System.Collections.Generic.List<string>();
             foreach (var c in cm.Chords) parts.Add(Engine.Score.KeySig.SpellPc(c.Root, project.Key) + " " + TimelineHelper.Get(PatternGenerator.QualityNames, c.Quality));
-            return parts.Count == 0 ? "(vide)" : string.Join("   ·   ", parts);
+            return parts.Count == 0 ? Loc.T("Vide") : string.Join("   ·   ", parts);
         }
 
         // Cadence module editor: shared rendering settings (rhythm/octave/bass) + the cadence style and a
@@ -2552,54 +2553,54 @@ namespace MusicTracker.Screens
             Action showChords = () => chordList.Text = CadenceChordsLabel(cm);
 
             // Generation parameters (apply when you press « Régénérer »).
-            sp.Children.Add(EdLabel("Style de cadence"));
+            sp.Children.Add(EdLabel(Loc.T("StyleDeCadence")));
             sp.Children.Add(ParamCombo(Engine.Flow.MusicTheory.CadenceStyles, cm.CadenceStyle, v => cm.CadenceStyle = v, () => { }));
 
-            sp.Children.Add(EdLabel("Depuis le degré"));
-            var degNames = new[] { "I (tonique)", "ii", "iii", "IV", "V", "vi", "vii" };
+            sp.Children.Add(EdLabel(Loc.T("DepuisLeDegre")));
+            var degNames = new[] { Loc.T("ITonique"), "ii", "iii", "IV", "V", "vi", "vii" };
             sp.Children.Add(ParamCombo(degNames, Math.Max(0, Math.Min(6, cm.StartDegree)), v => cm.StartDegree = v, () => { }));
 
-            sp.Children.Add(EdLabel("Mesures"));
+            sp.Children.Add(EdLabel(Loc.T("Mesures")));
             sp.Children.Add(ParamNum(cm.Measures, v => cm.Measures = v, () => { }));
-            sp.Children.Add(EdLabel("Accords / mesure"));
+            sp.Children.Add(EdLabel(Loc.T("AccordsMesure")));
             sp.Children.Add(ParamNum(cm.ChordsPerMeasure, v => cm.ChordsPerMeasure = v, () => { }));
 
             // Rendering settings (apply immediately to the stored chords).
-            sp.Children.Add(EdLabel("Rythme / articulation"));
+            sp.Children.Add(EdLabel(Loc.T("RythmeArticulation")));
             // Full list INCLUDING "Personnalisé…" (CustomStyle) so a hand-drawn motif can drive the whole cadence.
             sp.Children.Add(ParamCombo(PatternGenerator.StyleNames, Math.Max(0, Math.Min(cm.Style, PatternGenerator.StyleNames.Length - 1)), v => cm.Style = v, refresh));
-            var editMotif = new Button { Content = "Éditer le motif personnalisé…", Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(8, 3, 8, 3), HorizontalAlignment = HorizontalAlignment.Left, Cursor = Cursors.Hand };
+            var editMotif = new Button { Content = Loc.T("EditerLeMotifPersonnalise"), Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(8, 3, 8, 3), HorizontalAlignment = HorizontalAlignment.Left, Cursor = Cursors.Hand };
             editMotif.Click += (s, e) => EditCadenceMotif(track, cm, refresh);
             sp.Children.Add(editMotif);
 
-            sp.Children.Add(EdLabel("Octave"));
+            sp.Children.Add(EdLabel(Loc.T("Octave")));
             sp.Children.Add(ParamNum(cm.Octave, v => cm.Octave = v, refresh));
 
             // Voice-leading: re-pick each chord's INVERSION for smooth motion (re-voices the existing chords, no re-roll).
-            sp.Children.Add(EdLabel("Renversement (voice-leading)"));
+            sp.Children.Add(EdLabel(Loc.T("RenversementVoiceLeading")));
             sp.Children.Add(ParamCombo(VoiceLeadModeNames, Math.Max(0, Math.Min(3, cm.VoiceLeadMode)), v => cm.VoiceLeadMode = v, () =>
             {
                 var vlKey = project.Key ?? new Engine.Score.KeySignature();
                 cm.Chords = RevoiceCadence(vlKey, cm.Chords, cm.VoiceLeadMode, cm.Octave);
                 showChords(); refresh();
             }));
-            var cadOpen = new CheckBox { Content = "Voicing ouvert (écarté)", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = cm.OpenVoicing };
+            var cadOpen = new CheckBox { Content = Loc.T("VoicingOuvertEcarte"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = cm.OpenVoicing };
             cadOpen.Checked += (s, e) => { cm.OpenVoicing = true; refresh(); };
             cadOpen.Unchecked += (s, e) => { cm.OpenVoicing = false; refresh(); };
             sp.Children.Add(cadOpen);
 
-            sp.Children.Add(EdLabel("Basse (fondamentale)"));
+            sp.Children.Add(EdLabel(Loc.T("BasseFondamentale")));
             sp.Children.Add(ParamCombo(BassModeNames, !cm.Bass ? 0 : (cm.BassPerBeat ? 2 : 1), v => { cm.Bass = v > 0; cm.BassPerBeat = v == 2; }, refresh));
-            sp.Children.Add(EdLabel("Montée (styles arpège)"));
+            sp.Children.Add(EdLabel(Loc.T("MonteeStylesArpege")));
             sp.Children.Add(ParamCombo(ClimbModeNames, cm.ClimbMode, v => cm.ClimbMode = v, refresh));
-            sp.Children.Add(EdLabel("Note tenue (styles arpège)"));
+            sp.Children.Add(EdLabel(Loc.T("NoteTenueStylesArpege")));
             sp.Children.Add(ParamCombo(HeldModeNames, cm.HeldMode, v => cm.HeldMode = v, refresh));
-            var halve = new CheckBox { Content = "Doubles-croches (÷2) — styles arpège", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = cm.HalveDurations };
+            var halve = new CheckBox { Content = Loc.T("DoublesCroches2StylesArpege"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = cm.HalveDurations };
             halve.Checked += (s, e) => { cm.HalveDurations = true; refresh(); };
             halve.Unchecked += (s, e) => { cm.HalveDurations = false; refresh(); };
             sp.Children.Add(halve);
 
-            var regen = new Button { Content = "Régénérer (variante)", Margin = new Thickness(0, 10, 0, 0), Padding = new Thickness(8, 3, 8, 3), HorizontalAlignment = HorizontalAlignment.Left, Cursor = Cursors.Hand };
+            var regen = new Button { Content = Loc.T("RegenererVariante"), Margin = new Thickness(0, 10, 0, 0), Padding = new Thickness(8, 3, 8, 3), HorizontalAlignment = HorizontalAlignment.Left, Cursor = Cursors.Hand };
             regen.Click += (s, e) =>
             {
                 var key = project.Key ?? new Engine.Score.KeySignature();
@@ -2617,10 +2618,10 @@ namespace MusicTracker.Screens
             };
             sp.Children.Add(regen);
 
-            sp.Children.Add(EdLabel("Accords générés"));
+            sp.Children.Add(EdLabel(Loc.T("AccordsGeneres")));
             showChords();
             sp.Children.Add(chordList);
-            sp.Children.Add(new TextBlock { Text = "Change un paramètre (style, degré, mesures…) puis « Régénérer ». Un seul module : il stocke chaque accord et le générateur d'accords fait le rendu (partition, audio, export).", Foreground = "#888888".ToBrush(), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), MaxWidth = 540 });
+            sp.Children.Add(new TextBlock { Text = Loc.T("ChangeUnParametreStyleDegreMesures"), Foreground = "#888888".ToBrush(), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), MaxWidth = 540 });
             return sp;
         }
 
@@ -2639,11 +2640,11 @@ namespace MusicTracker.Screens
             Action refresh = null;
             refresh = () => { RefreshDrumGrid(host, track, item, dp); Render(); };
 
-            var aiBtn = new Button { Content = "🤖 Générer (IA)…", Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand, Style = (Style)FindResource("okButton"), ToolTip = "Décris une intention de groove ; l'IA génère un motif de percussions et l'applique à ce module." };
+            var aiBtn = new Button { Content = Loc.T("GenererIA"), Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand, Style = (Style)FindResource("okButton"), ToolTip = Loc.T("DecrisUneIntentionDeGrooveL") };
             aiBtn.Click += (s, e) => GenerateDrumWithAi(dp, refresh);
             left.Children.Add(aiBtn);
 
-            left.Children.Add(EdLabel("Kit")); left.Children.Add(ParamCombo(InstrumentCatalog.DrumKitNames().ToArray(), dp.Kit, v => dp.Kit = v, refresh));
+            left.Children.Add(EdLabel(Loc.T("Kit"))); left.Children.Add(ParamCombo(InstrumentCatalog.DrumKitNames().ToArray(), dp.Kit, v => dp.Kit = v, refresh));
             // Catégorie + Motif — the catalogue is the single source (built-in styles + exotic + "Personnalisé").
             const string CUSTOM = "Personnalisé";
             var catalog = Engine.Flow.DrumCatalog.Instance;
@@ -2677,19 +2678,19 @@ namespace MusicTracker.Screens
             cboCat.SelectionChanged += (s, e) => { if (syncing) return; FillMotifs(cboCat.SelectedItem as string, null); TimelineHelper.ApplyDrumCatalog(project, dp, cboCat.SelectedItem as string, cboMotif.SelectedItem as string); rebuild(); };
             cboMotif.SelectionChanged += (s, e) => { if (syncing) return; TimelineHelper.ApplyDrumCatalog(project, dp, cboCat.SelectedItem as string, cboMotif.SelectedItem as string); rebuild(); };
 
-            left.Children.Add(EdLabel("Catégorie")); left.Children.Add(cboCat);
-            left.Children.Add(EdLabel("Motif")); left.Children.Add(cboMotif);
+            left.Children.Add(EdLabel(Loc.T("Categorie"))); left.Children.Add(cboCat);
+            left.Children.Add(EdLabel(Loc.T("Motif"))); left.Children.Add(cboMotif);
 
-            var custBtn = new Button { Content = "Personnaliser", Margin = new Thickness(0, 2, 0, 6), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, ToolTip = "Copier ce motif dans un motif personnalisé éditable à la main." };
+            var custBtn = new Button { Content = Loc.T("Personnaliser"), Margin = new Thickness(0, 2, 0, 6), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, ToolTip = Loc.T("CopierCeMotifDansUnMotif") };
             custBtn.Click += (s, e) => { TimelineHelper.CustomizeDrum(dp); syncing = true; cboCat.SelectedItem = CUSTOM; syncing = false; FillMotifs(CUSTOM, CUSTOM); refresh(); };
             left.Children.Add(custBtn);
 
-            left.Children.Add(EdLabel("Densité")); left.Children.Add(ParamCombo(DrumPattern.DensityNames, dp.Density, v => dp.Density = v, refresh));
-            var fill = new CheckBox { Content = "Fill sur la dernière mesure", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = dp.FillLast };
+            left.Children.Add(EdLabel(Loc.T("Densite"))); left.Children.Add(ParamCombo(DrumPattern.DensityNames, dp.Density, v => dp.Density = v, refresh));
+            var fill = new CheckBox { Content = Loc.T("FillSurLaDerniereMesure"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = dp.FillLast };
             fill.Checked += (s, e) => { dp.FillLast = true; }; fill.Unchecked += (s, e) => { dp.FillLast = false; };
             left.Children.Add(fill);
-            left.Children.Add(EdLabel("Temps / mesure")); left.Children.Add(ParamNum(dp.BeatsPerBar, v => dp.BeatsPerBar = v, refresh));
-            left.Children.Add(EdLabel("Répétitions")); left.Children.Add(ParamNum(dp.Repeats, v => dp.Repeats = v, refresh));
+            left.Children.Add(EdLabel(Loc.T("TempsMesure"))); left.Children.Add(ParamNum(dp.BeatsPerBar, v => dp.BeatsPerBar = v, refresh));
+            left.Children.Add(EdLabel(Loc.T("Repetitions"))); left.Children.Add(ParamNum(dp.Repeats, v => dp.Repeats = v, refresh));
 
             RefreshDrumGrid(host, track, item, dp);
             return grid;
@@ -2700,7 +2701,7 @@ namespace MusicTracker.Screens
         {
             if (!TimelineHelper.DrumIsCustom(dp))
             {
-                host.Content = new TextBlock { Text = "Motif du catalogue appliqué. Clique « Personnaliser » pour l'éditer à la main.", Foreground = "#888888".ToBrush(), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(10) };
+                host.Content = new TextBlock { Text = Loc.T("MotifDuCatalogueAppliqueCliquePersonnali"), Foreground = "#888888".ToBrush(), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(10) };
                 return;
             }
             // Riff-like drum editor: NOTE mode (note+duration, draw/erase), rows = every GM percussion lane,
@@ -2716,7 +2717,7 @@ namespace MusicTracker.Screens
             // the "Personnalisé" category and can be reused on other drum modules.
             Action onSaveStyle = () =>
             {
-                string name = TimelineHelper.PromptText("Enregistrer le motif batterie", string.IsNullOrEmpty(dp.CatMotif) || dp.CatMotif == "Personnalisé" ? "Mon motif" : dp.CatMotif);
+                string name = TimelineHelper.PromptText(Loc.T("EnregistrerLeMotifBatterie"), string.IsNullOrEmpty(dp.CatMotif) || dp.CatMotif == "Personnalisé" ? Loc.T("MonMotif") : dp.CatMotif);
                 if (string.IsNullOrWhiteSpace(name)) return;
                 name = name.Trim();
                 var entry = new UserChordStyle { Name = name, Slices = rg.CurrentGrid(), Spb = rg.Spb, Beats = rg.Beats, Notes = rg.CurrentNotes() };
@@ -2771,7 +2772,7 @@ namespace MusicTracker.Screens
             string ctx = hasChords
                 ? $"Tonalité {keyStr} · {meterStr} · {measures} mes. · {chords.Count} accord(s) sous le riff"
                 : $"Tonalité {keyStr} · {meterStr} · {measures} mes. · aucun accord (l'IA en proposera)";
-            var dlg = new Dialogs.AiElementDialog("Riff — IA", ctx,
+            var dlg = new Dialogs.AiElementDialog(Loc.T("RiffIA"), ctx,
                 intention => Engine.AI.AiArrangement.BuildRiffPrompt(keyStr, meterStr, barTemps, measures, chords, intention)) { Owner = Window.GetWindow(this) };
             if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.ResultJson)) return;
             try { 
@@ -2781,7 +2782,7 @@ namespace MusicTracker.Screens
                     out riffEditItem, out riffEditTrack, out riffDirty
                     );
             }
-            catch (Exception ex) { MessageBox.Show("Réponse IA invalide : " + ex.Message, "Riff — IA", MessageBoxButton.OK, MessageBoxImage.Warning); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("ReponseIAInvalide") + ex.Message, Loc.T("RiffIA"), MessageBoxButton.OK, MessageBoxImage.Warning); }
         }
 
         
@@ -2863,7 +2864,7 @@ namespace MusicTracker.Screens
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Échec de la composition : " + ex.Message, "Composition", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Loc.T("EchecDeLaComposition") + ex.Message, Loc.T("Composition"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally { Mouse.OverrideCursor = null; }
         }
@@ -2876,7 +2877,7 @@ namespace MusicTracker.Screens
             var arr = project.Arrangement;
             if (arr == null || arr.Chords == null || arr.Chords.Count == 0)
             {
-                MessageBox.Show("Disponible sur une musique structurée (Piste → Créer structure…).", "Accompagnement en accords", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Loc.T("DisponibleSurUneMusiqueStructureePiste"), Loc.T("AccompagnementEnAccords"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             CommitRiffEditor();
@@ -2954,7 +2955,7 @@ namespace MusicTracker.Screens
 
         void AppendModule(FlowModule m)
         {
-            if (selectedTrack == null) { MessageBox.Show("Sélectionne d'abord une piste."); return; }
+            if (selectedTrack == null) { MessageBox.Show(Loc.T("SelectionneDAbordUnePiste")); return; }
             // If a Repeat is selected, add INSIDE it (its sub-track); keep the Repeat selected so you
             
             var item = new TimelineItem { Module = m }; // appended at the end, or inserted before a loop Repeat
@@ -2967,7 +2968,7 @@ namespace MusicTracker.Screens
         // (just behind it if there's room, else the first later gap big enough, else at the end). Default = 1 bar.
         private void btnAddRiff_Click(object sender, RoutedEventArgs e)
         {
-            if (selectedTrack == null) { MessageBox.Show("Sélectionne d'abord une piste."); return; }
+            if (selectedTrack == null) { MessageBox.Show(Loc.T("SelectionneDAbordUnePiste")); return; }
             var track = selectedTrack;
 
             int temps = TimelineHelper.RulerBeatsPerBar(project);                // one bar in temps: num in /4, num/3 in /8
@@ -3032,17 +3033,17 @@ namespace MusicTracker.Screens
             bool isChord = item.Module is PatternGeneratorModule || item.Module is CadenceModule;
             if (isChord)
             {
-                var mi = new MenuItem { Header = "🎼 Proposer la suite…" };
+                var mi = new MenuItem { Header = Loc.T("ProposerLaSuite") };
                 mi.Click += (s, e) => SuggestNextAfter(track, item);
                 menu.Items.Add(mi);
-                var chain = new MenuItem { Header = "🎼 Enchaîner 4 mesures" };
+                var chain = new MenuItem { Header = Loc.T("Enchainer4Mesures") };
                 chain.Click += (s, e) => ChainProgression(track, item, 4);
                 menu.Items.Add(chain);
                 menu.Items.Add(new Separator());
             }
             if (item.Module is PlayRiffModule prm)
             {
-                var vary = new MenuItem { Header = "🤖 Varier le thème avec l'IA…" };
+                var vary = new MenuItem { Header = Loc.T("VarierLeThemeAvecLIA") };
                 vary.Click += (s, e) =>
                 {
                     if (TimelineHelper.VaryThemeWithAi(Window.GetWindow(this), project, track, item))
@@ -3051,19 +3052,19 @@ namespace MusicTracker.Screens
                     }
                 };
                 menu.Items.Add(vary);
-                var toDrum = new MenuItem { Header = "🥁 Convertir en batterie", ToolTip = "Remplace ce riff par un module batterie au rythme personnalisé : reprend les notes et durées telles quelles (chaque hauteur → sa percussion GM)." };
+                var toDrum = new MenuItem { Header = Loc.T("ConvertirEnBatterie2"), ToolTip = Loc.T("RemplaceCeRiffParUnModule") };
                 toDrum.Click += (s, e) => ConvertRiffToDrums(track, item, prm);
                 menu.Items.Add(toDrum);
                 menu.Items.Add(new Separator());
             }
             if (item.Module is MelodicLineModule mlm)
             {
-                var toRiff = new MenuItem { Header = "🎵 Convertir en notes éditables", ToolTip = "Fige les hauteurs que le moteur a choisies sur les accords en un riff normal : chaque note devient éditable individuellement (la ligne rythme-seule est remplacée à la même position)." };
+                var toRiff = new MenuItem { Header = Loc.T("ConvertirEnNotesEditables"), ToolTip = Loc.T("FigeLesHauteursQueLeMoteur") };
                 toRiff.Click += (s, e) => ConvertMelodicLineToRiff(track, item, mlm);
                 menu.Items.Add(toRiff);
                 menu.Items.Add(new Separator());
             }
-            var del = new MenuItem { Header = "🗑 Supprimer" };
+            var del = new MenuItem { Header = Loc.T("Supprimer") };
             del.Click += (s, e) => DeleteItem(track, item);
             menu.Items.Add(del);
             menu.PlacementTarget = anchor; menu.IsOpen = true;
@@ -3080,8 +3081,8 @@ namespace MusicTracker.Screens
             Render();
 
             if (track.Type != TimelineTrackType.Drum)
-                MessageBox.Show("Converti en module batterie. Pour entendre les percussions, place-le sur une piste Batterie (sinon il joue avec l'instrument de cette piste).",
-                                "Convertir en batterie", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Loc.T("ConvertiEnModuleBatteriePourEntendre"),
+                                Loc.T("ConvertirEnBatterie"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         // "Convertir en notes éditables": FREEZE a rhythm-only melodic line into a normal, editable riff. The engine
@@ -3109,7 +3110,7 @@ namespace MusicTracker.Screens
             var key = project.Key ?? new Engine.Score.KeySignature();
             ChordContext(track, item, out int[] prevDegs, out int barIdx, out int phraseLen);
             if (prevDegs.Length == 0 || prevDegs[prevDegs.Length - 1] < 0)
-            { MessageBox.Show("Cet accord n'est pas sur un degré de la tonalité — pas de suggestion.", "Suite d'accord", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+            { MessageBox.Show(Loc.T("CetAccordNEstPasSur"), Loc.T("SuiteDAccord"), MessageBoxButton.OK, MessageBoxImage.Information); return; }
             var dlg = new Dialogs.ChordSuggestionDialog(prevDegs, barIdx, phraseLen, key, InstrumentCatalog.GetPreset(track.Instrument)) { Owner = Window.GetWindow(this) };
             if (dlg.ShowDialog() != true) return;
             var pg = NewChordLike(prev);
@@ -3187,7 +3188,7 @@ namespace MusicTracker.Screens
             selectedTrack = track; selectedItem = item;
             Render();
             editorHost.Content = BuildMelodicLineEditor(track, item, ml);   // open its editor
-            txtEditorTitle.Text = "Éditeur — Ligne mélodique";
+            txtEditorTitle.Text = Loc.T("EditeurLigneMelodique");
         }
 
         UIElement BuildMelodicLineEditor(TimelineTrack track, TimelineItem item, MelodicLineModule ml)
@@ -3197,36 +3198,36 @@ namespace MusicTracker.Screens
             Action refresh = null;
             refresh = () => { RefreshMelodicLineGrid(host, track, item, ml, startBeat); Render(); };
 
-            left.Children.Add(EdLabel("Voix"));
+            left.Children.Add(EdLabel(Loc.T("Voix")));
             left.Children.Add(ParamCombo(TimelineHelper.MelodicVoiceNames, Math.Max(0, Math.Min(2, ml.VoiceCount - 1)), v => ml.VoiceCount = v + 1, refresh));
-            left.Children.Add(EdLabel("Nombre de temps (durée de la ligne)"));
+            left.Children.Add(EdLabel(Loc.T("NombreDeTempsDureeDeLa")));
             left.Children.Add(ParamNum(ml.BeatsPerBar, v => ml.BeatsPerBar = Math.Max(1, v), refresh));
-            left.Children.Add(EdLabel("Contour (algorithme de choix des notes)"));
+            left.Children.Add(EdLabel(Loc.T("ContourAlgorithmeDeChoixDesNotes")));
             left.Children.Add(ParamCombo(Engine.Timeline.MelodicLineEngine.ContourNames, Math.Max(0, Math.Min(Engine.Timeline.MelodicLineEngine.ContourNames.Length - 1, ml.Contour)), v => ml.Contour = v, refresh));
-            left.Children.Add(EdLabel("Ancrage (note de départ de la ligne)"));
+            left.Children.Add(EdLabel(Loc.T("AncrageNoteDeDepartDeLa")));
             left.Children.Add(ParamCombo(Engine.Timeline.MelodicLineEngine.AnchorNames, Math.Max(0, Math.Min(Engine.Timeline.MelodicLineEngine.AnchorNames.Length - 1, ml.Anchor)), v => ml.Anchor = v, refresh));
-            left.Children.Add(EdLabel("Continuité (lissage voice-leading, 0-100)"));
+            left.Children.Add(EdLabel(Loc.T("ContinuiteLissageVoiceLeading0100")));
             left.Children.Add(ParamNum(ml.Continuity, v => ml.Continuity = Math.Max(0, Math.Min(100, v)), refresh));
-            left.Children.Add(EdLabel("Variation (transformation du motif)"));
+            left.Children.Add(EdLabel(Loc.T("VariationTransformationDuMotif")));
             left.Children.Add(ParamCombo(Engine.Timeline.MelodicLineEngine.VariationNames, Math.Max(0, Math.Min(Engine.Timeline.MelodicLineEngine.VariationNames.Length - 1, ml.Variation)), v => ml.Variation = v, refresh));
-            left.Children.Add(EdLabel("Tension (pente de registre, ± demi-tons)"));
+            left.Children.Add(EdLabel(Loc.T("TensionPenteDeRegistreDemiTons")));
             left.Children.Add(ParamNum(ml.TensionSlope, v => ml.TensionSlope = v, refresh));
-            left.Children.Add(EdLabel("Amplitude (tessiture ± demi-tons, 2-24)"));
+            left.Children.Add(EdLabel(Loc.T("AmplitudeTessitureDemiTons224")));
             left.Children.Add(ParamNum(ml.Amplitude, v => ml.Amplitude = Math.Max(2, Math.Min(24, v)), refresh));
-            left.Children.Add(EdLabel("Ornementation (retards/appoggiatures, 0-100)"));
+            left.Children.Add(EdLabel(Loc.T("OrnementationRetardsAppoggiatures0100")));
             left.Children.Add(ParamNum(ml.Ornaments, v => ml.Ornaments = Math.Max(0, Math.Min(100, v)), refresh));
-            left.Children.Add(EdLabel("Vague : notes par arc (0 = auto ; petit = ondule vite)"));
+            left.Children.Add(EdLabel(Loc.T("VagueNotesParArc0Auto")));
             left.Children.Add(ParamNum(ml.WaveLength, v => ml.WaveLength = Math.Max(0, Math.Min(32, v)), refresh));
-            var preserve = new CheckBox { Content = "Préserver (non écrasé par « Appliquer »)", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 8, 0, 0), IsChecked = ml.Preserve };
+            var preserve = new CheckBox { Content = Loc.T("PreserverNonEcraseParAppliquer"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 8, 0, 0), IsChecked = ml.Preserve };
             preserve.Checked += (s, e) => ml.Preserve = true; preserve.Unchecked += (s, e) => ml.Preserve = false;
             left.Children.Add(preserve);
 
             // Motif picker (always shown): "Personnalisé…" (custom, no name) OR a saved motif. Picking a saved motif loads it.
             var savedLines = project.UserMelodicLines ?? (project.UserMelodicLines = new System.Collections.Generic.List<UserChordStyle>());
-            left.Children.Add(EdLabel("Motif"));
+            left.Children.Add(EdLabel(Loc.T("Motif")));
             var cbMotif = new ComboBox { Margin = new Thickness(0, 2, 0, 0), MinWidth = 170, MaxWidth = 260, HorizontalAlignment = HorizontalAlignment.Left };
             foreach (var u in savedLines) cbMotif.Items.Add(u.Name);
-            cbMotif.Items.Add("Personnalisé…");
+            cbMotif.Items.Add(Loc.T("Personnalise"));
             int customIdx = savedLines.Count;
             int selIdx = savedLines.FindIndex(u => u.Name == ml.LineName);
             cbMotif.SelectedIndex = selIdx >= 0 ? selIdx : customIdx;
@@ -3244,14 +3245,14 @@ namespace MusicTracker.Screens
             // Propagate the current motif to every line sharing the same saved-motif selection (disabled for "Personnalisé…").
             var btnApply = new Button
             {
-                Content = new TextBlock { Text = "Appliquer le motif à ceux du même nom", TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center },
+                Content = new TextBlock { Text = Loc.T("AppliquerLeMotifACeuxDu"), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center },
                 Margin = new Thickness(0, 4, 0, 0), Padding = new Thickness(10, 4, 10, 4),
                 HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center,
                 Cursor = Cursors.Hand, IsEnabled = !string.IsNullOrEmpty(ml.LineName),
             };
             btnApply.Click += (s, e) => { if (!string.IsNullOrEmpty(ml.LineName)) { TimelineHelper.PropagateMelodicLine(project,ml.LineName, ml); Render(); RefreshScore(); } };
             left.Children.Add(btnApply);
-            left.Children.Add(new TextBlock { Text = "Dessine seulement le RYTHME (une ligne par voix). Le moteur choisit les notes selon l'accord en cours (grille d'arrangement en structure, sinon la piste d'accords). Notes d'accord sur les temps forts, passages sur les faibles. « Enregistrer » (sous la grille) sauve le motif sous un nom.", Foreground = "#888888".ToBrush(), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), MaxWidth = 260 });
+            left.Children.Add(new TextBlock { Text = Loc.T("DessineSeulementLeRYTHMEUneLigne"), Foreground = "#888888".ToBrush(), FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0), MaxWidth = 260 });
 
             RefreshMelodicLineGrid(host, track, item, ml, startBeat);
             return grid;
@@ -3261,7 +3262,7 @@ namespace MusicTracker.Screens
         {
             int voices = Math.Max(1, Math.Min(MelodicLineModule.MaxVoices, ml.VoiceCount));
             var labels = new string[voices];
-            for (int i = 0; i < voices; i++) labels[i] = "Voix " + (i + 1);
+            for (int i = 0; i < voices; i++) labels[i] = Loc.T("Voix2") + (i + 1);
             var lines = project.UserMelodicLines ?? (project.UserMelodicLines = new System.Collections.Generic.List<UserChordStyle>());
             var rg = new Controls.RhythmGridControl();
             Func<SequencerSlice[], int, Riff> mk = (gr, gs) =>
@@ -3273,7 +3274,7 @@ namespace MusicTracker.Screens
             // The motif picker + "Appliquer" live in the LEFT panel now, so the grid keeps only "Enregistrer" (save-as).
             Action onSaveStyle = () =>
             {
-                string name = TimelineHelper.PromptText("Enregistrer le motif mélodique", string.IsNullOrEmpty(ml.LineName) ? "Ma ligne" : ml.LineName);
+                string name = TimelineHelper.PromptText(Loc.T("EnregistrerLeMotifMelodique"), string.IsNullOrEmpty(ml.LineName) ? Loc.T("MaLigne") : ml.LineName);
                 if (string.IsNullOrWhiteSpace(name)) return;
                 name = name.Trim();
                 var entry = new UserChordStyle { Name = name, Slices = rg.CurrentGrid(), Spb = rg.Spb, Beats = rg.Beats, Notes = rg.CurrentNotes() };
@@ -3300,7 +3301,7 @@ namespace MusicTracker.Screens
         // "🎵 Thème…": generate a procedural theme.
         private void btnGenerateTheme_Click(object sender, RoutedEventArgs e)
         {
-            if (selectedTrack == null) { MessageBox.Show("Sélectionne d'abord une piste."); return; }
+            if (selectedTrack == null) { MessageBox.Show(Loc.T("SelectionneDAbordUnePiste")); return; }
             CommitRiffEditor();
             if (TimelineHelper.GenerateTheme(Window.GetWindow(this), project, selectedItem,selectedTrack,scoreTracks))
             {
@@ -3316,7 +3317,7 @@ namespace MusicTracker.Screens
             var src = pr != null ? TimelineHelper.RiffById(pr.RiffId) : null;
             if (src == null || src.Notes == null || src.Notes.Count == 0)
             {
-                MessageBox.Show("Sélectionne d'abord un riff (le thème) à faire varier.", "Variation", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Loc.T("SelectionneDAbordUnRiffLe"), Loc.T("Variation"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             CommitRiffEditor();
@@ -3337,7 +3338,7 @@ namespace MusicTracker.Screens
         private void btnExport_Click(object sender, RoutedEventArgs e)
         {
             StopPlayback();
-            if (project.Tracks.Count == 0) { MessageBox.Show("Aucune piste à exporter."); return; }
+            if (project.Tracks.Count == 0) { MessageBox.Show(Loc.T("AucunePisteAExporter")); return; }
 
             var sfd = new Dialogs.FileBrowserDialog
             {
@@ -3362,7 +3363,7 @@ namespace MusicTracker.Screens
             dlg.ShowDialog();
 
             if (!string.IsNullOrEmpty(dlg.Error)) MessageBox.Show("Export error : " + dlg.Error);
-            else if (dlg.Success) MessageBox.Show("Export terminé :\n" + path);
+            else if (dlg.Success) MessageBox.Show(Loc.T("ExportTermine") + path);
         }
 
         // Import a MIDI / MuseScore file into the timeline (one track per staff, riffs/drum patterns,
@@ -3394,20 +3395,20 @@ namespace MusicTracker.Screens
             prog.Show();
             try
             {
-                prog.Set(0.05, "Lecture du fichier…");
+                prog.Set(0.05, Loc.T("LectureDuFichier"));
                 var result = await System.Threading.Tasks.Task.Run(() =>
                 {
                     var score = midi ? MidiImporter.Load(path) : MuseScoreImporter.Load(path);
                     return TimelineImporter.Build(score, mpr, spb, importVolume);
                 });
 
-                if (result.Project.Tracks.Count == 0) { MessageBox.Show("Aucune piste trouvée dans le fichier."); return; }
+                if (result.Project.Tracks.Count == 0) { MessageBox.Show(Loc.T("AucunePisteTrouveeDansLeFichier")); return; }
 
                 // Confirm/correct the deduced key + time signature before applying. A declared 4/4 is the MIDI
                 // default → ask (suggest the detected meter, e.g. 12/8 for a ternary rhythm).
                 var detectedKey = result.Project.Key ?? new Engine.Score.KeySignature();
                 string meterHint = result.MeterUncertain
-                    ? (result.Ternary ? "4/4 par défaut + rythme ternaire détecté → 6/8 suggéré." : "4/4 par défaut dans le fichier — vérifiez la mesure.")
+                    ? (result.Ternary ? Loc.T("N44ParDefautRythmeTernaire") : Loc.T("N44ParDefautDansLe"))
                     : "";
                 prog.Hide();
                 var keyDlg = new KeySignatureDialog(detectedKey, result.Project.TimeSigNum, result.Project.TimeSigDen, meterHint) { Owner = Window.GetWindow(this) };
@@ -3417,7 +3418,7 @@ namespace MusicTracker.Screens
                 int chosenDen = ok ? keyDlg.ResultDen : result.Project.TimeSigDen;
                 prog.Show();
 
-                prog.Set(0.85, "Construction du séquenceur…");
+                prog.Set(0.85, Loc.T("ConstructionDuSequenceur"));
                 foreach (var r in result.Riffs) RiffLibrary.Instance.Riffs.Add(r);
                 project.Tempo = result.Project.Tempo;
                 project.Key = chosenKey; // detected concert key, confirmed/corrected by the user
@@ -3432,25 +3433,25 @@ namespace MusicTracker.Screens
                 editorHost.Content = null;
                 txtBpm.Text = ((int)project.MainBpm).ToString();
                 await RenderBatched(prog); // add the lane controls in batches so the UI stays responsive
-                prog.Set(1.0, "Terminé");
+                prog.Set(1.0, Loc.T("Termine"));
             }
-            catch (Exception ex) { MessageBox.Show("Erreur d'import : " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDImport") + ex.Message); }
             finally { prog.Close(); }
         }
 
         // Export the whole timeline to a Standard MIDI File.
         private void btnExportMidi_Click(object sender, RoutedEventArgs e)
         {
-            if (project.Tracks.Count == 0) { MessageBox.Show("Aucune piste à exporter."); return; }
+            if (project.Tracks.Count == 0) { MessageBox.Show(Loc.T("AucunePisteAExporter")); return; }
             var sfd = new Dialogs.FileBrowserDialog { SaveMode = true, Owner = Window.GetWindow(this), Filter = "MIDI (*.mid)|*.mid", DefaultExt = ".mid" };
             if (!string.IsNullOrEmpty(CurrentPath)) sfd.FileName = System.IO.Path.GetFileNameWithoutExtension(CurrentPath);
             if (sfd.ShowDialog() != true) return;
             try
             {
                 Engine.Timeline.MidiTimelineExporter.Export(sfd.FileName, project, TimelineHelper.RiffById);
-                MessageBox.Show("Export MIDI terminé :\n" + sfd.FileName);
+                MessageBox.Show(Loc.T("ExportMIDITermine") + sfd.FileName);
             }
-            catch (Exception ex) { MessageBox.Show("Erreur d'export MIDI : " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMIDI") + ex.Message); }
         }
 
         // Export the score to a native MuseScore .mscx file (the checked ♫ tracks, else all instrument tracks;
@@ -3467,17 +3468,17 @@ namespace MusicTracker.Screens
                 if (t.Type == TimelineTrackType.Drum) continue; // percussion needs a drum staff — not exported yet
                 parts.Add(new Engine.Timeline.MuseScoreExporter.Part { Name = t.Name, Program = t.Instrument, Score = Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById) });
             }
-            if (parts.Count == 0) { MessageBox.Show("Aucune piste mélodique à exporter (coche une piste ♫ ou ajoute une piste instrument)."); return; }
+            if (parts.Count == 0) { MessageBox.Show(Loc.T("AucunePisteMelodiqueAExporterCoche")); return; }
 
-            string title = string.IsNullOrEmpty(CurrentPath) ? "Partition" : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
+            string title = string.IsNullOrEmpty(CurrentPath) ? Loc.T("Partition") : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
             var sfd = new Dialogs.FileBrowserDialog { SaveMode = true, Owner = Window.GetWindow(this), Filter = "MuseScore (*.mscx)|*.mscx", DefaultExt = ".mscx", FileName = title };
             if (sfd.ShowDialog() != true) return;
             try
             {
                 Engine.Timeline.MuseScoreExporter.Export(sfd.FileName, parts, project.TimeSigNum, project.TimeSigDen, title);
-                MessageBox.Show("Export MuseScore terminé :\n" + sfd.FileName);
+                MessageBox.Show(Loc.T("ExportMuseScoreTermine") + sfd.FileName);
             }
-            catch (Exception ex) { MessageBox.Show("Erreur d'export MuseScore : " + ex.Message); }
+            catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMuseScore") + ex.Message); }
         }
 
         // Export the checked (♫) tracks as an A4 score, broken into lines of 2/4/8/16 measures, printed to PDF.
@@ -3485,17 +3486,17 @@ namespace MusicTracker.Screens
         {
             var list = new System.Collections.Generic.List<Engine.Score.TrackScore>();
             foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) list.Add(Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById));
-            if (list.Count == 0) { MessageBox.Show("Coche au moins une piste (♫) pour l'exporter en partition."); return; }
+            if (list.Count == 0) { MessageBox.Show(Loc.T("CocheAuMoinsUnePistePour")); return; }
 
             // Title: the file name (no extension, '_' → space); fallback when unsaved.
-            string title = string.IsNullOrEmpty(CurrentPath) ? "Partition" : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
+            string title = string.IsNullOrEmpty(CurrentPath) ? Loc.T("Partition") : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
 
             var doc = Controls.Score.ScorePdfExporter.Build(list, project.TimeSigNum, project.TimeSigDen, project.TimeSigScale > 0 ? project.TimeSigScale : 1.0, title);
             // Preview window: a DocumentViewer (zoom + scroll + its own Print button → "Microsoft Print to PDF").
             var viewer = new System.Windows.Controls.DocumentViewer { Document = doc };
             var win = new Window
             {
-                Title = "Partition — " + title + "  (zoom + défilement ; bouton Imprimer pour le PDF)",
+                Title = Loc.T("Partition3") + title + Loc.T("ZoomDefilementBoutonImprimerPourLe"),
                 Content = viewer,
                 Width = 900,
                 Height = 1000,

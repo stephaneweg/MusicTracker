@@ -13,10 +13,10 @@ namespace MusicTracker.Dialogs
     public partial class SettingsDialog : Window
     {
         // Sentinel shown when the chosen font isn't in the folder (e.g. an absolute path / missing file).
-        const string DefaultLabel = "(par défaut)";
+        static readonly string DefaultLabel = Loc.T("ParDefaut");
 
         // Riff-editor entry snap precision (fraction of a beat; 0 = none).
-        static readonly string[] SnapLabels = { "Aucune", "1/4", "1/8", "1/16", "1/3 (triolet)", "1/6" };
+        static readonly string[] SnapLabels = { Loc.T("Aucune"), "1/4", "1/8", "1/16", Loc.T("N13Triolet"), "1/6" };
         static readonly double[] SnapFractions = { 0, 0.25, 0.125, 0.0625, 1.0 / 3, 1.0 / 6 };
 
         // Audio analysis window (MPM frame, samples). Smaller = lower latency, worse on low pitches.
@@ -38,7 +38,7 @@ namespace MusicTracker.Dialogs
 
             // Sample rates: the standard set (label the engine default).
             foreach (var r in AppSettings.StandardSampleRates)
-                cboSampleRate.Items.Add(r == Engine.AudioFormat.DefaultSampleRate ? r + " Hz (défaut)" : r + " Hz");
+                cboSampleRate.Items.Add(r == Engine.AudioFormat.DefaultSampleRate ? r + Loc.T("HzDefaut") : r + " Hz");
             int idx = Array.IndexOf(AppSettings.StandardSampleRates, settings.SampleRate);
             cboSampleRate.SelectedIndex = idx >= 0 ? idx : Array.IndexOf(AppSettings.StandardSampleRates, Engine.AudioFormat.DefaultSampleRate);
 
@@ -62,9 +62,9 @@ namespace MusicTracker.Dialogs
             for (int i = 0; i < FrameSizes.Length; i++)
             {
                 int ms = (int)Math.Round(1000.0 * FrameSizes[i] / sr);
-                string note = FrameSizes[i] == 512 ? " — violon/aigus, latence mini"
-                            : FrameSizes[i] == 1024 ? " — défaut"
-                            : FrameSizes[i] == 4096 ? " — graves" : " — équilibré";
+                string note = FrameSizes[i] == 512 ? Loc.T("ViolonAigusLatenceMini")
+                            : FrameSizes[i] == 1024 ? Loc.T("Defaut")
+                            : FrameSizes[i] == 4096 ? Loc.T("Graves") : Loc.T("Equilibre");
                 cboFrameSize.Items.Add($"{FrameSizes[i]} (~{ms} ms{note})");
                 double d = Math.Abs(FrameSizes[i] - settings.RiffAudioFrameSize);
                 if (d < fbest) { fbest = d; fi = i; }

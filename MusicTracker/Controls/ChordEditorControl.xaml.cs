@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
@@ -7,6 +7,7 @@ using System.Windows.Input;
 using MusicTracker.Engine;
 using MusicTracker.Engine.Flow;
 using MusicTracker.Engine.Timeline;
+using MusicTracker.Localization;
 
 namespace MusicTracker.Controls
 {
@@ -67,11 +68,11 @@ namespace MusicTracker.Controls
             var pg = vm.Pg;
             if (pg.Style != PatternGenerator.CustomStyle)
             {
-                GridHost.Content = new TextBlock { Text = "Choisis le style « Personnalisé… » pour éditer le rythme à la main.", Foreground = Br("#888888"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(10) };
+                GridHost.Content = new TextBlock { Text = Loc.T("ChoisisLeStylePersonnalisePourEditer"), Foreground = Br("#888888"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(10) };
                 return;
             }
             var chord = PatternGenerator.ChordNotes(pg.Root, pg.Octave, pg.Quality, pg.Inversion);
-            var labels = new[] { "Basse", "1", "3", "5", "7", "1'", "9", "3'", "5'", "7'", "9'" }; // rows in PITCH order (9 > 1')
+            var labels = new[] { Loc.T("Basse"), "1", "3", "5", "7", "1'", "9", "3'", "5'", "7'", "9'" }; // rows in PITCH order (9 > 1')
             var builtin = TakeBuiltin(PatternGenerator.StyleNames, PatternGenerator.CustomStyle);
             var userStyles = vm.UserStyles;
             var styleNames = new string[builtin.Length + userStyles.Count];
@@ -153,7 +154,7 @@ namespace MusicTracker.Controls
         {
             if (degreeNames != null) return;
             var key = project?.Key ?? new Engine.Score.KeySignature();
-            var names = new List<string> { "Manuel (accord fixe)" };
+            var names = new List<string> { Loc.T("ManuelAccordFixe") };
             for (int d = 0; d < 7; d++) names.Add(MusicTheory.DiatonicThird(key, d) == 4 ? RomanU[d] : RomanL[d]);
             var targets = new List<int>();
             foreach (int t in MusicTheory.SecondaryTargets)
@@ -167,10 +168,10 @@ namespace MusicTracker.Controls
         public IReadOnlyList<string> ColourNames => MusicTheory.DiatonicColourNames;
         public IReadOnlyList<string> SuspensionNames => MusicTheory.SuspensionNames;
         public IReadOnlyList<string> ModeNames => MusicTheory.ModeOverrideNames;
-        public IReadOnlyList<string> VoiceLeadNames { get; } = new[] { "Aucun (position fond.)", "Auto (mouvement mini)", "Basse proche", "Haut proche" };
-        public IReadOnlyList<string> BassNames { get; } = new[] { "Aucune", "Par mesure (tenue)", "Par temps" };
-        public IReadOnlyList<string> ClimbNames { get; } = new[] { "Arpège montant", "Arpège descendant", "Alberti (1-5-3…)", "Mixte" };
-        public IReadOnlyList<string> HeldNames { get; } = new[] { "Note seule", "Accord plaqué", "Fondamentale + quinte", "Fondamentale + tierce" };
+        public IReadOnlyList<string> VoiceLeadNames { get; } = new[] { Loc.T("AucunPositionFond"), Loc.T("AutoMouvementMini"), Loc.T("BasseProche"), Loc.T("HautProche") };
+        public IReadOnlyList<string> BassNames { get; } = new[] { Loc.T("Aucune"), Loc.T("ParMesureTenue"), Loc.T("ParTemps") };
+        public IReadOnlyList<string> ClimbNames { get; } = new[] { Loc.T("ArpegeMontant"), Loc.T("ArpegeDescendant"), Loc.T("Alberti153"), Loc.T("Mixte") };
+        public IReadOnlyList<string> HeldNames { get; } = new[] { Loc.T("NoteSeule"), Loc.T("AccordPlaque"), Loc.T("FondamentaleQuinte"), Loc.T("FondamentaleTierce") };
 
         string[] styleNames; int styleIndex;
         public IReadOnlyList<string> StyleNames => styleNames;
@@ -252,13 +253,13 @@ namespace MusicTracker.Controls
         public int Beats { get => pg.BeatsPerBar; set { int v = Math.Max(1, value); if (pg.BeatsPerBar == v) return; pg.BeatsPerBar = v; pg.Repeats = 1; Changed(); } }
 
         // ---- melodic cell ----
-        public IReadOnlyList<string> MelodicAnchorNames { get; } = new[] { "Tonique de l'accord", "Selon le renversement" };
+        public IReadOnlyList<string> MelodicAnchorNames { get; } = new[] { Loc.T("ToniqueDeLAccord"), Loc.T("SelonLeRenversement") };
         public int MelodicOctave { get => pg.MelodicOctave; set { if (pg.MelodicOctave == value) return; pg.MelodicOctave = value; MelodicChanged(); } }
         public int MelodicAnchorIndex { get => pg.MelodicAnchor; set { if (pg.MelodicAnchor == value) return; pg.MelodicAnchor = value; MelodicChanged(); } }
         public bool MelodicPreserve { get => pg.MelodicPreserve; set { if (pg.MelodicPreserve == value) return; pg.MelodicPreserve = value; Raise(nameof(MelodicPreserve)); } }
 
         public Visibility ApplyMotifVisibility => string.IsNullOrEmpty(pg.UserStyleName) ? Visibility.Collapsed : Visibility.Visible;
-        public string ApplyMotifText => "Appliquer le motif à\n« " + pg.UserStyleName + " »";
+        public string ApplyMotifText => Loc.T("AppliquerLeMotifA") + pg.UserStyleName + " »";
         public ICommand ApplyMotifCommand { get; }
 
         // Sync the "Nombre de temps" display from a grid edit WITHOUT triggering a rebuild (the grid is mid-edit).
@@ -268,7 +269,7 @@ namespace MusicTracker.Controls
 
         public void SaveStyle(SequencerSlice[] slices, int spb, int beats, List<RiffNote> notes)
         {
-            string name = host.PromptText("Enregistrer le style d'accompagnement", "Mon style");
+            string name = host.PromptText(Loc.T("EnregistrerLeStyleDAccompagnement"), Loc.T("MonStyle"));
             if (string.IsNullOrWhiteSpace(name)) return;
             name = name.Trim();
             var existing = UserStyles.FindIndex(u => u.Name == name);
