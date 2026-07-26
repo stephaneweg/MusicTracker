@@ -40,16 +40,30 @@ namespace MusicTracker.Engine.AI
             Place(project, RiffLibrary.Instance.Riffs, a, fixRiffNotes, append: true, silentChords: silentChords);
         }
 
+        /// <summary>"Add a track with the AI": lay the arrangement's melodic-lines / riffs / drums onto the current project
+        /// as a NEW track, OVER the same bars (from bar 1), keeping the existing tracks untouched. The arrangement's
+        /// chords/articulation are ignored here (no chord modules are added). The caller re-renders.</summary>
+        public static void AddTrack(TimelineProject project, AiArrangement a, bool fixRiffNotes)
+        {
+            Place(project, RiffLibrary.Instance.Riffs, a, fixRiffNotes, append: false, silentChords: false, overlay: true);
+        }
+
         // ---- core placement (pure model) ---------------------------------------------------------------------------
 
-        static void Place(TimelineProject project, IList<Riff> riffSink, AiArrangement a, bool fixRiffNotes, bool append, bool silentChords)
+        static void Place(TimelineProject project, IList<Riff> riffSink, AiArrangement a, bool fixRiffNotes, bool append, bool silentChords, bool overlay = false)
         {
             int barTemps = ChordModelOps.BarTemps(project);
             Func<Guid, Riff> riffById = id => { foreach (var r in riffSink) if (r.Id == id) return r; return null; };
 
-            // Develop mode: place the result AFTER the existing content, aligned to the next bar.
+            // keepExisting = don't wipe the current tracks (append = "develop the theme" appended after the end; overlay =
+            // "add a track" over the SAME bars, from bar 1). reuseTracks = merge into a same-named track (develop only);
+            // overlay always makes a FRESH track so its per-track cursor starts at 0 and items land on their real bars.
+            bool keepExisting = append || overlay;
+            bool reuseTracks = append && !overlay;
+
+            // Develop mode: place the result AFTER the existing content, aligned to the next bar. Overlay: start at bar 1.
             double baseBeats = 0;
-            if (append)
+            if (append && !overlay)
             {
                 double maxEnd = 0;
                 foreach (var t in project.Tracks) maxEnd = Math.Max(maxEnd, TrackEndBeats(t, riffById));
@@ -102,11 +116,11 @@ namespace MusicTracker.Engine.AI
                     cellOfSection[art.section] = AiTranslate.BuildMelodicCellNotes(art.melodicCell, artSpq);
             }
 
-            // fresh timeline (replace mode); develop mode keeps existing tracks and appends
-            if (!append) project.Tracks.Clear();
+            // fresh timeline (replace mode); develop/overlay keep the existing tracks
+            if (!keepExisting) project.Tracks.Clear();
             ChordModelOps.EnsureChordTrackSimple(project);
             var chordTrack = ChordModelOps.ChordTrack(project);
-            if (!append && a.chordInstrument >= 0 && a.chordInstrument <= 127) chordTrack.Instrument = a.chordInstrument;
+            if (!keepExisting && a.chordInstrument >= 0 && a.chordInstrument <= 127) chordTrack.Instrument = a.chordInstrument;
             double chordEndBefore = TrackEndBeats(chordTrack, riffById);
             int chordPreCount = chordTrack.Items.Count;
 
@@ -165,7 +179,7 @@ namespace MusicTracker.Engine.AI
                 var lines = groups[role];
                 lines.Sort((p, q) => p.fromMeasure.CompareTo(q.fromMeasure));
                 int instr = 73; foreach (var l in lines) if (l.instrument >= 0 && l.instrument <= 127) { instr = l.instrument; break; }
-                var track = GetOrCreateInstrTrack(project, role, instr, append);
+                var track = GetOrCreateInstrTrack(project, role, instr, reuseTracks);
                 double cursor = TrackEndBeats(track, riffById);
                 foreach (var line in lines)
                 {
@@ -203,7 +217,7 @@ namespace MusicTracker.Engine.AI
                     var list = rgroups[role];
                     list.Sort((p, q) => p.fromMeasure.CompareTo(q.fromMeasure));
                     int instr = 73; foreach (var l in list) if (l.instrument >= 0 && l.instrument <= 127) { instr = l.instrument; break; }
-                    var track = GetOrCreateInstrTrack(project, role, instr, append);
+                    var track = GetOrCreateInstrTrack(project, role, instr, reuseTracks);
                     double cursor = TrackEndBeats(track, riffById);
                     foreach (var rf in list)
                     {
@@ -257,7 +271,7 @@ namespace MusicTracker.Engine.AI
             if (a.drums != null && a.drums.Count > 0)
             {
                 const int dspq = 4;
-                var dtrack = GetOrCreateDrumTrack(project, append);
+                var dtrack = GetOrCreateDrumTrack(project, reuseTracks);
                 var dlist = new List<AiRiff>(a.drums);
                 dlist.Sort((p, q) => p.fromMeasure.CompareTo(q.fromMeasure));
                 double cursor = TrackEndBeats(dtrack, riffById);

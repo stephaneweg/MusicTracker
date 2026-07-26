@@ -15,6 +15,7 @@ Les entrées les plus **récentes** vont **en premier** ; l'application n'en aff
 
 ## Entrées
 
+- 🎶 « Ajouter un instrument / une batterie avec l'IA » (menu Piste) : décris une intention, l'IA reçoit TOUT le morceau (toutes les pistes + les accords) et compose une nouvelle piste — ligne mélodique (rythme seul) ou mélodie complète, ou un groove — qui s'intègre à l'arrangement existant.
 - 🌍 Choix de la langue (Français, English, Deutsch, Italiano, Español, Nederlands, Português) dans les Paramètres : l'interface, le fil des nouveautés et les titres générés par l'IA suivent la langue choisie. D'autres langues s'ajoutent en déposant un fichier `lang.xx.json`.
 - 🎲 Modèles de projet génératifs : un modèle contient désormais des banques de matière par section (progressions, motifs d'accompagnement, cellules mélodiques, phrases par instrument, grooves). À l'ouverture l'app y pioche et assemble le morceau — un bouton « Régénérer » retire une nouvelle version.
 - 🤖 Génère tes propres styles avec l'IA : décris une intention, l'IA fabrique le modèle. Clic droit sur une carte pour le régénérer en réutilisant ton intention.

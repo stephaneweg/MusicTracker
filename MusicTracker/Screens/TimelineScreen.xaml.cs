@@ -2786,6 +2786,47 @@ namespace MusicTracker.Screens
         }
 
         
+        // "Track ▸ Ajouter un instrument (IA)…" / "…une batterie (IA)…": describe an intention and the AI — given the
+        // WHOLE current piece (every track's notes + the chords) — writes ONE new track (rhythm-only melodic line or
+        // full melody, or a drum groove) laid OVER the same bars as a fresh track. Reuses the shared AI element dialog.
+        void btnAddInstrumentAi_Click(object sender, RoutedEventArgs e) => AddTrackWithAi(drums: false);
+        void btnAddDrumsAi_Click(object sender, RoutedEventArgs e) => AddTrackWithAi(drums: true);
+
+        void AddTrackWithAi(bool drums)
+        {
+            CommitRiffEditor();
+            int barTemps = TimelineHelper.RulerBeatsPerBar(project);
+            string fullCtx = Engine.AI.AiArrangement.BuildFullPieceContext(project, out int measures);
+            string keyStr = txtKeySummary?.Text ?? "";
+            string meterStr = txtMeterSummary?.Text ?? (project.TimeSigNum + "/" + project.TimeSigDen);
+            string shortCtx = keyStr + " · " + meterStr + " · " + measures + " mes.";
+
+            string title = drums ? Loc.T("AddDrumsAI") : Loc.T("AddAnInstrumentAI");
+            string optionLabel = drums ? null : Loc.T("FullMelody");   // checked = full melody, unchecked = melodic line
+
+            Dialogs.AiElementDialog dlg = null;
+            dlg = new Dialogs.AiElementDialog(
+                title, shortCtx,
+                intention => drums
+                    ? Engine.AI.AiArrangement.BuildAddDrumsPrompt(fullCtx, barTemps, measures, intention)
+                    : Engine.AI.AiArrangement.BuildAddTrackPrompt(fullCtx, barTemps, measures, dlg.OptionChecked, intention),
+                optionLabel: optionLabel)
+            { Owner = Window.GetWindow(this) };
+
+            if (dlg.ShowDialog() != true || string.IsNullOrWhiteSpace(dlg.ResultJson)) return;
+            try
+            {
+                var a = Engine.AI.AiArrangement.ParseTrack(dlg.ResultJson);
+                Engine.AI.AiArrangementPlacer.AddTrack(project, a, fixRiffNotes: false);
+                Render();
+                RefreshScore();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(Loc.T("ReponseIAInvalide") + ex.Message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         Grid TwoColumns(out StackPanel left, out ContentControl right)
         {
             var grid = new Grid();

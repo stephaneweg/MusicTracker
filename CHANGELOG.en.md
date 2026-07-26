@@ -17,6 +17,7 @@ The most **recent** entries go **first**; the app only shows the first few.
 
 ## Entries
 
+- 🎶 "Add an instrument / drums with AI" (Track menu): describe an intention; the AI receives the WHOLE piece (every track + the chords) and composes a new track — melodic line (rhythm only) or full melody, or a groove — that fits the existing arrangement.
 - 🌍 Language selection (French, English, German, Italian, Spanish, Dutch, Portuguese) in Settings: the interface, the what's-new feed and AI-generated titles all follow the chosen language. More languages can be added by dropping a `lang.xx.json` file.
 - 🎲 Generative project templates: a template now holds banks of material per section (progressions, accompaniment patterns, melodic cells, per-instrument phrases, grooves). On opening, the app draws from them and assembles the piece — a "Regenerate" button pulls a new version.
 - 🤖 Generate your own styles with AI: describe an intention and the AI builds the template. Right-click a card to regenerate it reusing your intention.

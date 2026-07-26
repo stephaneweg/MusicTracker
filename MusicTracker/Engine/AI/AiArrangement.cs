@@ -75,6 +75,116 @@ namespace MusicTracker.Engine.AI
             return new[] { sys.ToString(), usr.ToString() };
         }
 
+        // ---- "Add a track with the AI" over the WHOLE existing piece -------------------------------------------------
+
+        // Full current piece dumped compactly for the AI (header + chords + EVERY track's notes in absolute beats), so a
+        // new part can be written to fit the whole arrangement. Notes come from the same flattening the MIDI/score export
+        // uses (module repetitions expanded); no loops in use, so no ResolveLoops — the project is NOT mutated.
+        // `measures` = the piece length in bars.
+        public static string BuildFullPieceContext(TimelineProject project, out int measures)
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            string Num(double v) => v.ToString("0.##", inv);
+            int barTemps = TimelineHelper.RulerBeatsPerBar(project);
+            Func<Guid, Riff> resolve = TimelineHelper.RiffById;
+
+            double maxEnd = 0;
+            foreach (var t in project.Tracks)
+            {
+                double cur = 0;
+                if (t?.Items != null) foreach (var it in t.Items) cur += it.SilenceBefore + TimelineProject.ItemLength(it, resolve);
+                if (cur > maxEnd) maxEnd = cur;
+            }
+            measures = Math.Max(1, (int)Math.Ceiling(maxEnd / Math.Max(1, barTemps) - 1e-6));
+
+            var key = project.Key ?? new KeySignature();
+            double bpm = project.MainBpm > 0 ? project.MainBpm : 120;
+            var sb = new StringBuilder();
+            sb.AppendLine($"MORCEAU ACTUEL — tonalité {KeySig.Derive(key, 0).Name} {(key.Mode == 1 ? "mineur" : "majeur")}, mesure {project.TimeSigNum}/{project.TimeSigDen}, {Num(bpm)} BPM, {measures} mesures ({barTemps} temps/mesure).");
+
+            var chords = TimelineHelper.ChordsUnder(project, 0, measures * barTemps, barTemps);
+            if (chords.Count > 0)
+            {
+                sb.Append("Accords [mesure,degré,qualité] : ");
+                foreach (var c in chords) sb.Append("[" + c.measure + "," + c.degree + "," + c.quality + "] ");
+                sb.AppendLine();
+            }
+
+            var chordTrack = TimelineHelper.ChordTrack(project);
+            foreach (var t in project.Tracks)
+            {
+                if (t?.Items == null || t.Items.Count == 0 || ReferenceEquals(t, chordTrack)) continue;
+                MuseScoreImporter.Track flat;
+                try { flat = TimelineImporter.FlattenForExport(t, resolve); }
+                catch { continue; }
+                if (flat?.Notes == null || flat.Notes.Count == 0) continue;
+                sb.Append((t.Type == TimelineTrackType.Drum ? "BATTERIE «" : "PISTE «") + (t.Name ?? "") + "» (GM " + t.Instrument + ", " + flat.Notes.Count + " notes) [pitchMIDI@débutTemps xduréeTemps] : ");
+                foreach (var n in flat.Notes) sb.Append(n.Pitch + "@" + Num(n.StartSlice / 24.0) + "x" + Num(n.LengthSlices / 24.0) + " ");
+                sb.AppendLine();
+            }
+            return sb.ToString();
+        }
+
+        // Prompt to ADD ONE instrument voice over the whole piece: full-melody riffs (explicit notes) or a rhythm-only
+        // melodic line (the engine picks pitches from contour/anchor). `fullContext` = BuildFullPieceContext output.
+        public static string[] BuildAddTrackPrompt(string fullContext, int barTemps, int measures, bool fullMelody, string intention)
+        {
+            bool en = MusicTracker.Localization.Loc.IsEnglish;
+            var sys = new StringBuilder();
+            sys.AppendLine("Tu es un compositeur assistant. Tu AJOUTES UNE nouvelle voix instrumentale par-dessus un morceau EXISTANT (fourni ci-dessous). Tu renvoies UNIQUEMENT un objet JSON (aucune prose).");
+            sys.AppendLine("- La nouvelle voix doit COMPLÉTER le morceau : cohérente avec les accords, la tonalité et le rythme des pistes existantes, sans les recopier (contrechant/complément, respirations, dialogue question-réponse).");
+            sys.AppendLine("- Le champ 'track' (nom de la piste) doit être rédigé en " + (en ? "ANGLAIS" : "FRANÇAIS") + " et nommer l'instrument (ex. " + (en ? "\"Flute\", \"Cello\"" : "\"Flûte\", \"Violoncelle\"") + ").");
+            if (fullMelody)
+            {
+                sys.AppendLine("Schéma EXACT : { \"riffs\": [ { \"track\": string, \"instrument\": int(GM 0..127), \"fromMeasure\": int, \"measures\": int, \"notes\": [ [hauteur MIDI, début, durée], ... ] } ] }");
+                sys.AppendLine("- MÉLODIE COMPLÈTE : écris les NOTES explicites. 'hauteur' = MIDI (60 = Do central). 'début'/'durée' en TEMPS ; 'début' RELATIF au début de CHAQUE entrée (0 à measures×" + barTemps + "). Couvre les " + measures + " mesures, en une ou plusieurs entrées ('fromMeasure' 1-based, 'measures').");
+            }
+            else
+            {
+                sys.AppendLine("Schéma EXACT : { \"melodicLines\": [ { \"track\": string, \"instrument\": int(GM 0..127), \"fromMeasure\": int, \"measures\": int, \"durations\": [nombres en TEMPS], \"anchor\": string, \"contour\": string, \"register\": int } ] }");
+                sys.AppendLine("- LIGNE MÉLODIQUE : fixe seulement le RYTHME ('durations' en temps, ex. [1,1,0.5,0.5,1]) ; le moteur choisit les hauteurs via 'contour'/'anchor'. Une durée NÉGATIVE = un silence. Couvre les " + measures + " mesures.");
+                sys.AppendLine("- 'contour' ∈ { " + string.Join(", ", MelodicLineEngine.ContourNames) + " }. 'anchor' ∈ { " + string.Join(", ", MelodicLineEngine.AnchorNames) + " }. 'register' = décalage en demi-tons (grave ≈ -12, médium 0, aigu +12).");
+            }
+            sys.AppendLine("- Choisis un 'instrument' (GM 0..127) adapté à l'intention. FORMAT COMPACT : tableaux ordonnés, JSON minifié.");
+
+            var usr = new StringBuilder();
+            usr.AppendLine(fullContext);
+            usr.AppendLine();
+            usr.Append("Intention pour la nouvelle voix : « " + (intention ?? "").Trim() + " ». Renvoie UNIQUEMENT le JSON de la nouvelle piste.");
+            return new[] { sys.ToString(), usr.ToString() };
+        }
+
+        // Prompt to ADD a drum/percussion track over the whole piece (a groove looped to fill it).
+        public static string[] BuildAddDrumsPrompt(string fullContext, int barTemps, int measures, string intention)
+        {
+            var sys = new StringBuilder();
+            sys.AppendLine("Tu es un batteur assistant. Tu AJOUTES UNE piste de batterie/percussions par-dessus un morceau EXISTANT (fourni ci-dessous). Tu renvoies UNIQUEMENT un objet JSON (aucune prose).");
+            sys.AppendLine("Schéma EXACT : { \"drums\": [ { \"fromMeasure\": int, \"measures\": int, \"motifBars\": int, \"repeats\": int, \"notes\": [ [note GM, début, durée], ... ] } ] }");
+            sys.AppendLine("- Un GROOVE = UN MOTIF COURT ('motifBars' mesures, souvent 1-2) qui se RÉPÈTE 'repeats' fois ; motifBars×repeats couvre 'measures'. 'début' RELATIF au début du motif (0 à motifBars×" + barTemps + "), en TEMPS.");
+            sys.AppendLine("- Le groove doit coller au tempo/feel du morceau. KIT : 36 grosse caisse, 38 caisse claire, 42 charley fermé, 46 charley ouvert, 44 charley pied, 49 crash, 51 ride, 39 clap, 41/43/45/47/48/50 toms. PERCUS : 54 tambourin, 56 cowbell, 69 cabasa, 70 maracas, 75 claves, 62/63/64 congas, 80/81 triangle.");
+            sys.AppendLine("- Couvre les " + measures + " mesures (une entrée suffit : fromMeasure=1). FORMAT COMPACT : tableaux ordonnés, JSON minifié.");
+
+            var usr = new StringBuilder();
+            usr.AppendLine(fullContext);
+            usr.AppendLine();
+            usr.Append("Intention pour la batterie : « " + (intention ?? "").Trim() + " ». Renvoie UNIQUEMENT le JSON.");
+            return new[] { sys.ToString(), usr.ToString() };
+        }
+
+        // Parse a single-track reply (melodicLines / riffs / drums) — like Parse but WITHOUT requiring a chord array.
+        public static AiArrangement ParseTrack(string content)
+        {
+            string json = StripFences(content);
+            var a = JsonSerializer.Deserialize<AiArrangement>(json, Opts) ?? throw new InvalidOperationException("JSON vide.");
+            a.chords = a.chords ?? new List<AiChord>();
+            a.sections = a.sections ?? new List<AiSection>();
+            a.articulation = a.articulation ?? new List<AiArticulation>();
+            a.melodicLines = a.melodicLines ?? new List<AiMelodicLine>();
+            a.riffs = a.riffs ?? new List<AiRiff>();
+            a.drums = a.drums ?? new List<AiRiff>();
+            return a;
+        }
+
         // Build a compact text of the selected theme (its chords + its notes) to feed the AI for a development.
         public static string BuildThemeContext(TimelineProject project, TimelineTrack track, TimelineItem item, Riff riff)
         {

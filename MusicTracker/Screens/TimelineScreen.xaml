@@ -282,6 +282,9 @@
                         <MenuItem Header="{loc:Tr 'CreateStructure'}" Click="btnCreateStructure_Click" ToolTip="{loc:Tr 'GeneratesAnEditableArrangementFrameworkF'}"/>
                         <MenuItem Header="{loc:Tr 'AddAMelodicLine'}" Click="btnAddMelodicLine_Click" ToolTip="{loc:Tr 'OnStructuredMusicComposesAnExtra'}"/>
                         <MenuItem Header="{loc:Tr 'ChordAccompaniment'}" Click="btnChordAccomp_Click" ToolTip="{loc:Tr 'OnStructuredMusicCreatesAnAccompaniment'}"/>
+                        <Separator/>
+                        <MenuItem Header="{loc:Tr 'AddAnInstrumentAI'}" Click="btnAddInstrumentAi_Click"/>
+                        <MenuItem Header="{loc:Tr 'AddDrumsAI'}" Click="btnAddDrumsAi_Click"/>
                     </MenuItem>
                     <MenuItem x:Name="menuInsert" Header="{loc:Tr 'Insert'}" Foreground="#DDDDDD">
                         <MenuItem x:Name="miAddRiff" Header="Riff" Click="btnAddRiff_Click"/>
@@ -322,7 +325,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="200"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
@@ -366,7 +369,7 @@
              sync with the main lanes (rulerScroll/laneScroll), so it stays aligned but never scrolls off vertically. -->
             <Grid Grid.Row="1" Background="{StaticResource DarkBackground}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="200"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <ContentControl Grid.Column="0" x:Name="chordHeaderHost" Background="{StaticResource DarkBackground}"/>
