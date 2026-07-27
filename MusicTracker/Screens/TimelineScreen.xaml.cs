@@ -3228,6 +3228,18 @@ namespace MusicTracker.Screens
                 var toDrum = new MenuItem { Header = Loc.T("ConvertirEnBatterie2"), ToolTip = Loc.T("RemplaceCeRiffParUnModule") };
                 toDrum.Click += (s, e) => ConvertRiffToDrums(track, item, prm);
                 menu.Items.Add(toDrum);
+                // "Fusionner avec le suivant" — only when the NEXT top-level box is also a riff.
+                int mIdx = track.Items.IndexOf(item);
+                if (mIdx >= 0 && mIdx + 1 < track.Items.Count && track.Items[mIdx + 1].Module is PlayRiffModule)
+                {
+                    var merge = new MenuItem { Header = Loc.T("FusionnerAvecLeSuivant"), ToolTip = Loc.T("ConcateneCeRiffEtLeSuivant") };
+                    merge.Click += (s, e) =>
+                    {
+                        CommitRiffEditor();
+                        if (TimelineHelper.MergeWithNext(project, track, item)) { SelectItem(track, item); Render(); }
+                    };
+                    menu.Items.Add(merge);
+                }
                 menu.Items.Add(new Separator());
             }
             if (item.Module is MelodicLineModule mlm)

@@ -5,13 +5,14 @@
 ; Per-user install (PrivilegesRequired=lowest) so the auto-update can run the installer /VERYSILENT
 ; WITHOUT a UAC prompt. User data lives in %AppData%/%LocalAppData% (see AppPaths), never next to the exe.
 
-; MyAppName = internal identity (install path + output filename) — KEEP "MusicTracker" so the
-; in-app auto-update keeps finding MusicTrackerSetup-*.exe and upgrading in place.
+; MyAppName = internal install identity (install path + stable AppId) — KEEP "MusicTracker" so upgrades
+; land in the same folder. The installer file is now KotonStudioSetup-*; the in-app updater finds it via
+; the "installer" field in latest.json (not by a hard-coded name), so renaming it is safe.
 #define MyAppName "MusicTracker"
 ; MyAppDisplayName = the user-visible product name shown in the wizard, shortcuts and Start menu.
-#define MyAppDisplayName "Aria Studio"
+#define MyAppDisplayName "Koton Studio"
 #define MyAppPublisher "Stéphan Wegener"
-#define MyAppExeName "MusicTracker.exe"
+#define MyAppExeName "KotonStudio.exe"
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0.0"
@@ -34,7 +35,7 @@ DefaultGroupName={#MyAppDisplayName}
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir={#OutputDir}
-OutputBaseFilename=MusicTrackerSetup-{#MyAppVersion}
+OutputBaseFilename=KotonStudioSetup-{#MyAppVersion}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
@@ -50,6 +51,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 ; The whole Release output, minus debug symbols and the (runtime-downloaded) SoundFont.
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "*.pdb,*.vshost.*,SoundFont\*,userdata\*,settings.json,recent.json,userdata.json"
+
+[InstallDelete]
+; Upgrading from the old MusicTracker.exe name: remove the orphaned old binary + its config.
+Type: files; Name: "{app}\MusicTracker.exe"
+Type: files; Name: "{app}\MusicTracker.exe.config"
 
 [Icons]
 Name: "{group}\{#MyAppDisplayName}"; Filename: "{app}\{#MyAppExeName}"
@@ -68,7 +74,7 @@ begin
   if RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full', 'Release', release) then
   begin
     if release < 528040 then
-      MsgBox('Aria Studio nécessite Microsoft .NET Framework 4.8.' + #13#10 +
+      MsgBox('Koton Studio nécessite Microsoft .NET Framework 4.8.' + #13#10 +
              'Il n''a pas été détecté ; installez-le si l''application ne démarre pas.', mbInformation, MB_OK);
   end;
 end;

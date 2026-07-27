@@ -7,12 +7,12 @@ using System.Windows;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Aria Studio")]
+[assembly: AssemblyTitle("Koton Studio")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("NSI")]
-[assembly: AssemblyProduct("Aria Studio")]
-[assembly: AssemblyCopyright("Copyright © NSI 2024")]
+[assembly: AssemblyCompany("Stephan WEGENER")]
+[assembly: AssemblyProduct("Koton Studio")]
+[assembly: AssemblyCopyright("Copyright © Stephan WEGENER 2024")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

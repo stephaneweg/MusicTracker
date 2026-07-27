@@ -8,7 +8,7 @@
   Steps:
     1. Bump AssemblyVersion / AssemblyFileVersion in Properties\AssemblyInfo.cs (patch by default).
     2. Build the solution in Release (the GitHub token is injected from releases\releases.token).
-    3. Compile installer\MusicTracker.iss with ISCC -> installer\Output\MusicTrackerSetup-<ver>.exe.
+    3. Compile installer\MusicTracker.iss with ISCC -> installer\Output\KotonStudioSetup-<ver>.exe.
     4. Copy the installer into releases\ and write releases\latest.json { version, installer, notes }.
     5. Unless -NoPush: commit the version bump on the main repo and commit+push the releases repo.
 
@@ -97,7 +97,7 @@ New-Item -ItemType Directory -Force -Path $issOut | Out-Null
 & $iscc "/DMyAppVersion=$newVer" "/DSourceDir=$releaseBin" "/DOutputDir=$issOut" $iss
 if ($LASTEXITCODE -ne 0) { throw "La compilation Inno Setup a échoué (code $LASTEXITCODE)." }
 
-$setupName = "MusicTrackerSetup-$newVer.exe"
+$setupName = "KotonStudioSetup-$newVer.exe"
 $setupPath = Join-Path $issOut $setupName
 if (-not (Test-Path $setupPath)) { throw "Installeur introuvable après compilation : $setupPath" }
 Write-Host "Installeur : $setupPath" -ForegroundColor Green

@@ -328,18 +328,19 @@ namespace MusicTracker.Engine.Timeline
 
         // ---- playback --------------------------------------------------------------
 
-        // ---- A-B loop / bounded region --------------------------------------------------------------
-        // The region is [StartBeat (A), LoopEndBeat (B)]. Loop=true → wrap A→B seamlessly; Loop=false with a
-        // valid B → play A→B once then stop; no B → play to the end.
+        // ---- A-B loop --------------------------------------------------------------------------------
+        // Loop=true → wrap the [StartBeat (A), LoopEndBeat (B)] region seamlessly. Loop=false → B is ignored,
+        // playback runs from A straight to the end (normal playback).
         public bool Loop;
-        public double LoopEndBeat;          // B in beats (<= A or 0 = no bound → whole piece)
+        public double LoopEndBeat;          // B in beats (only used while Loop is true)
         int loopStartSlice, loopEndSlice;   // resolved region in slices
         long loopSamples;                   // audible samples per loop cycle (for the loop-aware cursor)
 
         void RecomputeLoop()
         {
             loopStartSlice = Math.Max(0, Math.Min(totalSlices, (int)Math.Round(StartBeat * Spb)));
-            int b = (LoopEndBeat > StartBeat + 1e-9) ? Math.Min(totalSlices, (int)Math.Round(LoopEndBeat * Spb)) : totalSlices;
+            // B only bounds playback while LOOPING; with the loop off we always play through to the end.
+            int b = (Loop && LoopEndBeat > StartBeat + 1e-9) ? Math.Min(totalSlices, (int)Math.Round(LoopEndBeat * Spb)) : totalSlices;
             if (b <= loopStartSlice) b = totalSlices;
             loopEndSlice = b;
             loopSamples = sliceSampleStart[loopEndSlice] - sliceSampleStart[loopStartSlice];

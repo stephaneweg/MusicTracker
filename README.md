@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="docs/images/logo-256.png" alt="Aria Studio" width="128">
+<img src="docs/images/logo-256.png" alt="Koton Studio" width="128">
 
-# Aria Studio
+# Koton Studio
 
 **Composez, arrangez et séquencez vos morceaux — de l'idée à la partition.**
 
-Aria Studio réunit composition assistée par IA, éditeur d'arrangement en timeline, partition gravée et moteur audio SoundFont — dans une seule application Windows, légère et 100 % en français (8 langues au total).
+Koton Studio réunit composition assistée par IA, éditeur d'arrangement en timeline, partition gravée et moteur audio SoundFont — dans une seule application Windows, légère et 100 % en français (8 langues au total).
 
 [![Télécharger](https://img.shields.io/badge/T%C3%A9l%C3%A9charger-Windows-1FB6C3?style=for-the-badge&logo=windows)](https://github.com/stephaneweg/MusicTracker/releases/latest)
 &nbsp;
@@ -28,7 +28,7 @@ Aria Studio réunit composition assistée par IA, éditeur d'arrangement en time
 
 </div>
 
-Aria Studio est une chaîne complète de création musicale : générez une trame par IA, arrangez-la dans un séquenceur en pistes horizontales, affinez chaque partie dans des éditeurs dédiés (riff, batterie, accords, ligne mélodique), visualisez le résultat en notation gravée, écoutez-le via le moteur SoundFont, puis exportez en PDF, MuseScore, MIDI, WAV ou MP3.
+Koton Studio est une chaîne complète de création musicale : générez une trame par IA, arrangez-la dans un séquenceur en pistes horizontales, affinez chaque partie dans des éditeurs dédiés (riff, batterie, accords, ligne mélodique), visualisez le résultat en notation gravée, écoutez-le via le moteur SoundFont, puis exportez en PDF, MuseScore, MIDI, WAV ou MP3.
 
 ---
 
@@ -75,10 +75,10 @@ Aria Studio est une chaîne complète de création musicale : générez une tram
 
 1. Téléchargez et lancez le dernier installeur depuis la [page des releases](https://github.com/stephaneweg/MusicTracker/releases/latest).
 2. L'installation se fait **pour votre compte utilisateur** — aucun droit administrateur requis.
-3. Au premier lancement, Aria Studio propose de télécharger automatiquement la banque de sons de MuseScore (`.sf2`) pour activer l'audio — ou indiquez la vôtre (par ex. `MuseScore_General.sf2`).
+3. Au premier lancement, Koton Studio propose de télécharger automatiquement la banque de sons de MuseScore (`.sf2`) pour activer l'audio — ou indiquez la vôtre (par ex. `MuseScore_General.sf2`).
 4. Les mises à jour suivantes s'installent automatiquement au démarrage.
 
-> **Note** — La banque de sons (`.sf2`) n'est pas incluse (plusieurs centaines de Mo) ; Aria Studio peut la télécharger au premier lancement.
+> **Note** — La banque de sons (`.sf2`) n'est pas incluse (plusieurs centaines de Mo) ; Koton Studio peut la télécharger au premier lancement.
 
 **Prérequis** : Windows 10 / 11 (64 bits) · .NET Framework 4.8
 
@@ -86,7 +86,7 @@ Aria Studio est une chaîne complète de création musicale : générez une tram
 
 ## Exports
 
-Aria Studio exporte vers **PDF** · **MuseScore (.mscx)** · **MIDI** · **WAV** · **MP3**.
+Koton Studio exporte vers **PDF** · **MuseScore (.mscx)** · **MIDI** · **WAV** · **MP3**.
 
 ---
 

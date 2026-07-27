@@ -1031,6 +1031,39 @@ namespace MusicTracker.Engine.Timeline
             return result;
         }
 
+        // Merge the PlayRiff `item` with the NEXT top-level PlayRiff on `track`: concatenate the two riffs' notes into
+        // item's riff (the next one's notes shifted past item's length + the gap between them), extend the length, and
+        // remove the next item. Returns false if there's no following riff. The merged riff keeps item's grid resolution.
+        public static bool MergeWithNext(TimelineProject project, TimelineTrack track, TimelineItem item)
+        {
+            var items = track?.Items;
+            if (items == null) return false;
+            int idx = items.IndexOf(item);
+            if (idx < 0 || idx + 1 >= items.Count) return false;
+            var next = items[idx + 1];
+            if (!(item.Module is PlayRiffModule pr) || !(next.Module is PlayRiffModule pr2)) return false;
+            var r1 = RiffById(pr.RiffId); var r2 = RiffById(pr2.RiffId);
+            if (r1 == null || r2 == null || ReferenceEquals(r1, r2)) return false;
+
+            int spq = r1.SlicesPerQuarter > 0 ? r1.SlicesPerQuarter : 24;
+            int spq2 = r2.SlicesPerQuarter > 0 ? r2.SlicesPerQuarter : 24;
+            int gapSlices = (int)Math.Round(Math.Max(0, next.SilenceBefore) * spq);   // silence between the two boxes
+            int off = Math.Max(0, r1.LengthSlices) + gapSlices;
+            if (r1.Notes == null) r1.Notes = new List<RiffNote>();
+            if (r2.Notes != null)
+                foreach (var n in r2.Notes)
+                {
+                    var nn = n;                                                        // struct copy → keeps Voice/Bend
+                    nn.Start = off + (spq == spq2 ? n.Start : (int)Math.Round(n.Start * (double)spq / spq2));
+                    if (spq != spq2) nn.Length = Math.Max(1, (int)Math.Round(n.Length * (double)spq / spq2));
+                    r1.Notes.Add(nn);
+                }
+            int r2len = spq == spq2 ? r2.LengthSlices : (int)Math.Round(r2.LengthSlices * (double)spq / spq2);
+            r1.LengthSlices = off + Math.Max(0, r2len);
+            items.RemoveAt(idx + 1);
+            return true;
+        }
+
         public static bool VariateTheme(Window owner,TimelineProject project, Riff src,
             PlayRiffModule pr,
             TimelineTrack selectedTrack,

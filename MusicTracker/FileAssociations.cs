@@ -38,7 +38,7 @@ namespace MusicTracker
                     // The ProgId: display name, icon and the launch command.
                     using (var prog = classes.CreateSubKey(ProgId))
                     {
-                        prog.SetValue(null, "Aria Studio — Musique");
+                        prog.SetValue(null, "Koton Studio — Musique");
                         using (var icon = prog.CreateSubKey("DefaultIcon")) icon.SetValue(null, docIcon);
                         using (var cmd = prog.CreateSubKey(@"shell\open\command")) cmd.SetValue(null, "\"" + exe + "\" \"%1\"");
                     }
