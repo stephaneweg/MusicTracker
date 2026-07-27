@@ -1,4 +1,6 @@
 {
+  "UndoCtrlZ": "Undo (Ctrl+Z)",
+  "RedoCtrlYCtrlShiftZ": "Redo (Ctrl+Y or Ctrl+Shift+Z)",
   "AChordProgressionInThePiece": "A chord progression in the piece's key, from the chosen degree toward the tonic (no 7th on the tonic). The chords are inserted into the selected track.",
   "AITemplate": "AI template",
   "AMelodicLineOnlyFixesThe": "A melodic line only fixes the rhythm: the engine picks the notes from the current chords.",

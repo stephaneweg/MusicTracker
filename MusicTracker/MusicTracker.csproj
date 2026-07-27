@@ -181,6 +181,7 @@
     <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
     <Compile Include="Engine\Flow\ModuleDuration.cs" />
     <Compile Include="Engine\Timeline\TimelineHelper.cs" />
+    <Compile Include="Engine\Timeline\UndoManager.cs" />
     <Compile Include="Engine\Timeline\TimelineProject.cs" />
     <Compile Include="Engine\Timeline\ChordModelOps.cs" />
     <Compile Include="Engine\Timeline\TemplateProjectBuilder.cs" />

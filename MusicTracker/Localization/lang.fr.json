@@ -1,4 +1,6 @@
 {
+  "UndoCtrlZ": "Annuler (Ctrl+Z)",
+  "RedoCtrlYCtrlShiftZ": "Rétablir (Ctrl+Y ou Ctrl+Maj+Z)",
   "AChordProgressionInThePiece": "Une suite d'accords dans la tonalité du morceau, depuis le degré choisi vers la tonique (pas de 7e sur la tonique). Les accords sont insérés dans la piste sélectionnée.",
   "AITemplate": "Template IA",
   "AMelodicLineOnlyFixesThe": "Une ligne mélodique ne fixe que le rythme : le moteur choisit les notes sur les accords en cours.",

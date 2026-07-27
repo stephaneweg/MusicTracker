@@ -250,6 +250,9 @@
         <Border Grid.Row="0" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
                 <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}"/>
+                <!-- Undo / Redo -->
+                <Button x:Name="btnUndo" Content="↶" Click="btnUndo_Click" Padding="9,4" Margin="0,0,3,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'UndoCtrlZ'}"/>
+                <Button x:Name="btnRedo" Content="↷" Click="btnRedo_Click" Padding="9,4" Margin="0,0,10,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'RedoCtrlYCtrlShiftZ'}"/>
                 <!-- Transport -->
                 <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="{loc:Tr 'PlayOrPause'}"/>
                 <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,6,0" ToolTip="{loc:Tr 'StopReturnToStart'}"/>

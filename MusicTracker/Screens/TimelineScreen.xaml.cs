@@ -62,6 +62,14 @@ namespace MusicTracker.Screens
         bool loopEnabled;                           // ⟳ toggle: loop the [startBeat, loopEndBeat] region seamlessly
         double loopEndBeat;                         // B in beats (0 = unset → defaults to A + 4 bars when enabled)
 
+        // ---- undo/redo (snapshot-based; see Engine.Timeline.UndoManager) ----
+        readonly Engine.Timeline.UndoManager undoMgr = new Engine.Timeline.UndoManager(50);
+        string pendingUndo;      // pre-edit snapshot captured when an editor opened; flushed on leave IF the state changed
+        string pendingUndoKey;   // its op key ("edit:<id>")
+        bool restoringUndo;      // guard: don't snapshot/clear history while applying an undo/redo restore
+        // Stable per-object identity for op keys (so insert:X + delete:X can neutralize, and moves of X coalesce).
+        static string Id(object o) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o).ToString();
+
         public TimelineScreen()
         {
             InitializeComponent();
@@ -82,6 +90,10 @@ namespace MusicTracker.Screens
             if (chordScroll != null) chordScroll.Margin = new Thickness(chordScroll.Margin.Left, chordScroll.Margin.Top, sbW, chordScroll.Margin.Bottom);
 
             Loaded += (s, e) => { Render(); EnsureCursor(); };
+
+            undoMgr.Changed += UpdateUndoButtons;
+            UpdateUndoButtons();
+            PreviewKeyDown += TimelineKeyDown; // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (unless a text field has focus)
         }
 
        
@@ -300,6 +312,7 @@ namespace MusicTracker.Screens
             var dlg = new Dialogs.TransposeDialog(cur) { Owner = Window.GetWindow(this) };
             if (dlg.ShowDialog() != true) return;
             CommitRiffEditor();
+            PushUndo("transpose");
             if (!Engine.Timeline.ChordModelOps.TransposeProject(project, TimelineHelper.RiffById, dlg.Result, dlg.ResultDirection, dlg.ResultMode)) return;
             SyncKeyToolbar();
             Render();
@@ -849,6 +862,99 @@ namespace MusicTracker.Screens
             editorHost.Content = null;
             CurrentPath = path;
             SetBpmText();
+
+            // A freshly-loaded document starts a new history (unless we're restoring an undo/redo state).
+            if (!restoringUndo) { undoMgr.Clear(); pendingUndo = null; pendingUndoKey = null; }
+        }
+
+        // ===== Undo / redo =====================================================================================
+
+        // Serialize the whole editor state (project + referenced riffs) exactly like a .sq save — the snapshot unit.
+        string SnapshotState()
+        {
+            var doc = new TimelineDocument { Project = project };
+            doc.Riffs.AddRange(RiffLibrary.Instance.Riffs);
+            return System.Text.Json.JsonSerializer.Serialize(doc, JsonOpts);
+        }
+
+        // Record the state BEFORE a structural mutation, keyed by op (call this JUST before mutating).
+        void PushUndo(string opKey)
+        {
+            if (restoringUndo) return;
+            FlushPending();
+            undoMgr.Push(SnapshotState(), opKey);
+        }
+
+        // For inserts, the new object's id is only known after the mutation: capture the pre-state, mutate, then commit.
+        string BeginUndo() { if (restoringUndo) return null; FlushPending(); return SnapshotState(); }
+        void CommitUndo(string preState, string opKey) { if (preState != null && !restoringUndo) undoMgr.Push(preState, opKey); }
+
+        // An editor opened: remember the pre-edit state; FlushPending records it later only if editing changed something.
+        void BeginEditSessionFor(TimelineItem item)
+        {
+            if (restoringUndo) return;
+            FlushPending();
+            if (item?.Module != null) { pendingUndo = SnapshotState(); pendingUndoKey = "edit:" + Id(item); }
+        }
+
+        // Commit a pending edit session (if the state actually changed) into the undo stack.
+        void FlushPending()
+        {
+            if (pendingUndo == null) return;
+            string pre = pendingUndo, key = pendingUndoKey;
+            pendingUndo = null; pendingUndoKey = null;
+            if (SnapshotState() != pre) undoMgr.Push(pre, key);
+        }
+
+        void DoUndo()
+        {
+            FlushPending();
+            string s = undoMgr.Undo(SnapshotState());
+            if (s != null) RestoreState(s);
+        }
+
+        void DoRedo()
+        {
+            FlushPending();
+            string s = undoMgr.Redo(SnapshotState());
+            if (s != null) RestoreState(s);
+        }
+
+        // Deserialize a snapshot back onto the live editor (same path as loading a .sq), guarding against re-snapshotting.
+        void RestoreState(string json)
+        {
+            restoringUndo = true;
+            try
+            {
+                StopPlayback();
+                var doc = System.Text.Json.JsonSerializer.Deserialize<TimelineDocument>(json, JsonOpts) ?? new TimelineDocument();
+                ApplyDocument(doc, CurrentPath);
+                Render();
+                if (ScoreVisible) RefreshScore();
+            }
+            finally { restoringUndo = false; }
+            UpdateUndoButtons();
+        }
+
+        void UpdateUndoButtons()
+        {
+            if (btnUndo != null) btnUndo.IsEnabled = undoMgr.CanUndo;
+            if (btnRedo != null) btnRedo.IsEnabled = undoMgr.CanRedo;
+        }
+
+        void btnUndo_Click(object sender, RoutedEventArgs e) => DoUndo();
+        void btnRedo_Click(object sender, RoutedEventArgs e) => DoRedo();
+
+        void TimelineKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            var mods = System.Windows.Input.Keyboard.Modifiers;
+            if ((mods & System.Windows.Input.ModifierKeys.Control) == 0) return;
+            // Leave Ctrl+Z/Y to a text field that's being edited (its own undo).
+            if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox) return;
+            bool shift = (mods & System.Windows.Input.ModifierKeys.Shift) != 0;
+            if (e.Key == System.Windows.Input.Key.Z && shift) { DoRedo(); e.Handled = true; }
+            else if (e.Key == System.Windows.Input.Key.Z) { DoUndo(); e.Handled = true; }
+            else if (e.Key == System.Windows.Input.Key.Y) { DoRedo(); e.Handled = true; }
         }
 
       
@@ -1296,6 +1402,7 @@ namespace MusicTracker.Screens
         // onto the track item that follows the Repeat.
         void DeleteItem(TimelineTrack track, TimelineItem item)
         {
+            PushUndo("delete:" + Id(item)); // (neutralizes a just-inserted item) — capture BEFORE the removal
             int idx = track.Items.IndexOf(item);
             if (idx >= 0) RemoveAt(track.Items, idx, null, track);
            
@@ -1561,6 +1668,7 @@ namespace MusicTracker.Screens
         {
             int di = items.IndexOf(dragged);
             if (di < 0) return;
+            PushUndo("move:" + Id(dragged)); // a drag emits several — coalesced into one undo entry
 
             double Ld = TimelineHelper.DispLen(dragged);
 
@@ -1709,6 +1817,7 @@ namespace MusicTracker.Screens
         // when the score is dismissed (♫ unchecked) without going through SelectItem's "already selected" guard.
         void OpenModuleEditor(TimelineTrack track, TimelineItem item)
         {
+            BeginEditSessionFor(item); // start an undo "edit session" for this module (recorded on leave if it changes)
             bool selfScroll = false; // editor manages its own scrolling -> disable the outer scroll
             if (item == null)
             {
@@ -3065,6 +3174,7 @@ namespace MusicTracker.Screens
         // editable arrangement. Shared by "Composer un morceau" and "Créer structure".
         void ApplyComposeResult(Engine.Timeline.ComposeResult result)
         {
+            PushUndo("generate"); // capture the pre-generation state so a big compose can be undone in one step
             // Wipe the whole timeline first, then drop in the composed tracks.
             project.Tracks.Clear();
             scoreTracks.Clear();
@@ -3107,21 +3217,25 @@ namespace MusicTracker.Screens
 
         void AddTrack(TimelineTrack t)
         {
+            string pre = BeginUndo();
             project.Tracks.Add(t);
             TimelineHelper.EnsureChordTrack(project);     // keep the chords track pinned at the bottom
             selectedTrack = t;
             selectedItem = null;
+            CommitUndo(pre, "insert:" + Id(t));
             Render();
         }
 
         // Insert a chord module — ALWAYS into the chords track (no need to select it first).
         void AppendChord(FlowModule m)
         {
+            string pre = BeginUndo();
             TimelineHelper.EnsureChordTrack(project);
             var chord = TimelineHelper.ChordTrack(project);
             var item = new TimelineItem { Module = m };
             TimelineHelper.InsertTopLevel(chord, item);
             selectedTrack = chord; SelectItem(chord, item);
+            CommitUndo(pre, "insert:" + Id(item));
             Render();
         }
 
@@ -3129,11 +3243,12 @@ namespace MusicTracker.Screens
         {
             if (selectedTrack == null) { MessageBox.Show(Loc.T("SelectionneDAbordUnePiste")); return; }
             // If a Repeat is selected, add INSIDE it (its sub-track); keep the Repeat selected so you
-            
+            string pre = BeginUndo();
             var item = new TimelineItem { Module = m }; // inserted after the block at the cursor (truncated to fit), else appended
             double len = Engine.Timeline.TimelineProject.ItemLength(item, TimelineHelper.RiffById);
             TimelineHelper.PlaceAtCursor(selectedTrack, item, len, startBeat, TimelineHelper.RiffById);
             SelectItem(selectedTrack, item);
+            CommitUndo(pre, "insert:" + Id(item));
             Render(); // new box -> rebuild lanes
         }
 
@@ -3143,6 +3258,7 @@ namespace MusicTracker.Screens
         {
             if (selectedTrack == null) { MessageBox.Show(Loc.T("SelectionneDAbordUnePiste")); return; }
             var track = selectedTrack;
+            string pre = BeginUndo();
 
             int temps = TimelineHelper.RulerBeatsPerBar(project);                // one bar in temps: num in /4, num/3 in /8
             const int spq = 24;                            // canonical resolution: 1 temps = 24 slices (like imports)
@@ -3153,6 +3269,7 @@ namespace MusicTracker.Screens
             TimelineHelper.PlaceAtCursor(track, item, temps, startBeat, TimelineHelper.RiffById);
 
             SelectItem(track, item); // open the riff editor on the new 1-measure riff
+            CommitUndo(pre, "insert:" + Id(item));
             Render();
         }
 
@@ -3311,6 +3428,7 @@ namespace MusicTracker.Screens
         void ConvertRiffToDrums(TimelineTrack track, TimelineItem item, PlayRiffModule prm)
         {
             CommitRiffEditor();
+            PushUndo("convert:" + Id(item));
             TimelineHelper.ConvertRiffToDrums(track, item, prm);
             Render();
 
@@ -3329,6 +3447,7 @@ namespace MusicTracker.Screens
         void ConvertMelodicLineToRiff(TimelineTrack track, TimelineItem item, MelodicLineModule ml)
         {
             CommitRiffEditor();
+            PushUndo("convert:" + Id(item));
             TimelineHelper.ConvertMelodicLineToRiff(project,track, item, ml);
             Render();
             // The module was swapped IN PLACE (same TimelineItem stays selected), so the bottom editor still shows
@@ -3349,8 +3468,11 @@ namespace MusicTracker.Screens
             if (dlg.ShowDialog() != true) return;
             var pg = NewChordLike(prev);
             TimelineHelper.ApplyChordChoice(pg, key, prev == null || prev.Degree >= 0, dlg);
-            SelectItem(track, TimelineHelper.InsertChordAfter(track, item, pg));
+            string pre = BeginUndo();
+            var newItem = TimelineHelper.InsertChordAfter(track, item, pg);
+            SelectItem(track, newItem);
             Engine.Flow.ChordDegrees.Revoice(track);
+            CommitUndo(pre, "insert:" + Id(newItem));
             Render();
         }
 
@@ -3358,6 +3480,7 @@ namespace MusicTracker.Screens
         void ChainProgression(TimelineTrack track, TimelineItem item, int bars)
         {
             CommitRiffEditor();
+            PushUndo("insert:chain");
             var key = project.Key ?? new Engine.Score.KeySignature();
             var after = item;
             var prevPg = item.Module as PatternGeneratorModule;
