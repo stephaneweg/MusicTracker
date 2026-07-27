@@ -278,8 +278,12 @@
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="440" Margin="0,30,0,0">
                                 <!-- Wordmark -->
                                 <StackPanel Orientation="Horizontal" Margin="2,0,0,4" HorizontalAlignment="Center">
-                                    <Ellipse Width="16" Height="16" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                    <TextBlock Text="Koton Studio" Foreground="{StaticResource CommonForeground}" FontSize="32" FontWeight="Bold"/>
+                                    <TextBlock Text="木" Foreground="{StaticResource AccentBrush}" FontSize="30" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0">
+                                        <TextBlock.BitmapEffect>
+                                            <OuterGlowBitmapEffect GlowColor="Red" GlowSize="100" Opacity="1"/>
+                                        </TextBlock.BitmapEffect>
+                                    </TextBlock>
+                                    <TextBlock FontSize="32" FontWeight="Bold" VerticalAlignment="Center"><Run Text="Koton" Foreground="{StaticResource AccentBrush}"/><Run Text=" Studio" Foreground="{StaticResource CommonForeground}"/></TextBlock>
                                 </StackPanel>
                                 <TextBlock Text="{loc:Tr 'ComposeArrangeAndSequenceYourPieces'}" HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"
                             FontSize="13" Margin="2,0,0,26"/>

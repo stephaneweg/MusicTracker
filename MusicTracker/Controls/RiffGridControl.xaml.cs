@@ -337,7 +337,7 @@ namespace MusicTracker.Controls
         static double RowTop(int note) => (NoteCount - 1 - note) * CellH; // highest note on top (ruler is a separate header now)
 
         // ---- palette (pads like RhythmGridControl) ----
-        static readonly Brush OnBrush = new SolidColorBrush(Color.FromRgb(0x55, 0xCC, 0x88));
+        static readonly Brush OnBrush = new SolidColorBrush(Color.FromRgb(0x2F, 0xC7, 0xD4));  // teal accent (clair) — was green #55CC88
         // OFF cells by key type; the start-of-beat column is a lighter variant. C rows are a touch
         // lighter (stand out), black-key (sharp) rows a touch darker.
         static readonly Brush WhiteOff = new SolidColorBrush(Color.FromRgb(0x2C, 0x2C, 0x36));
