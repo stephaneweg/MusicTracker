@@ -10,7 +10,7 @@
         Background="Transparent">
     <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
         <StackPanel Margin="26,22">
-            <TextBlock Text="MusicTracker" Foreground="{StaticResource AccentBrush}"
+            <TextBlock Text="Aria Studio" Foreground="{StaticResource AccentBrush}"
                        FontSize="24" FontWeight="Bold"/>
             <TextBlock x:Name="txtVersion" Text="Version 1.0.0.0" Opacity="0.7" Margin="0,2,0,16"/>
 

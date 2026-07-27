@@ -56,7 +56,11 @@ namespace MusicTracker.Screens
         System.Windows.Shapes.Rectangle playCursor;
         System.Windows.Shapes.Polygon startMarker; // blue down-pointing handle on the ruler: drag to set the play start
         bool draggingMarker;
-        double startBeat;                           // cursor position = where playback starts/resumes (beats)
+        double startBeat;                           // cursor position = where playback starts/resumes (beats) = loop point A
+        System.Windows.Shapes.Polygon loopMarker;  // orange handle: the A-B loop END (B); shown only when looping
+        bool draggingLoop;
+        bool loopEnabled;                           // ⟳ toggle: loop the [startBeat, loopEndBeat] region seamlessly
+        double loopEndBeat;                         // B in beats (0 = unset → defaults to A + 4 bars when enabled)
 
         public TimelineScreen()
         {
@@ -67,7 +71,7 @@ namespace MusicTracker.Screens
             project.Tracks.Add(new TimelineTrack { Name = "Piste 1", Instrument = 0 });
             TimelineHelper.EnsureChordTrack(project);
             selectedTrack = project.Tracks[0];
-            txtBpm.Text = ((int)project.MainBpm).ToString();
+            SetBpmText();
 
             // laneScroll shows a vertical scrollbar (always), so its viewport is one scrollbar-width narrower than
             // the ruler's and the docked chords lane (which have none). That makes laneScroll scrollable that much
@@ -315,15 +319,16 @@ namespace MusicTracker.Screens
         public string ModeName => Loc.T("Sequenceur");
         public string FileExtension => ".sq";
         public string CurrentPath { get; set; }
-        public void StopAudio() { StopPlayback(); try { activeRiffGrid?.StopPreview(); } catch { } }
+        public void StopAudio() { PausePlayback(); try { activeRiffGrid?.StopPreview(); } catch { } }
 
         // ---- playback ----
-        // ▶ plays from the cursor; ⏹ stops and leaves the cursor where it stopped (▶ then resumes there).
-        // No pause: the player rolls tempo/volume forward to the start beat instantly, so resuming mid-piece
-        // lands in the right state.
+        // ▶/⏸ is a toggle: play from the cursor, or pause (freeze the cursor where it is; ▶ resumes there — the
+        // player rolls tempo/volume forward to the start beat instantly, so resuming mid-piece lands right).
+        // ⏹ is a real STOP: it also rewinds the cursor to the beginning.
         private void btnPlay_Click(object sender, RoutedEventArgs e)
         {
-            if (player == null) StartPlayback(); // already playing -> ignore
+            if (player == null) StartPlayback(); // idle or paused -> play from the cursor
+            else PausePlayback();                // playing -> pause (cursor freezes; ▶ resumes here)
         }
 
         private void btnStop_Click(object sender, RoutedEventArgs e) => StopPlayback();
@@ -336,6 +341,7 @@ namespace MusicTracker.Screens
             {
                 player = new Engine.Timeline.TimelinePlayer(project, TimelineHelper.RiffById, AudioFormat.SampleRate);
                 player.StartBeat = startBeat; // start at the cursor; tempo/volume are set for that beat in Start()
+                player.Loop = loopEnabled; player.LoopEndBeat = loopEndBeat; // A-B loop region ([startBeat, loopEndBeat])
                 // A background thread pre-renders ahead so the audio device only copies samples (absorbs the
                 // SoundFont synthesis cost / GC spikes). The device is started only once the buffer has a head
                 // start (Primed) — otherwise it would drain the buffer as fast as it fills.
@@ -344,7 +350,7 @@ namespace MusicTracker.Screens
                 playBuffer.Primed += () => Dispatcher.BeginInvoke((Action)BeginPlaybackDevice);
                 EnsureCursor();
                 MoveCursor(startBeat);
-                if (btnPlay != null) btnPlay.Content = "⏳"; // filling the buffer before playback
+                SetPlayGlyph("⏳"); // filling the buffer before playback
                 playBuffer.Start(); // producer fills; the device starts on Primed
             }
             catch (Exception ex) { MessageBox.Show(Loc.T("Lecture") + ex.Message); StopPlayback(); }
@@ -357,23 +363,32 @@ namespace MusicTracker.Screens
             playWaveOut = new NAudio.Wave.WaveOutEvent { DesiredLatency = 150 };
             playWaveOut.Init(playBuffer);
             playWaveOut.Play();
-            if (btnPlay != null) btnPlay.Content = "▶";
+            SetPlayGlyph("⏸"); // now playing -> the toggle shows Pause
             playTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
             playTimer.Tick += (s, ev) => MoveCursor(PlayedBeat());
             playTimer.Start();
         }
 
-        // Stop: freeze the cursor where playback reached (the AUDIBLE position), so ▶ resumes from there.
         // The audible beat = the consumed-sample position mapped back through the tempo map.
         double PlayedBeat() => (player != null && playBuffer != null)
-            ? player.BeatAtSample(player.SampleAtStart + playBuffer.ConsumedSamples) : startBeat;
+            ? player.PlayheadBeat(playBuffer.ConsumedSamples) : startBeat;
 
-        public void StopPlayback()
+        // Pause: stop the audio but freeze the cursor where playback reached (the AUDIBLE position), so ▶ resumes
+        // from there. Also used when switching away from this editor's tab (keep the position).
+        public void PausePlayback()
         {
             double beat = PlayedBeat();
             TeardownPlayer();
             startBeat = Math.Max(0, Math.Min(TotalBeats(), beat));
             MoveCursor(startBeat);
+        }
+
+        // Stop: stop the audio AND rewind the cursor to the beginning (the ⏹ button).
+        public void StopPlayback()
+        {
+            TeardownPlayer();
+            startBeat = 0;
+            MoveCursor(0);
         }
 
         // Reached the end on its own -> rewind the cursor to the top.
@@ -390,7 +405,40 @@ namespace MusicTracker.Screens
             if (playWaveOut != null) { try { playWaveOut.Stop(); playWaveOut.Dispose(); } catch { } playWaveOut = null; }
             if (playBuffer != null) { try { playBuffer.Stop(); } catch { } playBuffer = null; } // stops the producer + inner
             if (player != null) { try { player.Stop(); } catch { } player = null; }
-            if (btnPlay != null) btnPlay.Content = "▶";
+            SetPlayGlyph("▶");
+        }
+
+        // Keep both play buttons (top toolbar + bottom transport bar) showing the same ▶ / ⏸ / ⏳ glyph.
+        void SetPlayGlyph(string glyph)
+        {
+            if (btnPlay != null) btnPlay.Content = glyph;
+            if (btnPlayBottom != null) btnPlayBottom.Content = glyph;
+        }
+
+        // Set the toolbar BPM box AND the bottom transport tempo readout from the project's main tempo.
+        void SetBpmText()
+        {
+            if (txtBpm != null) txtBpm.Text = ((int)project.MainBpm).ToString();
+            SyncTempoReadout();
+        }
+
+        // Mirror the current BPM box value into the bottom transport bar's "♩ = N" readout.
+        void SyncTempoReadout()
+        {
+            if (txtTransportTempo != null && txtBpm != null)
+                txtTransportTempo.Text = "♩ = " + txtBpm.Text;
+        }
+
+        // Bottom transport: ⏮ rewinds to the start (same as ⏹); ⏭ jumps the cursor to the end.
+        private void btnPrevBottom_Click(object sender, RoutedEventArgs e) => StopPlayback();
+        private void btnNextBottom_Click(object sender, RoutedEventArgs e) => SeekTo(TotalBeats());
+
+        // Move the cursor and the resume point to a beat; if playing, stop first so the next ▶ starts there.
+        void SeekTo(double beat)
+        {
+            if (player != null) TeardownPlayer();
+            startBeat = Math.Max(0, Math.Min(TotalBeats(), beat));
+            MoveCursor(startBeat);
         }
 
         // The yellow play head + its blue start handle live permanently (visible even when idle, where
@@ -419,6 +467,24 @@ namespace MusicTracker.Screens
                 startMarker.MouseLeftButtonUp += startMarker_MouseLeftButtonUp;
                 startCanvas.Children.Add(startMarker);
             }
+            if (loopMarker == null)
+            {
+                loopMarker = new System.Windows.Shapes.Polygon
+                {
+                    Points = new PointCollection { new Point(-7, 0), new Point(7, 0), new Point(0, 18) },
+                    Fill = new SolidColorBrush(Color.FromRgb(0xE8, 0x89, 0x4A)),   // orange = loop END (B)
+                    Stroke = new SolidColorBrush(Color.FromRgb(0xFA, 0xDE, 0xCF)),
+                    StrokeThickness = 1,
+                    Cursor = Cursors.SizeWE,
+                    Visibility = Visibility.Collapsed,                              // shown only when looping
+                    ToolTip = Loc.T("GlisserPourDefinirLaFinDeBoucle"),
+                };
+                Panel.SetZIndex(loopMarker, 10);
+                loopMarker.MouseLeftButtonDown += loopMarker_MouseLeftButtonDown;
+                loopMarker.MouseMove += loopMarker_MouseMove;
+                loopMarker.MouseLeftButtonUp += loopMarker_MouseLeftButtonUp;
+                startCanvas.Children.Add(loopMarker);
+            }
             playCursor.Visibility = Visibility.Visible;
             MoveCursor(startBeat);
         }
@@ -428,6 +494,7 @@ namespace MusicTracker.Screens
             double x = beat * PxPerBeat;
             if (playCursor != null) { playCursor.Height = lanePanel.ActualHeight; Canvas.SetLeft(playCursor, x); }
             if (startMarker != null) Canvas.SetLeft(startMarker, x + 1); // centre the handle on the 2px line
+            if (loopMarker != null) { loopMarker.Visibility = loopEnabled ? Visibility.Visible : Visibility.Collapsed; Canvas.SetLeft(loopMarker, loopEndBeat * PxPerBeat + 1); }
             // Auto-scroll only while actually playing (so setting the start point doesn't yank the scroll).
             // CONTINUOUS follow, like the score view: always aim to centre the cursor, then clamp. The clamping
             // gives the three phases for free — the view holds still until the cursor reaches the middle (target
@@ -446,6 +513,13 @@ namespace MusicTracker.Screens
 
             // If a score is shown, sweep its cursor too (same beat position).
             if (activeScore != null && ReferenceEquals(editorHost.Content, scoreContainer)) activeScore.SetCursorBeat(beat);
+
+            // Bottom transport progress bar: fraction of the piece played.
+            if (transportProgress != null)
+            {
+                double tot = TotalBeats();
+                transportProgress.Value = tot > 0 ? Math.Max(0, Math.Min(1, beat / tot)) : 0;
+            }
         }
 
         int scoreGen; // bumped each RefreshScore; a stale background build (superseded) discards its result
@@ -568,6 +642,50 @@ namespace MusicTracker.Screens
         private void startMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             if (draggingMarker) { draggingMarker = false; startMarker.ReleaseMouseCapture(); e.Handled = true; }
+        }
+
+        // ---- A-B loop end (B) marker ----
+        void SetLoopEndFromX(double x)
+        {
+            double beat = Math.Max(0, Math.Min(TotalBeats(), x / PxPerBeat));
+            if (beat <= startBeat + 1e-6) beat = Math.Min(TotalBeats(), startBeat + 1); // B must stay after A
+            loopEndBeat = beat;
+            if (loopMarker != null) Canvas.SetLeft(loopMarker, loopEndBeat * PxPerBeat + 1);
+            if (player != null) { player.LoopEndBeat = loopEndBeat; player.ApplyLoop(); } // live update while playing
+        }
+
+        private void loopMarker_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            draggingLoop = true; loopMarker.CaptureMouse();
+            SetLoopEndFromX(e.GetPosition(startCanvas).X);
+            e.Handled = true;
+        }
+
+        private void loopMarker_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (draggingLoop) { SetLoopEndFromX(e.GetPosition(startCanvas).X); e.Handled = true; }
+        }
+
+        private void loopMarker_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (draggingLoop) { draggingLoop = false; loopMarker.ReleaseMouseCapture(); e.Handled = true; }
+        }
+
+        // ⟳ "Boucle" toggle: loop the [A, B] region seamlessly (A = the blue start handle, B = the orange handle).
+        private void btnLoop_Click(object sender, RoutedEventArgs e)
+        {
+            loopEnabled = btnLoop != null && btnLoop.IsChecked == true;
+            if (loopEnabled)
+            {
+                double total = TotalBeats();
+                // Default B to A + 4 bars (clamped) the first time, so there's a sensible region to drag.
+                if (loopEndBeat <= startBeat + 1e-6)
+                    loopEndBeat = Math.Min(total, startBeat + 4 * Math.Max(1, TimelineHelper.RulerBeatsPerBar(project)));
+                if (loopEndBeat <= startBeat + 1e-6) loopEndBeat = total; // whole piece if nothing else fits
+            }
+            EnsureCursor();
+            if (player != null) { player.Loop = loopEnabled; player.LoopEndBeat = loopEndBeat; player.ApplyLoop(); } // live
+            MoveCursor(player != null ? PlayedBeat() : startBeat);
         }
 
         // A .sq file = the arrangement + the riffs it references (same idea as the graph's .graph).
@@ -730,7 +848,7 @@ namespace MusicTracker.Screens
             selectedItem = null;
             editorHost.Content = null;
             CurrentPath = path;
-            txtBpm.Text = ((int)project.MainBpm).ToString();
+            SetBpmText();
         }
 
       
@@ -1003,7 +1121,18 @@ namespace MusicTracker.Screens
             }
             else
             {
-                panel.Children.Add(new TextBlock { Text = Loc.T("BatterieKitAuto"), Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 11, Margin = new Thickness(0, 4, 0, 0) });
+                // Drum track: pick the SoundFont drum kit (Standard / Room / Power / Jazz / TR-808…) — applied at playback.
+                var kitNames = InstrumentCatalog.DrumKitNames();
+                var kit = new ComboBox { Margin = new Thickness(0, 3, 0, 0), FontSize = 11, ItemsSource = kitNames, SelectedIndex = Math.Max(0, Math.Min(kitNames.Count - 1, track.DrumKit)) };
+                kit.SelectionChanged += (s, e) =>
+                {
+                    if (kit.SelectedIndex < 0) return;
+                    track.DrumKit = kit.SelectedIndex;
+                    // If this drum track's editor is open, rebuild it so the preview uses the new kit.
+                    if (riffEditTrack == track && selectedItem?.Module is DrumPatternModule dpm)
+                        editorHost.Content = BuildDrumEditor(track, selectedItem, dpm);
+                };
+                panel.Children.Add(kit);
             }
 
             // base volume
@@ -2644,7 +2773,7 @@ namespace MusicTracker.Screens
             aiBtn.Click += (s, e) => GenerateDrumWithAi(dp, refresh);
             left.Children.Add(aiBtn);
 
-            left.Children.Add(EdLabel(Loc.T("Kit"))); left.Children.Add(ParamCombo(InstrumentCatalog.DrumKitNames().ToArray(), dp.Kit, v => dp.Kit = v, refresh));
+            // The drum KIT is chosen per TRACK (in the track header), not per module → applied both here (preview) and at playback.
             // Catégorie + Motif — the catalogue is the single source (built-in styles + exotic + "Personnalisé").
             const string CUSTOM = "Personnalisé";
             var catalog = Engine.Flow.DrumCatalog.Instance;
@@ -2729,7 +2858,7 @@ namespace MusicTracker.Screens
             // No seed picker here (removed): "Personnaliser" already copies the motif in. Pass null seed styles.
             rg.Configure(DrumPattern.LaneNames, dp.BeatsPerBar, dp.CustomSlicesPerQuarter > 0 ? dp.CustomSlicesPerQuarter : 4, dp.CustomSlices,
                          null, null, DrumPattern.SlicesPerQuarter, mk,
-                         InstrumentCatalog.GetDrumKit(dp.Kit),
+                         InstrumentCatalog.GetDrumKit(track.DrumKit),
                          onSaveStyle: onSaveStyle,
                          noteList: true, existingNotes: dp.CustomNotes,
                          rowColor: lane => Controls.DrumColors.ForLane(lane),
@@ -2962,12 +3091,14 @@ namespace MusicTracker.Screens
                 project.Tempo = new System.Collections.Generic.List<TempoChange>();
                 foreach (var tp in result.ResultTempo) project.Tempo.Add(new TempoChange { Beat = tp.beat, Bpm = tp.bpm });
                 txtBpm.Text = ((int)project.Tempo[0].Bpm).ToString();
+                SyncTempoReadout();
             }
             else if (result.ResultBpm > 0)
             {
                 if (project.Tempo == null || project.Tempo.Count == 0) project.Tempo = new System.Collections.Generic.List<TempoChange> { new TempoChange() };
                 project.Tempo[0].Bpm = result.ResultBpm;
                 txtBpm.Text = ((int)result.ResultBpm).ToString();
+                SyncTempoReadout();
             }
             SyncKeyToolbar(); // key combos + meter combo + ternary toggle follow the project
             Render();
@@ -2999,8 +3130,9 @@ namespace MusicTracker.Screens
             if (selectedTrack == null) { MessageBox.Show(Loc.T("SelectionneDAbordUnePiste")); return; }
             // If a Repeat is selected, add INSIDE it (its sub-track); keep the Repeat selected so you
             
-            var item = new TimelineItem { Module = m }; // appended at the end, or inserted before a loop Repeat
-            TimelineHelper.InsertTopLevel(selectedTrack, item);
+            var item = new TimelineItem { Module = m }; // inserted after the block at the cursor (truncated to fit), else appended
+            double len = Engine.Timeline.TimelineProject.ItemLength(item, TimelineHelper.RiffById);
+            TimelineHelper.PlaceAtCursor(selectedTrack, item, len, startBeat, TimelineHelper.RiffById);
             SelectItem(selectedTrack, item);
             Render(); // new box -> rebuild lanes
         }
@@ -3018,7 +3150,7 @@ namespace MusicTracker.Screens
             RiffLibrary.Instance.Riffs.Add(riff);
             var item = new TimelineItem { Module = new PlayRiffModule { RiffId = riff.Id } };
 
-            TimelineHelper.PlaceInFreeSlot(selectedItem, track, item, temps);
+            TimelineHelper.PlaceAtCursor(track, item, temps, startBeat, TimelineHelper.RiffById);
 
             SelectItem(track, item); // open the riff editor on the new 1-measure riff
             Render();
@@ -3105,10 +3237,59 @@ namespace MusicTracker.Screens
                 menu.Items.Add(toRiff);
                 menu.Items.Add(new Separator());
             }
+            var copy = new MenuItem { Header = Loc.T("Copier") };
+            copy.Click += (s, e) => CopyItem(item);
+            menu.Items.Add(copy);
+            if (clipModule != null)
+            {
+                var paste = new MenuItem { Header = Loc.T("CollerIci") };
+                paste.Click += (s, e) => PasteAtCursor(track);
+                menu.Items.Add(paste);
+            }
+            menu.Items.Add(new Separator());
             var del = new MenuItem { Header = Loc.T("Supprimer") };
             del.Click += (s, e) => DeleteItem(track, item);
             menu.Items.Add(del);
             menu.PlacementTarget = anchor; menu.IsOpen = true;
+        }
+
+        // ---- Copy / paste of a timeline module (via the box context menu) ----
+        static FlowModule clipModule;   // a deep clone of the copied module (survives across tabs)
+        static Riff clipRiff;           // the copied riff for a PlayRiff module (its notes) — null otherwise
+
+        static FlowModule CloneModule(FlowModule m)
+            => m == null ? null
+             : System.Text.Json.JsonSerializer.Deserialize<FlowModule>(System.Text.Json.JsonSerializer.Serialize<FlowModule>(m, JsonOpts), JsonOpts);
+
+        void CopyItem(TimelineItem item)
+        {
+            if (item?.Module == null) return;
+            CommitRiffEditor();
+            clipModule = CloneModule(item.Module);
+            clipRiff = item.Module is PlayRiffModule pr ? TimelineHelper.RiffById(pr.RiffId)?.Clone() : null;
+        }
+
+        // Paste the clipboard module right after the block at the cursor on `track` (truncated to fit), as an
+        // INDEPENDENT copy (a PlayRiff gets its own fresh riff, so editing it won't touch the original).
+        void PasteAtCursor(TimelineTrack track)
+        {
+            if (clipModule == null || track == null) return;
+            CommitRiffEditor();
+            var m = CloneModule(clipModule);
+            if (m is PlayRiffModule pr && clipRiff != null)
+            {
+                var r = clipRiff.Clone();
+                r.Id = Guid.NewGuid();                       // Clone() preserves the Id → give the copy a new one
+                r.Name = clipRiff.Name + " (copie)";
+                RiffLibrary.Instance.Riffs.Add(r);
+                pr.RiffId = r.Id;
+            }
+            var newItem = new TimelineItem { Module = m };
+            double len = Engine.Timeline.TimelineProject.ItemLength(newItem, TimelineHelper.RiffById);
+            TimelineHelper.PlaceAtCursor(track, newItem, len, startBeat, TimelineHelper.RiffById);
+            selectedTrack = track;
+            SelectItem(track, newItem);
+            Render();
         }
 
         // "Convertir en batterie": swap a Play-riff module for a DRUM module carrying the SAME rhythm — each note's
@@ -3472,7 +3653,7 @@ namespace MusicTracker.Screens
                 selectedTrack = project.Tracks.Count > 0 ? project.Tracks[0] : null;
                 selectedItem = null;
                 editorHost.Content = null;
-                txtBpm.Text = ((int)project.MainBpm).ToString();
+                SetBpmText();
                 await RenderBatched(prog); // add the lane controls in batches so the UI stays responsive
                 prog.Set(1.0, Loc.T("Termine"));
             }
@@ -3552,6 +3733,7 @@ namespace MusicTracker.Screens
             if (double.TryParse(txtBpm.Text, out double v) && v > 0 && project.Tempo.Count > 0)
             {
                 project.Tempo[0].Bpm = v;
+                SyncTempoReadout();
                 Render();
             }
         }

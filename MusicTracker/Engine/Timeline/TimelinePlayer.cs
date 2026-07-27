@@ -220,7 +220,13 @@ namespace MusicTracker.Engine.Timeline
             {
                 var tr = project.Tracks[i];
                 bool isDrum = tr.Type == TimelineTrackType.Drum || tr.Instrument == InstrumentCatalog.DrumIndex;
-                if (isDrum) continue;
+                if (isDrum)
+                {
+                    // Select the track's drum KIT on the percussion channel (bank stays 128; only the patch changes).
+                    // Multiple drum tracks share channel 9, so with different kits the last one applied wins.
+                    synth.ProcessMidiMessage(trackChannel[i], 0xC0, InstrumentCatalog.DrumKitProgram(tr.DrumKit), 0);
+                    continue;
+                }
                 int program = Math.Max(0, Math.Min(127, tr.Instrument));
                 int ch = trackChannel[i];
                 bool expr = InstrumentCatalog.ExprPrograms != null && InstrumentCatalog.ExprPrograms.Contains(program);
@@ -322,10 +328,31 @@ namespace MusicTracker.Engine.Timeline
 
         // ---- playback --------------------------------------------------------------
 
+        // ---- A-B loop / bounded region --------------------------------------------------------------
+        // The region is [StartBeat (A), LoopEndBeat (B)]. Loop=true → wrap A→B seamlessly; Loop=false with a
+        // valid B → play A→B once then stop; no B → play to the end.
+        public bool Loop;
+        public double LoopEndBeat;          // B in beats (<= A or 0 = no bound → whole piece)
+        int loopStartSlice, loopEndSlice;   // resolved region in slices
+        long loopSamples;                   // audible samples per loop cycle (for the loop-aware cursor)
+
+        void RecomputeLoop()
+        {
+            loopStartSlice = Math.Max(0, Math.Min(totalSlices, (int)Math.Round(StartBeat * Spb)));
+            int b = (LoopEndBeat > StartBeat + 1e-9) ? Math.Min(totalSlices, (int)Math.Round(LoopEndBeat * Spb)) : totalSlices;
+            if (b <= loopStartSlice) b = totalSlices;
+            loopEndSlice = b;
+            loopSamples = sliceSampleStart[loopEndSlice] - sliceSampleStart[loopStartSlice];
+        }
+
+        /// <summary>Recompute the loop region live (after Loop / LoopEndBeat changed during playback).</summary>
+        public void ApplyLoop() => RecomputeLoop();
+
         public void Start()
         {
             sliceIndex = Math.Max(0, Math.Min(totalSlices, (int)Math.Round(StartBeat * Spb)));
             SampleAtStart = sliceSampleStart[sliceIndex];
+            RecomputeLoop();
             t = 0; endedRaised = false; UpdateInterval(); playing = true;
             if (synth != null)
             {
@@ -346,6 +373,15 @@ namespace MusicTracker.Engine.Timeline
             double frac = s1 > s0 ? (abs - s0) / (double)(s1 - s0) : 0;
             return (lo + frac) / Spb;
         }
+
+        /// <summary>Audible beat for the playback cursor, given the samples consumed since Start. Loop-aware: while
+        /// looping, it folds the consumed count into the [A,B] region so the cursor sweeps A→B and jumps back.</summary>
+        public double PlayheadBeat(long consumedSinceStart)
+        {
+            if (Loop && loopSamples > 0)
+                return BeatAtSample(SampleAtStart + (consumedSinceStart % loopSamples));
+            return BeatAtSample(SampleAtStart + consumedSinceStart);
+        }
         public void Stop() { playing = false; }
 
     
@@ -365,23 +401,32 @@ namespace MusicTracker.Engine.Timeline
 
             ApplyChannelVolumes(CurrentBeat); // per-buffer: automation + mute/solo via CC7
 
+            int end = loopEndSlice > 0 ? loopEndSlice : totalSlices;  // region end (B) or the whole piece
             int done = 0;
             while (done < sampleCount)
             {
-                if (sliceIndex < totalSlices && sliceIndex > mDispatched)
+                if (sliceIndex < end && sliceIndex > mDispatched)
                 {
                     for (int sl = mDispatched + 1; sl <= sliceIndex; sl++) DispatchSlice(sl);
                     mDispatched = sliceIndex;
                 }
                 // Render at most to the end of the current slice so the next slice's events land on time.
-                int remain = sliceIndex < totalSlices ? (int)Math.Ceiling(interval - t) : (sampleCount - done);
+                int remain = sliceIndex < end ? (int)Math.Ceiling(interval - t) : (sampleCount - done);
                 if (remain < 1) remain = 1;
                 int n = Math.Min(remain, sampleCount - done);
                 synth.Render(mL.AsSpan(done, n), mR.AsSpan(done, n));
                 for (int k = 0; k < n; k++)
                 {
                     t += 1;
-                    if (t >= interval && sliceIndex < totalSlices) { t -= interval; sliceIndex++; UpdateInterval(); }
+                    if (t >= interval && sliceIndex < end)
+                    {
+                        t -= interval; sliceIndex++; UpdateInterval();
+                        if (sliceIndex >= end && Loop)          // reached B → wrap seamlessly to A
+                        {
+                            synth.NoteOffAll(false);            // release notes still holding at B (natural loop tail)
+                            sliceIndex = loopStartSlice; mDispatched = loopStartSlice - 1; UpdateInterval();
+                        }
+                    }
                 }
                 done += n;
             }
@@ -394,7 +439,7 @@ namespace MusicTracker.Engine.Timeline
                 buffer[offset + s] = (short)(v * short.MaxValue);
             }
 
-            if (sliceIndex >= totalSlices && synth.ActiveVoiceCount == 0) RaiseEnded();
+            if (!Loop && sliceIndex >= end && synth.ActiveVoiceCount == 0) RaiseEnded();
             return sampleCount;
         }
 

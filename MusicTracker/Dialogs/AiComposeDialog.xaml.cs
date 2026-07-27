@@ -18,8 +18,8 @@ namespace MusicTracker.Dialogs
         /// <summary>The parsed arrangement, valid once the user clicked "Appliquer".</summary>
         public AiArrangement Result { get; private set; }
 
-        /// <summary>Riff mode: snap out-of-harmony notes to chord/scale tones.</summary>
-        public bool FixNotes => chkFixNotes.IsChecked == true;
+        /// <summary>Snap out-of-harmony notes to chord/scale tones — always ON (the option was removed from the UI).</summary>
+        public bool FixNotes => true;
 
         /// <summary>Chords silent on the Accords track (empty custom motif — harmonic marker only); the AI voices the
         /// chord content freely in a dedicated "Accords" voice.</summary>
@@ -44,7 +44,6 @@ namespace MusicTracker.Dialogs
             txtMeasures.Text = (s.AiMeasures > 0 ? s.AiMeasures : 32).ToString();
             txtIntention.Text = s.AiIntention ?? "";
             tglRiffMode.IsChecked = s.AiRiffMode;
-            chkFixNotes.IsChecked = s.AiFixNotes;
             chkDrums.IsChecked = s.AiDrums;
             chkChordVoice.IsChecked = s.AiChordVoice;
             sldThinking.Value = Math.Max(-1, Math.Min(24576, s.AiThinkingBudget));
@@ -146,7 +145,7 @@ namespace MusicTracker.Dialogs
             var s = AppSettings.Instance;
             SaveProviderFields(provider); s.AiProvider = provider;
             s.AiStyle = style; s.AiMeasures = measures; s.AiIntention = txtIntention.Text ?? "";
-            s.AiRiffMode = tglRiffMode.IsChecked == true; s.AiFixNotes = chkFixNotes.IsChecked == true;
+            s.AiRiffMode = tglRiffMode.IsChecked == true;
             s.AiDrums = chkDrums.IsChecked == true;
             s.AiChordVoice = chkChordVoice.IsChecked == true;
             s.AiThinkingBudget = ThinkingBudget;

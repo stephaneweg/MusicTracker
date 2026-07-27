@@ -134,6 +134,59 @@
             </Setter>
         </Style>
 
+        <!-- Big play/pause: filled teal circle for the bottom transport bar. -->
+        <Style x:Key="PlayBtnBig" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Background" Value="{StaticResource AccentDeepBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="20">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrightBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Small round neutral transport button (prev / next). -->
+        <Style x:Key="TransportMini" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Foreground" Value="{StaticResource SecondaryForeground}"/>
+            <Setter Property="FontFamily" Value="Segoe UI Symbol"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="13" BorderBrush="{StaticResource SubtleBorderBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource SurfaceHoverBackground}"/>
+                                <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Small square Mute (red when active) / Solo (teal when active) toggles for track headers. -->
         <Style x:Key="MuteToggle" TargetType="ToggleButton">
             <Setter Property="Width" Value="20"/>
@@ -198,8 +251,9 @@
             <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
                 <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}"/>
                 <!-- Transport -->
-                <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="{loc:Tr 'PlayFromTheCursor'}"/>
-                <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,12,0" ToolTip="{loc:Tr 'StopTheCursorStaysPut'}"/>
+                <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="{loc:Tr 'PlayOrPause'}"/>
+                <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,6,0" ToolTip="{loc:Tr 'StopReturnToStart'}"/>
+                <ToggleButton x:Name="btnLoop" Content="⟳" Click="btnLoop_Click" Style="{StaticResource TernaryToggle}" Margin="0,0,12,0" ToolTip="{loc:Tr 'LoopTheABRegion'}"/>
                 <!-- Template chip: only shown when the project was opened from a generative template. Shows the pick
                      seed and re-rolls it (rebuilds the project from the template's banks). -->
                 <Border x:Name="tplBar" Style="{StaticResource ToolChip}" Visibility="Collapsed">
@@ -407,10 +461,48 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="4" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
-             
-            </StackPanel>
+        <!-- Bottom transport bar (DAW-style): tempo · prev/play/next · progress -->
+        <Border Grid.Row="4" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,1,0,0">
+            <Grid Margin="14,7">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: tempo readout -->
+                <TextBlock x:Name="txtTransportTempo" Grid.Column="0" VerticalAlignment="Center"
+                           Foreground="{StaticResource SecondaryForeground}" FontFamily="Segoe UI Symbol"
+                           FontSize="13" Text="&#x2669; = 120"/>
+
+                <!-- Center: transport buttons -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Button x:Name="btnPrevBottom" Style="{StaticResource TransportMini}" Content="&#x23EE;"
+                            Click="btnPrevBottom_Click" ToolTip="{loc:Tr 'StopReturnToStart'}"/>
+                    <Button x:Name="btnPlayBottom" Style="{StaticResource PlayBtnBig}" Content="&#x25B6;"
+                            Click="btnPlay_Click" Margin="12,0" ToolTip="{loc:Tr 'PlayOrPause'}"/>
+                    <Button x:Name="btnNextBottom" Style="{StaticResource TransportMini}" Content="&#x23ED;"
+                            Click="btnNextBottom_Click" ToolTip="{loc:Tr 'GoToEnd'}"/>
+                </StackPanel>
+
+                <!-- Right: playback progress -->
+                <ProgressBar x:Name="transportProgress" Grid.Column="2" Width="240" Height="6"
+                             Minimum="0" Maximum="1" Value="0" HorizontalAlignment="Right" VerticalAlignment="Center"
+                             IsHitTestVisible="False" Foreground="{StaticResource AccentBrush}" Background="#14151A"
+                             BorderThickness="0">
+                    <ProgressBar.Template>
+                        <ControlTemplate TargetType="ProgressBar">
+                            <Border CornerRadius="3" Background="{TemplateBinding Background}">
+                                <Grid>
+                                    <Border x:Name="PART_Track"/>
+                                    <Border x:Name="PART_Indicator" HorizontalAlignment="Left" CornerRadius="3"
+                                            Background="{TemplateBinding Foreground}"/>
+                                </Grid>
+                            </Border>
+                        </ControlTemplate>
+                    </ProgressBar.Template>
+                </ProgressBar>
+            </Grid>
         </Border>
 
     </Grid>

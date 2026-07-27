@@ -186,7 +186,8 @@ namespace MusicTracker.Engine.Timeline
                         var ml = new MelodicLineModule
                         {
                             BeatsPerBar = Math.Max(1, (int)Math.Round(secBeats)), VoiceCount = 1,
-                            Contour = line.Contour, Anchor = line.Anchor, RegisterShift = line.Register, Continuity = 30,
+                            Contour = line.Contour, Anchor = line.Anchor,
+                            RegisterShift = line.Register != 0 ? line.Register : RegisterForProgram(track.Instrument), Continuity = 30,
                         };
                         ml.SetNotes(AiTranslate.BuildRhythmNotes(new List<double>(line.Durations), lSlices, spq), spq, lSlices);
                         track.Items.Add(new TimelineItem { Module = ml, SilenceBefore = Math.Max(0, startBeat - cursor) });
@@ -203,7 +204,7 @@ namespace MusicTracker.Engine.Timeline
                         foreach (var s in slots) { if (b + 1e-6 >= s.StartBeat) chosen = s; else break; }
                         return chosen;
                     };
-                    var notes = TemplateComposer.RenderRiff(phrase, sectionBeats, chordAt, scalePcs, tonicPc, 0, rspq);
+                    var notes = TemplateComposer.RenderRiff(phrase, sectionBeats, chordAt, scalePcs, tonicPc, RegisterForProgram(track.Instrument), rspq);
                     if (notes.Count == 0) continue;
 
                     var riff = new Riff { Name = track.Name, SlicesPerQuarter = rspq, LengthSlices = (int)Math.Round(sectionBeats * rspq), Notes = notes };
@@ -214,6 +215,25 @@ namespace MusicTracker.Engine.Timeline
             }
 
             return new TimelineDocument { Project = p, Riffs = riffs };
+        }
+
+        // Base octave offset (semitones) for a track, from its GM instrument family. RenderRiff writes every phrase
+        // around middle C (MIDI 60) unless shifted, so a bass part would otherwise play at the melody's pitch. Only
+        // genuinely LOW instruments are shifted down; everything else stays at 0. (The AI phrase notes are relative to
+        // the tonic — the model can't reliably express absolute octave — so the register is enforced here, per instrument.)
+        static int RegisterForProgram(int gm)
+        {
+            if (gm >= 32 && gm <= 39) return -24;      // basses: acoustic / electric / fretless / synth bass
+            switch (gm)
+            {
+                case 43: return -24;                   // contrabass (contrebasse)
+                case 58: return -24;                   // tuba
+                case 42: return -12;                   // cello
+                case 57: return -12;                   // trombone
+                case 67: return -12;                   // baritone sax
+                case 70: return -12;                   // bassoon
+                default: return 0;
+            }
         }
 
         static Engine.Score.KeySignature KeyFromTonality(TplTonality t)

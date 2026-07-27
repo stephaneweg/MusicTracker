@@ -171,9 +171,6 @@
             </Grid>
 
             <WrapPanel Margin="0,10,0,0">
-                <CheckBox x:Name="chkFixNotes" Content="{loc:Tr 'FixOutOfChordNotes'}" Foreground="{StaticResource CommonForeground}"
-                          IsChecked="True" VerticalAlignment="Center" Cursor="Hand" Margin="0,0,22,8"
-                          ToolTip="{loc:Tr 'RiffModeSnapsWrongNotesOn'}"/>
                 <CheckBox x:Name="chkDrums" Content="{loc:Tr 'DrumTrack'}" Foreground="{StaticResource CommonForeground}"
                           VerticalAlignment="Center" Cursor="Hand" Margin="0,0,22,8"
                           ToolTip="{loc:Tr 'AlsoRequestADrumTrackThe'}"/>

@@ -9,7 +9,7 @@
         xmlns:screens="clr-namespace:MusicTracker.Screens"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d" WindowState="Maximized"
-        Title="MusicTracker" Height="600" Width="800" Loaded="Window_Loaded"
+        Title="Aria Studio" Height="600" Width="800" Loaded="Window_Loaded"
         StateChanged="Window_StateChanged"
         Background="{StaticResource DarkBackground}"
         UseLayoutRounding="True">

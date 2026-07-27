@@ -5,7 +5,11 @@
 ; Per-user install (PrivilegesRequired=lowest) so the auto-update can run the installer /VERYSILENT
 ; WITHOUT a UAC prompt. User data lives in %AppData%/%LocalAppData% (see AppPaths), never next to the exe.
 
+; MyAppName = internal identity (install path + output filename) — KEEP "MusicTracker" so the
+; in-app auto-update keeps finding MusicTrackerSetup-*.exe and upgrading in place.
 #define MyAppName "MusicTracker"
+; MyAppDisplayName = the user-visible product name shown in the wizard, shortcuts and Start menu.
+#define MyAppDisplayName "Aria Studio"
 #define MyAppPublisher "Stéphan Wegener"
 #define MyAppExeName "MusicTracker.exe"
 
@@ -22,11 +26,11 @@
 [Setup]
 ; A STABLE AppId so successive versions upgrade in place (never change it).
 AppId={{A3F1C9E2-7B4D-4E6A-9C21-5D8E0F3B2A17}
-AppName={#MyAppName}
+AppName={#MyAppDisplayName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
-DefaultGroupName={#MyAppName}
+DefaultGroupName={#MyAppDisplayName}
 DisableProgramGroupPage=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir={#OutputDir}
@@ -48,11 +52,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; Excludes: "*.pdb,*.vshost.*,SoundFont\*,userdata\*,settings.json,recent.json,userdata.json"
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\{#MyAppDisplayName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppDisplayName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppDisplayName}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 // Warn (but don't block) if the .NET Framework 4.8 runtime is missing.
@@ -64,7 +68,7 @@ begin
   if RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full', 'Release', release) then
   begin
     if release < 528040 then
-      MsgBox('MusicTracker nécessite Microsoft .NET Framework 4.8.' + #13#10 +
+      MsgBox('Aria Studio nécessite Microsoft .NET Framework 4.8.' + #13#10 +
              'Il n''a pas été détecté ; installez-le si l''application ne démarre pas.', mbInformation, MB_OK);
   end;
 end;

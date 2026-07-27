@@ -55,3 +55,7 @@ midi/
 releases/
 # Inno Setup build output (the .exe is published to the releases repo, not here)
 /installer/Output/
+
+# --- Marketing website ---
+# Site vitrine PHP, déployé manuellement hors GitHub.
+/WebSite/

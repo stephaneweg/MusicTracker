@@ -352,6 +352,107 @@ namespace MusicTracker.Engine.Timeline
             TimelineHelper.InsertTopLevel(track, item); // no big-enough gap -> append (handles the loop-Repeat-last invariant)
         }
 
+        // Insert `item` (nominal length `len` beats) right AFTER the top-level block located at `cursorBeat` on
+        // `track`, filling the gap before the FOLLOWING block. If the new module is longer than that gap it is
+        // TRUNCATED to fit (best-effort per module type) rather than pushing the rest of the line. Falls back to
+        // InsertTopLevel when the cursor sits at/after the last block (append, honoring the trailing-loop invariant),
+        // and pushes only when the following block is immediately adjacent (no gap to fill).
+        public static void PlaceAtCursor(TimelineTrack track, TimelineItem item, double len, double cursorBeat, Func<Guid, Riff> resolveRiff)
+        {
+            var items = track?.Items;
+            if (items == null || items.Count == 0) { InsertTopLevel(track, item); return; }
+
+            // "The block at the cursor" = the last top-level block whose START is at/before the cursor.
+            double cur = 0; int at = -1;
+            for (int i = 0; i < items.Count; i++)
+            {
+                cur += items[i].SilenceBefore;
+                if (cur <= cursorBeat + 1e-6) at = i;                            // this block starts before/at the cursor
+                cur += Engine.Timeline.TimelineProject.ItemLength(items[i], resolveRiff);
+            }
+
+            // Cursor before the very first block → insert at the front, inside the leading gap.
+            if (at < 0)
+            {
+                double gap0 = items[0].SilenceBefore;
+                double use0 = FitModuleToGap(item.Module, len, gap0, resolveRiff);
+                item.SilenceBefore = 0;
+                items[0].SilenceBefore = Math.Max(0, gap0 - use0);
+                items.Insert(0, item);
+                return;
+            }
+
+            // Cursor on the last block → append (honors the trailing-loop-Repeat invariant).
+            if (at >= items.Count - 1) { InsertTopLevel(track, item); return; }
+
+            double gap = items[at + 1].SilenceBefore;
+            if (gap <= 1e-6)
+            {
+                // No room after the cursor block → insert anyway, pushing the rest of the line right.
+                item.SilenceBefore = 0;
+                items.Insert(at + 1, item);
+                return;
+            }
+            double use = FitModuleToGap(item.Module, len, gap, resolveRiff);
+            item.SilenceBefore = 0;
+            items[at + 1].SilenceBefore = Math.Max(0, gap - use);
+            items.Insert(at + 1, item);
+        }
+
+        // If `len` exceeds `gap`, shrink the module to `gap` beats and return the effective length; else return `len`.
+        static double FitModuleToGap(FlowModule m, double len, double gap, Func<Guid, Riff> resolveRiff)
+        {
+            if (gap >= len - 1e-6) return len;                                   // fits: keep the module's full length
+            TruncateModule(m, gap, resolveRiff);
+            return gap;
+        }
+
+        // Best-effort shrink of a freshly-created module to `beats` (used when inserting into a too-small gap).
+        static void TruncateModule(FlowModule m, double beats, Func<Guid, Riff> resolveRiff)
+        {
+            if (beats < 1e-3) return;
+            switch (m)
+            {
+                case PlayRiffModule pr:
+                    {
+                        var r = resolveRiff?.Invoke(pr.RiffId);
+                        if (r != null && r.SlicesPerQuarter > 0)
+                        {
+                            int slices = Math.Max(1, (int)Math.Round(beats * r.SlicesPerQuarter));
+                            r.LengthSlices = slices;
+                            r.Notes?.RemoveAll(n => n.Start >= slices);          // drop notes past the cut (none for a new riff)
+                        }
+                        break;
+                    }
+                case PatternGeneratorModule pg:
+                    ClampBarsRepeats(pg.BeatsPerBar, pg.Repeats, beats, out int pgB, out int pgR);
+                    pg.BeatsPerBar = pgB; pg.Repeats = pgR;
+                    break;
+                case DrumPatternModule dp:
+                    ClampBarsRepeats(dp.BeatsPerBar, dp.Repeats, beats, out int dpB, out int dpR);
+                    dp.BeatsPerBar = dpB; dp.Repeats = dpR;
+                    break;
+                case CadenceModule cm:
+                    {
+                        int per = Math.Max(1, cm.BeatsPerBar);
+                        int keep = Math.Max(1, (int)Math.Floor(beats / per + 1e-6));
+                        if (cm.Chords != null && cm.Chords.Count > keep) cm.Chords.RemoveRange(keep, cm.Chords.Count - keep);
+                        break;
+                    }
+                case MelodicLineModule ml:
+                    ml.BeatsPerBar = Math.Max(1, (int)Math.Round(beats));
+                    break;
+            }
+        }
+
+        // Shrink a Bars×Repeats module to fit `beats`: reduce repeats first, then the bar length.
+        static void ClampBarsRepeats(int beatsPerBarIn, int repeatsIn, double beats, out int beatsPerBar, out int repeats)
+        {
+            beatsPerBar = Math.Max(1, beatsPerBarIn);
+            repeats = Math.Max(1, (int)Math.Floor(beats / beatsPerBar + 1e-6));
+            if (beatsPerBar * repeats > beats + 1e-6) { beatsPerBar = Math.Max(1, (int)Math.Round(beats)); repeats = 1; }
+        }
+
         // Visit every chord (PatternGeneratorModule) in the project, top-level and inside Repeats.
         public static void ForEachChordModule(TimelineProject project, Action<PatternGeneratorModule> action)
         {

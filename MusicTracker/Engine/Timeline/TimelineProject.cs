@@ -59,6 +59,7 @@ namespace MusicTracker.Engine.Timeline
         public string Name = "Piste";
         public TimelineTrackType Type = TimelineTrackType.Instrument;
         public int Instrument;                 // InstrumentCatalog index (used by INSTRUMENT type)
+        public int DrumKit = 0;                // DRUM type: index into InstrumentCatalog.DrumKits() (0 = Standard); the kit sound
         public Score.ScoreClefKind? Clef;      // explicit notation clef (null = derive from the instrument)
         public double Volume = 1.0;            // base volume
         public bool Mute = false;              // silenced
