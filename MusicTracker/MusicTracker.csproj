@@ -188,7 +188,6 @@
     <Compile Include="Engine\Timeline\ScoreSlicing.cs" />
     <Compile Include="Engine\Timeline\MidiTimelineExporter.cs" />
     <Compile Include="Engine\Timeline\MuseScoreExporter.cs" />
-    <Compile Include="Engine\Timeline\Composer.cs" />
     <Compile Include="Engine\Timeline\MusicComposer.cs" />
     <Compile Include="Engine\Timeline\ComposedArrangement.cs" />
     <Compile Include="Engine\Timeline\Harmony.cs" />
@@ -288,10 +287,8 @@
     <Compile Include="Dialogs\CadenceDialog.xaml.cs">
       <DependentUpon>CadenceDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Dialogs\ComposerDialog.xaml.cs">
-      <DependentUpon>ComposerDialog.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Dialogs\NewModelDialog.cs" />
+    <Compile Include="Dialogs\ConfirmDialog.cs" />
     <Compile Include="Dialogs\CreateStructureDialog.xaml.cs">
       <DependentUpon>CreateStructureDialog.xaml</DependentUpon>
     </Compile>
@@ -378,10 +375,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\CadenceDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\ComposerDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

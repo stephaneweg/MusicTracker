@@ -14,7 +14,9 @@ namespace MusicTracker.Controls
         public Func<FrameworkElement> Target; // resolved lazily (menus/buttons may not exist until shown)
         public string Title;
         public string Text;
-        public TourStep(Func<FrameworkElement> target, string title, string text) { Target = target; Title = title; Text = text; }
+        public Action Before;                 // optional: run when the step is shown (e.g. select an item + open its editor)
+        public TourStep(Func<FrameworkElement> target, string title, string text, Action before = null)
+        { Target = target; Title = title; Text = text; Before = before; }
     }
 
     /// <summary>
@@ -139,6 +141,9 @@ namespace MusicTracker.Controls
             if (i < 0 || i >= steps.Count) return;
             idx = i;
             var step = steps[i];
+
+            // Let a step set up the app (e.g. select a module so its editor opens) before we spotlight it.
+            try { step.Before?.Invoke(); owner.UpdateLayout(); } catch { }
 
             double W = overlay.Width, H = overlay.Height;
             var full = new RectangleGeometry(new Rect(0, 0, W, H));

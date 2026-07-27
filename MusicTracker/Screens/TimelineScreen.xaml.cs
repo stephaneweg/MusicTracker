@@ -947,24 +947,67 @@ namespace MusicTracker.Screens
 
         // ===== Guided tour (issue #11) =========================================================================
 
-        /// <summary>Run the interactive coach-mark tour over this editor's toolbar (spotlights the real controls).</summary>
+        /// <summary>Run the interactive coach-mark tour over this editor. Builds a small demo project (a chord, a riff
+        /// and a drum module) so the tour can also open each module's editor and spotlight its options.</summary>
         public void StartTutorial()
         {
             var win = Window.GetWindow(this);
             if (win == null) return;
+
+            BuildTutorialDemo(out var instrTrack, out var riffItem, out var chordTrack, out var chordItem, out var drumTrack, out var drumItem);
+
             var steps = new System.Collections.Generic.List<Controls.TourStep>
             {
-                new Controls.TourStep(() => null, Loc.T("TourWelcomeTitle"), Loc.T("TourWelcomeText")),
-                new Controls.TourStep(() => menuTracks,   Loc.T("TourTracksTitle"),  Loc.T("TourTracksText")),
+                new Controls.TourStep(() => null,          Loc.T("TourWelcomeTitle"), Loc.T("TourWelcomeText")),
+                new Controls.TourStep(() => menuTracks,    Loc.T("TourTracksTitle"),  Loc.T("TourTracksText")),
                 new Controls.TourStep(() => menuInsert,    Loc.T("TourInsertTitle"),  Loc.T("TourInsertText")),
                 new Controls.TourStep(() => tglKeyMenu,    Loc.T("TourKeyTitle"),     Loc.T("TourKeyText")),
                 new Controls.TourStep(() => tglMeterMenu,  Loc.T("TourMeterTitle"),   Loc.T("TourMeterText")),
+                // Open each module's editor (via its demo block) and spotlight the bottom editor panel + its options.
+                new Controls.TourStep(() => editorHost,    Loc.T("TourChordEdTitle"), Loc.T("TourChordEdText"), () => { if (chordItem != null) SelectItem(chordTrack, chordItem); }),
+                new Controls.TourStep(() => editorHost,    Loc.T("TourRiffEdTitle"),  Loc.T("TourRiffEdText"),  () => { if (riffItem != null) SelectItem(instrTrack, riffItem); }),
+                new Controls.TourStep(() => editorHost,    Loc.T("TourDrumEdTitle"),  Loc.T("TourDrumEdText"),  () => { if (drumItem != null) SelectItem(drumTrack, drumItem); }),
                 new Controls.TourStep(() => btnPlay,       Loc.T("TourPlayTitle"),    Loc.T("TourPlayText")),
                 new Controls.TourStep(() => btnUndo,       Loc.T("TourUndoTitle"),    Loc.T("TourUndoText")),
                 new Controls.TourStep(() => btnImport,     Loc.T("TourImportTitle"),  Loc.T("TourImportText")),
                 new Controls.TourStep(() => null,          Loc.T("TourEndTitle"),     Loc.T("TourEndText")),
             };
             Controls.GuidedTour.Run(win, steps);
+        }
+
+        // Populate this (fresh) editor with a minimal demo: one chord (chords track), one riff (instrument track) and
+        // one drum module (a new drum track) — just enough content for the tour to open each editor. Not undoable.
+        void BuildTutorialDemo(out TimelineTrack instrTrack, out TimelineItem riffItem,
+                               out TimelineTrack chordTrack, out TimelineItem chordItem,
+                               out TimelineTrack drumTrack, out TimelineItem drumItem)
+        {
+            int temps = TimelineHelper.RulerBeatsPerBar(project);
+
+            instrTrack = null;
+            foreach (var t in project.Tracks) if (t.Type == TimelineTrackType.Instrument) { instrTrack = t; break; }
+            if (instrTrack == null) { instrTrack = new TimelineTrack { Name = "Piste 1", Instrument = 0 }; project.Tracks.Insert(0, instrTrack); }
+
+            // Chord on the dedicated chords track.
+            TimelineHelper.EnsureChordTrack(project);
+            chordTrack = TimelineHelper.ChordTrack(project);
+            chordItem = new TimelineItem { Module = NewChordLike(null) };
+            TimelineHelper.InsertTopLevel(chordTrack, chordItem);
+
+            // Empty 1-bar riff on the instrument track.
+            var riff = new Riff { Name = "Riff", LengthSlices = temps * 24, SlicesPerQuarter = 24 };
+            RiffLibrary.Instance.Riffs.Add(riff);
+            riffItem = new TimelineItem { Module = new PlayRiffModule { RiffId = riff.Id } };
+            TimelineHelper.PlaceAtCursor(instrTrack, riffItem, temps, 0, TimelineHelper.RiffById);
+
+            // Drum module on a new drum track.
+            drumTrack = new TimelineTrack { Name = "Batterie", Type = TimelineTrackType.Drum, Instrument = InstrumentCatalog.DrumIndex };
+            project.Tracks.Add(drumTrack);
+            TimelineHelper.EnsureChordTrack(project); // keep the chords track pinned at the bottom
+            drumItem = new TimelineItem { Module = new DrumPatternModule() };
+            TimelineHelper.PlaceAtCursor(drumTrack, drumItem, temps, 0, TimelineHelper.RiffById);
+
+            undoMgr.Clear(); pendingUndo = null; pendingUndoKey = null; // the demo isn't a user action
+            Render();
         }
 
         void TimelineKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -3367,9 +3410,20 @@ namespace MusicTracker.Screens
                 var toDrum = new MenuItem { Header = Loc.T("ConvertirEnBatterie2"), ToolTip = Loc.T("RemplaceCeRiffParUnModule") };
                 toDrum.Click += (s, e) => ConvertRiffToDrums(track, item, prm);
                 menu.Items.Add(toDrum);
-                // "Fusionner avec le suivant" — only when the NEXT top-level box is also a riff.
-                int mIdx = track.Items.IndexOf(item);
-                if (mIdx >= 0 && mIdx + 1 < track.Items.Count && track.Items[mIdx + 1].Module is PlayRiffModule)
+                menu.Items.Add(new Separator());
+            }
+            if (item.Module is MelodicLineModule mlm)
+            {
+                var toRiff = new MenuItem { Header = Loc.T("ConvertirEnNotesEditables"), ToolTip = Loc.T("FigeLesHauteursQueLeMoteur") };
+                toRiff.Click += (s, e) => ConvertMelodicLineToRiff(track, item, mlm);
+                menu.Items.Add(toRiff);
+                menu.Items.Add(new Separator());
+            }
+            // Merge (a riff OR a melodic line; a melodic line is frozen to riff notes → the result is a riff).
+            if (TimelineHelper.IsMergeable(item))
+            {
+                int ci = track.Items.IndexOf(item);
+                if (ci >= 0 && ci + 1 < track.Items.Count && TimelineHelper.IsMergeable(track.Items[ci + 1]))
                 {
                     var merge = new MenuItem { Header = Loc.T("FusionnerAvecLeSuivant"), ToolTip = Loc.T("ConcateneCeRiffEtLeSuivant") };
                     merge.Click += (s, e) =>
@@ -3379,13 +3433,17 @@ namespace MusicTracker.Screens
                     };
                     menu.Items.Add(merge);
                 }
-                menu.Items.Add(new Separator());
-            }
-            if (item.Module is MelodicLineModule mlm)
-            {
-                var toRiff = new MenuItem { Header = Loc.T("ConvertirEnNotesEditables"), ToolTip = Loc.T("FigeLesHauteursQueLeMoteur") };
-                toRiff.Click += (s, e) => ConvertMelodicLineToRiff(track, item, mlm);
-                menu.Items.Add(toRiff);
+                if (TimelineHelper.MergeableCount(track) >= 2)
+                {
+                    var mergeAll = new MenuItem { Header = Loc.T("FusionnerTouteLaLigne"), ToolTip = Loc.T("FusionneTousLesBlocsDeLa") };
+                    mergeAll.Click += (s, e) =>
+                    {
+                        CommitRiffEditor();
+                        var head = TimelineHelper.MergeWholeLine(project, track);
+                        if (head != null) { selectedTrack = track; SelectItem(track, head); Render(); }
+                    };
+                    menu.Items.Add(mergeAll);
+                }
                 menu.Items.Add(new Separator());
             }
             var copy = new MenuItem { Header = Loc.T("Copier") };

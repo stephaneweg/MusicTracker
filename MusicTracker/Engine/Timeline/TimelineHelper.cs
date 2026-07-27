@@ -1041,7 +1041,11 @@ namespace MusicTracker.Engine.Timeline
             int idx = items.IndexOf(item);
             if (idx < 0 || idx + 1 >= items.Count) return false;
             var next = items[idx + 1];
-            if (!(item.Module is PlayRiffModule pr) || !(next.Module is PlayRiffModule pr2)) return false;
+            // A riff and/or a melodic line can merge; a melodic line is first frozen into riff notes (result = a riff).
+            if (!IsMergeable(item) || !IsMergeable(next)) return false;
+            // Convert `next` FIRST (its pitch resolution uses `item`'s ORIGINAL length for its bar position), then `item`.
+            if (!EnsureRiffModule(project, track, next) || !EnsureRiffModule(project, track, item)) return false;
+            var pr = (PlayRiffModule)item.Module; var pr2 = (PlayRiffModule)next.Module;
             var r1 = RiffById(pr.RiffId); var r2 = RiffById(pr2.RiffId);
             if (r1 == null || r2 == null || ReferenceEquals(r1, r2)) return false;
 
@@ -1062,6 +1066,57 @@ namespace MusicTracker.Engine.Timeline
             r1.LengthSlices = off + Math.Max(0, r2len);
             items.RemoveAt(idx + 1);
             return true;
+        }
+
+        // A timeline box that can be merged into a riff: a PlayRiff, or a MelodicLine (frozen to riff notes on merge).
+        public static bool IsMergeable(TimelineItem it) => it?.Module is PlayRiffModule || it?.Module is MelodicLineModule;
+
+        // Ensure `item.Module` is a PlayRiff: a MelodicLine is converted IN PLACE (pitches resolved from the chords at
+        // its position). Returns true if item is (now) a riff. No UI (used by the merge helpers) — false if empty.
+        static bool EnsureRiffModule(TimelineProject project, TimelineTrack track, TimelineItem item)
+        {
+            if (item?.Module is PlayRiffModule) return true;
+            if (item?.Module is MelodicLineModule ml)
+            {
+                double startBeat = ItemStartBeat(track, item);
+                var key = project.Key ?? new Engine.Score.KeySignature();
+                var riff = Engine.Timeline.MelodicLineEngine.GenerateLine(ml, project, RiffById, key, startBeat);
+                if (riff?.Notes == null || riff.Notes.Count == 0) return false;
+                riff.Name = !string.IsNullOrWhiteSpace(ml.LineName) ? ml.LineName : ("Ligne " + (RiffLibrary.Instance.Riffs.Count + 1));
+                RiffLibrary.Instance.Riffs.Add(riff);
+                item.Module = new PlayRiffModule { RiffId = riff.Id };
+                return true;
+            }
+            return false;
+        }
+
+        // Count the top-level mergeable boxes (riffs + melodic lines) on a track.
+        public static int MergeableCount(TimelineTrack track)
+        {
+            int c = 0; if (track?.Items != null) foreach (var it in track.Items) if (IsMergeable(it)) c++; return c;
+        }
+
+        // Merge the WHOLE line into one riff: start at the first mergeable box (riff or melodic line) and absorb each
+        // following mergeable box (via MergeWithNext, which preserves the gap between boxes as silence) for as long as
+        // the next box is mergeable. Returns the merged head item (or null if nothing merged). Stops at the first
+        // non-mergeable box (e.g. a Repeat). Melodic lines are frozen to riff notes along the way.
+        public static TimelineItem MergeWholeLine(TimelineProject project, TimelineTrack track)
+        {
+            var items = track?.Items;
+            if (items == null) return null;
+            int i = 0;
+            while (i < items.Count && !IsMergeable(items[i])) i++;                  // first mergeable box on the line
+            if (i >= items.Count) return null;
+            var head = items[i];
+            bool any = false;
+            while (true)
+            {
+                int hi = items.IndexOf(head);
+                if (hi < 0 || hi + 1 >= items.Count || !IsMergeable(items[hi + 1])) break;
+                if (!MergeWithNext(project, track, head)) break;                    // absorbs items[hi+1], keeps the gap
+                any = true;
+            }
+            return any ? head : null;
         }
 
         public static bool VariateTheme(Window owner,TimelineProject project, Riff src,

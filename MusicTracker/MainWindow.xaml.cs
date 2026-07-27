@@ -141,8 +141,8 @@ namespace MusicTracker
             {
                 UserData.Instance.TutorialShown = true;
                 UserData.Instance.Save();
-                if (MessageBox.Show(this, Loc.T("TourOfferText"), Loc.T("TourOfferTitle"),
-                                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                if (Dialogs.ConfirmDialog.Ask(this, Loc.T("TourOfferTitle"), Loc.T("TourOfferText"),
+                                              Loc.T("TourOfferYes"), Loc.T("TourOfferNo")))
                     StartTutorialInNewTab();
             }
         }
