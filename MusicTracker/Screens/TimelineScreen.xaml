@@ -331,7 +331,7 @@
 
                 <!-- Action menus (less dense than a row of buttons). "Insérer" adapts to the selected track type. -->
                 <Menu Background="Transparent" VerticalAlignment="Center" Foreground="#DDDDDD">
-                    <MenuItem Header="{loc:Tr 'Track'}" Foreground="#DDDDDD">
+                    <MenuItem x:Name="menuTracks" Header="{loc:Tr 'Track'}" Foreground="#DDDDDD">
                         <MenuItem Header="{loc:Tr 'InstrumentTrack'}" Click="btnAddInstrTrack_Click"/>
                         <MenuItem Header="{loc:Tr 'DrumTrack2'}" Click="btnAddDrumTrack_Click"/>
                         <Separator/>

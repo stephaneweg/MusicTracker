@@ -320,6 +320,7 @@
     <Compile Include="Controls\ResponsiveWrapPanel.cs" />
     <Compile Include="Controls\WindowDrag.cs" />
     <Compile Include="Controls\ReflowButtons.cs" />
+    <Compile Include="Controls\GuidedTour.cs" />
     <Compile Include="Engine\Flow\DrumCatalog.cs" />
     <Compile Include="Engine\Timeline\TemplateSpec.cs" />
     <Compile Include="Engine\Timeline\TemplateComposer.cs" />

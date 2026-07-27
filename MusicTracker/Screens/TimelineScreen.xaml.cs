@@ -945,6 +945,28 @@ namespace MusicTracker.Screens
         void btnUndo_Click(object sender, RoutedEventArgs e) => DoUndo();
         void btnRedo_Click(object sender, RoutedEventArgs e) => DoRedo();
 
+        // ===== Guided tour (issue #11) =========================================================================
+
+        /// <summary>Run the interactive coach-mark tour over this editor's toolbar (spotlights the real controls).</summary>
+        public void StartTutorial()
+        {
+            var win = Window.GetWindow(this);
+            if (win == null) return;
+            var steps = new System.Collections.Generic.List<Controls.TourStep>
+            {
+                new Controls.TourStep(() => null, Loc.T("TourWelcomeTitle"), Loc.T("TourWelcomeText")),
+                new Controls.TourStep(() => menuTracks,   Loc.T("TourTracksTitle"),  Loc.T("TourTracksText")),
+                new Controls.TourStep(() => menuInsert,    Loc.T("TourInsertTitle"),  Loc.T("TourInsertText")),
+                new Controls.TourStep(() => tglKeyMenu,    Loc.T("TourKeyTitle"),     Loc.T("TourKeyText")),
+                new Controls.TourStep(() => tglMeterMenu,  Loc.T("TourMeterTitle"),   Loc.T("TourMeterText")),
+                new Controls.TourStep(() => btnPlay,       Loc.T("TourPlayTitle"),    Loc.T("TourPlayText")),
+                new Controls.TourStep(() => btnUndo,       Loc.T("TourUndoTitle"),    Loc.T("TourUndoText")),
+                new Controls.TourStep(() => btnImport,     Loc.T("TourImportTitle"),  Loc.T("TourImportText")),
+                new Controls.TourStep(() => null,          Loc.T("TourEndTitle"),     Loc.T("TourEndText")),
+            };
+            Controls.GuidedTour.Run(win, steps);
+        }
+
         void TimelineKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             var mods = System.Windows.Input.Keyboard.Modifiers;

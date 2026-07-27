@@ -10,6 +10,9 @@ namespace MusicTracker
 {
     public class UserData
     {
+        /// <summary>True once the first-launch guided tour has been offered (so it isn't proposed again).</summary>
+        public bool TutorialShown { get; set; } = false;
+
         static UserData _instance = Load();
         public static UserData Instance
         {

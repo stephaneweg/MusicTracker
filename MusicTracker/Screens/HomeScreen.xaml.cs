@@ -12,6 +12,7 @@ namespace MusicTracker.Screens
     public partial class HomeScreen : UserControl
     {
         public event Action NewSequencerRequested;
+        public event Action TutorialRequested;   // "Tutoriel" tile: open a timeline and run the guided tour
         public event Action OpenRequested;
         public event Action<RecentEntry> OpenRecentRequested;
         public event Action ComposeAiRequested;
@@ -420,6 +421,8 @@ namespace MusicTracker.Screens
         }
 
         private void BtnNewSequencer_Click(object sender, System.Windows.RoutedEventArgs e) => NewSequencerRequested?.Invoke();
+
+        private void BtnTutorial_Click(object sender, System.Windows.RoutedEventArgs e) => TutorialRequested?.Invoke();
         private void BtnComposeAi_Click(object sender, System.Windows.RoutedEventArgs e) => ComposeAiRequested?.Invoke();
         private void BtnOpen_Click(object sender, System.Windows.RoutedEventArgs e) => OpenRequested?.Invoke();
 

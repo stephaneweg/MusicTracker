@@ -35,6 +35,7 @@ namespace MusicTracker
             homeScreen.OpenRecentRequested += (entry) => OpenPath(entry.Path);
             homeScreen.ComposeAiRequested += ComposeWithAiNewTab;
             homeScreen.TemplateSpecRequested += OpenTemplateSpec;
+            homeScreen.TutorialRequested += StartTutorialInNewTab;
             homeBtn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(16, 0, 16, 0), Content = Loc.T("Home"),
                                    Background = new SolidColorBrush(Color.FromRgb(0x24, 0x25, 0x2C)) }; // a bit darker than the music tabs
             homeBtn.Click += (s, e) => Select(homeScreen);
@@ -134,6 +135,25 @@ namespace MusicTracker
 
             // Then, best-effort, see whether a newer build has been published.
             await CheckForUpdatesAsync();
+
+            // First launch: offer the guided tour once (relaunchable anytime from the home screen's "Tutoriel" tile).
+            if (!UserData.Instance.TutorialShown)
+            {
+                UserData.Instance.TutorialShown = true;
+                UserData.Instance.Save();
+                if (MessageBox.Show(this, Loc.T("TourOfferText"), Loc.T("TourOfferTitle"),
+                                    MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                    StartTutorialInNewTab();
+            }
+        }
+
+        // Open a fresh timeline tab and run the interactive guided tour over it (once it has laid out).
+        void StartTutorialInNewTab()
+        {
+            var editor = new TimelineScreen();
+            OpenEditor(editor, null);
+            Dispatcher.BeginInvoke(new Action(() => editor.StartTutorial()),
+                                   System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         /// <summary>

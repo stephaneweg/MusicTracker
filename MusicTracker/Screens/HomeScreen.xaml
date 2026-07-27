@@ -341,6 +341,20 @@
                                         </StackPanel>
                                     </DockPanel>
                                 </Button>
+
+                                <!-- Tutoriel : visite guidée de l'éditeur -->
+                                <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnTutorial_Click">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="#2A2C31" VerticalAlignment="Center" Margin="0,0,14,0">
+                                            <TextBlock Text="🎓" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock DockPanel.Dock="Right" Text="›" Foreground="{StaticResource SecondaryForeground}" FontSize="22" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{loc:Tr 'TourTuile'}" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{loc:Tr 'TourTuileSub'}" Foreground="{StaticResource SecondaryForeground}" FontSize="12" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Button>
                             </ctl:ReflowButtons>
                         </StackPanel>
 
