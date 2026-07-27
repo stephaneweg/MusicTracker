@@ -492,5 +492,15 @@ namespace MusicTracker.Screens
             if (listRecent.SelectedItem is RecentEntry entry)
                 OpenRecentRequested?.Invoke(entry);
         }
+
+        // Collapse / expand the left "Récents" panel (also handy for clean screenshots).
+        bool recentCollapsed;
+        private void ToggleRecent_Click(object sender, RoutedEventArgs e)
+        {
+            recentCollapsed = !recentCollapsed;
+            colRecent.Width = new GridLength(recentCollapsed ? 0 : 300);
+            recentPanel.Visibility = recentCollapsed ? Visibility.Collapsed : Visibility.Visible;
+            reopenRecent.Visibility = recentCollapsed ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 }
