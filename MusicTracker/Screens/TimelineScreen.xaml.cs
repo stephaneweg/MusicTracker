@@ -3035,6 +3035,72 @@ namespace MusicTracker.Screens
             custBtn.Click += (s, e) => { TimelineHelper.CustomizeDrum(dp); syncing = true; cboCat.SelectedItem = CUSTOM; syncing = false; FillMotifs(CUSTOM, CUSTOM); refresh(); };
             left.Children.Add(custBtn);
 
+            // ---- Décalage + génération euclidienne -------------------------------------------------------------
+            // Les deux agissent sur UNE ligne de percussion à la fois : superposer = répéter l'opération. Le motif
+            // produit reste un motif personnalisé ordinaire, donc modifiable à la main dans la grille.
+            var laneNames = DrumPattern.LaneNames;
+            int euLane = 0, euK = 3, euN = 8, euRot = 0, euUnit = 0;
+            var stepNames = new[] { Loc.T("Croche"), Loc.T("DoubleCroche"), Loc.T("TrioletDeCroche") };
+            var stepSlices = new[] { 12, 6, 8 };   // sur la grille à 24 slices/noire : tous exacts
+
+            left.Children.Add(EdLabel(Loc.T("EuclidLigne")));
+            var cboLane = new ComboBox { Width = 180, HorizontalAlignment = HorizontalAlignment.Left, ItemsSource = laneNames, SelectedIndex = 0 };
+            cboLane.SelectionChanged += (s, e) => { if (cboLane.SelectedIndex >= 0) euLane = cboLane.SelectedIndex; };
+            left.Children.Add(cboLane);
+
+            // Décalage : des boutons plutôt qu'un champ, parce qu'un décalage se cherche à l'oreille par essais
+            // successifs et non en saisissant une valeur connue d'avance.
+            left.Children.Add(EdLabel(Loc.T("Decalage")));
+            var shiftRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+            Action<int> shift = dir =>
+            {
+                PushUndo("euclid:rot");
+                TimelineHelper.RotateDrumLane(dp, euLane, dir * stepSlices[Math.Max(0, euUnit)]);
+                editorHost.Content = BuildDrumEditor(track, item, dp); Render();
+            };
+            foreach (var (glyph, dir) in new[] { ("◀", -1), ("▶", +1) })
+            {
+                var b = new Button { Content = glyph, Width = 34, Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(0, 2, 0, 2), Cursor = Cursors.Hand, ToolTip = Loc.T("DecalerCetteLigneDUnPas") };
+                int d = dir; b.Click += (s, e) => shift(d);
+                shiftRow.Children.Add(b);
+            }
+            left.Children.Add(shiftRow);
+
+            // Génération euclidienne, repliée par défaut.
+            var euPanel = new StackPanel();
+            var euExp = new Expander { Header = Loc.T("RepartirRegulierement"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 4, 0, 6), Content = euPanel };
+            var preview = new TextBlock { FontFamily = new FontFamily("Consolas"), FontSize = 13, Foreground = "#1FB6C3".ToBrush(), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) };
+            Action redraw = () =>
+            {
+                var pat = Engine.Flow.EuclideanRhythm.Rotate(Engine.Flow.EuclideanRhythm.Pattern(euK, euN), euRot);
+                var sb = new System.Text.StringBuilder();
+                foreach (var on in pat) sb.Append(on ? '●' : '·');
+                string nm = Engine.Flow.EuclideanRhythm.NameFor(pat);
+                if (nm != null) sb.Append("   « ").Append(nm).Append(" »");
+                // Combien de coups tombent sur un temps : ce qui ancre l'harmonie d'une ligne mélodique, et ce que
+                // le décalage fait varier sans changer le rythme perçu.
+                int spb = DrumPattern.SlicesPerQuarter, st = stepSlices[Math.Max(0, euUnit)], onBeat = 0;
+                for (int i = 0; i < pat.Length; i++) if (pat[i] && (i * st) % spb == 0) onBeat++;
+                sb.Append('\n').Append(Loc.T("SurLesTemps")).Append(' ').Append(onBeat);
+                if ((euN * st) % (Math.Max(1, dp.BeatsPerBar) * spb) != 0) sb.Append("   ").Append(Loc.T("SeDecaleDUneMesureALAutre"));
+                preview.Text = sb.ToString();
+            };
+            euPanel.Children.Add(EdLabel(Loc.T("Coups"))); euPanel.Children.Add(ParamNum(euK, v => euK = Math.Max(0, v), redraw));
+            euPanel.Children.Add(EdLabel(Loc.T("Pas"))); euPanel.Children.Add(ParamNum(euN, v => euN = Math.Max(1, v), redraw));
+            euPanel.Children.Add(EdLabel(Loc.T("Decalage"))); euPanel.Children.Add(ParamNum(euRot, v => euRot = v, redraw));
+            euPanel.Children.Add(EdLabel(Loc.T("Unite"))); euPanel.Children.Add(ParamCombo(stepNames, 0, v => euUnit = v, redraw));
+            euPanel.Children.Add(preview);
+            var euApply = new Button { Content = Loc.T("Appliquer"), Margin = new Thickness(0, 2, 0, 2), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left };
+            euApply.Click += (s, e) =>
+            {
+                PushUndo("euclid:gen");
+                TimelineHelper.ApplyEuclideanDrum(dp, euLane, euK, euN, euRot, stepSlices[Math.Max(0, euUnit)]);
+                editorHost.Content = BuildDrumEditor(track, item, dp); Render();
+            };
+            euPanel.Children.Add(euApply);
+            redraw();
+            left.Children.Add(euExp);
+
             left.Children.Add(EdLabel(Loc.T("Densite"))); left.Children.Add(ParamCombo(DrumPattern.DensityNames, dp.Density, v => dp.Density = v, refresh));
             var fill = new CheckBox { Content = Loc.T("FillSurLaDerniereMesure"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = dp.FillLast };
             fill.Checked += (s, e) => { dp.FillLast = true; }; fill.Unchecked += (s, e) => { dp.FillLast = false; };

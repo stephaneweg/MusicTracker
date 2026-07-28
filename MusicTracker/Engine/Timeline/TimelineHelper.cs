@@ -487,6 +487,61 @@ namespace MusicTracker.Engine.Timeline
             dp.CatCategory = "Personnalisé"; dp.CatMotif = "Personnalisé";
         }
 
+        // ---- rythmes euclidiens (batterie) -----------------------------------------------------------------
+        // La longueur du cycle répété par DrumPattern.Generate : la grille stockée si elle existe, sinon la
+        // longueur de la liste de notes. NE PAS remplacer par BeatsPerBar × 24 — un motif du catalogue peut
+        // faire plusieurs mesures, et la rotation serait alors fausse.
+        static int DrumUnit(DrumPatternModule dp)
+        {
+            if (dp.CustomSlices != null && dp.CustomSlices.Length > 0) return dp.CustomSlices.Length;
+            int n = Engine.RiffNotes.LengthOf(dp.CustomNotes);
+            return n > 0 ? n : Math.Max(1, dp.BeatsPerBar) * DrumPattern.SlicesPerQuarter;
+        }
+
+        /// <summary>Écrit un motif euclidien E(k,n) sur UNE ligne de percussion, sans toucher aux autres.
+        /// Le module bascule en motif personnalisé (sinon l'éditeur masque la grille) et le résultat reste
+        /// modifiable à la main.</summary>
+        public static void ApplyEuclideanDrum(DrumPatternModule dp, int lane, int k, int n, int rotation, int stepSlices)
+        {
+            if (dp == null || lane < 0) return;
+            if (!DrumIsCustom(dp)) CustomizeDrum(dp);   // même bascule que le bouton « Personnaliser »
+
+            // Le cycle euclidien ne tombe pas forcément juste sur la mesure (E(2,5) en croches = 2,5 temps) et doit
+            // pouvoir se DÉCALER de mesure en mesure. On écrit donc le motif sur toute la longueur du module et on
+            // ramène Repeats à 1 : la durée totale est inchangée (unité × 1 = ancienne unité × Repeats), mais le
+            // motif n'est plus recalé à chaque mesure. Ajuster Repeats pour conserver la durée est déjà ce que fait
+            // ApplyDrumCatalog en changeant de motif.
+            int total = DrumUnit(dp) * Math.Max(1, dp.Repeats);
+            int oldUnit = DrumUnit(dp);
+            var notes = new System.Collections.Generic.List<Engine.RiffNote>();
+            if (dp.CustomNotes != null)
+                for (int r = 0; r < Math.Max(1, dp.Repeats); r++)      // déplier l'existant, qui était répété
+                    foreach (var x in dp.CustomNotes)
+                        if (x.Note != lane) notes.Add(new Engine.RiffNote(x.Note, r * oldUnit + x.Start, x.Length));
+            notes.AddRange(Engine.Flow.EuclideanRhythm.Build(lane, k, n, rotation, stepSlices, total));
+            notes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+            dp.Repeats = 1;
+            dp.SetCustomNotes(notes, DrumPattern.SlicesPerQuarter, total);
+        }
+
+        /// <summary>Fait tourner UNE ligne de percussion dans son cycle (delta négatif = sens inverse).
+        /// S'applique à n'importe quel motif — catalogue personnalisé, dessiné à la main, ou généré.
+        /// Le nombre de coups est invariant, et un décalage d'un cycle entier est l'identité.</summary>
+        public static void RotateDrumLane(DrumPatternModule dp, int lane, int deltaSlices)
+        {
+            if (dp == null || lane < 0 || deltaSlices == 0) return;
+            if (!DrumIsCustom(dp)) CustomizeDrum(dp);
+            if (dp.CustomNotes == null || dp.CustomNotes.Count == 0) return;
+
+            int unit = DrumUnit(dp);
+            var notes = new System.Collections.Generic.List<Engine.RiffNote>();
+            foreach (var x in dp.CustomNotes)
+                notes.Add(x.Note != lane ? x
+                        : new Engine.RiffNote(x.Note, (((x.Start + deltaSlices) % unit) + unit) % unit, x.Length));
+            notes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+            dp.SetCustomNotes(notes, dp.CustomSlicesPerQuarter > 0 ? dp.CustomSlicesPerQuarter : DrumPattern.SlicesPerQuarter, unit);
+        }
+
 
         // Push a user-style grid into a chord: the anchor (anacrusis / first referencing chord) keeps the full grid; every
         // other chord drops the leading anacrusis remainder (7 → 6, bar-aligned). No levée ⇒ no trim (unchanged).
