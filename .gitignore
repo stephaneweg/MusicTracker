@@ -65,6 +65,10 @@ releases/
 /AutoTest/results.json
 /AutoTest/build.log
 
+# SSH.NET, deposee a la racine pour un futur deploiement SFTP du site vitrine.
+# Pas encore utilisee : le deploiement passe par FTP (OVH refuse AUTH TLS).
+/Renci.SshNet.dll
+
 # --- Deployment credentials — NEVER commit ---
 # FTP/SFTP identifiers read by installer/deploy-website.ps1.
 # The trailing wildcards also cover editor backups (.bak, .save, .orig, .tmp) and
