@@ -15,7 +15,7 @@ namespace MusicTracker.Engine.Flow
         void OnChanged(string n)
         {
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(n));
-            if (n == nameof(Hits) || n == nameof(Steps) || n == nameof(StepSlices) || n == nameof(CustomMode) || n == nameof(CustomHits) || n == nameof(Rotation))
+            if (n == nameof(Hits) || n == nameof(Steps) || n == nameof(CustomMode) || n == nameof(CustomHits) || n == nameof(Rotation))
                 foreach (var d in new[] { nameof(SummaryText), nameof(AnalysisText) }) PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(d));
             if (n == nameof(CustomMode))
                 foreach (var d in new[] { nameof(HitsRotationVisibility), nameof(AnalysisVisibility), nameof(PersColour) }) PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(d));
@@ -23,7 +23,8 @@ namespace MusicTracker.Engine.Flow
                 foreach (var d in new[] { nameof(BodyVisibility), nameof(SummaryVisibility), nameof(AnalysisVisibility), nameof(CollapseGlyph) }) PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(d));
         }
 
-        int voice, hits = 3, steps = 8, rotation, stepSlices = 12;
+        int voice, hits = 3, steps = 8, rotation;
+        [System.Text.Json.Serialization.JsonInclude] int stepSlices = 12;   // legacy — ignoré au rendu, conservé pour deser.
         bool muted, collapsed, legato, customMode;
         int[] customHits;
 
@@ -31,13 +32,6 @@ namespace MusicTracker.Engine.Flow
         public int Hits { get { return hits; } set { if (hits != value) { hits = value; OnChanged(nameof(Hits)); } } }
         public int Steps { get { return steps; } set { if (steps != value) { steps = value; OnChanged(nameof(Steps)); } } }
         public int Rotation { get { return rotation; } set { if (rotation != value) { rotation = value; OnChanged(nameof(Rotation)); } } }
-        public int StepSlices { get { return stepSlices; } set { if (stepSlices != value) { stepSlices = value; OnChanged(nameof(StepSlices)); PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(StepSlicesIndex))); } } }
-        [System.Text.Json.Serialization.JsonIgnore]
-        public int StepSlicesIndex
-        {
-            get { int i = System.Array.IndexOf(MelodicEuclid.StepSlicesChoices, StepSlices); return i < 0 ? 0 : i; }
-            set { if (value >= 0 && value < MelodicEuclid.StepSlicesChoices.Length) StepSlices = MelodicEuclid.StepSlicesChoices[value]; }
-        }
         public bool Muted { get { return muted; } set { if (muted != value) { muted = value; OnChanged(nameof(Muted)); } } }
         public bool Collapsed { get { return collapsed; } set { if (collapsed != value) { collapsed = value; OnChanged(nameof(Collapsed)); } } }
         public bool Legato { get { return legato; } set { if (legato != value) { legato = value; OnChanged(nameof(Legato)); } } }
@@ -68,7 +62,7 @@ namespace MusicTracker.Engine.Flow
 
         public EuclidVoice Clone() => new EuclidVoice
         {
-            voice = voice, hits = hits, steps = steps, rotation = rotation, stepSlices = stepSlices,
+            voice = voice, hits = hits, steps = steps, rotation = rotation,
             muted = muted, collapsed = collapsed, legato = legato,
             customMode = customMode, customHits = customHits == null ? null : (int[])customHits.Clone()
         };
@@ -85,34 +79,37 @@ namespace MusicTracker.Engine.Flow
     /// les hauteurs à partir de l'harmonie du morceau à la position où le module est posé.</summary>
     public static class MelodicEuclid
     {
-        public static readonly int[] StepSlicesChoices = PolyDrum.StepSlicesChoices;
-        const int Spq = 24;   // même grille que la batterie (divisible par 2, 3, 4, 6, 8, 12)
+        // Résolution : PPCM des Steps / gcd(Beats, PPCM), même formule que PolyDrum.SpqFor.
+        const int MaxSpq = 4800;
 
-        /// <summary>Longueur totale du module, en slices : dérivée de <see cref="MelodicPolyModule.DurationBeats"/>.
-        /// Fallback legacy : max(cycle des voix) × Repeats. Voir <see cref="PolyDrum.TotalSlices"/>.</summary>
-        public static int TotalSlices(MelodicPolyModule m)
+        public static int SpqFor(MelodicPolyModule m)
         {
-            if (m != null && m.DurationBeats > 0) return m.DurationBeats * Spq;
-            int maxCycle = 0;
+            long lcm = 1;
             if (m?.Layers != null)
                 foreach (var v in m.Layers)
                 {
-                    if (v == null) continue;
-                    int c = Math.Max(1, v.Steps) * Math.Max(1, v.StepSlices);
-                    if (c > maxCycle) maxCycle = c;
+                    if (v == null || v.Muted) continue;
+                    int s = Math.Max(1, v.Steps);
+                    lcm = Lcm(lcm, s);
+                    if (lcm > MaxSpq) return 24;
                 }
-            if (maxCycle <= 0) maxCycle = Spq;
-            return maxCycle * Math.Max(1, m?.Repeats ?? 1);
+            int beats = CycleBeats(m);
+            long spq = lcm / Gcd(beats, lcm);
+            return (int)Math.Max(1, spq);
         }
+        static long Gcd(long a, long b) { while (b != 0) { long t = a % b; a = b; b = t; } return a < 0 ? -a : a; }
+        static long Lcm(long a, long b) { long g = Gcd(a, b); return g == 0 ? 0 : a / g * b; }
 
-        /// <summary>Durée totale du module en temps (beats).</summary>
-        public static double TotalBeats(MelodicPolyModule m) => TotalSlices(m) / (double)Spq;
+        /// <summary>Temps par cycle (tour complet où tous les anneaux retombent ensemble). Migration legacy :
+        /// on retombe sur BeatsPerBar quand le nouveau champ Beats n'est pas renseigné.</summary>
+        public static int CycleBeats(MelodicPolyModule m)
+            => Math.Max(1, m == null ? 4 : (m.Beats > 0 ? m.Beats : m.BeatsPerBar));
 
-        /// <summary>Au bout de combien de temps TOUTES les voix retombent ensemble : le vrai cycle du polyrythme.</summary>
-        public static double CycleBeats(MelodicPolyModule m)
-            => EuclideanRhythm.CycleBeats(
-                ((System.Collections.Generic.IEnumerable<EuclidVoice>)m?.Layers ?? new List<EuclidVoice>()).Where(v => v != null).Select(v => (v.Steps, v.StepSlices, v.Muted)),
-                Spq);
+        /// <summary>Longueur totale du module en slices : Beats × Repeats × spq.</summary>
+        public static int TotalSlices(MelodicPolyModule m) => CycleBeats(m) * Math.Max(1, m?.Repeats ?? 1) * SpqFor(m);
+
+        /// <summary>Durée totale du module en TEMPS (noires). Beats × Repeats.</summary>
+        public static double TotalBeats(MelodicPolyModule m) => CycleBeats(m) * (double)Math.Max(1, m?.Repeats ?? 1);
 
         /// <summary>Renumérote Voice = position dans la liste : après un ajout/suppression de calque, ça évite deux
         /// calques sur la même voix (un index réutilisé) ou un "trou" qui gâche le budget de voix (≤3).</summary>
@@ -122,25 +119,54 @@ namespace MusicTracker.Engine.Flow
             for (int i = 0; i < layers.Count; i++) if (layers[i] != null) layers[i].Voice = i;
         }
 
-        /// <summary>Construit le squelette rythmique (une voix par calque, PAS de hauteurs) de tout le module.</summary>
+        /// <summary>Construit le squelette rythmique (une voix par calque, PAS de hauteurs) de tout le module.
+        /// Nouvelle adresse : cellule k de l'anneau i → slice <c>k × Beats × spq / Steps_i</c>. spq est choisi
+        /// pour que le résultat soit toujours entier (voir <see cref="SpqFor"/>).</summary>
         static MelodicLineModule BuildSkeleton(MelodicPolyModule m)
         {
-            int total = TotalSlices(m);
+            int spq = SpqFor(m);
+            int beats = CycleBeats(m);
+            int cycleSlices = beats * spq;
+            int repeats = Math.Max(1, m?.Repeats ?? 1);
+            int total = cycleSlices * repeats;
             var notes = new List<Engine.RiffNote>();
             int maxVoice = 0;
-            if (m.Layers != null)
+            if (m?.Layers != null)
                 foreach (var v in m.Layers)
                 {
                     if (v == null || v.Voice < 0 || v.Voice >= MelodicLineModule.MaxVoices) continue;
                     maxVoice = Math.Max(maxVoice, v.Voice);
                     if (v.Muted) continue;
-                    notes.AddRange(v.CustomMode
-                        ? RhythmAnalysis.Build(v.Voice, v.EffectivePattern(), v.StepSlices, total, v.Legato)
-                        : EuclideanRhythm.Build(v.Voice, v.Hits, v.Steps, v.Rotation, v.StepSlices, total, v.Legato));
+                    var pat = v.EffectivePattern(); if (pat == null || pat.Length == 0) continue;
+                    int steps = pat.Length;
+                    // Positions du cycle pour cet anneau (une passe), puis on répète.
+                    var onsetsInCycle = new List<int>();
+                    for (int i = 0; i < steps; i++)
+                        if (pat[i])
+                        {
+                            long num = (long)i * beats * spq;
+                            onsetsInCycle.Add((int)((num + steps / 2) / steps));
+                        }
+                    if (onsetsInCycle.Count == 0) continue;
+                    onsetsInCycle.Sort();
+                    for (int rep = 0; rep < repeats; rep++)
+                    {
+                        int cycleStart = rep * cycleSlices;
+                        for (int idx = 0; idx < onsetsInCycle.Count; idx++)
+                        {
+                            int s = cycleStart + onsetsInCycle[idx];
+                            int nextS = idx + 1 < onsetsInCycle.Count
+                                ? cycleStart + onsetsInCycle[idx + 1]
+                                : cycleStart + cycleSlices;
+                            int len = v.Legato ? (nextS - s) : Math.Max(1, cycleSlices / steps);
+                            if (s < 0 || s >= total) continue;
+                            notes.Add(new Engine.RiffNote(v.Voice, s, len));
+                        }
+                    }
                 }
             notes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
-            var skeleton = new MelodicLineModule { BeatsPerBar = Math.Max(1, total / Spq), VoiceCount = Math.Max(1, Math.Min(MelodicLineModule.MaxVoices, maxVoice + 1)) };
-            skeleton.SetNotes(notes, Spq, total);
+            var skeleton = new MelodicLineModule { BeatsPerBar = Math.Max(1, total / spq), VoiceCount = Math.Max(1, Math.Min(MelodicLineModule.MaxVoices, maxVoice + 1)) };
+            skeleton.SetNotes(notes, spq, total);
             return skeleton;
         }
 

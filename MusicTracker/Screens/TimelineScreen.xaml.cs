@@ -3795,8 +3795,8 @@ namespace MusicTracker.Screens
             }
             else
             {
-                m.Layers.Add(new Engine.Flow.EuclidLayer { Lane = 0, Hits = 3, Steps = 8, StepSlices = 12 });
-                m.Layers.Add(new Engine.Flow.EuclidLayer { Lane = 2, Hits = 7, Steps = 16, StepSlices = 6 });
+                m.Layers.Add(new Engine.Flow.EuclidLayer { Lane = 0, Hits = 3, Steps = 8 });
+                m.Layers.Add(new Engine.Flow.EuclidLayer { Lane = 2, Hits = 7, Steps = 16 });
             }
             AppendModule(m);
         }
@@ -3829,8 +3829,8 @@ namespace MusicTracker.Screens
             }
             else
             {
-                m.Layers.Add(new Engine.Flow.EuclidVoice { Voice = 0, Hits = 3, Steps = 8, StepSlices = 12 });
-                m.Layers.Add(new Engine.Flow.EuclidVoice { Voice = 1, Hits = 5, Steps = 8, StepSlices = 12 });
+                m.Layers.Add(new Engine.Flow.EuclidVoice { Voice = 0, Hits = 3, Steps = 8 });
+                m.Layers.Add(new Engine.Flow.EuclidVoice { Voice = 1, Hits = 5, Steps = 8 });
             }
             AppendModule(m);
         }

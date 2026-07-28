@@ -226,6 +226,7 @@
   "SeRepete": "repeats",
   "ModePersonnaliseClic": "Custom mode: click ring cells to toggle hits on/off (the pattern is then persisted as-is)",
   "DureeEnTemps": "Length (beats)",
+  "TempsCycle": "Beats per cycle",
   "Temps": "beats",
   "ComposerAvecIaPolyrythmique": "Compose with AI (polyrhythmic)",
   "PolyrythmicComposeSubtitle": "Polyrhythmic drums + melody: each layer runs its own Euclidean E(K,N) cycle on its own subdivision.",

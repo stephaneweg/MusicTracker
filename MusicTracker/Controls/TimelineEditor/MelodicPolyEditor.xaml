@@ -34,9 +34,12 @@
                       VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       Margin="2,0,12,0">
             <StackPanel>
-                <!-- Longueur du module = cycle de la voix la plus longue × Répétitions ; pas de « temps par mesure ». -->
-                <TextBlock Text="{loc:Tr 'DureeEnTemps'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
-                <TextBox x:Name="txtDuration" Width="60" HorizontalAlignment="Left" LostFocus="txtDuration_LostFocus"/>
+                <!-- Longueur du module = Beats (temps par cycle) × Répétitions. Tous les anneaux bouclent
+                     ensemble à la fin de chaque cycle ; on peut ensuite les répéter tel quel N fois. -->
+                <TextBlock Text="{loc:Tr 'TempsCycle'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+                <TextBox x:Name="txtBeats" Width="60" HorizontalAlignment="Left" LostFocus="txtBeats_LostFocus"/>
+                <TextBlock Text="{loc:Tr 'Repetitions'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+                <TextBox x:Name="txtRepeats" Width="60" HorizontalAlignment="Left" LostFocus="txtRepeats_LostFocus"/>
 
                 <TextBlock Text="{loc:Tr 'Calques'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
 

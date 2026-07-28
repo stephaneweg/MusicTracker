@@ -227,6 +227,7 @@
   "RythmeEquilibre": "équilibré",
   "SeRepete": "se répète",
   "DureeEnTemps": "Durée (temps)",
+  "TempsCycle": "Temps par cycle",
   "Temps": "temps",
   "ComposerAvecIaPolyrythmique": "Composer avec l'IA (polyrythmique)",
   "PolyrythmicComposeSubtitle": "Batterie + ligne mélodique polyrythmiques : chaque calque déroule son cycle euclidien E(K,N) sur sa propre subdivision.",

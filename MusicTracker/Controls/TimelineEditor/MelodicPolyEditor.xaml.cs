@@ -48,7 +48,8 @@ namespace MusicTracker.Controls.TimelineEditor
 
             btnPlay.Content = "▶ " + Loc.T("Ecouter");
             btnAdd.Content = "＋ " + Loc.T("AjouterUnCalque");
-            txtDuration.Text = mp.DurationBeats.ToString();
+            txtBeats.Text = mp.Beats.ToString();
+            txtRepeats.Text = mp.Repeats.ToString();
 
             // Abonnements symétriques : cf. PolyDrumEditor pour le pourquoi (le modèle survit à l'éditeur).
             SubscribeVoices();
@@ -90,15 +91,16 @@ namespace MusicTracker.Controls.TimelineEditor
             foreach (var v in mp.Layers)
                 if (v != null) rings.Add(new PolyDrumWheel.Ring
                 {
-                    Hits = v.Hits, Steps = v.Steps, Rotation = v.Rotation, StepSlices = v.StepSlices, Muted = v.Muted,
+                    Hits = v.Hits, Steps = v.Steps, Rotation = v.Rotation, StepSlices = 0, Muted = v.Muted,
                     Color = VoiceColour(v.Voice),
                     Custom = v.CustomMode ? v.EffectivePattern() : null,
                     Editable = v.CustomMode
                 });
-            // Cf. PolyDrumWheel.SetModule : la roue ne représente qu'un cycle commun (PPCM), pas les répétitions.
-            double cyc = MelodicEuclid.CycleBeats(mp);
-            int cycSlices = (int)Math.Round(cyc * DrumPattern.SlicesPerQuarter);
-            wheel.SetRings(rings, cycSlices, cyc, cyc);
+            // Nouveau modèle : la roue montre UN cycle du module (Beats temps) ; tous les anneaux bouclent
+            // ensemble à la fin du cycle. Chaque anneau est simplement découpé en son propre Steps.
+            int beats = MelodicEuclid.CycleBeats(mp);
+            int spq = MelodicEuclid.SpqFor(mp);
+            wheel.SetRings(rings, beats * spq, beats, beats);
             host.Render?.Invoke();
         }
 
@@ -169,7 +171,8 @@ namespace MusicTracker.Controls.TimelineEditor
             MelodicEuclid.Renumber(mp.Layers);
         }
 
-        void txtDuration_LostFocus(object sender, RoutedEventArgs e) { if (int.TryParse(txtDuration.Text, out int v)) { mp.DurationBeats = v; RedrawAll(); } }
+        void txtBeats_LostFocus(object sender, RoutedEventArgs e) { if (int.TryParse(txtBeats.Text, out int v)) { mp.Beats = v; RedrawAll(); } }
+        void txtRepeats_LostFocus(object sender, RoutedEventArgs e) { if (int.TryParse(txtRepeats.Text, out int v)) { mp.Repeats = v; RedrawAll(); } }
 
         void btnAdd_Click(object sender, RoutedEventArgs e)
         {
@@ -177,7 +180,7 @@ namespace MusicTracker.Controls.TimelineEditor
             host.PushUndo?.Invoke("mlpoly:layer");
             int[] ks = { 3, 5, 7 }, ns = { 8, 8, 16 };
             int i = Math.Min(mp.Layers.Count, ks.Length - 1);
-            mp.Layers.Add(new EuclidVoice { Voice = mp.Layers.Count, Hits = ks[i], Steps = ns[i], StepSlices = 12 });
+            mp.Layers.Add(new EuclidVoice { Voice = mp.Layers.Count, Hits = ks[i], Steps = ns[i] });
         }
 
         void btnFreeze_Click(object sender, RoutedEventArgs e)
@@ -211,7 +214,9 @@ namespace MusicTracker.Controls.TimelineEditor
                 wave.Init(provider); wave.Play();
                 btnPlay.Content = "■ " + Loc.T("Stop");
                 timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
-                timer.Tick += (s2, e2) => { if (provider != null) wheel.SetPlayhead(provider.CurrentSlice / 24.0); };
+                // Le riff mélodique utilise spq = MelodicEuclid.SpqFor(m) — même remarque que côté batterie.
+                int spq = MelodicEuclid.SpqFor(mp);
+                timer.Tick += (s2, e2) => { if (provider != null) wheel.SetPlayhead(provider.CurrentSlice / (double)spq); };
                 timer.Start();
             }
             catch { Stop(); wheel.SetPlayhead(-1); }

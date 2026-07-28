@@ -239,17 +239,19 @@ namespace MusicTracker.Engine.Flow
     public class PolyDrumModule : FlowModule
     {
         int kit = 0;         // index dans InstrumentCatalog.DrumKits()
-        int beatsPerBar = 4; // conservé pour la RÉTRO-COMPAT de désérialisation ; n'est plus utilisé au rendu.
-        int repeats = 4;     // idem : lu depuis les vieux fichiers pour migrer vers DurationBeats.
-        int durationBeats = 16;  // NOUVEAU : durée totale du module en temps (bien plus flexible que Repeats).
+        int beats = 4;       // NOUVEAU modèle : nombre de temps d'UN cycle (tour complet de tous les anneaux). Tous
+                             // les anneaux bouclent ensemble tous les Beats temps ; le champ Steps d'un anneau ne
+                             // fait que dire en combien de parts égales ce cycle est découpé pour CE calque-là.
+        int repeats = 4;     // nombre de fois où le cycle est joué. Longueur module = Beats × Repeats.
+        int beatsPerBar = 4; // ancien champ, conservé pour la désérialisation des fichiers legacy — plus utilisé.
+        int durationBeats = 0;   // ancien champ, idem.
 
         public int Kit { get { return kit; } set { if (kit != value) { kit = value; OnChanged(nameof(Kit)); } } }
-        public int BeatsPerBar { get { return beatsPerBar; } set { int v = Math.Max(1, value); if (beatsPerBar != v) { beatsPerBar = v; OnChanged(nameof(BeatsPerBar)); } } }
+        public int Beats { get { return beats; } set { int v = Math.Max(1, value); if (beats != v) { beats = v; OnChanged(nameof(Beats)); } } }
         public int Repeats { get { return repeats; } set { int v = Math.Max(1, value); if (repeats != v) { repeats = v; OnChanged(nameof(Repeats)); } } }
-        /// <summary>Durée totale du module en TEMPS (noires). Remplace la formule ancienne
-        /// « max(cycle des couches) × Repeats » — bien plus flexible : on peut couper au milieu d'un cycle, ou
-        /// laisser le motif tourner plusieurs fois librement, sans devoir choisir un entier de cycles.</summary>
-        public int DurationBeats { get { return durationBeats; } set { int v = Math.Max(1, value); if (durationBeats != v) { durationBeats = v; OnChanged(nameof(DurationBeats)); } } }
+        // Champs legacy — accessibles pour la migration côté PolyDrum.TotalSlices, plus modifiés par l'UI.
+        public int BeatsPerBar { get { return beatsPerBar; } set { int v = Math.Max(1, value); if (beatsPerBar != v) { beatsPerBar = v; OnChanged(nameof(BeatsPerBar)); } } }
+        public int DurationBeats { get { return durationBeats; } set { if (durationBeats != value) { durationBeats = value; OnChanged(nameof(DurationBeats)); } } }
 
         /// <summary>Les calques, du premier au dernier. Un calque = un instrument + son motif euclidien.
         /// ObservableCollection pour que le ListView de l'éditeur XAML détecte add/remove et rafraîchisse.</summary>
@@ -267,14 +269,15 @@ namespace MusicTracker.Engine.Flow
     /// (notes explicites, celles qui sonnaient au moment du gel).</summary>
     public class MelodicPolyModule : FlowModule
     {
-        int beatsPerBar = 4; // rétro-compat de désérialisation ; plus utilisé au rendu.
-        int repeats = 4;     // idem ; migré vers DurationBeats à la lecture.
-        int durationBeats = 16;
+        int beats = 4;
+        int repeats = 4;
+        int beatsPerBar = 4;     // legacy, lu à la désérialisation.
+        int durationBeats = 0;   // legacy.
 
-        public int BeatsPerBar { get { return beatsPerBar; } set { int v = Math.Max(1, value); if (beatsPerBar != v) { beatsPerBar = v; OnChanged(nameof(BeatsPerBar)); } } }
+        public int Beats { get { return beats; } set { int v = Math.Max(1, value); if (beats != v) { beats = v; OnChanged(nameof(Beats)); } } }
         public int Repeats { get { return repeats; } set { int v = Math.Max(1, value); if (repeats != v) { repeats = v; OnChanged(nameof(Repeats)); } } }
-        /// <summary>Durée totale du module en TEMPS. Voir <see cref="PolyDrumModule.DurationBeats"/>.</summary>
-        public int DurationBeats { get { return durationBeats; } set { int v = Math.Max(1, value); if (durationBeats != v) { durationBeats = v; OnChanged(nameof(DurationBeats)); } } }
+        public int BeatsPerBar { get { return beatsPerBar; } set { int v = Math.Max(1, value); if (beatsPerBar != v) { beatsPerBar = v; OnChanged(nameof(BeatsPerBar)); } } }
+        public int DurationBeats { get { return durationBeats; } set { if (durationBeats != value) { durationBeats = value; OnChanged(nameof(DurationBeats)); } } }
 
         /// <summary>Les calques, du premier au dernier. Un calque = une voix + son motif euclidien.
         /// ObservableCollection : idem PolyDrumModule, pour un ListView bindé.</summary>

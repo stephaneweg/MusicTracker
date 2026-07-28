@@ -25,6 +25,8 @@ namespace MusicTracker.Controls.TimelineEditor
         /// ce qu'il représente (une lane de batterie, une voix de ligne mélodique...).</summary>
         public class Ring
         {
+            // StepSlices n'existe plus dans le nouveau modèle — un anneau vaut TOUT le cycle du module (Beats
+            // temps), redécoupé en Steps parts. Le champ est gardé ici pour la rétro-compat des dessins libres.
             public int Hits, Steps, Rotation, StepSlices;
             public bool Muted;
             public Color Color;
@@ -96,17 +98,16 @@ namespace MusicTracker.Controls.TimelineEditor
                 foreach (var l in m.Layers)
                     if (l != null) list.Add(new Ring
                     {
-                        Hits = l.Hits, Steps = l.Steps, Rotation = l.Rotation, StepSlices = l.StepSlices,
+                        Hits = l.Hits, Steps = l.Steps, Rotation = l.Rotation, StepSlices = 0,
                         Muted = l.Muted, Color = DrumColors.ForLane(l.Lane),
                         Custom = l.CustomMode ? l.EffectivePattern() : null,
                         Editable = l.CustomMode
                     });
-            // La roue ne dessine QU'UN cycle commun (PPCM des Steps×StepSlices) — on ne représente pas les
-            // répétitions du module : elles rebouclent visuellement sur la même roue. Le tour de l'aiguille dure
-            // exactement un cycle ; sur un module de plusieurs répétitions, elle wrappe autant de fois.
-            double cyc = m != null ? PolyDrum.CycleBeats(m) : 0;
-            int cycSlices = (int)Math.Round(cyc * DrumPattern.SlicesPerQuarter);
-            SetRings(list, cycSlices, cyc, cyc);
+            // Nouveau modèle : la roue montre UN cycle du module (Beats temps) — tous les anneaux bouclent
+            // ensemble à la fin du cycle. Chaque anneau est simplement découpé en son propre Steps.
+            int beats = PolyDrum.CycleBeats(m);
+            int spq = PolyDrum.SpqFor(m);
+            SetRings(list, beats * spq, beats, beats);
         }
 
         /// <summary>Forme générique : n'importe quelle liste de calques euclidiens (ex. une ligne mélodique
@@ -159,13 +160,9 @@ namespace MusicTracker.Controls.TimelineEditor
             {
                 var l = rings[i];
                 int n = Math.Max(1, l.Steps);
-                int stp = Math.Max(1, l.StepSlices);
-                // Le cercle représente le tour COMPLET du module (ce que suit l'aiguille), pas un seul cycle
-                // euclidien : si le calque a une subdivision plus fine ou un cycle plus court que le module, son
-                // motif se répète plusieurs fois sur le pourtour — on doit dessiner tous ces passages, chacun à
-                // la bonne échelle angulaire (proportionnelle à sa propre subdivision), sinon les répétitions
-                // tombent sur des secteurs vides et le son semble décalé par rapport à l'affichage.
-                int visualSteps = totalModuleSlices > 0 ? Math.Max(1, totalModuleSlices / stp) : n;
+                // Nouveau modèle : chaque anneau représente EXACTEMENT UN cycle du module, découpé en Steps parts.
+                // Plus de « répétitions » du motif à l'intérieur de la roue (StepSlices a disparu).
+                int visualSteps = n;
                 // On avance d'une épaisseur d'anneau + un petit interstice à chaque calque (pas de tout le
                 // ringSpan) : les anneaux restent quasi jointifs même si `thick` est plus fin que le slot alloué.
                 const double ringGap = 2;
@@ -201,17 +198,18 @@ namespace MusicTracker.Controls.TimelineEditor
                 }
                 geom.Add(new RingGeom { Radius = r, Thick = thick, VisualSteps = visualSteps, AngleStepDeg = step, PatternSteps = n });
 
-                // Repères de temps : les positions du cycle qui tombent sur un temps. C'est ce qui permet de voir
-                // qu'un motif est syncopé, et ce que le décalage fait bouger.
-                int spb = DrumPattern.SlicesPerQuarter;
-                for (int s = 0; s < visualSteps; s++)
-                {
-                    if ((s * stp) % spb != 0) continue;
-                    double a = (-90 + s * step) * Math.PI / 180;
-                    var p0 = new Point(centre.X + Math.Cos(a) * (r + thick / 2 + 1), centre.Y + Math.Sin(a) * (r + thick / 2 + 1));
-                    var p1 = new Point(centre.X + Math.Cos(a) * (r + thick / 2 + 5), centre.Y + Math.Sin(a) * (r + thick / 2 + 5));
-                    dc.DrawLine(new Pen(Grid, 1), p0, p1);
-                }
+                // Repères de temps : les positions du cycle qui tombent sur un temps. Une cellule k est sur un
+                // temps dès que Steps divise k × Beats.
+                int beatsInCycle = (int)Math.Round(totalBeats);
+                if (beatsInCycle > 0)
+                    for (int s = 0; s < visualSteps; s++)
+                    {
+                        if ((s * beatsInCycle) % n != 0) continue;
+                        double a = (-90 + s * step) * Math.PI / 180;
+                        var p0 = new Point(centre.X + Math.Cos(a) * (r + thick / 2 + 1), centre.Y + Math.Sin(a) * (r + thick / 2 + 1));
+                        var p1 = new Point(centre.X + Math.Cos(a) * (r + thick / 2 + 5), centre.Y + Math.Sin(a) * (r + thick / 2 + 5));
+                        dc.DrawLine(new Pen(Grid, 1), p0, p1);
+                    }
             }
 
             // L'aiguille : une seule pour toute la roue, sur le tour du MODULE — les anneaux plus courts bouclent

@@ -100,28 +100,28 @@ namespace MusicTracker.Engine.AI
         {
             var sb = new StringBuilder();
             sb.AppendLine("Tu es un compositeur assistant SPÉCIALISÉ en RYTHMES POLYRYTHMIQUES. Tu renvoies UNIQUEMENT un objet JSON (aucune prose autour).");
-            sb.AppendLine("Un polyrythme, c'est plusieurs CALQUES qui déroulent chacun leur cycle euclidien E(K,N) sur leur propre subdivision — les cycles de longueurs différentes se DÉCALENT et produisent une trame impossible à écrire à la main.");
+            sb.AppendLine("MODÈLE : tous les calques partagent le MÊME cycle (durée = `beats` temps). Chaque calque découpe ce cycle en son propre nombre de PAS (steps), et une frappe tombe sur les cases actives d'un pattern euclidien E(hits,steps) éventuellement décalé par rotation. La polyrythmie vient de ce que 3 pas contre 5 pas dans le même cycle produisent des ratios musicalement intéressants (3-contre-5, 7-contre-4…).");
             sb.AppendLine();
             sb.AppendLine("Schéma EXACT :");
             sb.AppendLine("{");
             sb.AppendLine("  \"bpm\": int,                            // tempo (60..200)");
             sb.AppendLine("  \"key\": { \"tonic\": \"C|C#|D|Eb|E|F|F#|G|Ab|A|Bb|B\", \"mode\": \"major|minor\" },");
-            sb.AppendLine("  \"durationBeats\": int,                  // durée du morceau en TEMPS (noires), typiquement 16..64");
+            sb.AppendLine("  \"durationBeats\": int,                  // durée totale en TEMPS (indicatif ; le module la répartit en cycle × répétitions)");
             sb.AppendLine("  \"drum\": {");
             sb.AppendLine("    \"kit\": 0,                            // toujours 0 (Standard) sauf demande explicite");
-            sb.AppendLine("    \"layers\": [ { \"lane\": int, \"hits\": int, \"steps\": int, \"rotation\": int, \"stepSlices\": int }, ... ]");
+            sb.AppendLine("    \"layers\": [ { \"lane\": int, \"hits\": int, \"steps\": int, \"rotation\": int }, ... ]");
             sb.AppendLine("  },");
             sb.AppendLine("  \"melodic\": {");
             sb.AppendLine("    \"instrument\": int,                    // programme GM 0..127 (ex. 12 marimba, 108 kalimba, 73 flûte, 46 harpe)");
-            sb.AppendLine("    \"layers\": [ { \"voice\": 0|1|2, \"hits\": int, \"steps\": int, \"rotation\": int, \"stepSlices\": int, \"legato\": bool }, ... ]");
+            sb.AppendLine("    \"layers\": [ { \"voice\": 0|1|2, \"hits\": int, \"steps\": int, \"rotation\": int, \"legato\": bool }, ... ]");
             sb.AppendLine("  },");
             sb.AppendLine("  \"chord\": { \"root\": \"...\", \"quality\": \"major|minor|sus2|sus4|dim|aug\", \"octave\": int }");
             sb.AppendLine("}");
             sb.AppendLine();
             sb.AppendLine("RÈGLES DES CALQUES :");
             sb.AppendLine(" - hits ∈ [1, steps] ; steps ∈ [2, 32] ; rotation ∈ [0, steps-1].");
-            sb.AppendLine(" - stepSlices ∈ {24, 12, 8, 6} : 24 = NOIRE, 12 = CROCHE, 8 = TRIOLET DE CROCHE, 6 = DOUBLE-CROCHE. Rien d'autre — la grille interne fait 24 slices par temps.");
-            sb.AppendLine(" - Un calque est plus intéressant si son CYCLE (steps × stepSlices) diffère de celui des autres : les cycles se déphasent.");
+            sb.AppendLine(" - Le \"cycle commun\" = ~4 temps (par défaut). Les calques diffèrent par leur NOMBRE DE PAS (steps).");
+            sb.AppendLine(" - Choisis des paires de steps mutuellement PREMIÈRES pour un beau polyrythme (3&5, 4&7, 5&8, 7&12…). Éviter des steps identiques sur plusieurs calques.");
             sb.AppendLine(" - Vise 3 à 5 calques de batterie et 2 à 3 voix mélodiques ; c'est ce qui rend le polyrythme LISIBLE.");
             sb.AppendLine();
             sb.AppendLine("LANES DE PERCUSSION (index → nom) :");
@@ -172,11 +172,13 @@ namespace MusicTracker.Engine.AI
             project.TimeSigNum = 4; project.TimeSigDen = 4;
 
             // ---- batterie -------------------------------------------------------------------------------------
+            // Nouveau modèle : Beats (temps par CYCLE) × Repeats. On répartit sagement la durée totale voulue.
+            int cycleBeats = Math.Max(2, Math.Min(dur, 8));
+            int repeats = Math.Max(1, (int)Math.Round(dur / (double)cycleBeats));
             var pd = new PolyDrumModule
             {
                 Kit = Math.Max(0, Math.Min(InstrumentCatalog.DrumKits().Count - 1, arr.drum?.kit ?? 0)),
-                DurationBeats = dur,
-                BeatsPerBar = 4, Repeats = Math.Max(1, dur / 4)   // remplis les champs legacy pour rester compatible
+                Beats = cycleBeats, Repeats = repeats,
             };
             if (arr.drum?.layers != null)
                 foreach (var l in arr.drum.layers) pd.Layers.Add(SanitizeDrumLayer(l));
@@ -188,14 +190,10 @@ namespace MusicTracker.Engine.AI
             project.Tracks.Add(drumTrack);
 
             // ---- ligne mélodique ------------------------------------------------------------------------------
-            var mp = new MelodicPolyModule
-            {
-                DurationBeats = dur,
-                BeatsPerBar = 4, Repeats = Math.Max(1, dur / 4)
-            };
+            var mp = new MelodicPolyModule { Beats = cycleBeats, Repeats = repeats };
             if (arr.melodic?.layers != null)
                 foreach (var v in arr.melodic.layers) mp.Layers.Add(SanitizeMelodicLayer(v));
-            if (mp.Layers.Count == 0) mp.Layers.Add(new EuclidVoice { Voice = 0, Hits = 3, Steps = 8, StepSlices = 12 });
+            if (mp.Layers.Count == 0) mp.Layers.Add(new EuclidVoice { Voice = 0, Hits = 3, Steps = 8 });
             MelodicEuclid.Renumber(mp.Layers);
 
             int instr = arr.melodic?.instrument ?? 12;
@@ -225,15 +223,6 @@ namespace MusicTracker.Engine.AI
             return new TimelineDocument { Project = project };
         }
 
-        // Snap sur les 4 durées de pas autorisées (24/12/8/6) — n'importe quelle autre valeur retombe sur la plus proche.
-        static readonly int[] StepSlicesChoices = { 24, 12, 8, 6 };
-        static int SnapStepSlices(int v)
-        {
-            int best = 12, bd = int.MaxValue;
-            foreach (int c in StepSlicesChoices) { int d = Math.Abs(c - v); if (d < bd) { bd = d; best = c; } }
-            return best;
-        }
-
         static EuclidLayer SanitizeDrumLayer(AiPolyDrumLayer l)
         {
             int steps = Math.Max(2, Math.Min(32, l.steps));
@@ -243,7 +232,6 @@ namespace MusicTracker.Engine.AI
             {
                 Lane = Math.Max(0, Math.Min(DrumPattern.LaneCount - 1, l.lane)),
                 Hits = hits, Steps = steps, Rotation = rot,
-                StepSlices = SnapStepSlices(l.stepSlices),
             };
         }
         static EuclidVoice SanitizeMelodicLayer(AiPolyMelodicLayer v)
@@ -255,7 +243,6 @@ namespace MusicTracker.Engine.AI
             {
                 Voice = Math.Max(0, Math.Min(MelodicLineModule.MaxVoices - 1, v.voice)),
                 Hits = hits, Steps = steps, Rotation = rot,
-                StepSlices = SnapStepSlices(v.stepSlices),
                 Legato = v.legato,
             };
         }

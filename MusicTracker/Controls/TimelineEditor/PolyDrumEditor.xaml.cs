@@ -67,7 +67,8 @@ namespace MusicTracker.Controls.TimelineEditor
 
             btnPlay.Content = "▶ " + Loc.T("Ecouter");
             btnAdd.Content = "＋ " + Loc.T("AjouterUnCalque");
-            txtDuration.Text = pd.DurationBeats.ToString();
+            txtBeats.Text = pd.Beats.ToString();
+            txtRepeats.Text = pd.Repeats.ToString();
 
             // Cycle de vie : abonnements en constructeur, désabonnement au Unload. Le modèle (pd) survit à
             // l'éditeur ; si on n'unsubscribe pas, le handler garde le UserControl en vie (fuite) et Render() finit
@@ -169,9 +170,13 @@ namespace MusicTracker.Controls.TimelineEditor
             pd.Layers.Remove(l);
         }
 
-        void txtDuration_LostFocus(object sender, RoutedEventArgs e)
+        void txtBeats_LostFocus(object sender, RoutedEventArgs e)
         {
-            if (int.TryParse(txtDuration.Text, out int v)) { pd.DurationBeats = v; RedrawAll(); }
+            if (int.TryParse(txtBeats.Text, out int v)) { pd.Beats = v; RedrawAll(); }
+        }
+        void txtRepeats_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(txtRepeats.Text, out int v)) { pd.Repeats = v; RedrawAll(); }
         }
 
         void btnAdd_Click(object sender, RoutedEventArgs e)
@@ -180,7 +185,7 @@ namespace MusicTracker.Controls.TimelineEditor
             int[] lanes = { 0, 1, 2, 11, 6 };
             int[,] kn = { { 3, 8 }, { 2, 8 }, { 7, 16 }, { 5, 8 }, { 3, 5 } };
             int i = Math.Min(pd.Layers.Count, lanes.Length - 1);
-            pd.Layers.Add(new EuclidLayer { Lane = lanes[i], Hits = kn[i, 0], Steps = kn[i, 1], StepSlices = 12 });
+            pd.Layers.Add(new EuclidLayer { Lane = lanes[i], Hits = kn[i, 0], Steps = kn[i, 1] });
         }
 
         void btnFreeze_Click(object sender, RoutedEventArgs e)
@@ -191,7 +196,9 @@ namespace MusicTracker.Controls.TimelineEditor
             // du polyrythme, arrondie au temps supérieur, avec Repeats = 1 pour garder toute la matière.
             int frozenBeats = Math.Max(1, (int)Math.Ceiling(PolyDrum.TotalBeats(pd)));
             var dpm = new DrumPatternModule { Kit = pd.Kit, Style = DrumPattern.CustomStyle, BeatsPerBar = frozenBeats, Repeats = 1 };
-            dpm.SetCustomNotes(PolyDrum.ToNotes(pd), DrumPattern.SlicesPerQuarter, PolyDrum.TotalSlices(pd));
+            // Figer utilise le MÊME spq que le rendu (PolyDrum.SpqFor, dérivé du PPCM des Steps) : les positions
+            // des notes gelées matchent celles qu'on entendait avant le figeage.
+            dpm.SetCustomNotes(PolyDrum.ToNotes(pd), PolyDrum.SpqFor(pd), PolyDrum.TotalSlices(pd));
             dpm.CatCategory = "Personnalisé"; dpm.CatMotif = "Personnalisé";
             item.Module = dpm;
             host.SelectItem?.Invoke(track, item);
@@ -211,7 +218,10 @@ namespace MusicTracker.Controls.TimelineEditor
                 wave.Init(provider); wave.Play();
                 btnPlay.Content = "■ " + Loc.T("Stop");
                 timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
-                timer.Tick += (s2, e2) => { if (provider != null) wheel.SetPlayhead(provider.CurrentSlice / (double)DrumPattern.SlicesPerQuarter); };
+                // Le riff produit par PolyDrum.Generate utilise spq = PolyDrum.SpqFor(m) — pas les 24 slices/temps
+                // habituels. Il faut donc diviser la position par CE spq pour retrouver un temps.
+                int spq = PolyDrum.SpqFor(pd);
+                timer.Tick += (s2, e2) => { if (provider != null) wheel.SetPlayhead(provider.CurrentSlice / (double)spq); };
                 timer.Start();
             }
             catch { Stop(); wheel.SetPlayhead(-1); }
