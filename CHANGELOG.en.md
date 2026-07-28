@@ -17,6 +17,8 @@ The most **recent** entries go **first**; the app only shows the first few.
 
 ## Entries
 
+- 🎼 MusicXML export (Export menu): save your score in the interchange format every notation program reads — Finale, Sibelius, Dorico, MuseScore, online editors and tablet score readers. Notes crossing a barline are now written tied instead of being truncated.
+- 🎵 Swing: under "Bar", pick uneven eighths (light, medium, swing, triplet). Playback and audio export follow the groove; the score and MIDI export keep straight eighths.
 - 🎶 "Add an instrument / drums with AI" (Track menu): describe an intention; the AI receives the WHOLE piece (every track + the chords) and composes a new track — melodic line (rhythm only) or full melody, or a groove — that fits the existing arrangement.
 - 🌍 Language selection (French, English, German, Italian, Spanish, Dutch, Portuguese) in Settings: the interface, the what's-new feed and AI-generated titles all follow the chosen language. More languages can be added by dropping a `lang.xx.json` file.
 - 🎲 Generative project templates: a template now holds banks of material per section (progressions, accompaniment patterns, melodic cells, per-instrument phrases, grooves). On opening, the app draws from them and assembles the piece — a "Regenerate" button pulls a new version.
