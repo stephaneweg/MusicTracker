@@ -1,10 +1,12 @@
 {
   "_comment": "Copie ce fichier en 'website-ftp.local.json' (meme dossier) et remplis-le. Le vrai fichier est exclu de git : il ne doit JAMAIS etre committe. Lu par installer/deploy-website.ps1.",
+  "_passwordEncoding": "plain = tel quel | base64 = encode (obscurcissement seulement, PAS du chiffrement) | dpapi = chiffre par Windows, lisible uniquement par ce compte sur cette machine (seule option sure). Valeur dpapi : (ConvertTo-SecureString '<mdp>' -AsPlainText -Force | ConvertFrom-SecureString)",
 
   "Protocol": "ftps",
   "Host": "ftp.monhebergeur.tld",
   "Port": 0,
   "User": "mon-identifiant",
   "Password": "mon-mot-de-passe",
+  "PasswordEncoding": "plain",
   "RemoteRoot": "/www"
 }

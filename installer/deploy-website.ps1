@@ -14,8 +14,21 @@
         "Port":       0,                   // 0 = port par défaut du protocole
         "User":       "identifiant",
         "Password":   "motdepasse",
+        "PasswordEncoding": "plain",       // "plain" | "base64" | "dpapi"
         "RemoteRoot": "/www"               // racine web chez l'hébergeur
       }
+
+  PasswordEncoding :
+    plain   le mot de passe tel quel.
+    base64  encodé en base64 (UTF-8). ATTENTION : ce n'est PAS du chiffrement, seulement de
+            l'obscurcissement — quiconque lit le fichier retrouve le mot de passe en une commande.
+            Cela évite juste la lecture accidentelle par-dessus l'épaule.
+    dpapi   chiffré par Windows (DPAPI), déchiffrable UNIQUEMENT par le même compte utilisateur sur
+            la même machine. C'est la seule option réellement sûre au repos. Pour produire la valeur :
+
+                (ConvertTo-SecureString 'mon-mot-de-passe' -AsPlainText -Force | ConvertFrom-SecureString)
+
+            Colle la longue chaîne obtenue dans "Password" et mets "PasswordEncoding": "dpapi".
 
   FTP et FTPS sont gérés nativement (FtpWebRequest). SFTP exige WinSCP
   (https://winscp.net) : winscp.com doit être dans le PATH ou dans %ProgramFiles(x86)%\WinSCP.
@@ -57,6 +70,30 @@ foreach ($k in @('Host', 'User', 'Password', 'RemoteRoot')) {
 $proto = if ($cfg.Protocol) { $cfg.Protocol.ToLowerInvariant() } else { 'ftp' }
 if ($proto -notin @('ftp', 'ftps', 'sftp')) { throw "Protocol invalide : '$proto' (attendu ftp, ftps ou sftp)" }
 
+# --- mot de passe : decodage selon PasswordEncoding ---------------------------
+# $pwd ne doit jamais etre affiche ni journalise : les messages d'erreur ci-dessous
+# decrivent le probleme sans jamais reveler la valeur.
+$pwdEnc = if ($cfg.PasswordEncoding) { $cfg.PasswordEncoding.ToLowerInvariant() } else { 'plain' }
+switch ($pwdEnc) {
+  'plain' { $pwd = $cfg.Password }
+  'base64' {
+    try { $pwd = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($cfg.Password)) }
+    catch { throw "Password n'est pas du base64 valide (PasswordEncoding vaut 'base64' dans $ConfigPath)." }
+  }
+  'dpapi' {
+    try {
+      $sec = ConvertTo-SecureString $cfg.Password -ErrorAction Stop
+      $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+      try { $pwd = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr) }
+      finally { [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+    } catch {
+      throw "Dechiffrement DPAPI impossible. Une valeur 'dpapi' n'est lisible que par le compte Windows et la machine qui l'ont produite : regenere-la ici avec (ConvertTo-SecureString '<mdp>' -AsPlainText -Force | ConvertFrom-SecureString)."
+    }
+  }
+  default { throw "PasswordEncoding inconnu : '$pwdEnc' (attendu plain, base64 ou dpapi)" }
+}
+if ([string]::IsNullOrEmpty($pwd)) { throw "Le mot de passe decode est vide (verifie Password / PasswordEncoding dans $ConfigPath)." }
+
 # Fichiers de developpement : ne partent jamais en ligne.
 $excludes = @('README.md', 'setup-iis.ps1', 'web.config.local', '.deploy', 'deploy.log')
 
@@ -70,7 +107,7 @@ if (-not $files) { throw "Aucun fichier a publier dans $siteDir" }
 
 $totalKo = [math]::Round((($files | Measure-Object Length -Sum).Sum) / 1KB, 1)
 Write-Host "Site   : $siteDir"
-Write-Host "Cible  : $proto://$($cfg.Host)$($cfg.RemoteRoot)"
+Write-Host "Cible  : ${proto}://$($cfg.Host)$($cfg.RemoteRoot)"
 Write-Host "Fichiers : $($files.Count)  ($totalKo Ko)"
 
 if ($WhatIf) {
@@ -89,7 +126,7 @@ if ($proto -eq 'sftp') {
   $port = if ($cfg.Port -and $cfg.Port -gt 0) { $cfg.Port } else { 22 }
   # -hostkey=* accepte la cle du serveur : acceptable pour un deploiement vers un hote connu et maitrise.
   $script = @"
-open sftp://$($cfg.User):$($cfg.Password)@$($cfg.Host):$port/ -hostkey=*
+open sftp://$($cfg.User):$pwd@$($cfg.Host):$port/ -hostkey=*
 synchronize remote -delete=off "$siteDir" "$($cfg.RemoteRoot)"
 exit
 "@
@@ -108,7 +145,7 @@ exit
 # --- FTP / FTPS natifs --------------------------------------------------------
 $port   = if ($cfg.Port -and $cfg.Port -gt 0) { $cfg.Port } else { 21 }
 $base   = "ftp://$($cfg.Host):$port" + $cfg.RemoteRoot.TrimEnd('/')
-$cred   = New-Object System.Net.NetworkCredential($cfg.User, $cfg.Password)
+$cred   = New-Object System.Net.NetworkCredential($cfg.User, $pwd)
 $useTls = ($proto -eq 'ftps')
 $made   = New-Object 'System.Collections.Generic.HashSet[string]'
 

@@ -67,5 +67,10 @@ releases/
 
 # --- Deployment credentials — NEVER commit ---
 # FTP/SFTP identifiers read by installer/deploy-website.ps1.
+# The trailing wildcards also cover editor backups (.bak, .save, .orig, .tmp) and
+# copies like "website-ftp.local (2).json" — a backup holds the same secret as the original.
 /installer/website-ftp.local.json
 *.local.json
+*.local.json.*
+*website-ftp*
+!installer/website-ftp.local.json.example
