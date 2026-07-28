@@ -64,3 +64,8 @@ releases/
 # results.json / build.log are regenerated on every AutoTest run.
 /AutoTest/results.json
 /AutoTest/build.log
+
+# --- Deployment credentials — NEVER commit ---
+# FTP/SFTP identifiers read by installer/deploy-website.ps1.
+/installer/website-ftp.local.json
+*.local.json

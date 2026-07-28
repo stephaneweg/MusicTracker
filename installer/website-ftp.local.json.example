@@ -1,0 +1,10 @@
+{
+  "_comment": "Copie ce fichier en 'website-ftp.local.json' (meme dossier) et remplis-le. Le vrai fichier est exclu de git : il ne doit JAMAIS etre committe. Lu par installer/deploy-website.ps1.",
+
+  "Protocol": "ftps",
+  "Host": "ftp.monhebergeur.tld",
+  "Port": 0,
+  "User": "mon-identifiant",
+  "Password": "mon-mot-de-passe",
+  "RemoteRoot": "/www"
+}
