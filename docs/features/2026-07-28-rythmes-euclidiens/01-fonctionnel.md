@@ -72,6 +72,29 @@ Le réglage s'exprime en **pas** (croche, double-croche ou triolet, même unité
 
 Concrètement, un utilisateur peut appliquer un motif de rock du catalogue, le personnaliser, puis décaler la seule caisse claire d'une croche — et obtenir en deux gestes une variante qu'il aurait fallu redessiner entièrement.
 
+### 3.7 Ligne mélodique en rythme euclidien
+
+Le même générateur s'applique à une **ligne mélodique**, et l'application s'y prête déjà remarquablement : un module de ligne mélodique ne stocke **que le rythme**, le moteur choisissant les hauteurs sur l'harmonie en cours — note de l'accord sur les temps forts, note de passage sur les positions faibles, avec conduite des voix. C'est exactement le comportement demandé ; il n'y a rien à inventer côté hauteurs.
+
+La génération euclidienne fournit donc **le rythme**, et le moteur existant se charge des notes. Tous les réglages actuels de la ligne — Contour, Ancrage, Continuité, Amplitude, Registre — continuent de s'appliquer sans changement, puisque seul le rythme est produit.
+
+**Par voix.** Une ligne mélodique compte jusqu'à 3 voix. Le générateur remplit **une voix à la fois**, exactement comme il remplit une ligne de percussion. Générer E(3,8) sur la voix 1 et E(5,8) sur la voix 2 produit un contrepoint polyrythmique que le moteur harmonise ensemble — c'est l'usage le plus intéressant de la feature.
+
+**Un avertissement qui n'est pas théorique.** Le moteur bâtit son squelette harmonique sur les notes qui tombent sur un **temps fort**. Or un motif euclidien est *régulièrement réparti*, pas *aligné sur la mesure* : plus il est dense ou syncopé, plus ses coups tombent entre les temps, et moins il produit de notes d'ancrage. À l'extrême, une ligne presque entièrement faite de notes de passage peut **flotter harmoniquement** — jolie par accident, ou vague.
+
+Deux conséquences pour l'interface :
+
+1. **L'aperçu affiche la grille métrique sous le motif**, pour qu'on voie immédiatement combien de coups tombent sur un temps :
+
+   ```
+   ● · · ● · · ● ·
+   ▲     ·     ▲        ← temps
+   ```
+
+2. **Le décalage devient un réglage musical de premier plan** : faire tourner le motif change *quels* coups tombent sur les temps, donc la solidité de l'ancrage harmonique — sans changer le rythme perçu. C'est le réglage à manipuler quand la ligne sonne flottante.
+
+Aucun réglage automatique n'est prévu pour corriger ça : c'est un arbitrage musical, il appartient à l'oreille.
+
 ## 4. Cas limites
 
 | Situation | Comportement |
@@ -93,8 +116,7 @@ Concrètement, un utilisateur peut appliquer un motif de rock du catalogue, le p
 
 ## 6. Hors périmètre
 
-- **Rythme d'accords euclidien** — placer les attaques d'un accompagnement selon E(K,N). Intéressant, mais l'accompagnement d'accords repose sur une liste d'articulations figées, d'une autre nature que la liste de notes libre de la batterie : c'est un travail distinct. *Voir §8.*
-- **Temps forts de ligne mélodique** par E(K,N) — même raison.
+- **Rythme d'accords euclidien** — placer les attaques d'un accompagnement selon E(K,N). Intéressant, mais l'accompagnement d'accords repose sur une liste d'**articulations figées**, d'une autre nature que la liste de notes libre de la batterie et de la ligne mélodique : c'est un travail distinct. *Voir §8.*
 - Motifs euclidiens **enregistrés dans le catalogue** en tant que tels (avec leurs paramètres réédilables) : le motif généré devient une liste de coups, il perd ses K/N. Acceptable pour une première version.
 - Génération **multi-lignes en une fois** : on répète l'opération ligne par ligne.
 - Accentuation (vélocité) des coups générés : l'application ne stocke pas de vélocité par note.
@@ -119,6 +141,15 @@ Concrètement, un utilisateur peut appliquer un motif de rock du catalogue, le p
 16. Décaler de +1 puis de −1 redonne le motif de départ.
 17. Un motif dessiné à la main, jamais généré, peut être décalé.
 18. Le décalage s'entend sur **toutes** les répétitions du module, pas seulement la première mesure.
+
+Ligne mélodique :
+
+19. E(3,8) généré sur une voix produit 3 notes par cycle, **sonnantes** — le moteur leur a bien attribué des hauteurs.
+20. Générer sur la voix 2 ne modifie aucune note de la voix 1.
+21. Les hauteurs suivent l'accord en cours : changer un accord de la grille change les notes de la ligne, sans retoucher le rythme.
+22. Les réglages existants (Contour, Ancrage, Continuité, Amplitude, Registre) agissent toujours sur une ligne au rythme généré.
+23. L'aperçu montre la grille métrique, et le nombre de coups tombant sur un temps varie quand on change le décalage.
+24. Une ligne générée reste modifiable à la main dans la grille de rythme.
 
 ## 8. Suite possible
 

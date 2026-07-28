@@ -1,6 +1,6 @@
 # Rythmes euclidiens — analyse technique
 
-Référence : `01-fonctionnel.md`. Effort estimé : **moyen** (générateur trivial, l'essentiel est le panneau d'interface et l'i18n).
+Référence : `01-fonctionnel.md`. Effort estimé : **moyen** pour la batterie seule (le générateur est trivial ; l'essentiel est le panneau d'interface et l'i18n), **petit** pour l'extension à la ligne mélodique une fois la batterie faite — voir le découpage au §4 ter.
 
 ## 1. Le point d'insertion, et pourquoi il est idéal
 
@@ -120,6 +120,47 @@ Deux points d'attention :
 
 Cette fonction est indépendante de `EuclideanRhythm.cs` : le décalage reste disponible même si la génération euclidienne était retirée. Le panneau euclidien s'en sert pour sa propre rotation, plutôt que de dupliquer la logique.
 
+## 4 ter. La ligne mélodique — un second consommateur, pas un second générateur
+
+Les deux modules stockent leur rythme **de la même façon** : une liste de notes dont `Note` est un **indice de rangée**, plus une méthode d'affectation de même forme.
+
+| | Batterie | Ligne mélodique |
+|---|---|---|
+| Rangée | ligne de percussion | voix (0..2) |
+| Liste | `CustomNotes` | `Notes` |
+| Affectation | `SetCustomNotes(notes, spq, len)` | `SetNotes(notes, spq, len)` |
+| Hauteurs | ligne → touche GM | **non stockées** — dérivées de l'harmonie |
+
+Le générateur reste donc **unique** : il produit une `List<RiffNote>` indexée par rangée, et seul le point d'application diffère. La signature se généralise sans effort :
+
+```csharp
+// Produit le motif ; l'appelant décide de la destination.
+public static List<RiffNote> Build(int row, int k, int n, int rotation, int stepSlices, int totalSlices)
+```
+
+`ApplyEuclidean` (batterie) et son équivalent mélodique ne sont alors que deux enveloppes de six lignes autour du même appel — la seconde n'ajoutant qu'un `SetNotes` au lieu de `SetCustomNotes`. `RotateLane` se généralise de la même manière (`unit` s'y lit sur `Slices` au lieu de `CustomSlices`).
+
+**Aucune modification du moteur mélodique.** `MelodicLineEngine.GenerateLine` reçoit un rythme et rend des hauteurs ; il lui est indifférent que ce rythme ait été dessiné, importé ou généré. La demande « sur les coups, le moteur choisit une note adaptée » est donc déjà satisfaite par le code existant — passe 1 pour les temps forts, passes 2-3 pour les notes d'accord intermédiaires, passe 4 pour les notes de passage et broderies.
+
+### Le point de friction à comprendre avant de coder
+
+Le moteur classe chaque note par sa **position métrique**, pas par son rôle dans le motif :
+
+```csharp
+// MelodicLineEngine.cs:330
+// Metric class of a phased position: 0 fort (bar downbeat) · 1 demi-fort (secondary strong, num/2) · 2 faible
+```
+
+La passe 1 ne traite que `cls == 0`. Un motif euclidien étant *régulièrement réparti* et non *aligné sur la mesure*, ses coups tombent souvent entre les temps : le squelette harmonique s'amincit, et la ligne devient majoritairement faite de notes de passage.
+
+C'est un comportement, pas un défaut — mais il doit être **rendu visible**, d'où la grille métrique sous l'aperçu (§3.7 du fonctionnel). L'aperçu se contente de compter les coups dont la position tombe sur `cls == 0` ou `1` : aucun accès au moteur n'est nécessaire, la classification ne dépend que de la position, du chiffrage et de la levée.
+
+**Ne pas « corriger » le moteur** pour faire de chaque premier coup de cycle un ancrage : cela changerait le rendu de toutes les lignes mélodiques existantes, générées ou non. Le décalage donne à l'utilisateur le contrôle nécessaire, sans régression.
+
+### Découpage recommandé
+
+La batterie et la ligne mélodique forment **deux tranches livrables séparément**, la seconde ne coûtant que ses enveloppes et son interface une fois la première faite. Livrer la batterie d'abord : c'est le cas le plus audible, le plus facile à valider, et il éprouve le vocabulaire d'interface avant qu'on le duplique.
+
 ## 5. Interface
 
 Deux blocs distincts, tous deux construits **en code** comme le reste de `BuildDrumEditor` :
@@ -170,6 +211,10 @@ Le critère 7 exige **une seule** entrée d'annulation par application. L'édite
 14. `RotateLane` sur une ligne ne modifie **aucune** note des autres lignes (comparaison avant/après).
 15. Décalage sur un motif du catalogue **multi-mesures** : la rotation utilise bien `unit` et non `BeatsPerBar × 24` — un motif de 2 mesures décalé de sa longueur redonne l'original.
 16. Décalage d'une ligne vide : aucun changement, aucune exception.
+17. Ligne mélodique : après génération sur une voix, `GenerateLine` rend **autant de notes que de coups**, toutes avec une hauteur valide (aucune note muette).
+18. Ligne mélodique : les hauteurs rendues appartiennent à l'accord en cours sur les positions de classe métrique 0, et à la gamme ailleurs — c'est l'invariant du moteur, vérifiable en pilotant `GenerateLine` sur une grille d'accords connue.
+19. Générer sur la voix 2 laisse la voix 1 inchangée (comparaison de la liste de notes avant/après).
+20. Le compteur de coups sur temps fort affiché par l'aperçu varie bien avec le décalage, et vaut 0 pour un motif entièrement syncopé.
 
 **Automatisable via l'interface** (FlaUI) : ouvrir l'éditeur de batterie, déplier le panneau, appliquer, vérifier que la grille s'affiche et contient des coups ; Ctrl+Z, vérifier le retour à l'état antérieur en une fois.
 
