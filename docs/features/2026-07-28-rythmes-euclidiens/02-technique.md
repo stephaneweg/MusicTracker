@@ -87,9 +87,46 @@ Déroulé :
 
 C'est la raison pour laquelle le fonctionnel exprime le cycle en **N × unité** plutôt qu'en « N pas dans la mesure » : cette seconde formulation obligerait à répartir 5 ou 7 pas sur 96 slices, donc à arrondir, donc à produire un rythme faux à quelques millisecondes près.
 
+## 4 bis. Le décalage générique
+
+Le §3.6 du fonctionnel demande un décalage applicable à **tout** motif, pas seulement aux motifs générés. C'est une transformation de la liste de notes, indépendante de l'euclidien :
+
+```csharp
+// TimelineHelper — fait tourner UNE ligne de percussion dans son cycle.
+public static void RotateLane(DrumPatternModule dp, int lane, int deltaSlices)
+```
+
+Le cycle est déjà défini par le moteur, il ne faut surtout pas en inventer un autre :
+
+```csharp
+// DrumPattern.cs:109 — la maille effectivement répétée
+int unit = (m.CustomSlices != null && m.CustomSlices.Length > 0)
+         ? m.CustomSlices.Length
+         : Math.Max(1, RiffNotes.LengthOf(m.CustomNotes));
+```
+
+La transformation se réduit alors à `start' = ((start + delta) mod unit + unit) mod unit` sur les seules notes dont `Note == lane`, puis `SetCustomNotes`. Le double modulo gère les décalages négatifs, que le fonctionnel autorise.
+
+Trois propriétés en découlent gratuitement, et couvrent les critères 14 à 18 :
+
+- le **nombre de coups est invariant** (on déplace, on ne crée ni ne supprime) ;
+- une rotation de `unit` est l'**identité** ;
+- comme `unit` est précisément la maille que `DrumPattern.Generate` répète (`Repeats` fois, l. 112-120), le décalage s'entend sur **toutes** les répétitions, sans code supplémentaire.
+
+Deux points d'attention :
+
+1. **Réutiliser `unit` tel quel.** Prendre à la place `BeatsPerBar × 24` donnerait un résultat faux pour tout motif dont la longueur stockée diffère de la mesure — c'est le cas des motifs du catalogue multi-mesures.
+2. **Même bascule en mode personnalisé** que pour la génération (§4, étape 1) : un motif du catalogue non personnalisé n'a pas de `CustomNotes` à faire tourner.
+
+Cette fonction est indépendante de `EuclideanRhythm.cs` : le décalage reste disponible même si la génération euclidienne était retirée. Le panneau euclidien s'en sert pour sa propre rotation, plutôt que de dupliquer la logique.
+
 ## 5. Interface
 
-Un `Expander` replié sous « Personnaliser », contenant : un `ComboBox` d'instrument (`DrumPattern.LaneNames`), trois champs numériques (Coups, Pas, Décalage), un `ComboBox` d'unité, un `TextBlock` d'aperçu en police à chasse fixe, et un bouton « Appliquer ».
+Deux blocs distincts, tous deux construits **en code** comme le reste de `BuildDrumEditor` :
+
+**a) Le décalage** — toujours visible sous « Personnaliser », car il s'applique à n'importe quel motif : un `ComboBox` d'instrument, et deux boutons `◀` / `▶` qui décalent d'un pas dans l'unité choisie. Des boutons plutôt qu'un champ numérique : le décalage se cherche à l'oreille, par essais successifs, et non en saisissant une valeur connue d'avance. Chaque clic est une application immédiate, donc **une entrée d'annulation** — d'où l'importance du §6.
+
+**b) La génération euclidienne** — un `Expander` replié, contenant : un `ComboBox` d'instrument, trois champs numériques (Coups, Pas, Décalage initial), un `ComboBox` d'unité, un `TextBlock` d'aperçu en police à chasse fixe, et un bouton « Appliquer ».
 
 L'aperçu se recalcule à **chaque changement de réglage** — c'est lui qui rend la feature utilisable sans connaître la théorie (§3.3). Il affiche le motif en `●`/`·`, le nom traditionnel s'il existe, et l'avertissement de décalage quand `n × stepSlices` ne divise pas `BeatsPerBar × 24`.
 
@@ -128,6 +165,11 @@ Le critère 7 exige **une seule** entrée d'annulation par application. L'édite
 9. Un `.sq` antérieur se recharge inchangé (aucun champ nouveau).
 10. Les 7 `lang.xx.json` parsent (via `JavaScriptSerializer`, **pas** `ConvertFrom-Json` qui échoue à tort sur `AUDIO`/`Audio`), et chaque clé neuve existe dans les 7.
 11. Build : `msbuild`, 0 erreur, 0 avertissement — **et en configuration Release**, pas seulement Debug.
+12. `RotateLane` conserve exactement le nombre de coups de la ligne, pour tout décalage de −64 à +64.
+13. `RotateLane(dp, lane, unit)` est l'**identité** ; `+d` suivi de `−d` aussi (aller-retour exact).
+14. `RotateLane` sur une ligne ne modifie **aucune** note des autres lignes (comparaison avant/après).
+15. Décalage sur un motif du catalogue **multi-mesures** : la rotation utilise bien `unit` et non `BeatsPerBar × 24` — un motif de 2 mesures décalé de sa longueur redonne l'original.
+16. Décalage d'une ligne vide : aucun changement, aucune exception.
 
 **Automatisable via l'interface** (FlaUI) : ouvrir l'éditeur de batterie, déplier le panneau, appliquer, vérifier que la grille s'affiche et contient des coups ; Ctrl+Z, vérifier le retour à l'état antérieur en une fois.
 

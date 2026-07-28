@@ -57,6 +57,21 @@ Le cycle généré dure **N × unité**. Il se répète pour remplir toute la lo
 
 Quand cette durée ne tombe pas juste sur la mesure — E(2,5) en croches fait 2,5 temps —, le motif **se décale d'une mesure à l'autre** au lieu de se recaler. Ce n'est pas un défaut : c'est le comportement attendu d'un séquenceur euclidien, et la source de motifs tournants impossibles à écrire autrement. L'aperçu doit signaler ce cas (« ce motif se décale d'une mesure à l'autre »), pour que ce soit un choix et non une surprise.
 
+### 3.6 Le décalage, réglage rythmique à part entière
+
+Le décalage ne sert pas qu'à la génération euclidienne : **faire tourner un motif est une transformation musicale en soi**, qui s'applique à n'importe quel rythme — un motif du catalogue, un motif dessiné à la main, un motif généré.
+
+L'application propose donc un **« Décalage »** dans l'éditeur de batterie, indépendant du panneau de génération, qui fait tourner cycliquement le motif de la ligne choisie.
+
+**Par ligne, pas sur le motif entier.** C'est la distinction qui fait tout l'intérêt du réglage :
+
+- décaler le motif *entier* revient à déplacer le premier temps — musicalement pauvre, et déroutant ;
+- décaler *une seule ligne* déplace la caisse claire contre la grosse caisse, ou le charleston contre les deux. C'est exactement le geste qui transforme un groove plat en groove qui balance, et il est aujourd'hui impossible autrement qu'en redessinant tous les coups un par un.
+
+Le réglage s'exprime en **pas** (croche, double-croche ou triolet, même unité que la génération), positif ou négatif. Les coups qui débordent d'un bout du cycle réapparaissent à l'autre : rien ne se perd, le nombre de coups est invariant.
+
+Concrètement, un utilisateur peut appliquer un motif de rock du catalogue, le personnaliser, puis décaler la seule caisse claire d'une croche — et obtenir en deux gestes une variante qu'il aurait fallu redessiner entièrement.
+
 ## 4. Cas limites
 
 | Situation | Comportement |
@@ -65,6 +80,9 @@ Quand cette durée ne tombe pas juste sur la mesure — E(2,5) en croches fait 2
 | K ≥ N | tous les pas sont frappés (K ramené à N) |
 | N = 1 | un seul coup, au début du cycle |
 | Décalage ≥ N | ramené modulo N |
+| Décalage négatif | rotation en sens inverse ; −1 équivaut à N−1 |
+| Décalage d'une ligne vide | sans effet, sans message |
+| Décalage d'un motif du catalogue non personnalisé | bascule en motif personnalisé, comme la génération |
 | La ligne contient déjà des coups | ils sont **remplacés** sur cette ligne (annulable par Ctrl+Z) |
 | Module issu du catalogue, non personnalisé | il bascule en motif personnalisé, comme le fait « Personnaliser » |
 | Mesure ternaire ou à 3 temps | rien de particulier : le cycle reste N × unité et se décale s'il ne tombe pas juste |
@@ -95,6 +113,12 @@ Quand cette durée ne tombe pas juste sur la mesure — E(2,5) en croches fait 2
 10. K = 0 vide la ligne visée et laisse les autres intactes.
 11. L'aperçu affiche le nom traditionnel pour E(3,8) et E(5,8).
 12. Les libellés sont traduits dans les 7 langues.
+13. Décaler la caisse claire de +1 croche laisse **tous** les coups de grosse caisse en place.
+14. Décaler une ligne conserve exactement son nombre de coups, quel que soit le décalage.
+15. Décaler d'un cycle entier (r = N) redonne le motif de départ, à l'identique.
+16. Décaler de +1 puis de −1 redonne le motif de départ.
+17. Un motif dessiné à la main, jamais généré, peut être décalé.
+18. Le décalage s'entend sur **toutes** les répétitions du module, pas seulement la première mesure.
 
 ## 8. Suite possible
 
