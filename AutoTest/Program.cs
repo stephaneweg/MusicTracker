@@ -112,12 +112,7 @@ namespace MusicTracker.AutoTest
                     if (save == null) throw new Exception("BtnSaveMusic introuvable.");
                     save.AsButton().Invoke();
 
-                    var dialog = Retry.WhileNull(() =>
-                    {
-                        var desktopWindows = automation.GetDesktop().FindAllChildren(cf => cf.ByControlType(ControlType.Window));
-                        return desktopWindows.FirstOrDefault(w => w.Properties.ProcessId.ValueOrDefault == window.Properties.ProcessId.ValueOrDefault
-                                                                    && w.Properties.NativeWindowHandle.ValueOrDefault != window.Properties.NativeWindowHandle.ValueOrDefault);
-                    }, TimeSpan.FromSeconds(8)).Result;
+                    var dialog = Retry.WhileNull(() => FindNewWindow(automation, window), TimeSpan.FromSeconds(8)).Result;
 
                     if (dialog == null) throw new Exception("Aucune boîte de dialogue d'enregistrement n'est apparue après clic sur Sauvegarder.");
                     Keyboard.Press(VirtualKeyShort.ESCAPE);
@@ -145,6 +140,15 @@ namespace MusicTracker.AutoTest
             WriteReport(report, outPath);
             bool anyFailure = report.Scenarios.Any(s => s.Status != "pass");
             return anyFailure ? 1 : 0;
+        }
+
+        static Window FindNewWindow(UIA3Automation automation, Window mainWindow)
+        {
+            var desktopWindows = automation.GetDesktop().FindAllChildren(cf => cf.ByControlType(ControlType.Window));
+            return desktopWindows
+                .Select(w => w.AsWindow())
+                .FirstOrDefault(w => w.Properties.ProcessId.ValueOrDefault == mainWindow.Properties.ProcessId.ValueOrDefault
+                                      && w.Properties.NativeWindowHandle.ValueOrDefault != mainWindow.Properties.NativeWindowHandle.ValueOrDefault);
         }
 
         static void RunScenario(RunReport report, Application app, string name, Action body)
