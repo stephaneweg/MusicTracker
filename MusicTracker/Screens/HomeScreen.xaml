@@ -287,12 +287,8 @@
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="440" Margin="0,30,0,0">
                                 <!-- Wordmark -->
                                 <StackPanel Orientation="Horizontal" Margin="2,0,0,4" HorizontalAlignment="Center">
-                                    <Image Source="/Images/logo-mark.png" Width="60" Height="60" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,0,0" Opacity="0.9">
-                                        <Image.Effect>
-                                            <BlurEffect Radius="8" />
-                                        </Image.Effect>
-                                    </Image>
-                                    <Image Source="/Images/logo-mark.png" Width="60" Height="60" Stretch="Uniform" VerticalAlignment="Center" Margin="-60,0,10,0"/>
+                                   
+                                    <Image Source="/Images/logo-mark.png" Width="60" Height="60" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                     <TextBlock FontSize="42" FontWeight="Bold" VerticalAlignment="Center"><Run Text="Koton" Foreground="{StaticResource CommonForeground}"/><Run Text=" Studio" Foreground="{StaticResource AccentBrush}"/></TextBlock>
                                 </StackPanel>
                                 <TextBlock Text="{loc:Tr 'ComposeArrangeAndSequenceYourPieces'}" HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"

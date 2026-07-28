@@ -14,6 +14,7 @@ namespace MusicTracker.Engine.Flow
     [JsonDerivedType(typeof(DrumPatternModule), "DrumKit")]
     [JsonDerivedType(typeof(CadenceModule), "Cadence")]
     [JsonDerivedType(typeof(MelodicLineModule), "MelodicLine")]
+    [JsonDerivedType(typeof(PolyDrumModule), "PolyDrum")]
     public abstract class FlowModule : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -225,6 +226,31 @@ namespace MusicTracker.Engine.Flow
         }
 
         [JsonIgnore] public override string Title { get { return "Drum kit"; } }
+    }
+
+    /// <summary>BATTERIE POLYRYTHMIQUE : une pile de calques, chacun jouant un instrument sur son propre motif
+    /// euclidien E(K,N). Les cycles de longueurs différentes se décalent les uns par rapport aux autres, ce qui
+    /// produit des trames impossibles à écrire à la main.
+    ///
+    /// Différence avec <see cref="DrumPatternModule"/> : ici les PARAMÈTRES sont la source de vérité, pas une liste
+    /// de coups. On règle K, N et le décalage, et on réentend aussitôt ; en contrepartie on n'édite pas un coup
+    /// isolé — pour cela, « Figer en motif éditable » convertit le tout en module de batterie ordinaire.</summary>
+    public class PolyDrumModule : FlowModule
+    {
+        int kit = 0;         // index dans InstrumentCatalog.DrumKits()
+        int beatsPerBar = 4;
+        int repeats = 4;
+
+        public int Kit { get { return kit; } set { if (kit != value) { kit = value; OnChanged(nameof(Kit)); } } }
+        public int BeatsPerBar { get { return beatsPerBar; } set { int v = Math.Max(1, value); if (beatsPerBar != v) { beatsPerBar = v; OnChanged(nameof(BeatsPerBar)); } } }
+        public int Repeats { get { return repeats; } set { int v = Math.Max(1, value); if (repeats != v) { repeats = v; OnChanged(nameof(Repeats)); } } }
+
+        /// <summary>Les calques, du premier au dernier. Un calque = un instrument + son motif euclidien.</summary>
+        public List<Flow.EuclidLayer> Layers { get; set; } = new List<Flow.EuclidLayer>();
+
+        public void Touch() { OnChanged(nameof(Layers)); }
+
+        [JsonIgnore] public override string Title { get { return "Batterie polyrythmique"; } }
     }
 
     /// <summary>One chord of a <see cref="CadenceModule"/>: the absolute root/quality/inversion actually played,

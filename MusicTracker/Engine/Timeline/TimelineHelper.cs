@@ -432,6 +432,10 @@ namespace MusicTracker.Engine.Timeline
                     ClampBarsRepeats(dp.BeatsPerBar, dp.Repeats, beats, out int dpB, out int dpR);
                     dp.BeatsPerBar = dpB; dp.Repeats = dpR;
                     break;
+                case PolyDrumModule pd:
+                    ClampBarsRepeats(pd.BeatsPerBar, pd.Repeats, beats, out int pdB, out int pdR);
+                    pd.BeatsPerBar = pdB; pd.Repeats = pdR;
+                    break;
                 case CadenceModule cm:
                     {
                         int per = Math.Max(1, cm.BeatsPerBar);
@@ -522,6 +526,60 @@ namespace MusicTracker.Engine.Timeline
             notes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
             dp.Repeats = 1;
             dp.SetCustomNotes(notes, DrumPattern.SlicesPerQuarter, total);
+        }
+
+        // ---- rythmes euclidiens (ligne mélodique) ----------------------------------------------------------
+        // La ligne mélodique ne stocke QUE le rythme : le moteur choisit les hauteurs sur l'harmonie en cours
+        // (note d'accord sur les temps forts, note de passage ailleurs). Générer un rythme euclidien suffit donc,
+        // et MelodicLineEngine n'a pas à être touché.
+        //
+        // Sa grille est à 4 slices/noire par défaut, ce qui ne représente pas les triolets. On la normalise à 24
+        // (comme la batterie : divisible par 2, 3, 4, 6, 8 et 12) en rééchelonnant les notes déjà présentes.
+        const int MelodicSpq = 24;
+
+        static System.Collections.Generic.List<Engine.RiffNote> MelodicNotesAt24(MelodicLineModule ml, int exceptVoice)
+        {
+            var notes = new System.Collections.Generic.List<Engine.RiffNote>();
+            if (ml.Notes == null) return notes;
+            int old = ml.SlicesPerQuarter > 0 ? ml.SlicesPerQuarter : 4;
+            foreach (var x in ml.Notes)
+            {
+                if (x.Note == exceptVoice) continue;
+                notes.Add(old == MelodicSpq ? x
+                    : new Engine.RiffNote(x.Note, x.Start * MelodicSpq / old, Math.Max(1, x.Length * MelodicSpq / old)));
+            }
+            return notes;
+        }
+
+        /// <summary>Écrit un motif euclidien E(k,n) sur UNE voix de la ligne, sans toucher aux autres.
+        /// Seul le RYTHME est produit : les hauteurs restent choisies par le moteur sur l'harmonie.</summary>
+        public static void ApplyEuclideanMelodic(MelodicLineModule ml, int voice, int k, int n, int rotation, int stepSlices)
+        {
+            if (ml == null || voice < 0) return;
+            int total = Math.Max(1, ml.BeatsPerBar) * MelodicSpq;   // BeatsPerBar = durée TOTALE de la ligne
+            var notes = MelodicNotesAt24(ml, voice);
+            notes.AddRange(Engine.Flow.EuclideanRhythm.Build(voice, k, n, rotation, stepSlices, total));
+            notes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+            if (voice >= ml.VoiceCount) ml.VoiceCount = voice + 1;   // rendre la voix visible dans la grille
+            ml.SetNotes(notes, MelodicSpq, total);
+        }
+
+        /// <summary>Fait tourner UNE voix de la ligne dans la durée du module (delta négatif = sens inverse).</summary>
+        public static void RotateMelodicVoice(MelodicLineModule ml, int voice, int deltaSlices)
+        {
+            if (ml == null || voice < 0 || deltaSlices == 0 || ml.Notes == null || ml.Notes.Count == 0) return;
+            int unit = Math.Max(1, Math.Max(1, ml.BeatsPerBar) * MelodicSpq);
+            var notes = MelodicNotesAt24(ml, voice);                        // les autres voix, rééchelonnées
+            int old = ml.SlicesPerQuarter > 0 ? ml.SlicesPerQuarter : 4;
+            foreach (var x in ml.Notes)
+            {
+                if (x.Note != voice) continue;
+                int s = old == MelodicSpq ? x.Start : x.Start * MelodicSpq / old;
+                int len = old == MelodicSpq ? x.Length : Math.Max(1, x.Length * MelodicSpq / old);
+                notes.Add(new Engine.RiffNote(x.Note, (((s + deltaSlices) % unit) + unit) % unit, len));
+            }
+            notes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+            ml.SetNotes(notes, MelodicSpq, unit);
         }
 
         /// <summary>Fait tourner UNE ligne de percussion dans son cycle (delta négatif = sens inverse).

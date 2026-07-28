@@ -469,6 +469,7 @@ namespace MusicTracker.Engine.Score
                 case PlayRiffModule pr: return resolve?.Invoke(pr.RiffId);
                 case PatternGeneratorModule pg: return PatternGenerator.Generate(pg);
                 case DrumPatternModule d: return DrumPattern.Generate(d);
+                case PolyDrumModule pd: return PolyDrum.Generate(pd);
                 case CadenceModule cm: return PatternGenerator.GenerateCadence(cm);
                 case MelodicLineModule ml: return MelodicLineEngine.GenerateLine(ml, project, resolve, key, startBeat, carry);
                 default: return null;

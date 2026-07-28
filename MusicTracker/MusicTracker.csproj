@@ -178,6 +178,8 @@
     <Compile Include="Engine\Flow\PatternGenerator.cs" />
     <Compile Include="Engine\Flow\DrumPattern.cs" />
     <Compile Include="Engine\Flow\EuclideanRhythm.cs" />
+    <Compile Include="Engine\Flow\PolyDrum.cs" />
+    <Compile Include="Controls\TimelineEditor\PolyDrumWheel.cs" />
     <Compile Include="Engine\Flow\LoopingRiffProvider.cs" />
     <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
     <Compile Include="Engine\Flow\ModuleDuration.cs" />

@@ -24,6 +24,8 @@ namespace MusicTracker.Engine.Flow
                     if (dp.Style == DrumPattern.CustomStyle && dp.CustomSlices != null && dp.CustomSlices.Length > 0 && dp.CustomSlicesPerQuarter > 0)
                         return (double)dp.CustomSlices.Length / dp.CustomSlicesPerQuarter * dp.Repeats;
                     return (double)dp.BeatsPerBar * dp.Repeats;
+                case PolyDrumModule pd:
+                    return (double)Math.Max(1, pd.BeatsPerBar) * Math.Max(1, pd.Repeats);
                 case CadenceModule cm:
                     return (double)cm.BeatsPerBar * Math.Max(1, cm.Chords?.Count ?? 0); // one cell per chord
                 case MelodicLineModule ml:

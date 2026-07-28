@@ -1744,6 +1744,7 @@ namespace MusicTracker.Screens
                     break;
                 case CadenceModule cm: box.SetThumbnail(Controls.RiffThumbnail.Get(PatternGenerator.GenerateCadence(cm), Controls.RiffThumbnail.Chords)); break;
                 case DrumPatternModule dp: box.SetThumbnail(Controls.RiffThumbnail.GetDrums(DrumPattern.Generate(dp))); break;
+                case Engine.Flow.PolyDrumModule pdm: box.SetThumbnail(Controls.RiffThumbnail.GetDrums(Engine.Flow.PolyDrum.Generate(pdm))); break;
                 case MelodicLineModule ml:
                 {
                     // Prefer the pitched line the engine derives from the chords; fall back to the raw rhythm skeleton
@@ -1877,6 +1878,16 @@ namespace MusicTracker.Screens
                         return $"{TimelineHelper.Get(DrumPattern.StyleNames, dp.Style)} · {unitT} temps ×{dp.Repeats}";
                     }
                     return $"{TimelineHelper.Get(DrumPattern.StyleNames, dp.Style)} · {beats}";
+                case Engine.Flow.PolyDrumModule pdm:
+                {
+                    int nl = 0; if (pdm.Layers != null) foreach (var l in pdm.Layers) if (l != null && !l.Muted) nl++;
+                    double cyc = Engine.Flow.PolyDrum.CycleBeats(pdm);
+                    // Le cycle commun est l'information que l'oreille cherche : au bout de combien de temps tout
+                    // retombe ensemble. On ne l'affiche que s'il diffère de la longueur du module.
+                    string cs = (cyc > 0 && Math.Abs(cyc - Math.Max(1, pdm.BeatsPerBar) * Math.Max(1, pdm.Repeats)) > 1e-6)
+                              ? $" · {Loc.T("Cycle")} {Math.Round(cyc, 2)}" : "";
+                    return $"{Loc.T("Polyrythmique")} · {nl} {Loc.T("Calques")}{cs} · {beats}";
+                }
                 case PlayRiffModule pr:
                     { var r = TimelineHelper.RiffById(pr.RiffId); return (r != null ? r.Name : Loc.T("Aucun")) + " · " + beats; }
                 default:
@@ -1946,6 +1957,7 @@ namespace MusicTracker.Screens
             else if (item.Module is PatternGeneratorModule pg) { txtEditorTitle.Text = Loc.T("EditeurAccords"); var ce = new Controls.ChordEditorControl(); ce.Show(project, track, pg, this); editorHost.Content = ce; selfScroll = true; }
             else if (item.Module is CadenceModule cm) { txtEditorTitle.Text = Loc.T("EditeurCadence"); editorHost.Content = BuildCadenceEditor(track, cm); }
             else if (item.Module is DrumPatternModule dp) { txtEditorTitle.Text = Loc.T("EditeurBatterie"); editorHost.Content = BuildDrumEditor(track, item, dp); selfScroll = true; }
+            else if (item.Module is Engine.Flow.PolyDrumModule pdm2) { txtEditorTitle.Text = Loc.T("EditeurBatteriePolyrythmique"); editorHost.Content = BuildPolyDrumEditor(track, item, pdm2); selfScroll = true; }
             else if (item.Module is MelodicLineModule ml) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodique"); editorHost.Content = BuildMelodicLineEditor(track, item, ml); selfScroll = true; }
             else editorHost.Content = null;
 
@@ -3243,6 +3255,156 @@ namespace MusicTracker.Screens
             }
         }
 
+        // ===== Batterie polyrythmique ==========================================================================
+        // Les PARAMÈTRES sont la source de vérité (pas une liste de coups) : on règle K, N et le décalage par
+        // calque, et on réentend aussitôt. La roue à droite montre ce que les nombres cachent — la régularité de
+        // la répartition, l'effet du décalage, et le déphasage entre anneaux de longueurs différentes.
+        NAudio.Wave.WaveOutEvent polyWave;
+        Engine.Flow.LoopingRiffProvider polyProvider;
+        System.Windows.Threading.DispatcherTimer polyTimer;
+
+        void StopPolyPreview(Button btn = null)
+        {
+            if (polyTimer != null) { polyTimer.Stop(); polyTimer = null; }
+            if (polyWave != null) { try { polyWave.Stop(); polyWave.Dispose(); } catch { } polyWave = null; }
+            polyProvider = null;
+            if (btn != null) btn.Content = "▶ " + Loc.T("Ecouter");
+        }
+
+        UIElement BuildPolyDrumEditor(TimelineTrack track, TimelineItem item, Engine.Flow.PolyDrumModule pd)
+        {
+            var grid = TwoColumns(out StackPanel left, out ContentControl host);
+            var wheel = new Controls.TimelineEditor.PolyDrumWheel { MinHeight = 240 };
+            wheel.SetModule(pd);
+
+            Action redrawAll = null;
+            Action rebuild = () => { editorHost.Content = BuildPolyDrumEditor(track, item, pd); Render(); };
+            redrawAll = () => { pd.Touch(); wheel.SetModule(pd); wheel.InvalidateVisual(); Render(); };
+
+            left.Children.Add(EdLabel(Loc.T("TempsMesure")));
+            left.Children.Add(ParamNum(pd.BeatsPerBar, v => pd.BeatsPerBar = v, redrawAll));
+            left.Children.Add(EdLabel(Loc.T("Repetitions")));
+            left.Children.Add(ParamNum(pd.Repeats, v => pd.Repeats = v, redrawAll));
+
+            // ---- les calques -------------------------------------------------------------------------------
+            left.Children.Add(EdLabel(Loc.T("Calques")));
+            var stepNames = new[] { Loc.T("Croche"), Loc.T("DoubleCroche"), Loc.T("TrioletDeCroche") };
+            var steps = Engine.Flow.PolyDrum.StepSlicesChoices;
+
+            for (int li = 0; li < pd.Layers.Count; li++)
+            {
+                int idx = li;
+                var l = pd.Layers[idx];
+                var col = Controls.DrumColors.ForLane(l.Lane);
+                var card = new Border
+                {
+                    Background = "#20FFFFFF".ToBrush(),
+                    BorderBrush = new SolidColorBrush(col),
+                    BorderThickness = new Thickness(3, 1, 1, 1),   // liseré à la couleur de l'instrument = rappel de la roue
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(6),
+                    Margin = new Thickness(0, 0, 0, 6),
+                };
+                var sp = new StackPanel();
+                card.Child = sp;
+                card.MouseEnter += (s, e) => wheel.SetHighlight(idx);
+                card.MouseLeave += (s, e) => wheel.SetHighlight(-1);
+
+                var head = new StackPanel { Orientation = Orientation.Horizontal };
+                var cbo = new ComboBox { Width = 168, ItemsSource = DrumPattern.LaneNames, SelectedIndex = Math.Max(0, Math.Min(DrumPattern.LaneCount - 1, l.Lane)) };
+                cbo.SelectionChanged += (s, e) => { if (cbo.SelectedIndex >= 0 && cbo.SelectedIndex != l.Lane) { l.Lane = cbo.SelectedIndex; rebuild(); } };
+                head.Children.Add(cbo);
+                var mute = new CheckBox { Content = "M", Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, IsChecked = l.Muted, ToolTip = Loc.T("MuetCeCalque") };
+                mute.Checked += (s, e) => { l.Muted = true; redrawAll(); }; mute.Unchecked += (s, e) => { l.Muted = false; redrawAll(); };
+                head.Children.Add(mute);
+                var del = new Button { Content = "✕", Width = 24, Margin = new Thickness(6, 0, 0, 0), Cursor = Cursors.Hand, ToolTip = Loc.T("SupprimerCeCalque") };
+                del.Click += (s, e) => { PushUndo("poly:layer"); pd.Layers.RemoveAt(idx); rebuild(); };
+                head.Children.Add(del);
+                sp.Children.Add(head);
+
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+                Action<string, int, Action<int>> num = (lbl, val, set) =>
+                {
+                    row.Children.Add(new TextBlock { Text = lbl, Foreground = "#AAAAAA".ToBrush(), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 3, 0) });
+                    var t = new TextBox { Width = 38, Text = val.ToString(), Margin = new Thickness(0, 0, 8, 0) };
+                    t.LostFocus += (s, e) => { if (int.TryParse(t.Text, out int v)) { set(v); redrawAll(); } };
+                    row.Children.Add(t);
+                };
+                num(Loc.T("Coups"), l.Hits, v => l.Hits = Math.Max(0, v));
+                num(Loc.T("Pas"), l.Steps, v => l.Steps = Math.Max(1, v));
+                num(Loc.T("Decalage"), l.Rotation, v => l.Rotation = v);
+                sp.Children.Add(row);
+
+                int si = Array.IndexOf(steps, l.StepSlices); if (si < 0) si = 0;
+                var cboStep = new ComboBox { Width = 168, Margin = new Thickness(0, 4, 0, 0), ItemsSource = stepNames, SelectedIndex = si };
+                cboStep.SelectionChanged += (s, e) => { if (cboStep.SelectedIndex >= 0) { l.StepSlices = steps[cboStep.SelectedIndex]; redrawAll(); } };
+                sp.Children.Add(cboStep);
+
+                left.Children.Add(card);
+            }
+
+            var add = new Button { Content = "＋ " + Loc.T("AjouterUnCalque"), Margin = new Thickness(0, 2, 0, 6), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left };
+            add.Click += (s, e) =>
+            {
+                PushUndo("poly:layer");
+                // Défauts choisis pour que le calque suivant SONNE différemment du précédent plutôt que de le
+                // doubler : instruments usuels dans l'ordre, et des couples (K,N) premiers entre eux.
+                int[] lanes = { 0, 1, 2, 11, 6 };
+                int[,] kn = { { 3, 8 }, { 2, 8 }, { 7, 16 }, { 5, 8 }, { 3, 5 } };
+                int i = Math.Min(pd.Layers.Count, lanes.Length - 1);
+                pd.Layers.Add(new Engine.Flow.EuclidLayer { Lane = lanes[i], Hits = kn[i, 0], Steps = kn[i, 1], StepSlices = 12 });
+                rebuild();
+            };
+            left.Children.Add(add);
+
+            // Figer : le polyrythme devient un motif de batterie ordinaire, éditable coup par coup. L'inverse
+            // n'existe pas — on ne remonte pas de coups à des K/N —, d'où la confirmation.
+            var freeze = new Button { Content = Loc.T("FigerEnMotifEditable"), Margin = new Thickness(0, 2, 0, 6), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, ToolTip = Loc.T("ConvertitEnMotifDeBatterieOrdinaire") };
+            freeze.Click += (s, e) =>
+            {
+                if (MessageBox.Show(Loc.T("FigerPerdLesParametres"), Loc.T("FigerEnMotifEditable"), MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+                PushUndo("poly:freeze");
+                var dpm = new DrumPatternModule { Kit = pd.Kit, Style = DrumPattern.CustomStyle, BeatsPerBar = pd.BeatsPerBar, Repeats = 1 };
+                dpm.SetCustomNotes(Engine.Flow.PolyDrum.ToNotes(pd), DrumPattern.SlicesPerQuarter, Engine.Flow.PolyDrum.TotalSlices(pd));
+                dpm.CatCategory = "Personnalisé"; dpm.CatMotif = "Personnalisé";
+                item.Module = dpm;
+                SelectItem(track, item); Render();
+            };
+            left.Children.Add(freeze);
+
+            // ---- roue + écoute -----------------------------------------------------------------------------
+            var rightPanel = new DockPanel();
+            var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
+            var play = new Button { Content = "▶ " + Loc.T("Ecouter"), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
+            play.Click += (s, e) =>
+            {
+                if (polyWave != null) { StopPolyPreview(play); wheel.SetPlayhead(-1); return; }
+                if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Playback")) return;
+                try
+                {
+                    var ctx = new Engine.Flow.FlowContext { GmProgram = InstrumentCatalog.DrumKitProgram(pd.Kit), Drum = true, Bpm = project.MainBpm };
+                    polyProvider = new Engine.Flow.LoopingRiffProvider(() => Engine.Flow.PolyDrum.Generate(pd), ctx);
+                    polyWave = new NAudio.Wave.WaveOutEvent { DesiredLatency = 120 };
+                    polyWave.Init(polyProvider); polyWave.Play();
+                    play.Content = "■ " + Loc.T("Stop");
+                    polyTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) };
+                    polyTimer.Tick += (s2, e2) =>
+                    {
+                        if (polyProvider == null) return;
+                        wheel.SetPlayhead(polyProvider.CurrentSlice / (double)DrumPattern.SlicesPerQuarter);
+                    };
+                    polyTimer.Start();
+                }
+                catch { StopPolyPreview(play); wheel.SetPlayhead(-1); }
+            };
+            bar.Children.Add(play);
+            DockPanel.SetDock(bar, Dock.Top);
+            rightPanel.Children.Add(bar);
+            rightPanel.Children.Add(wheel);
+            host.Content = rightPanel;
+            return grid;
+        }
+
         Grid TwoColumns(out StackPanel left, out ContentControl right)
         {
             var grid = new Grid();
@@ -3726,6 +3888,16 @@ namespace MusicTracker.Screens
         }
         private void btnAddDrum_Click(object sender, RoutedEventArgs e) => AppendModule(new DrumPatternModule());
 
+        // Un module polyrythmique naît avec deux calques : seul, un calque n'a rien à déphaser, et l'intérêt du
+        // module ne se voit qu'à partir de deux cycles de longueurs différentes.
+        private void btnAddPolyDrum_Click(object sender, RoutedEventArgs e)
+        {
+            var m = new Engine.Flow.PolyDrumModule();
+            m.Layers.Add(new Engine.Flow.EuclidLayer { Lane = 0, Hits = 3, Steps = 8, StepSlices = 12 });
+            m.Layers.Add(new Engine.Flow.EuclidLayer { Lane = 2, Hits = 7, Steps = 16, StepSlices = 6 });
+            AppendModule(m);
+        }
+
         // "Insérer ▸ Ligne mélodique (rythme)" : add a MelodicLineModule on a dedicated "ligne mélodique" track (created
         // once). Re-adding copies the previous line's rhythm right after it (the pitches recompute on the new chords).
 
@@ -3768,6 +3940,74 @@ namespace MusicTracker.Screens
             left.Children.Add(ParamNum(ml.Ornaments, v => ml.Ornaments = Math.Max(0, Math.Min(100, v)), refresh));
             left.Children.Add(EdLabel(Loc.T("VagueNotesParArc0Auto")));
             left.Children.Add(ParamNum(ml.WaveLength, v => ml.WaveLength = Math.Max(0, Math.Min(32, v)), refresh));
+            // ---- Décalage + génération euclidienne (rythme seul : le moteur choisit les hauteurs) ---------------
+            int mlVoice = 0, mlK = 3, mlN = 8, mlRot = 0, mlUnit = 0;
+            var mlStepNames = new[] { Loc.T("Croche"), Loc.T("DoubleCroche"), Loc.T("TrioletDeCroche") };
+            var mlStepSlices = new[] { 12, 6, 8 };
+            var voiceLabels = new string[MelodicLineModule.MaxVoices];
+            for (int v = 0; v < voiceLabels.Length; v++) voiceLabels[v] = Loc.T("Voix2") + (v + 1);
+
+            left.Children.Add(EdLabel(Loc.T("EuclidLigne")));
+            var cboVoice = new ComboBox { Width = 180, HorizontalAlignment = HorizontalAlignment.Left, ItemsSource = voiceLabels, SelectedIndex = 0 };
+            cboVoice.SelectionChanged += (s, e) => { if (cboVoice.SelectedIndex >= 0) mlVoice = cboVoice.SelectedIndex; };
+            left.Children.Add(cboVoice);
+
+            left.Children.Add(EdLabel(Loc.T("Decalage")));
+            var mlShiftRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+            Action<int> mlShift = dir =>
+            {
+                PushUndo("euclid:rot");
+                TimelineHelper.RotateMelodicVoice(ml, mlVoice, dir * mlStepSlices[Math.Max(0, mlUnit)]);
+                editorHost.Content = BuildMelodicLineEditor(track, item, ml); Render(); RefreshScore();
+            };
+            foreach (var (glyph, dir) in new[] { ("◀", -1), ("▶", +1) })
+            {
+                var b = new Button { Content = glyph, Width = 34, Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(0, 2, 0, 2), Cursor = Cursors.Hand, ToolTip = Loc.T("DecalerCetteLigneDUnPas") };
+                int d = dir; b.Click += (s, e) => mlShift(d);
+                mlShiftRow.Children.Add(b);
+            }
+            left.Children.Add(mlShiftRow);
+
+            var mlPanel = new StackPanel();
+            var mlExp = new Expander { Header = Loc.T("RepartirRegulierement"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 4, 0, 6), Content = mlPanel };
+            var mlPreview = new TextBlock { FontFamily = new FontFamily("Consolas"), FontSize = 13, Foreground = "#1FB6C3".ToBrush(), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) };
+            Action mlRedraw = () =>
+            {
+                var pat = Engine.Flow.EuclideanRhythm.Rotate(Engine.Flow.EuclideanRhythm.Pattern(mlK, mlN), mlRot);
+                var sb = new System.Text.StringBuilder();
+                foreach (var on in pat) sb.Append(on ? '●' : '·');
+                string nm = Engine.Flow.EuclideanRhythm.NameFor(pat);
+                if (nm != null) sb.Append("   « ").Append(nm).Append(" »");
+                // Grille métrique : le moteur ancre l'harmonie sur les coups qui tombent SUR UN TEMPS. Plus le motif
+                // est syncopé, moins il produit d'ancrages — et plus la ligne flotte. Le décalage fait varier ce
+                // compte sans changer le rythme perçu : c'est le réglage à manipuler quand la ligne sonne vague.
+                int st = mlStepSlices[Math.Max(0, mlUnit)], onBeat = 0;
+                sb.Append('\n');
+                for (int i = 0; i < pat.Length; i++)
+                {
+                    bool beat = (i * st) % 24 == 0;
+                    sb.Append(beat ? '▲' : ' ');
+                    if (pat[i] && beat) onBeat++;
+                }
+                sb.Append('\n').Append(Loc.T("SurLesTemps")).Append(' ').Append(onBeat);
+                mlPreview.Text = sb.ToString();
+            };
+            mlPanel.Children.Add(EdLabel(Loc.T("Coups"))); mlPanel.Children.Add(ParamNum(mlK, v => mlK = Math.Max(0, v), mlRedraw));
+            mlPanel.Children.Add(EdLabel(Loc.T("Pas"))); mlPanel.Children.Add(ParamNum(mlN, v => mlN = Math.Max(1, v), mlRedraw));
+            mlPanel.Children.Add(EdLabel(Loc.T("Decalage"))); mlPanel.Children.Add(ParamNum(mlRot, v => mlRot = v, mlRedraw));
+            mlPanel.Children.Add(EdLabel(Loc.T("Unite"))); mlPanel.Children.Add(ParamCombo(mlStepNames, 0, v => mlUnit = v, mlRedraw));
+            mlPanel.Children.Add(mlPreview);
+            var mlApply = new Button { Content = Loc.T("Appliquer"), Margin = new Thickness(0, 2, 0, 2), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left };
+            mlApply.Click += (s, e) =>
+            {
+                PushUndo("euclid:gen");
+                TimelineHelper.ApplyEuclideanMelodic(ml, mlVoice, mlK, mlN, mlRot, mlStepSlices[Math.Max(0, mlUnit)]);
+                editorHost.Content = BuildMelodicLineEditor(track, item, ml); Render(); RefreshScore();
+            };
+            mlPanel.Children.Add(mlApply);
+            mlRedraw();
+            left.Children.Add(mlExp);
+
             var preserve = new CheckBox { Content = Loc.T("PreserverNonEcraseParAppliquer"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 8, 0, 0), IsChecked = ml.Preserve };
             preserve.Checked += (s, e) => ml.Preserve = true; preserve.Unchecked += (s, e) => ml.Preserve = false;
             left.Children.Add(preserve);
