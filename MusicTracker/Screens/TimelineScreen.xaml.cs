@@ -3965,6 +3965,37 @@ namespace MusicTracker.Screens
             catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMuseScore") + ex.Message); }
         }
 
+        // Export the score to MusicXML — the interchange format every notation program reads. Same track rule as the
+        // MuseScore export (the checked ♫ tracks, else all instrument tracks; drums skipped) so there is only one
+        // convention to learn; unlike the .mscx, notes are tied over the bar lines instead of being truncated.
+        private void btnExportMusicXml_Click(object sender, RoutedEventArgs e)
+        {
+            if (project.Tracks.Count == 0) { MessageBox.Show(Loc.T("AucunePisteAExporter")); return; }
+
+            var src = new System.Collections.Generic.List<TimelineTrack>();
+            foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) src.Add(t);
+            if (src.Count == 0) foreach (var t in project.Tracks) if (t.Type != TimelineTrackType.Drum) src.Add(t);
+
+            var parts = new System.Collections.Generic.List<Engine.Timeline.MusicXmlExporter.Part>();
+            foreach (var t in src)
+            {
+                if (t.Type == TimelineTrackType.Drum) continue; // percussion needs a drum staff — not exported yet
+                parts.Add(new Engine.Timeline.MusicXmlExporter.Part { Name = t.Name, Program = t.Instrument, Score = Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById) });
+            }
+            if (parts.Count == 0) { MessageBox.Show(Loc.T("AucunePisteMelodiqueAExporterCoche")); return; }
+
+            string title = string.IsNullOrEmpty(CurrentPath) ? Loc.T("Partition") : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
+            var sfd = new Dialogs.FileBrowserDialog { SaveMode = true, Owner = Window.GetWindow(this), Filter = "MusicXML (*.musicxml)|*.musicxml", DefaultExt = ".musicxml", FileName = title };
+            if (sfd.ShowDialog() != true) return;
+            try
+            {
+                Engine.Timeline.MusicXmlExporter.Export(sfd.FileName, parts, project.TimeSigNum, project.TimeSigDen,
+                    project.TimeSigScale > 0 ? project.TimeSigScale : 1.0, project.MainBpm, title);
+                MessageBox.Show(Loc.T("ExportMusicXMLTermine") + sfd.FileName);
+            }
+            catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMusicXML") + ex.Message); }
+        }
+
         // Export the checked (♫) tracks as an A4 score, broken into lines of 2/4/8/16 measures, printed to PDF.
         private void btnExportPdf_Click(object sender, RoutedEventArgs e)
         {

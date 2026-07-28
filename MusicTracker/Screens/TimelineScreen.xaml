@@ -359,6 +359,7 @@
                     <MenuItem Header="Export" Foreground="#DDDDDD">
                         <MenuItem Header="MIDI…" Click="btnExportMidi_Click" ToolTip="{loc:Tr 'ExportTheTimelineAsAMIDI'}"/>
                         <MenuItem Header="MuseScore (.mscx)…" Click="btnExportMuseScore_Click" ToolTip="{loc:Tr 'ExportTheScoreAsANative'}"/>
+                        <MenuItem Header="MusicXML (.musicxml)…" Click="btnExportMusicXml_Click" ToolTip="{loc:Tr 'ExportTheScoreAsMusicXML'}"/>
                         <MenuItem Header="Audio…" Click="btnExport_Click"/>
                         <MenuItem Header="{loc:Tr 'PDFScore'}" Click="btnExportPdf_Click" ToolTip="{loc:Tr 'ExportTheCheckedTracksAsAn'}"/>
                     </MenuItem>

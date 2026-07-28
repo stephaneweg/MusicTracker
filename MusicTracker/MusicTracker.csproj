@@ -189,6 +189,7 @@
     <Compile Include="Engine\Timeline\MidiTimelineExporter.cs" />
     <Compile Include="Engine\Timeline\MuseScoreExporter.cs" />
     <Compile Include="Engine\Timeline\MusicComposer.cs" />
+    <Compile Include="Engine\Timeline\MusicXmlExporter.cs" />
     <Compile Include="Engine\Timeline\ComposedArrangement.cs" />
     <Compile Include="Engine\Timeline\Harmony.cs" />
     <Compile Include="Engine\Timeline\MelodicLineEngine.cs" />
