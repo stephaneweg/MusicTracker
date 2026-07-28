@@ -249,13 +249,13 @@
         <!-- Transport bar (DAW-style: transport · tempo · tonalité · mesure · levée · actions) -->
         <Border Grid.Row="0" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
-                <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}"/>
+                <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}" AutomationProperties.AutomationId="BtnSaveMusic"/>
                 <!-- Undo / Redo -->
-                <Button x:Name="btnUndo" Content="↶" Click="btnUndo_Click" Padding="9,4" Margin="0,0,3,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'UndoCtrlZ'}"/>
-                <Button x:Name="btnRedo" Content="↷" Click="btnRedo_Click" Padding="9,4" Margin="0,0,10,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'RedoCtrlYCtrlShiftZ'}"/>
+                <Button x:Name="btnUndo" Content="↶" Click="btnUndo_Click" Padding="9,4" Margin="0,0,3,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'UndoCtrlZ'}" AutomationProperties.AutomationId="BtnUndo"/>
+                <Button x:Name="btnRedo" Content="↷" Click="btnRedo_Click" Padding="9,4" Margin="0,0,10,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'RedoCtrlYCtrlShiftZ'}" AutomationProperties.AutomationId="BtnRedo"/>
                 <!-- Transport -->
-                <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="{loc:Tr 'PlayOrPause'}"/>
-                <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,6,0" ToolTip="{loc:Tr 'StopReturnToStart'}"/>
+                <Button x:Name="btnPlay" Content="▶" Click="btnPlay_Click" Style="{StaticResource PlayBtn}" ToolTip="{loc:Tr 'PlayOrPause'}" AutomationProperties.AutomationId="BtnPlay"/>
+                <Button x:Name="btnStop" Content="⏹" Click="btnStop_Click" Style="{StaticResource StopBtn}" Margin="6,0,6,0" ToolTip="{loc:Tr 'StopReturnToStart'}" AutomationProperties.AutomationId="BtnStop"/>
                 <ToggleButton x:Name="btnLoop" Content="⟳" Click="btnLoop_Click" Style="{StaticResource TernaryToggle}" Margin="0,0,12,0" ToolTip="{loc:Tr 'LoopTheABRegion'}"/>
                 <!-- Template chip: only shown when the project was opened from a generative template. Shows the pick
                      seed and re-rolls it (rebuilds the project from the template's banks). -->
@@ -359,6 +359,7 @@
                         <MenuItem Header="Audio…" Click="btnExport_Click"/>
                         <MenuItem Header="{loc:Tr 'PDFScore'}" Click="btnExportPdf_Click" ToolTip="{loc:Tr 'ExportTheCheckedTracksAsAn'}"/>
                     </MenuItem>
+                    <MenuItem x:Name="menuMixer" Header="{loc:Tr 'Mixer'}" Foreground="#DDDDDD" Click="btnMixer_Click" ToolTip="{loc:Tr 'VolumePanoramiqueMuteSoloParPiste'}"/>
                 </Menu>
                 <Border Width="1" Background="{StaticResource SubtleBorderBrush}" Margin="12,4"/>
                 <Button x:Name="btnImport" Content="{loc:Tr 'Import2'}" Click="btnImport_Click" Padding="8,4" Cursor="Hand" ToolTip="{loc:Tr 'ImportAMIDIOrMuseScoreFile'}"/>

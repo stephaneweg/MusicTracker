@@ -61,6 +61,7 @@ namespace MusicTracker.Screens
         bool draggingLoop;
         bool loopEnabled;                           // ⟳ toggle: loop the [startBeat, loopEndBeat] region seamlessly
         double loopEndBeat;                         // B in beats (0 = unset → defaults to A + 4 bars when enabled)
+        Dialogs.MixerDialog mixerWindow;            // non-modal per-track mixer (volume/pan/mute/solo), live during playback
 
         // ---- undo/redo (snapshot-based; see Engine.Timeline.UndoManager) ----
         readonly Engine.Timeline.UndoManager undoMgr = new Engine.Timeline.UndoManager(50);
@@ -346,6 +347,16 @@ namespace MusicTracker.Screens
 
         private void btnStop_Click(object sender, RoutedEventArgs e) => StopPlayback();
 
+        // 🎚 Mixer: non-modal so the transport stays usable; the player reads the project's volume/pan/mute/solo
+        // live each buffer, so moving a fader while playing is heard immediately.
+        private void btnMixer_Click(object sender, RoutedEventArgs e)
+        {
+            if (mixerWindow != null) { try { mixerWindow.Activate(); return; } catch { mixerWindow = null; } }
+            mixerWindow = new Dialogs.MixerDialog(project, Window.GetWindow(this));
+            mixerWindow.Closed += (s, ev) => mixerWindow = null;
+            mixerWindow.Show();
+        }
+
         void StartPlayback()
         {
             CommitRiffEditor(); // stop any riff preview first
@@ -384,7 +395,7 @@ namespace MusicTracker.Screens
 
         // The audible beat = the consumed-sample position mapped back through the tempo map.
         double PlayedBeat() => (player != null && playBuffer != null)
-            ? player.PlayheadBeat(playBuffer.ConsumedSamples) : startBeat;
+            ? player.PlayheadBeat(playBuffer.ConsumedSamples / Math.Max(1, player.WaveFormat.Channels)) : startBeat; // shorts → frames
 
         // Pause: stop the audio but freeze the cursor where playback reached (the AUDIBLE position), so ▶ resumes
         // from there. Also used when switching away from this editor's tab (keep the position).
@@ -968,6 +979,7 @@ namespace MusicTracker.Screens
                 new Controls.TourStep(() => editorHost,    Loc.T("TourRiffEdTitle"),  Loc.T("TourRiffEdText"),  () => { if (riffItem != null) SelectItem(instrTrack, riffItem); }),
                 new Controls.TourStep(() => editorHost,    Loc.T("TourDrumEdTitle"),  Loc.T("TourDrumEdText"),  () => { if (drumItem != null) SelectItem(drumTrack, drumItem); }),
                 new Controls.TourStep(() => btnPlay,       Loc.T("TourPlayTitle"),    Loc.T("TourPlayText")),
+                new Controls.TourStep(() => menuMixer,     Loc.T("TourMixerTitle"),   Loc.T("TourMixerText")),
                 new Controls.TourStep(() => btnUndo,       Loc.T("TourUndoTitle"),    Loc.T("TourUndoText")),
                 new Controls.TourStep(() => btnImport,     Loc.T("TourImportTitle"),  Loc.T("TourImportText")),
                 new Controls.TourStep(() => null,          Loc.T("TourEndTitle"),     Loc.T("TourEndText")),
@@ -1309,14 +1321,14 @@ namespace MusicTracker.Screens
             // base volume
             var volRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
             volRow.Children.Add(new TextBlock { Text = Loc.T("Vol"), Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
-            var vol = new Slider { Minimum = 0, Maximum = 1.5, Value = track.Volume, Width = 80, VerticalAlignment = VerticalAlignment.Center, SmallChange = 0.05 };
-            vol.ValueChanged += (s, e) => track.Volume = vol.Value;
+            var vol = new Slider { Minimum = 0, Maximum = 1.5, Width = 80, VerticalAlignment = VerticalAlignment.Center, SmallChange = 0.05 };
+            vol.SetBinding(Slider.ValueProperty, new System.Windows.Data.Binding("Volume") { Source = track, Mode = System.Windows.Data.BindingMode.TwoWay }); // sync with the mixer
             volRow.Children.Add(vol);
             // Mute / Solo (take effect on the next playback)
-            var mute = new System.Windows.Controls.Primitives.ToggleButton { Content = "M", IsChecked = track.Mute, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("MuteToggle"), ToolTip = Loc.T("MuetSilenceCettePiste") };
-            mute.Checked += (s, e) => track.Mute = true; mute.Unchecked += (s, e) => track.Mute = false;
-            var solo = new System.Windows.Controls.Primitives.ToggleButton { Content = "S", IsChecked = track.Solo, Margin = new Thickness(3, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("SoloToggle"), ToolTip = Loc.T("SoloNEntendreQueLesPistes") };
-            solo.Checked += (s, e) => track.Solo = true; solo.Unchecked += (s, e) => track.Solo = false;
+            var mute = new System.Windows.Controls.Primitives.ToggleButton { Content = "M", Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("MuteToggle"), ToolTip = Loc.T("MuetSilenceCettePiste") };
+            mute.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, new System.Windows.Data.Binding("Mute") { Source = track, Mode = System.Windows.Data.BindingMode.TwoWay });
+            var solo = new System.Windows.Controls.Primitives.ToggleButton { Content = "S", Margin = new Thickness(3, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, Style = (Style)FindResource("SoloToggle"), ToolTip = Loc.T("SoloNEntendreQueLesPistes") };
+            solo.SetBinding(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, new System.Windows.Data.Binding("Solo") { Source = track, Mode = System.Windows.Data.BindingMode.TwoWay });
             volRow.Children.Add(mute); volRow.Children.Add(solo);
             panel.Children.Add(volRow);
 

@@ -54,16 +54,31 @@ namespace MusicTracker.Engine.Timeline
     /// patterns / repeats. DRUM type: base volume only (instrument is implicitly the drum kit), holds
     /// drum-kit generators / repeats. A volume automation (sub-track) overrides the base over time.
     /// </summary>
-    public class TimelineTrack
+    // NOTIFIES on the mixer-controlled properties (Volume/Pan/Mute/Solo) so the mixer dialog and the timeline
+    // header stay in sync via two-way bindings (edit one → the other updates), and the player reads them live.
+    // The private backing fields aren't serialized; the PUBLIC properties keep the same JSON keys → .sq-compatible.
+    public class TimelineTrack : System.ComponentModel.INotifyPropertyChanged
     {
-        public string Name = "Piste";
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+        void Notify([System.Runtime.CompilerServices.CallerMemberName] string n = null)
+            => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(n));
+
+        string name = "Piste";
+        public string Name { get { return name; } set { if (name != value) { name = value; Notify(); } } }
         public TimelineTrackType Type = TimelineTrackType.Instrument;
         public int Instrument;                 // InstrumentCatalog index (used by INSTRUMENT type)
         public int DrumKit = 0;                // DRUM type: index into InstrumentCatalog.DrumKits() (0 = Standard); the kit sound
         public Score.ScoreClefKind? Clef;      // explicit notation clef (null = derive from the instrument)
-        public double Volume = 1.0;            // base volume
-        public bool Mute = false;              // silenced
-        public bool Solo = false;              // when any track is soloed, only soloed tracks are heard
+
+        double volume = 1.0;                   // base volume
+        public double Volume { get { return volume; } set { if (volume != value) { volume = value; Notify(); } } }
+        double pan = 0.0;                      // stereo pan: -1 = hard left, 0 = centre, +1 = hard right (mixer → CC10)
+        public double Pan { get { return pan; } set { if (pan != value) { pan = value; Notify(); } } }
+        bool mute = false;                     // silenced
+        public bool Mute { get { return mute; } set { if (mute != value) { mute = value; Notify(); } } }
+        bool solo = false;                     // when any track is soloed, only soloed tracks are heard
+        public bool Solo { get { return solo; } set { if (solo != value) { solo = value; Notify(); } } }
+
         public bool Collapsed = false;         // header + lane shrunk to a minimal height (title + expand button) to save vertical space
         public List<VolumePoint> VolumeAutomation = new List<VolumePoint>(); // changes at T
         public List<TimelineItem> Items = new List<TimelineItem>();

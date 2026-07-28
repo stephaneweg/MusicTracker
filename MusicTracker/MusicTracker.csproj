@@ -229,6 +229,9 @@
     <Compile Include="Dialogs\InstrumentBoostDialog.xaml.cs">
       <DependentUpon>InstrumentBoostDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Dialogs\MixerDialog.xaml.cs">
+      <DependentUpon>MixerDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Dialogs\RiffEditorWindow.xaml.cs">
       <DependentUpon>RiffEditorWindow.xaml</DependentUpon>
     </Compile>
@@ -375,6 +378,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\CadenceDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\MixerDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

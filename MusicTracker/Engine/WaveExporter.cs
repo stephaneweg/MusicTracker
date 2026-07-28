@@ -129,6 +129,7 @@ namespace MusicTracker.Engine
         {
             if (sampleRate <= 0) sampleRate = AudioFormat.SampleRate; // 0 = use the current engine rate
             var format = new NAudio.Wave.WaveFormat(sampleRate, 16, 2);
+            bool srcStereo = provider.WaveFormat.Channels >= 2;      // a stereo provider is read interleaved directly
             const int chunk = 1 << 16;
             short[] mono = new short[chunk];
             short[] stereo = new short[chunk * 2];
@@ -153,11 +154,20 @@ namespace MusicTracker.Engine
                     {
                         if (token.IsCancellationRequested) break;
 
-                        int n = (int)Math.Min(maxSamples - written, chunk);
-                        int read = provider.Read(mono, 0, n);
-                        if (read <= 0) break; // the provider finished
-
-                        for (int i = 0; i < read; i++) { stereo[2 * i] = mono[i]; stereo[2 * i + 1] = mono[i]; }
+                        int n = (int)Math.Min(maxSamples - written, chunk);   // n = FRAMES to render this chunk
+                        int read;                                             // frames actually produced
+                        if (srcStereo)
+                        {
+                            int got = provider.Read(stereo, 0, n * 2);        // interleaved L,R straight into the buffer
+                            read = got / 2;
+                            if (read <= 0) break;
+                        }
+                        else
+                        {
+                            read = provider.Read(mono, 0, n);
+                            if (read <= 0) break; // the provider finished
+                            for (int i = 0; i < read; i++) { stereo[2 * i] = mono[i]; stereo[2 * i + 1] = mono[i]; }
+                        }
 
                         if (mp3)
                         {

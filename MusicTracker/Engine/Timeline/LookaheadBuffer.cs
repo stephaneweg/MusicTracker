@@ -37,13 +37,14 @@ namespace MusicTracker.Engine.Timeline
         public event Action Primed;
 
         public LookaheadBuffer(WaveProvider16 inner, Action start, Action stop, int sampleRate, double leadSeconds = 5.0, double primeSeconds = 3.0)
-            : base(sampleRate, 1)
+            : base(sampleRate, inner.WaveFormat.Channels)     // match the inner provider (mono OR stereo)
         {
             this.inner = inner;
             this.startInner = start;
             this.stopInner = stop;
-            capacity = Math.Max(sampleRate, (int)(sampleRate * leadSeconds)) + 1;
-            primeSamples = Math.Min(capacity - 8192, Math.Max(1, (int)(sampleRate * primeSeconds)));
+            int ch = Math.Max(1, inner.WaveFormat.Channels);  // capacity/prime are in SHORTS → scale by channels for real seconds
+            capacity = Math.Max(sampleRate * ch, (int)(sampleRate * ch * leadSeconds)) + 1;
+            primeSamples = Math.Min(capacity - 8192, Math.Max(1, (int)(sampleRate * ch * primeSeconds)));
             ring = new short[capacity];
         }
 

@@ -109,7 +109,7 @@ namespace MusicTracker.Engine.Timeline
         public long EstimatedTotalSamples { get; }
 
         public TimelinePlayer(TimelineProject project, Func<Guid, Riff> resolveRiff, int sampleRate = 0)
-            : base(sampleRate <= 0 ? AudioFormat.SampleRate : sampleRate, 1)
+            : base(sampleRate <= 0 ? AudioFormat.SampleRate : sampleRate, 2) // STEREO out (per-track pan via CC10)
         {
             this.sampleRate = sampleRate <= 0 ? AudioFormat.SampleRate : sampleRate;
             this.melodyKey = project.Key ?? new Engine.Score.KeySignature();
@@ -298,15 +298,16 @@ namespace MusicTracker.Engine.Timeline
 
         // Absolute volume at a beat: base before the first point, linear between points (override, not a
         // multiply — matches the volume lane), flat after the last point. Lead-in ramps base -> first.
-        static double TrackGain(Track tr, double beat)
+        static double TrackGain(Track tr, double beat) => TrackGain(tr.Autom, tr.BaseVol, beat);
+
+        static double TrackGain(List<VolumePoint> a, double baseVol, double beat)
         {
-            var a = tr.Autom;
-            if (a == null || a.Count == 0) return tr.BaseVol;
+            if (a == null || a.Count == 0) return baseVol;
             if (beat <= a[0].Beat)
             {
                 if (a[0].Beat <= 1e-9) return a[0].Volume;
                 double f = Math.Max(0, beat) / a[0].Beat;
-                return tr.BaseVol + (a[0].Volume - tr.BaseVol) * f;
+                return baseVol + (a[0].Volume - baseVol) * f;
             }
             for (int i = 0; i < a.Count - 1; i++)
                 if (beat >= a[i].Beat && beat <= a[i + 1].Beat)
@@ -394,17 +395,20 @@ namespace MusicTracker.Engine.Timeline
             return 0;
         }
 
-        // ---- MeltySynth render path : advance the tempo cursor slice-by-slice, dispatch each slice's
-        //      note on/off to the shared synth, render the slice's samples, then downmix stereo -> mono. ----
+        // ---- MeltySynth render path : advance the tempo cursor slice-by-slice, dispatch each slice's note on/off
+        //      to the shared synth, render the slice's samples, then write INTERLEAVED STEREO (L,R per frame).
+        //      `sampleCount` is the number of shorts to fill (= 2 × frames); pan is baked into mL/mR by the synth
+        //      (per-track CC10 in ApplyChannelVolumes), so we just emit L and R. ----
         int ReadMelty(short[] buffer, int offset, int sampleCount)
         {
-            if (mL == null || mL.Length < sampleCount) { mL = new float[sampleCount]; mR = new float[sampleCount]; }
+            int frames = sampleCount / 2;                                   // 2 shorts (L,R) per frame
+            if (mL == null || mL.Length < frames) { mL = new float[frames]; mR = new float[frames]; }
 
-            ApplyChannelVolumes(CurrentBeat); // per-buffer: automation + mute/solo via CC7
+            ApplyChannelVolumes(CurrentBeat); // per-buffer: LIVE volume + mute/solo (CC7) + pan (CC10)
 
             int end = loopEndSlice > 0 ? loopEndSlice : totalSlices;  // region end (B) or the whole piece
             int done = 0;
-            while (done < sampleCount)
+            while (done < frames)
             {
                 if (sliceIndex < end && sliceIndex > mDispatched)
                 {
@@ -412,9 +416,9 @@ namespace MusicTracker.Engine.Timeline
                     mDispatched = sliceIndex;
                 }
                 // Render at most to the end of the current slice so the next slice's events land on time.
-                int remain = sliceIndex < end ? (int)Math.Ceiling(interval - t) : (sampleCount - done);
+                int remain = sliceIndex < end ? (int)Math.Ceiling(interval - t) : (frames - done);
                 if (remain < 1) remain = 1;
-                int n = Math.Min(remain, sampleCount - done);
+                int n = Math.Min(remain, frames - done);
                 synth.Render(mL.AsSpan(done, n), mR.AsSpan(done, n));
                 for (int k = 0; k < n; k++)
                 {
@@ -433,11 +437,12 @@ namespace MusicTracker.Engine.Timeline
             }
 
             double g = AudioFormat.OutputGain;
-            for (int s = 0; s < sampleCount; s++)
+            for (int f = 0; f < frames; f++)
             {
-                double v = (mL[s] + mR[s]) * 0.5 * g;
-                v = AudioFormat.SoftClip(v); // musical limiter instead of a hard clamp (no crackle on boost)
-                buffer[offset + s] = (short)(v * short.MaxValue);
+                double l = AudioFormat.SoftClip(mL[f] * g);    // musical limiter per channel (no crackle on boost)
+                double r = AudioFormat.SoftClip(mR[f] * g);
+                buffer[offset + 2 * f]     = (short)(l * short.MaxValue);
+                buffer[offset + 2 * f + 1] = (short)(r * short.MaxValue);
             }
 
             if (!Loop && sliceIndex >= end && synth.ActiveVoiceCount == 0) RaiseEnded();
@@ -466,15 +471,27 @@ namespace MusicTracker.Engine.Timeline
         {
             double maxBoost = AppSettings.MaxBoostFactor;
             var settings = AppSettings.Instance;
+            // Read the mixer values LIVE from the project (volume / pan / mute / solo) so the mixer takes effect
+            // mid-playback (this runs every buffer). Falls back to the setup snapshot if a project track is missing.
+            var pt = melodyProject?.Tracks;
+            bool anySolo = false;
+            if (pt != null) for (int i = 0; i < pt.Count; i++) if (pt[i] != null && pt[i].Solo) { anySolo = true; break; }
             for (int ti = 0; ti < tracks.Length; ti++)
             {
-                double gv = TrackGain(tracks[ti], beat) * tracks[ti].Mix; // Mix == 0 -> muted / non-soloed
+                var p = (pt != null && ti < pt.Count) ? pt[ti] : null;
+                double baseVol = p != null ? p.Volume : tracks[ti].BaseVol;
+                double mix = p != null ? ((p.Mute || (anySolo && !p.Solo)) ? 0.0 : 1.0) : tracks[ti].Mix;
+                double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix; // mix == 0 -> muted / non-soloed
                 // Per-instrument boost: CC7 is scaled by sqrt(boost/MaxBoost); combined with MasterVolume=MaxBoost
                 // (and MeltySynth squaring CC7) the net gain becomes gv²·boost — un-boosted stays gv².
                 double boost = trackProgram != null ? settings.BoostGain(trackProgram[ti]) : 1.0;
                 double ccGain = gv * Math.Sqrt(boost / maxBoost);
                 int cc = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, ccGain)) * 127);
                 synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 7, cc); // CC7 = channel volume
+                // Pan: −1..+1 → CC10 0..127 (64 = centre). Drums share ch 9, so multiple kits share one pan.
+                double pan = p != null ? Math.Max(-1.0, Math.Min(1.0, p.Pan)) : 0.0;
+                int cc10 = (int)Math.Round((pan + 1.0) * 0.5 * 127);
+                synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 10, cc10); // CC10 = pan
             }
         }
 
