@@ -75,7 +75,7 @@ if ($proto -notin @('ftp', 'ftps', 'sftp')) { throw "Protocol invalide : '$proto
 # decrivent le probleme sans jamais reveler la valeur.
 $pwdEnc = if ($cfg.PasswordEncoding) { $cfg.PasswordEncoding.ToLowerInvariant() } else { 'plain' }
 switch ($pwdEnc) {
-  'plain' { $pwd = $cfg.Password }
+  { $_ -in @('plain', 'none', '') } { $pwd = $cfg.Password }
   'base64' {
     try { $pwd = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($cfg.Password)) }
     catch { throw "Password n'est pas du base64 valide (PasswordEncoding vaut 'base64' dans $ConfigPath)." }
