@@ -1,0 +1,31 @@
+{
+  "StartedAtUtc": "2026-07-28T08:53:14.2379313Z",
+  "ExePath": "C:\\Users\\swe\\source\\repos\\MusicTracker\\MusicTracker\\bin\\Release\\KotonStudio.exe",
+  "Scenarios": [
+    {
+      "Name": "AppLaunch",
+      "Status": "pass",
+      "Message": null,
+      "DurationSeconds": 1.8639918999999998
+    },
+    {
+      "Name": "OpenTemplateProject",
+      "Status": "fail",
+      "Message": "L\u0027\u00E9diteur de timeline ne s\u0027est pas ouvert (BtnPlay introuvable) apr\u00E8s clic sur un mod\u00E8le.",
+      "DurationSeconds": 15.640668699999999
+    },
+    {
+      "Name": "PlayThenStop",
+      "Status": "fail",
+      "Message": "BtnPlay introuvable.",
+      "DurationSeconds": 0.1523197
+    },
+    {
+      "Name": "SaveDialogOpensAndCancels",
+      "Status": "fail",
+      "Message": "BtnSaveMusic introuvable.",
+      "DurationSeconds": 0.15047849999999999
+    }
+  ],
+  "AppCrashed": false
+}

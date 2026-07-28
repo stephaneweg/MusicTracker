@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Automation;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using MusicTracker.Localization;
@@ -272,6 +273,7 @@ namespace MusicTracker.Screens
         void AddTemplateCard(string icon, string name, string desc, string tags, string accentHex, Action onClick, Action onDelete = null, Action onRegenerate = null)
         {
             var card = new Button { Style = (Style)FindResource("TemplateCard"), ToolTip = desc };
+            AutomationProperties.SetAutomationId(card, "TemplateCard_" + name);
             card.Click += (s, e) => onClick();
 
             // Right-click ▸ regenerate (AI templates only). A context menu, so it doesn't clutter the card face.

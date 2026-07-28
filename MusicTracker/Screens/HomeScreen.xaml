@@ -300,7 +300,8 @@
                             </StackPanel>
                             <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="30,30,30,10" Gap="30">
                                 <!-- Nouvelle musique (primary — accent chip) -->
-                                <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnNewSequencer_Click">
+                                <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnNewSequencer_Click"
+                                        AutomationProperties.AutomationId="BtnNewSequencer">
                                     <DockPanel>
                                         <Border DockPanel.Dock="Left" Width="42" Height="42" CornerRadius="9" Background="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,14,0">
                                             <TextBlock Text="＋" FontSize="22" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>

@@ -48,7 +48,8 @@
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
                 <Button Content="{loc:Tr 'Annuler'}" Style="{StaticResource cancelButton}" Click="btnCancel_Click" Padding="16,4" Margin="0,0,8,0" Cursor="Hand"/>
-                <Button Content="{loc:Tr 'Creer'}" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="18,4" Cursor="Hand" IsDefault="True"/>
+                <Button Content="{loc:Tr 'Creer'}" Style="{StaticResource okButton}" Click="btnOk_Click" Padding="18,4" Cursor="Hand" IsDefault="True"
+                        AutomationProperties.AutomationId="BtnTemplateMeasuresOk"/>
             </StackPanel>
         </StackPanel>
     </Border>
