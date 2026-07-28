@@ -19,6 +19,10 @@ namespace MusicTracker.AutoTest
     // musictracker-daily-test scheduled task, which turns failures into GitHub issues.
     class Program
     {
+        static Application app;
+        static UIA3Automation automation;
+        static Window window;
+
         static int Main(string[] args)
         {
             string exePath = GetArg(args, "--exe");
@@ -47,10 +51,6 @@ namespace MusicTracker.AutoTest
                 return 1;
             }
 
-            Application app = null;
-            UIA3Automation automation = null;
-            Window window = null;
-
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -69,55 +69,50 @@ namespace MusicTracker.AutoTest
                     return 1;
                 }
 
-                RunScenario(report, app, "OpenTemplateProject", () =>
+                // Blank timeline: the shortest path into the editor, no modal dialog involved.
+                RunScenario(report, "NewMusicOpensEditor", () =>
                 {
+                    Click(Require("BtnNewSequencer", TimeSpan.FromSeconds(10), "la tuile « Nouvelle musique » de l'accueil"));
+                    Require("BtnPlay", TimeSpan.FromSeconds(15), "la barre de transport de l'éditeur (l'éditeur ne s'est pas ouvert)");
+                });
+
+                RunScenario(report, "PlayThenStop", () =>
+                {
+                    Click(Require("BtnPlay", TimeSpan.FromSeconds(5), "le bouton Lecture"));
+                    Thread.Sleep(2500);
+                    if (app.HasExited) throw new Exception("L'application a quitté pendant la lecture.");
+                    Click(Require("BtnStop", TimeSpan.FromSeconds(5), "le bouton Stop"));
+                    Thread.Sleep(300);
+                });
+
+                RunScenario(report, "SaveDialogOpensAndCancels", () =>
+                {
+                    ClickModal(Require("BtnSaveMusic", TimeSpan.FromSeconds(5), "le bouton Sauvegarder"));
+                    var dialog = WaitForNewWindow(TimeSpan.FromSeconds(8));
+                    if (dialog == null) throw new Exception("Aucune boîte de dialogue d'enregistrement n'est apparue après clic sur Sauvegarder.");
+                    CloseWindow(dialog);
+                    if (app.HasExited) throw new Exception("L'application a quitté après fermeture de la boîte de dialogue.");
+                });
+
+                // Generative templates: card ▸ "combien de mesures" modal ▸ project built on the timeline.
+                RunScenario(report, "OpenTemplateProject", () =>
+                {
+                    Click(Require("BtnHomeTab", TimeSpan.FromSeconds(5), "l'onglet Accueil"));
+
                     var card = Retry.WhileNull(
                         () => window.FindAllDescendants().FirstOrDefault(e =>
                             (e.Properties.AutomationId.ValueOrDefault ?? "").StartsWith("TemplateCard_")),
                         TimeSpan.FromSeconds(10)).Result;
                     if (card == null) throw new Exception("Aucune carte de modèle (TemplateCard_*) trouvée sur l'accueil.");
-                    card.Click();
+                    ClickModal(card);
 
-                    // Template creation asks "combien de mesures" in a modal dialog before building the project.
-                    var measuresDialog = Retry.WhileNull(() => FindNewWindow(automation, window), TimeSpan.FromSeconds(5)).Result;
-                    if (measuresDialog != null)
-                    {
-                        var ok = measuresDialog.FindFirstDescendant(cf => cf.ByAutomationId("BtnTemplateMeasuresOk"));
-                        if (ok != null) ok.AsButton().Invoke();
-                        else Keyboard.Press(VirtualKeyShort.ENTER);
-                    }
+                    var measures = WaitForNewWindow(TimeSpan.FromSeconds(8));
+                    if (measures == null) throw new Exception("La boîte « combien de mesures » n'est pas apparue après clic sur un modèle.");
+                    var ok = measures.FindFirstDescendant(cf => cf.ByAutomationId("BtnTemplateMeasuresOk"));
+                    if (ok == null) throw new Exception("Bouton « Créer » introuvable dans la boîte « combien de mesures ».");
+                    Click(ok);
 
-                    var play = Retry.WhileNull(
-                        () => window.FindFirstDescendant(cf => cf.ByAutomationId("BtnPlay")),
-                        TimeSpan.FromSeconds(15)).Result;
-                    if (play == null) throw new Exception("L'éditeur de timeline ne s'est pas ouvert (BtnPlay introuvable) après clic sur un modèle.");
-                });
-
-                RunScenario(report, app, "PlayThenStop", () =>
-                {
-                    var play = window.FindFirstDescendant(cf => cf.ByAutomationId("BtnPlay"));
-                    if (play == null) throw new Exception("BtnPlay introuvable.");
-                    play.AsButton().Invoke();
-                    Thread.Sleep(2500);
-                    if (app.HasExited) throw new Exception("L'application a quitté pendant la lecture.");
-                    var stop = window.FindFirstDescendant(cf => cf.ByAutomationId("BtnStop"));
-                    if (stop == null) throw new Exception("BtnStop introuvable.");
-                    stop.AsButton().Invoke();
-                    Thread.Sleep(300);
-                });
-
-                RunScenario(report, app, "SaveDialogOpensAndCancels", () =>
-                {
-                    var save = window.FindFirstDescendant(cf => cf.ByAutomationId("BtnSaveMusic"));
-                    if (save == null) throw new Exception("BtnSaveMusic introuvable.");
-                    save.AsButton().Invoke();
-
-                    var dialog = Retry.WhileNull(() => FindNewWindow(automation, window), TimeSpan.FromSeconds(8)).Result;
-
-                    if (dialog == null) throw new Exception("Aucune boîte de dialogue d'enregistrement n'est apparue après clic sur Sauvegarder.");
-                    Keyboard.Press(VirtualKeyShort.ESCAPE);
-                    Thread.Sleep(500);
-                    if (app.HasExited) throw new Exception("L'application a quitté après fermeture de la boîte de dialogue.");
+                    Require("BtnPlay", TimeSpan.FromSeconds(40), "la barre de transport (le projet issu du modèle ne s'est pas construit)");
                 });
             }
             finally
@@ -129,8 +124,7 @@ namespace MusicTracker.AutoTest
                     {
                         app.Close();
                         Thread.Sleep(2000);
-                        if (!app.HasExited)
-                            app.Kill();
+                        if (!app.HasExited) app.Kill();
                     }
                 }
                 catch { /* best-effort cleanup */ }
@@ -138,20 +132,49 @@ namespace MusicTracker.AutoTest
             }
 
             WriteReport(report, outPath);
-            bool anyFailure = report.Scenarios.Any(s => s.Status != "pass");
-            return anyFailure ? 1 : 0;
+            return report.Scenarios.Any(s => s.Status != "pass") ? 1 : 0;
         }
 
-        static Window FindNewWindow(UIA3Automation automation, Window mainWindow)
+        /// <summary>Wait for a control by AutomationId, or throw naming what the tester was looking for.</summary>
+        static AutomationElement Require(string automationId, TimeSpan timeout, string what)
         {
-            var desktopWindows = automation.GetDesktop().FindAllChildren(cf => cf.ByControlType(ControlType.Window));
-            return desktopWindows
-                .Select(w => w.AsWindow())
-                .FirstOrDefault(w => w.Properties.ProcessId.ValueOrDefault == mainWindow.Properties.ProcessId.ValueOrDefault
-                                      && w.Properties.NativeWindowHandle.ValueOrDefault != mainWindow.Properties.NativeWindowHandle.ValueOrDefault);
+            var el = Retry.WhileNull(() => window.FindFirstDescendant(cf => cf.ByAutomationId(automationId)), timeout).Result;
+            if (el == null) throw new Exception("Impossible de trouver " + what + " (AutomationId « " + automationId + " ») après " + (int)timeout.TotalSeconds + "s.");
+            return el;
         }
 
-        static void RunScenario(RunReport report, Application app, string name, Action body)
+        /// <summary>Invoke rather than mouse-click: works even when the control is scrolled out of view.</summary>
+        static void Click(AutomationElement el) => el.AsButton().Invoke();
+
+        /// <summary>For buttons that open a modal via ShowDialog(): UIA Invoke() is synchronous and would block
+        /// until the dialog closes, so the dialog could never be observed. A real mouse click returns immediately.</summary>
+        static void ClickModal(AutomationElement el)
+        {
+            try { window.SetForeground(); } catch { }
+            try { el.Patterns.ScrollItem.PatternOrDefault?.ScrollIntoView(); } catch { }
+            Thread.Sleep(200);
+            el.Click();
+        }
+
+        /// <summary>The app's dialogs are owned WPF windows with WindowStyle=None/AllowsTransparency: UIA exposes them
+        /// as Window CHILDREN of the main window, not as top-level windows. Check there first, then fall back.</summary>
+        static Window WaitForNewWindow(TimeSpan timeout) =>
+            Retry.WhileNull(() =>
+            {
+                var owned = window.FindAllChildren(cf => cf.ByControlType(ControlType.Window)).FirstOrDefault();
+                if (owned != null) return owned.AsWindow();
+                return app.GetAllTopLevelWindows(automation)
+                          .FirstOrDefault(w => w.Properties.NativeWindowHandle.ValueOrDefault
+                                               != window.Properties.NativeWindowHandle.ValueOrDefault);
+            }, timeout).Result;
+
+        static void CloseWindow(Window w)
+        {
+            try { w.Close(); } catch { Keyboard.Press(VirtualKeyShort.ESCAPE); }
+            Thread.Sleep(500);
+        }
+
+        static void RunScenario(RunReport report, string name, Action body)
         {
             var sw = Stopwatch.StartNew();
             if (app.HasExited)

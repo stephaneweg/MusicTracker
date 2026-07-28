@@ -38,6 +38,7 @@ namespace MusicTracker
             homeScreen.TutorialRequested += StartTutorialInNewTab;
             homeBtn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(16, 0, 16, 0), Content = Loc.T("Home"),
                                    Background = new SolidColorBrush(Color.FromRgb(0x24, 0x25, 0x2C)) }; // a bit darker than the music tabs
+            System.Windows.Automation.AutomationProperties.SetAutomationId(homeBtn, "BtnHomeTab");
             homeBtn.Click += (s, e) => Select(homeScreen);
             tabStrip.Children.Add(homeBtn);
             Select(homeScreen);

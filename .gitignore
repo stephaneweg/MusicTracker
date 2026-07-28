@@ -59,3 +59,8 @@ releases/
 # --- Marketing website ---
 # Site vitrine PHP, déployé manuellement hors GitHub.
 /WebSite/
+
+# --- Automated UI test harness output ---
+# results.json / build.log are regenerated on every AutoTest run.
+/AutoTest/results.json
+/AutoTest/build.log
