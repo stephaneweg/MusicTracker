@@ -136,6 +136,7 @@ namespace MusicTracker.Screens
             syncingKey = false;
             SyncMeterCombo();
             SyncPickupCombo();
+            SyncSwingCombo();
             UpdateKeySummary();
             UpdateMeterSummary();
         }
@@ -153,7 +154,9 @@ namespace MusicTracker.Screens
         void UpdateMeterSummary()
         {
             if (txtMeterSummary == null) return;
-            txtMeterSummary.Text = (cboMeter?.SelectedItem as string) ?? "";
+            string meter = (cboMeter?.SelectedItem as string) ?? "";
+            // Swing leaves the written notes untouched, so the collapsed chip is the only place it shows.
+            txtMeterSummary.Text = project.SwingPercent > 50.5 ? meter + " ♪⁀" : meter;
         }
 
         // Collapse / expand the bottom editor panel. Collapsed: the row shrinks to just its title strip (Auto height,
@@ -217,6 +220,37 @@ namespace MusicTracker.Screens
             cboPickup.SelectedIndex = sel;
             syncingPickup = false;
         }
+        bool syncingSwing;
+        // Swing presets: where the off-eighth lands inside the beat. 50 = straight, 66.7 = full triplet; the values in
+        // between are the usual "half swing" degrees. Playback only — the score keeps its straight eighths.
+        static readonly (string label, double pct)[] SwingOpts =
+        {
+            (Loc.T("SwingStraight"), 50), (Loc.T("SwingLight") + " (54%)", 54), (Loc.T("SwingMedium") + " (58%)", 58),
+            ("Swing (62%)", 62), (Loc.T("SwingTriplet") + " (67%)", 200.0 / 3),
+        };
+        void SyncSwingCombo()
+        {
+            if (cboSwing == null) return;
+            syncingSwing = true;
+            cboSwing.Items.Clear();
+            foreach (var o in SwingOpts) cboSwing.Items.Add(o.label);
+            int sel = 0; double best = double.MaxValue;
+            for (int i = 0; i < SwingOpts.Length; i++) { double d = Math.Abs(SwingOpts[i].pct - project.SwingPercent); if (d < best) { best = d; sel = i; } }
+            cboSwing.SelectedIndex = sel;
+            syncingSwing = false;
+        }
+        private void Swing_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (syncingSwing || cboSwing == null) return;
+            int i = cboSwing.SelectedIndex;
+            if (i < 0 || i >= SwingOpts.Length) return;
+            double pct = SwingOpts[i].pct;
+            if (Math.Abs(pct - project.SwingPercent) < 1e-9) return;
+            PushUndo("swing"); // stable op key (coalescing) — not a localized label
+            project.SwingPercent = pct;
+            UpdateMeterSummary(); // the collapsed chip shows the swing, since the notes look unchanged
+        }
+
         private void Pickup_Changed(object sender, SelectionChangedEventArgs e)
         {
             if (syncingPickup || cboPickup == null) return;
@@ -862,6 +896,7 @@ namespace MusicTracker.Screens
             project.UserDrumStyles = dp.UserDrumStyles ?? new System.Collections.Generic.List<UserChordStyle>();
             project.PickupBeats = dp.PickupBeats;
             project.MinBeats = dp.MinBeats;
+            project.SwingPercent = dp.SwingPercent > 0 ? dp.SwingPercent : 50; // pre-swing files have no value -> straight
             project.Tracks.Clear();
             if (dp.Tracks != null) foreach (var t in dp.Tracks) project.Tracks.Add(t);
             TimelineHelper.SyncUserStyleRefs(project);   // make chords that reference a user style authoritative from it

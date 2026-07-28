@@ -317,6 +317,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="auto"/>
                                 <RowDefinition Height="auto"/>
+                                <RowDefinition Height="auto"/>
                             </Grid.RowDefinitions>
                             <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2">
                                 <ComboBox x:Name="cboMeter" Width="62" VerticalAlignment="Center" Margin="0,0,8,0" SelectionChanged="Meter_Changed" ToolTip="{loc:Tr 'TimeSignatureChangingTheNumberOf'}"/>
@@ -324,6 +325,8 @@
                             </StackPanel>
                             <TextBlock Text="{loc:Tr 'Pickup'}" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="1"/>
                             <ComboBox x:Name="cboPickup" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" SelectionChanged="Pickup_Changed" ToolTip="{loc:Tr 'PickupLengthOfTheIncompleteOpening'}"/>
+                            <TextBlock Text="{loc:Tr 'Swing'}" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="2"/>
+                            <ComboBox x:Name="cboSwing" Grid.Column="1" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Center" SelectionChanged="Swing_Changed" ToolTip="{loc:Tr 'SwingDelaysTheOffEighths'}"/>
                         </Grid>
                     </Border>
                 </Popup>

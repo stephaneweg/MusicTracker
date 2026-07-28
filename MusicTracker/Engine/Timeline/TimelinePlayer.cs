@@ -91,6 +91,24 @@ namespace MusicTracker.Engine.Timeline
             if (spBeat % 4 == 0 && inBeat % (spBeat / 4) == 0) return 84;         // binary subdivision
             return 78;                                                            // fine offbeat
         }
+
+        // ---- swing (croches inégales) --------------------------------------------------------------------------
+        // Slice inside the beat where the OFF-eighth lands: Spb/2 = straight, 16/24 = full triplet. Computed once from
+        // the project's SwingPercent; 0 disables the warp entirely (the straight path costs nothing).
+        readonly int swingPoint;
+
+        // Piecewise-linear time warp of a position INSIDE one beat: [0, Spb/2] stretches onto [0, swingPoint] and
+        // [Spb/2, Spb] compresses onto [swingPoint, Spb]. Monotonic, fixes the beat boundaries, and delays the
+        // finer subdivisions along with the eighths (a 16th run keeps its shape) — the usual DAW behaviour.
+        int SwingSlice(int s)
+        {
+            if (swingPoint <= 0 || s <= 0) return s;
+            int beat = s / Spb, within = s - beat * Spb, half = Spb / 2;
+            double w = within <= half
+                ? within * (swingPoint / (double)half)
+                : swingPoint + (within - half) * ((Spb - swingPoint) / (double)half);
+            return beat * Spb + (int)Math.Round(w);
+        }
         MeltySynth.Synthesizer synth;
         int[] trackChannel;                 // MIDI channel per track (drum tracks -> 9)
         int[] trackProgram;                 // GM program per track (drum tracks -> DrumIndex) for the per-instrument boost
@@ -114,6 +132,10 @@ namespace MusicTracker.Engine.Timeline
             this.sampleRate = sampleRate <= 0 ? AudioFormat.SampleRate : sampleRate;
             this.melodyKey = project.Key ?? new Engine.Score.KeySignature();
             this.melodyProject = project;
+
+            // Straight (or an out-of-range value) leaves swingPoint at 0 = no warp at all.
+            double sw = project.SwingPercent;
+            swingPoint = (sw > 50.5 && sw < 90) ? (int)Math.Round(Spb * sw / 100.0) : 0;
 
             var temp = (project.Tempo != null && project.Tempo.Count > 0)
                 ? project.Tempo.OrderBy(x => x.Beat).ToList()
@@ -263,14 +285,15 @@ namespace MusicTracker.Engine.Timeline
             foreach (var n in riff.Notes)
             {
                 if (n.Note < 0 || n.Note >= NoteCount) continue;
-                int s = off + (int)Math.Round(n.Start * scale);
-                int e = off + (int)Math.Round(n.End * scale);
+                int straight = off + (int)Math.Round(n.Start * scale); // metric position (accent), before the swing delay
+                int s = SwingSlice(straight);
+                int e = SwingSlice(off + (int)Math.Round(n.End * scale));
                 if (e <= s) e = s + 1;
                 if (s < 0) s = 0;
                 if (s >= totalSlices) continue;
                 if (e > totalSlices) e = totalSlices;
                 (tr.AttackAt[s] ?? (tr.AttackAt[s] = new List<int>())).Add(n.Note);
-                (tr.AttackVel[s] ?? (tr.AttackVel[s] = new List<int>())).Add(MetricVelocity(s));
+                (tr.AttackVel[s] ?? (tr.AttackVel[s] = new List<int>())).Add(MetricVelocity(straight));
                 (tr.ReleaseAt[e] ?? (tr.ReleaseAt[e] = new List<int>())).Add(n.Note);
             }
         }

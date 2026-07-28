@@ -121,6 +121,11 @@ namespace MusicTracker.Engine.Timeline
         /// empty project still spans that many bars. The displayed length never goes below this. 0 = no minimum.</summary>
         public double MinBeats { get; set; } = 0;
 
+        /// <summary>Swing: where the OFF-eighth falls inside the beat, in percent. 50 = straight (dead centre), 66.7 =
+        /// full triplet feel (the classic jazz 2:1). A performance feel only: playback and audio export are warped,
+        /// the written notes / score / MIDI export stay straight eighths, as a DAW does.</summary>
+        public double SwingPercent { get; set; } = 50;
+
         public double MainBpm => Tempo != null && Tempo.Count > 0 ? Tempo[0].Bpm : 120;
 
         // ---- duration helpers (beats) ----
