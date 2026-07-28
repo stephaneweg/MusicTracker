@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using MusicTracker.Engine.Flow;
 
@@ -8,15 +9,40 @@ namespace MusicTracker.Controls.TimelineEditor
 {
     /// <summary>
     /// La roue polyrythmique : un anneau par calque, découpé en N secteurs. Les pas vides sont gris, les K coups
-    /// prennent la couleur de famille de l'instrument. Une aiguille tourne pendant la lecture.
+    /// prennent la couleur du calque. Une aiguille tourne pendant la lecture.
     ///
     /// C'est la représentation canonique des rythmes euclidiens, et elle montre d'un coup d'œil ce que les nombres
     /// cachent : la régularité de la répartition, l'effet du décalage, et surtout le déphasage entre des anneaux
     /// de longueurs différentes — précisément ce qu'on ne peut pas lire sur une grille rectangulaire.
+    ///
+    /// Générique : sert aussi bien à une batterie polyrythmique (calque = lane, cf. SetModule) qu'à une ligne
+    /// mélodique polyrythmique (calque = voix, cf. SetRings) — la géométrie ne connaît que Hits/Steps/Rotation/
+    /// StepSlices/Muted/Color, jamais ce qu'un calque représente musicalement.
     /// </summary>
     public class PolyDrumWheel : FrameworkElement
     {
-        PolyDrumModule module;
+        /// <summary>Description générique d'un anneau : de quoi dessiner son motif euclidien, indépendamment de
+        /// ce qu'il représente (une lane de batterie, une voix de ligne mélodique...).</summary>
+        public class Ring
+        {
+            public int Hits, Steps, Rotation, StepSlices;
+            public bool Muted;
+            public Color Color;
+            /// <summary>Motif à afficher. Si non null, il PRIME sur K/N/Rotation — la roue dessine ce qui est
+            /// dedans (mode personnalisé : cellules cliquées à la main). Longueur = <see cref="Steps"/>.</summary>
+            public bool[] Custom;
+            /// <summary>Ce calque est-il éditable au clic ? Contour un peu plus marqué en mode édition.</summary>
+            public bool Editable;
+        }
+
+        /// <summary>Position dessinée par la roue de la cellule cliquée : (index de l'anneau, index du pas dans le
+        /// motif du calque). Renvoie null si le clic tombe hors d'un anneau ou hors d'un anneau éditable.</summary>
+        public event Action<int, int> CellClicked;
+
+        List<Ring> rings = new List<Ring>();
+        int totalModuleSlices;       // longueur totale du module, en slices — le tour COMPLET que fait l'aiguille
+        double totalBeats;           // durée du module en temps, pour la vitesse de l'aiguille
+        double cycleBeats;           // PPCM des cycles de tous les calques, affiché au centre
         int highlight = -1;          // calque survolé / sélectionné : mis en avant, les autres estompés
         double playBeats = -1;       // position de l'aiguille, en temps depuis le début du module (< 0 = cachée)
 
@@ -31,9 +57,68 @@ namespace MusicTracker.Controls.TimelineEditor
             Empty.Freeze(); Grid.Freeze(); NeedleBrush.Freeze(); TextBrush.Freeze();
         }
 
+        // Cache de la géométrie du dernier rendu : rayon central de chaque anneau + son pas visuel angulaire, pour
+        // hit-tester un clic sans redupliquer la logique de OnRender. Recalculé à chaque rendu.
+        struct RingGeom { public double Radius, Thick; public int VisualSteps; public double AngleStepDeg; public int PatternSteps; }
+        readonly List<RingGeom> geom = new List<RingGeom>();
+        Point centreCache;
+
         public PolyDrumWheel() { ClipToBounds = true; }
 
-        public void SetModule(PolyDrumModule m) { module = m; InvalidateVisual(); }
+        protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseLeftButtonDown(e);
+            if (CellClicked == null || geom.Count == 0) return;
+            var p = e.GetPosition(this);
+            double dx = p.X - centreCache.X, dy = p.Y - centreCache.Y;
+            double r = Math.Sqrt(dx * dx + dy * dy);
+            for (int i = 0; i < geom.Count; i++)
+            {
+                var g = geom[i];
+                if (r < g.Radius - g.Thick / 2 || r > g.Radius + g.Thick / 2) continue;
+                if (!rings[i].Editable) return;                              // sur un anneau non éditable → on n'avale pas
+                double aDeg = Math.Atan2(dy, dx) * 180 / Math.PI + 90;       // 0° = 12h (comme au rendu, -90 => haut)
+                if (aDeg < 0) aDeg += 360;
+                int visualStep = (int)Math.Floor(aDeg / g.AngleStepDeg);
+                if (visualStep < 0 || visualStep >= g.VisualSteps) return;
+                int stepInPattern = ((visualStep % g.PatternSteps) + g.PatternSteps) % g.PatternSteps;
+                CellClicked(i, stepInPattern);
+                e.Handled = true;
+                return;
+            }
+        }
+
+        /// <summary>Batterie polyrythmique : un anneau par lane, coloré par famille d'instrument (DrumColors).</summary>
+        public void SetModule(PolyDrumModule m)
+        {
+            var list = new List<Ring>();
+            if (m?.Layers != null)
+                foreach (var l in m.Layers)
+                    if (l != null) list.Add(new Ring
+                    {
+                        Hits = l.Hits, Steps = l.Steps, Rotation = l.Rotation, StepSlices = l.StepSlices,
+                        Muted = l.Muted, Color = DrumColors.ForLane(l.Lane),
+                        Custom = l.CustomMode ? l.EffectivePattern() : null,
+                        Editable = l.CustomMode
+                    });
+            // La roue ne dessine QU'UN cycle commun (PPCM des Steps×StepSlices) — on ne représente pas les
+            // répétitions du module : elles rebouclent visuellement sur la même roue. Le tour de l'aiguille dure
+            // exactement un cycle ; sur un module de plusieurs répétitions, elle wrappe autant de fois.
+            double cyc = m != null ? PolyDrum.CycleBeats(m) : 0;
+            int cycSlices = (int)Math.Round(cyc * DrumPattern.SlicesPerQuarter);
+            SetRings(list, cycSlices, cyc, cyc);
+        }
+
+        /// <summary>Forme générique : n'importe quelle liste de calques euclidiens (ex. une ligne mélodique
+        /// polyrythmique, un anneau par voix).</summary>
+        public void SetRings(List<Ring> list, int totalModuleSlices, double totalBeats, double cycleBeats)
+        {
+            rings = list ?? new List<Ring>();
+            this.totalModuleSlices = totalModuleSlices;
+            this.totalBeats = totalBeats;
+            this.cycleBeats = cycleBeats;
+            InvalidateVisual();
+        }
 
         public void SetHighlight(int layerIndex)
         {
@@ -51,54 +136,75 @@ namespace MusicTracker.Controls.TimelineEditor
         protected override void OnRender(DrawingContext dc)
         {
             double w = ActualWidth, h = ActualHeight;
+            geom.Clear();
             if (w < 40 || h < 40) return;
             var centre = new Point(w / 2, h / 2);
+            centreCache = centre;
             double outer = Math.Min(w, h) / 2 - 14;
             if (outer < 20) return;
 
-            var layers = new List<EuclidLayer>();
-            if (module?.Layers != null) foreach (var l in module.Layers) if (l != null) layers.Add(l);
-
-            if (layers.Count == 0)
+            if (rings.Count == 0)
             {
                 var ft0 = Text(Localization.Loc.T("AjouteUnCalquePourCommencer"), 12);
                 dc.DrawText(ft0, new Point(centre.X - ft0.Width / 2, centre.Y - ft0.Height / 2));
                 return;
             }
 
-            // Le premier calque occupe l'anneau EXTÉRIEUR : c'est en général la grosse caisse, la fondation.
-            double ringSpan = outer / Math.Max(1, layers.Count);
-            double thick = Math.Min(22, ringSpan * 0.62);
+            // Le premier calque occupe l'anneau EXTÉRIEUR : c'est en général la grosse caisse, la fondation
+            // (ou la voix 1, pour une ligne mélodique).
+            double ringSpan = outer / Math.Max(1, rings.Count);
+            double thick = ringSpan / 2;
 
-            for (int i = 0; i < layers.Count; i++)
+            for (int i = 0; i < rings.Count; i++)
             {
-                var l = layers[i];
+                var l = rings[i];
                 int n = Math.Max(1, l.Steps);
-                double r = outer - i * ringSpan - thick / 2;
-                if (r < thick) break;
+                int stp = Math.Max(1, l.StepSlices);
+                // Le cercle représente le tour COMPLET du module (ce que suit l'aiguille), pas un seul cycle
+                // euclidien : si le calque a une subdivision plus fine ou un cycle plus court que le module, son
+                // motif se répète plusieurs fois sur le pourtour — on doit dessiner tous ces passages, chacun à
+                // la bonne échelle angulaire (proportionnelle à sa propre subdivision), sinon les répétitions
+                // tombent sur des secteurs vides et le son semble décalé par rapport à l'affichage.
+                int visualSteps = totalModuleSlices > 0 ? Math.Max(1, totalModuleSlices / stp) : n;
+                // On avance d'une épaisseur d'anneau + un petit interstice à chaque calque (pas de tout le
+                // ringSpan) : les anneaux restent quasi jointifs même si `thick` est plus fin que le slot alloué.
+                const double ringGap = 2;
+                double r = outer - i * (thick + ringGap) - thick / 2;
+                if (r < thick / 2) break;   // s'arrête seulement si l'anneau déborderait du centre (bord intérieur négatif)
 
                 bool dim = highlight >= 0 && highlight != i;
                 double alpha = l.Muted ? 0.20 : (dim ? 0.35 : 1.0);
-                var col = DrumColors.ForLane(l.Lane);
-                var onBrush = new SolidColorBrush(col) { Opacity = alpha };
+                var onBrush = new SolidColorBrush(l.Color) { Opacity = alpha };
                 var offBrush = new SolidColorBrush(((SolidColorBrush)Empty).Color) { Opacity = alpha * 0.75 };
 
-                var pat = EuclideanRhythm.Rotate(EuclideanRhythm.Pattern(l.Hits, n), l.Rotation);
+                var pat = l.Custom != null && l.Custom.Length == n
+                    ? l.Custom
+                    : EuclideanRhythm.Rotate(EuclideanRhythm.Pattern(l.Hits, n), l.Rotation);
 
-                // Un secteur par pas. On laisse un petit jeu angulaire pour que les pas restent distincts même
-                // quand N est grand (à N=16 les secteurs font 22,5°, le jeu évite qu'ils se touchent).
-                double step = 360.0 / n, gap = Math.Min(2.5, step * 0.12);
-                for (int s = 0; s < n; s++)
+                // Un secteur par pas VISUEL (pas par pas du motif) : à N=32 pas mais un motif qui ne fait qu'un
+                // quart du tour, on dessine bien 4×32 secteurs sur le pourtour, colorés selon pat[s % n].
+                double step = 360.0 / visualSteps, gap = Math.Min(2.5, step * 0.12);
+                for (int s = 0; s < visualSteps; s++)
                 {
+                    bool on = pat[s % n];
                     double a0 = -90 + s * step + gap / 2, a1 = -90 + (s + 1) * step - gap / 2;
-                    dc.DrawGeometry(null, new Pen(pat[s] ? onBrush : offBrush, thick) { StartLineCap = PenLineCap.Flat, EndLineCap = PenLineCap.Flat },
+                    dc.DrawGeometry(null, new Pen(on ? onBrush : offBrush, thick) { StartLineCap = PenLineCap.Flat, EndLineCap = PenLineCap.Flat },
                                     Arc(centre, r, a0, a1));
                 }
 
+                // Anneau éditable : liseré discret sur toute la couronne, pour signaler "tu peux cliquer ici".
+                if (l.Editable && !l.Muted)
+                {
+                    var edgeBrush = new SolidColorBrush(Color.FromArgb((byte)(alpha * 220), 0xFF, 0xC1, 0x07));
+                    dc.DrawEllipse(null, new Pen(edgeBrush, 1), centre, r + thick / 2 + 1, r + thick / 2 + 1);
+                    dc.DrawEllipse(null, new Pen(edgeBrush, 1), centre, r - thick / 2 - 1, r - thick / 2 - 1);
+                }
+                geom.Add(new RingGeom { Radius = r, Thick = thick, VisualSteps = visualSteps, AngleStepDeg = step, PatternSteps = n });
+
                 // Repères de temps : les positions du cycle qui tombent sur un temps. C'est ce qui permet de voir
                 // qu'un motif est syncopé, et ce que le décalage fait bouger.
-                int spb = DrumPattern.SlicesPerQuarter, stp = Math.Max(1, l.StepSlices);
-                for (int s = 0; s < n; s++)
+                int spb = DrumPattern.SlicesPerQuarter;
+                for (int s = 0; s < visualSteps; s++)
                 {
                     if ((s * stp) % spb != 0) continue;
                     double a = (-90 + s * step) * Math.PI / 180;
@@ -110,9 +216,8 @@ namespace MusicTracker.Controls.TimelineEditor
 
             // L'aiguille : une seule pour toute la roue, sur le tour du MODULE — les anneaux plus courts bouclent
             // plusieurs fois pendant qu'elle fait un tour, ce qui rend le déphasage visible.
-            if (playBeats >= 0)
+            if (playBeats >= 0 && totalBeats > 0)
             {
-                double totalBeats = Math.Max(1, module.BeatsPerBar) * Math.Max(1, module.Repeats);
                 double frac = (playBeats % totalBeats) / totalBeats;
                 double a = (-90 + frac * 360) * Math.PI / 180;
                 var tip = new Point(centre.X + Math.Cos(a) * (outer + 6), centre.Y + Math.Sin(a) * (outer + 6));
@@ -121,10 +226,9 @@ namespace MusicTracker.Controls.TimelineEditor
             }
 
             // Le cycle commun, au centre : au bout de combien de temps tous les calques retombent ensemble.
-            double cyc = PolyDrum.CycleBeats(module);
-            if (cyc > 0)
+            if (cycleBeats > 0)
             {
-                var ft = Text(Localization.Loc.T("Cycle") + " " + Math.Round(cyc, 2), 11);
+                var ft = Text(Localization.Loc.T("Cycle") + " " + Math.Round(cycleBeats, 2), 11);
                 dc.DrawText(ft, new Point(centre.X - ft.Width / 2, centre.Y + 8));
             }
         }

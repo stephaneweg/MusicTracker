@@ -1,0 +1,162 @@
+<UserControl x:Class="MusicTracker.Controls.TimelineEditor.PolyDrumEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:loc="clr-namespace:MusicTracker.Localization"
+             xmlns:te="clr-namespace:MusicTracker.Controls.TimelineEditor"
+             mc:Ignorable="d" d:DesignHeight="380" d:DesignWidth="900" x:Name="self">
+    <UserControl.Resources>
+        <te:LaneToBrushConverter x:Key="LaneToBrush"/>
+        <Style x:Key="LayerCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#20FFFFFF"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="BorderThickness" Value="3,1,1,1"/>
+            <!-- Le liseré gauche prend la couleur de famille de l'instrument, comme la roue.
+                 Défini au niveau du Style pour ne pas répéter le converter dans le template. -->
+            <Setter Property="BorderBrush" Value="{Binding Lane, Converter={StaticResource LaneToBrush}}"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <ScrollViewer Grid.Column="0"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Margin="2,0,12,0">
+            <StackPanel>
+                <!-- La longueur du module = cycle du calque le plus long × Répétitions. Pas de « temps par mesure » :
+                     un polyrythme se pense par cycle, pas par mesure. -->
+                <TextBlock Text="{loc:Tr 'DureeEnTemps'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+                <TextBox x:Name="txtDuration" Width="60" HorizontalAlignment="Left" LostFocus="txtDuration_LostFocus"/>
+
+                <TextBlock Text="{loc:Tr 'Calques'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+
+                <!-- Une carte par calque. Le DataContext de chaque carte est un EuclidLayer (observable). Les
+                     événements Click/CheckedChanged sont routés vers le code-behind de ce UserControl, qui utilise
+                     sender.DataContext pour retrouver le calque concerné. -->
+                <!-- ItemsSource affecté en code-behind (les bindings ElementName sont évalués trop tôt dans le
+                     cycle de vie du UserControl pour capter LayersView). -->
+                <ItemsControl x:Name="layersList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="card" Style="{StaticResource LayerCardStyle}"
+                                    MouseEnter="Layer_MouseEnter" MouseLeave="Layer_MouseLeave"
+                                    Tag="{Binding}">
+                                <StackPanel>
+                                    <!-- Bandeau : plier, choix instrument, muet, mode custom, supprimer -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Content="{Binding CollapseGlyph}" Click="btnCollapse_Click"
+                                                Width="18" Height="18" Padding="0" FontSize="10"
+                                                Margin="0,0,4,0" Cursor="Hand"/>
+                                        <ComboBox Grid.Column="1" x:Name="cboLane" Width="168"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=LaneNames}"
+                                                  SelectedIndex="{Binding Lane, Mode=TwoWay}"/>
+                                        <CheckBox Grid.Column="2" Content="M" Foreground="White" FontSize="11"
+                                                  Margin="10,0,0,0" VerticalAlignment="Center"
+                                                  IsChecked="{Binding Muted, Mode=TwoWay}"
+                                                  ToolTip="{loc:Tr 'MuetCeCalque'}"/>
+                                        <CheckBox Grid.Column="3" Content="✎" Foreground="{Binding PersColour}" FontSize="12" FontWeight="Bold"
+                                                  Margin="10,0,0,0" VerticalAlignment="Center"
+                                                  IsChecked="{Binding CustomMode, Mode=TwoWay}"
+                                                  Click="chkCustom_Click"
+                                                  ToolTip="{loc:Tr 'ModePersonnaliseClic'}"/>
+                                        <Button Grid.Column="4" Content="✕" FontSize="16" Width="30" Padding="0"
+                                                Margin="10,0,0,0" Cursor="Hand"
+                                                Click="btnDelete_Click"
+                                                ToolTip="{loc:Tr 'SupprimerCeCalque'}"/>
+                                    </Grid>
+
+                                    <!-- Résumé quand replié -->
+                                    <TextBlock Text="{Binding SummaryText}" Foreground="#999999" FontSize="11"
+                                               Margin="22,2,0,0" Visibility="{Binding SummaryVisibility}"/>
+
+                                    <!-- Corps -->
+                                    <StackPanel Visibility="{Binding BodyVisibility}">
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Coups / Décalage : cachés en mode custom -->
+                                            <TextBlock
+                                                Grid.Column="0"  Visibility="{Binding HitsRotationVisibility}"
+                                                Text="{loc:Tr 'Coups'}" Foreground="#AAAAAA" FontSize="11"
+                                                        VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox
+                                                Grid.Column="1"  Visibility="{Binding HitsRotationVisibility}"
+                                                Width="38" Text="{Binding Hits, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+                                            
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Text="{loc:Tr 'Pas'}" Foreground="#AAAAAA" FontSize="11"
+                                                VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox
+                                                Grid.Column="3"
+                                                Width="38" Text="{Binding Steps, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+                                            
+                                            <TextBlock
+                                                Grid.Column="4" Visibility="{Binding HitsRotationVisibility}"
+                                                Text="{loc:Tr 'Decalage'}" Foreground="#AAAAAA" FontSize="11"
+                                                VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox
+                                                Grid.Column="5" Visibility="{Binding HitsRotationVisibility}"
+                                                Width="38" Text="{Binding Rotation, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+                                            
+                                        </Grid>
+
+                                        <ComboBox Width="168" Margin="0,4,0,0"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=StepNames}"
+                                                  SelectedIndex="{Binding StepSlicesIndex, Mode=TwoWay}"/>
+
+                                        <!-- Accent : instrument JOUÉ SUR LE 1er COUP de chaque cycle. Optionnel : « (aucun) » = pas d'accent. -->
+                                        <TextBlock Text="{loc:Tr 'AccentPremierCoup'}" Foreground="#AAAAAA" FontSize="11" Margin="0,6,0,1"/>
+                                        <ComboBox Width="168"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=AccentLaneNames}"
+                                                  SelectedIndex="{Binding AccentLaneIndex, Mode=TwoWay}"
+                                                  ToolTip="{loc:Tr 'AccentPremierCoupToolTip'}"/>
+
+                                        <TextBlock Text="{Binding AnalysisText}" Foreground="#FFC107" FontSize="11"
+                                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding AnalysisVisibility}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button x:Name="btnAdd" Margin="0,2,0,6" Padding="10,4,10,4" Cursor="Hand"
+                        HorizontalAlignment="Left" Click="btnAdd_Click"/>
+
+                <Button x:Name="btnFreeze" Margin="0,2,0,6" Padding="10,4,10,4" Cursor="Hand"
+                        HorizontalAlignment="Left" Click="btnFreeze_Click"
+                        Content="{loc:Tr 'FigerEnMotifEditable'}"
+                        ToolTip="{loc:Tr 'ConvertitEnMotifDeBatterieOrdinaire'}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <DockPanel Grid.Column="1">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                <Button x:Name="btnPlay" Padding="10,4,10,4" Cursor="Hand" Click="btnPlay_Click"/>
+            </StackPanel>
+            <te:PolyDrumWheel x:Name="wheel" MinHeight="240"/>
+        </DockPanel>
+    </Grid>
+</UserControl>

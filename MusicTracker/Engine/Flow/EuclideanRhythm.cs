@@ -82,10 +82,33 @@ namespace MusicTracker.Engine.Flow
             return false;
         }
 
+        /// <summary>Au bout de combien de temps TOUS les calques d'un polyrythme retombent ensemble : le PPCM de
+        /// leurs cycles (n × stepSlices), converti en temps. Partagé entre la batterie polyrythmique (PolyDrum) et
+        /// la ligne mélodique polyrythmique — c'est le même calcul, seul le sens des "calques" change.</summary>
+        public static double CycleBeats(IEnumerable<(int steps, int stepSlices, bool muted)> layers, int slicesPerQuarter)
+        {
+            long lcm = 1; bool any = false;
+            foreach (var l in layers)
+            {
+                if (l.muted) continue;
+                any = true;
+                long c = Math.Max(1, l.steps) * (long)Math.Max(1, l.stepSlices);
+                lcm = Lcm(lcm, c);
+                if (lcm > 1L << 40) return 0;   // garde-fou : cycles absurdes
+            }
+            return !any || lcm <= 1 ? 0 : lcm / (double)Math.Max(1, slicesPerQuarter);
+        }
+
+        static long Gcd(long a, long b) { while (b != 0) { long t = a % b; a = b; b = t; } return a < 0 ? -a : a; }
+        static long Lcm(long a, long b) { long g = Gcd(a, b); return g == 0 ? 0 : a / g * b; }
+
         /// <summary>Déroule le motif en notes, sur la rangée demandée (ligne de percussion, ou voix d'une ligne
         /// mélodique), jusqu'à <paramref name="totalSlices"/>. Le cycle dure n × stepSlices et se répète SANS
-        /// recalage sur la mesure : c'est ce qui produit le décalage voulu quand il ne divise pas la mesure.</summary>
-        public static List<Engine.RiffNote> Build(int row, int k, int n, int rotation, int stepSlices, int totalSlices)
+        /// recalage sur la mesure : c'est ce qui produit le décalage voulu quand il ne divise pas la mesure.
+        /// <paramref name="legato"/> : chaque note dure jusqu'au PROCHAIN coup (au lieu d'un coup court d'une
+        /// durée de pas) — la dernière note du module dure jusqu'à la fin. Sans effet sur des percussions
+        /// (déclenchements ponctuels), pertinent pour une voix mélodique tenue.</summary>
+        public static List<Engine.RiffNote> Build(int row, int k, int n, int rotation, int stepSlices, int totalSlices, bool legato = false)
         {
             var notes = new List<Engine.RiffNote>();
             n = Math.Max(1, n);
@@ -94,14 +117,23 @@ namespace MusicTracker.Engine.Flow
 
             var pat = Rotate(Pattern(k, n), rotation);
             int cycle = n * stepSlices;
+            var onsets = new List<int>();
             for (int at = 0; at < totalSlices; at += cycle)
                 for (int i = 0; i < n; i++)
                 {
                     if (!pat[i]) continue;
                     int s = at + i * stepSlices;
                     if (s >= totalSlices) break;
-                    notes.Add(new Engine.RiffNote(row, s, Math.Min(stepSlices, totalSlices - s)));
+                    onsets.Add(s);
                 }
+            for (int idx = 0; idx < onsets.Count; idx++)
+            {
+                int s = onsets[idx];
+                int len = legato
+                    ? (idx + 1 < onsets.Count ? onsets[idx + 1] - s : totalSlices - s)
+                    : Math.Min(stepSlices, totalSlices - s);
+                notes.Add(new Engine.RiffNote(row, s, len));
+            }
             return notes;
         }
     }

@@ -1,0 +1,158 @@
+<UserControl x:Class="MusicTracker.Controls.TimelineEditor.MelodicPolyEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:loc="clr-namespace:MusicTracker.Localization"
+             xmlns:te="clr-namespace:MusicTracker.Controls.TimelineEditor"
+             mc:Ignorable="d" d:DesignHeight="380" d:DesignWidth="900" x:Name="self">
+    <!-- Éditeur d'une ligne mélodique polyrythmique. Symétrique de PolyDrumEditor : ItemsControl bindé sur les
+         voix, DataTemplate pour la carte. Différences avec la version batterie :
+           - le liseré prend une couleur par Voice (pas par Lane)
+           - pas de sélecteur d'instrument, à la place un libellé « Voix N »
+           - un check-box Legato en plus (les percussions n'en ont pas besoin)
+           - un maximum de 3 voix (MelodicLineModule.MaxVoices) → le bouton "Ajouter" disparaît alors -->
+    <UserControl.Resources>
+        <te:VoiceToBrushConverter x:Key="VoiceToBrush"/>
+        <Style x:Key="LayerCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#20FFFFFF"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="BorderThickness" Value="3,1,1,1"/>
+            <Setter Property="BorderBrush" Value="{Binding Voice, Converter={StaticResource VoiceToBrush}}"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <ScrollViewer Grid.Column="0"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Margin="2,0,12,0">
+            <StackPanel>
+                <!-- Longueur du module = cycle de la voix la plus longue × Répétitions ; pas de « temps par mesure ». -->
+                <TextBlock Text="{loc:Tr 'DureeEnTemps'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+                <TextBox x:Name="txtDuration" Width="60" HorizontalAlignment="Left" LostFocus="txtDuration_LostFocus"/>
+
+                <TextBlock Text="{loc:Tr 'Calques'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+
+                <!-- ItemsSource affecté en code-behind (cf. PolyDrumEditor). -->
+                <ItemsControl x:Name="layersList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border x:Name="card" Style="{StaticResource LayerCardStyle}"
+                                    MouseEnter="Layer_MouseEnter" MouseLeave="Layer_MouseLeave"
+                                    Tag="{Binding}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="auto"/>
+                                            <ColumnDefinition Width="auto"/>
+                                            <ColumnDefinition Width="auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Content="{Binding CollapseGlyph}" Click="btnCollapse_Click"
+                                                Width="18" Height="18" Padding="0" FontSize="10"
+                                                Margin="0,0,4,0" Cursor="Hand"/>
+                                        <!-- « Voix N » — couleur = liseré de la carte, comme la roue. -->
+                                        <TextBlock Grid.Column="1" Text="{Binding VoiceLabel}"
+                                                   Foreground="{Binding Voice, Converter={StaticResource VoiceToBrush}}"
+                                                   FontSize="12" VerticalAlignment="Center" Width="168"/>
+                                        <CheckBox Grid.Column="2"  Content="M" Foreground="White" FontSize="11"
+                                                  Margin="8,0,0,0" VerticalAlignment="Center"
+                                                  IsChecked="{Binding Muted, Mode=TwoWay}"
+                                                  ToolTip="{loc:Tr 'MuetCeCalque'}"/>
+                                        
+                                        <CheckBox Grid.Column="3" Content="✎" Foreground="{Binding PersColour}" FontSize="12" FontWeight="Bold"
+                                                  Margin="10,0,0,0" VerticalAlignment="Center"
+                                                  IsChecked="{Binding CustomMode, Mode=TwoWay}"
+                                                  Click="chkCustom_Click"
+                                                  ToolTip="{loc:Tr 'ModePersonnaliseClic'}"/>
+                                        <Button Grid.Column="4" Content="✕" FontSize="16" Width="30" Padding="0"
+                                                Margin="10,0,0,0" Cursor="Hand"
+                                                Click="btnDelete_Click"
+                                                Visibility="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=DeleteVisibility}"
+                                                ToolTip="{loc:Tr 'SupprimerCeCalque'}"/>
+                                    </Grid>
+
+                                    <TextBlock Text="{Binding SummaryText}" Foreground="#999999" FontSize="11"
+                                               Margin="22,2,0,0" Visibility="{Binding SummaryVisibility}"/>
+
+                                    <StackPanel Visibility="{Binding BodyVisibility}">
+                                        
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                                <ColumnDefinition Width="auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock
+                                                Grid.Column="0"  Visibility="{Binding HitsRotationVisibility}"
+                                                Text="{loc:Tr 'Coups'}" Foreground="#AAAAAA" FontSize="11"
+                                                VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox
+                                                Grid.Column="1"  Visibility="{Binding HitsRotationVisibility}"
+                                                Width="38" Text="{Binding Hits, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+
+                                            <TextBlock
+                                                Grid.Column="2"
+                                                Text="{loc:Tr 'Pas'}" Foreground="#AAAAAA" FontSize="11"
+                                                VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox
+                                                Grid.Column="3"
+                                                Width="38" Text="{Binding Steps, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+                                            
+                                            <TextBlock
+                                                Grid.Column="4" Visibility="{Binding HitsRotationVisibility}"
+                                                Text="{loc:Tr 'Decalage'}" Foreground="#AAAAAA" FontSize="11"
+                                                        VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox
+                                                Grid.Column="5" Visibility="{Binding HitsRotationVisibility}"
+                                                Width="38" Text="{Binding Rotation, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+                                        </Grid>
+
+                                        <ComboBox Width="168" Margin="0,4,0,0"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=StepNames}"
+                                                  SelectedIndex="{Binding StepSlicesIndex, Mode=TwoWay}"/>
+
+                                        <CheckBox Content="{loc:Tr 'Legato'}" Foreground="#CCCCCC" FontSize="11"
+                                                  Margin="0,6,0,0"
+                                                  IsChecked="{Binding Legato, Mode=TwoWay}"
+                                                  ToolTip="{loc:Tr 'GardeLaNoteTenueJusquALa'}"/>
+
+                                        <TextBlock Text="{Binding AnalysisText}" Foreground="#FFC107" FontSize="11"
+                                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding AnalysisVisibility}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button x:Name="btnAdd" Margin="0,2,0,6" Padding="10,4,10,4" Cursor="Hand"
+                        HorizontalAlignment="Left" Click="btnAdd_Click"/>
+
+                <Button x:Name="btnFreeze" Margin="0,2,0,6" Padding="10,4,10,4" Cursor="Hand"
+                        HorizontalAlignment="Left" Click="btnFreeze_Click"
+                        Content="{loc:Tr 'FigerEnRiff'}"
+                        ToolTip="{loc:Tr 'ConvertitEnRiffOrdinaireNotes'}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <DockPanel Grid.Column="1">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                <Button x:Name="btnPlay" Padding="10,4,10,4" Cursor="Hand" Click="btnPlay_Click"/>
+            </StackPanel>
+            <te:PolyDrumWheel x:Name="wheel" MinHeight="240"/>
+        </DockPanel>
+    </Grid>
+</UserControl>

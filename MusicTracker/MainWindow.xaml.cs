@@ -259,6 +259,7 @@ namespace MusicTracker
             if (editor is TimelineScreen ts)
             {
                 ts.ComposeInNewTabRequested += ComposeWithAiNewTab;   // its AI menu spawns a new tab
+                ts.ComposePolyInNewTabRequested += ComposePolyWithAiNewTab;
                 ts.SaveRequested += () => SaveEditor(editor);          // its toolbar "Enregistrer" button
             }
             var btn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(14, 0, 10, 0) };
@@ -428,6 +429,8 @@ namespace MusicTracker
         // "Composer avec l'IA" (from Home or an editor's menu) → the AI SOURCE builds a document (owning its dialog);
         // the shell just loads it on a NEW tab, agnostic to how it was produced.
         void ComposeWithAiNewTab() => OpenFromSource(new Sources.AiComposeSource());
+        // Pendant polyrythmique : ouvre AiPolyDialog puis pose une timeline avec les deux modules poly (percussion + mélodique).
+        void ComposePolyWithAiNewTab() => OpenFromSource(new Sources.AiPolySource());
 
         // Run a project source (it may show its own dialog), and if it produced a document, load it on a new tab.
         void OpenFromSource(Sources.IProjectSource source)

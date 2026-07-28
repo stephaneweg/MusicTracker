@@ -15,6 +15,7 @@ namespace MusicTracker.Engine.Flow
     [JsonDerivedType(typeof(CadenceModule), "Cadence")]
     [JsonDerivedType(typeof(MelodicLineModule), "MelodicLine")]
     [JsonDerivedType(typeof(PolyDrumModule), "PolyDrum")]
+    [JsonDerivedType(typeof(MelodicPolyModule), "MelodicPoly")]
     public abstract class FlowModule : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -238,19 +239,50 @@ namespace MusicTracker.Engine.Flow
     public class PolyDrumModule : FlowModule
     {
         int kit = 0;         // index dans InstrumentCatalog.DrumKits()
-        int beatsPerBar = 4;
-        int repeats = 4;
+        int beatsPerBar = 4; // conservé pour la RÉTRO-COMPAT de désérialisation ; n'est plus utilisé au rendu.
+        int repeats = 4;     // idem : lu depuis les vieux fichiers pour migrer vers DurationBeats.
+        int durationBeats = 16;  // NOUVEAU : durée totale du module en temps (bien plus flexible que Repeats).
 
         public int Kit { get { return kit; } set { if (kit != value) { kit = value; OnChanged(nameof(Kit)); } } }
         public int BeatsPerBar { get { return beatsPerBar; } set { int v = Math.Max(1, value); if (beatsPerBar != v) { beatsPerBar = v; OnChanged(nameof(BeatsPerBar)); } } }
         public int Repeats { get { return repeats; } set { int v = Math.Max(1, value); if (repeats != v) { repeats = v; OnChanged(nameof(Repeats)); } } }
+        /// <summary>Durée totale du module en TEMPS (noires). Remplace la formule ancienne
+        /// « max(cycle des couches) × Repeats » — bien plus flexible : on peut couper au milieu d'un cycle, ou
+        /// laisser le motif tourner plusieurs fois librement, sans devoir choisir un entier de cycles.</summary>
+        public int DurationBeats { get { return durationBeats; } set { int v = Math.Max(1, value); if (durationBeats != v) { durationBeats = v; OnChanged(nameof(DurationBeats)); } } }
 
-        /// <summary>Les calques, du premier au dernier. Un calque = un instrument + son motif euclidien.</summary>
-        public List<Flow.EuclidLayer> Layers { get; set; } = new List<Flow.EuclidLayer>();
+        /// <summary>Les calques, du premier au dernier. Un calque = un instrument + son motif euclidien.
+        /// ObservableCollection pour que le ListView de l'éditeur XAML détecte add/remove et rafraîchisse.</summary>
+        public System.Collections.ObjectModel.ObservableCollection<Flow.EuclidLayer> Layers { get; set; } = new System.Collections.ObjectModel.ObservableCollection<Flow.EuclidLayer>();
 
         public void Touch() { OnChanged(nameof(Layers)); }
 
         [JsonIgnore] public override string Title { get { return "Batterie polyrythmique"; } }
+    }
+
+    /// <summary>Ligne mélodique polyrythmique : le pendant mélodique de PolyDrumModule — un anneau = une VOIX
+    /// (0..MelodicLineModule.MaxVoices-1) et son motif euclidien E(K,N), paramètres vivants comme pour la batterie.
+    /// Seul le RYTHME est produit ici : les hauteurs restent choisies par MelodicLineEngine à partir de l'harmonie
+    /// du morceau, exactement comme pour une ligne mélodique classique. « Figer » convertit en riff ordinaire
+    /// (notes explicites, celles qui sonnaient au moment du gel).</summary>
+    public class MelodicPolyModule : FlowModule
+    {
+        int beatsPerBar = 4; // rétro-compat de désérialisation ; plus utilisé au rendu.
+        int repeats = 4;     // idem ; migré vers DurationBeats à la lecture.
+        int durationBeats = 16;
+
+        public int BeatsPerBar { get { return beatsPerBar; } set { int v = Math.Max(1, value); if (beatsPerBar != v) { beatsPerBar = v; OnChanged(nameof(BeatsPerBar)); } } }
+        public int Repeats { get { return repeats; } set { int v = Math.Max(1, value); if (repeats != v) { repeats = v; OnChanged(nameof(Repeats)); } } }
+        /// <summary>Durée totale du module en TEMPS. Voir <see cref="PolyDrumModule.DurationBeats"/>.</summary>
+        public int DurationBeats { get { return durationBeats; } set { int v = Math.Max(1, value); if (durationBeats != v) { durationBeats = v; OnChanged(nameof(DurationBeats)); } } }
+
+        /// <summary>Les calques, du premier au dernier. Un calque = une voix + son motif euclidien.
+        /// ObservableCollection : idem PolyDrumModule, pour un ListView bindé.</summary>
+        public System.Collections.ObjectModel.ObservableCollection<EuclidVoice> Layers { get; set; } = new System.Collections.ObjectModel.ObservableCollection<EuclidVoice>();
+
+        public void Touch() { OnChanged(nameof(Layers)); }
+
+        [JsonIgnore] public override string Title { get { return "Ligne mélodique polyrythmique"; } }
     }
 
     /// <summary>One chord of a <see cref="CadenceModule"/>: the absolute root/quality/inversion actually played,

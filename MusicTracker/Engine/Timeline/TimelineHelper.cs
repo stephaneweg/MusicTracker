@@ -433,8 +433,8 @@ namespace MusicTracker.Engine.Timeline
                     dp.BeatsPerBar = dpB; dp.Repeats = dpR;
                     break;
                 case PolyDrumModule pd:
-                    ClampBarsRepeats(pd.BeatsPerBar, pd.Repeats, beats, out int pdB, out int pdR);
-                    pd.BeatsPerBar = pdB; pd.Repeats = pdR;
+                    // La longueur du module = DurationBeats. Le redimensionnement l'écrit directement.
+                    pd.DurationBeats = Math.Max(1, (int)Math.Round(beats));
                     break;
                 case CadenceModule cm:
                     {
@@ -446,6 +446,9 @@ namespace MusicTracker.Engine.Timeline
                 case MelodicLineModule ml:
                     ml.BeatsPerBar = Math.Max(1, (int)Math.Round(beats));
                     break;
+                case MelodicPolyModule mp:
+                    mp.DurationBeats = Math.Max(1, (int)Math.Round(beats));
+                    break;
             }
         }
 
@@ -456,6 +459,7 @@ namespace MusicTracker.Engine.Timeline
             repeats = Math.Max(1, (int)Math.Floor(beats / beatsPerBar + 1e-6));
             if (beatsPerBar * repeats > beats + 1e-6) { beatsPerBar = Math.Max(1, (int)Math.Round(beats)); repeats = 1; }
         }
+
 
         // Visit every chord (PatternGeneratorModule) in the project, top-level and inside Repeats.
         public static void ForEachChordModule(TimelineProject project, Action<PatternGeneratorModule> action)

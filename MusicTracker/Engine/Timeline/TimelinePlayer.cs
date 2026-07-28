@@ -274,6 +274,9 @@ namespace MusicTracker.Engine.Timeline
             // A MELODIC LINE: the engine picks pitches from the harmony in effect at each beat (carrying continuity forward).
             else if (m is MelodicLineModule ml)
                 PlaceRiffNotes(tr, MelodicLineEngine.GenerateLine(ml, melodyProject, resolve, melodyKey, startBeat, carry), startBeat);
+            // A MELODIC POLYRHYTHM: same engine, but the rhythm comes from the module's euclidean layers.
+            else if (m is MelodicPolyModule mp)
+                PlaceRiffNotes(tr, MelodicEuclid.Generate(mp, melodyProject, resolve, melodyKey, startBeat, carry), startBeat);
         }
 
         void PlaceRiffNotes(Track tr, Riff riff, double startBeat)

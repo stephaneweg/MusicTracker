@@ -153,6 +153,9 @@ namespace MusicTracker
         // chord content freely in a dedicated "Accords" voice/track.
         public bool AiChordVoice { get; set; } = false;
         public string AiIntention { get; set; } = "";
+        // Compo polyrythmique par IA — durée EN TEMPS (bien plus flexible qu'un nombre de mesures ; ne partage donc
+        // pas AiMeasures).
+        public int AiPolyDurationBeats { get; set; } = 32;
 
         /// <summary>Gemini 2.5 "thinking" token budget: -1 = auto (model decides, best quality), 0 = off (fastest/cheapest),
         /// up to ~24576 = max reasoning. Only applied to Gemini 2.5 models.</summary>

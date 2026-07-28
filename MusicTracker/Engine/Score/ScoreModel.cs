@@ -472,6 +472,7 @@ namespace MusicTracker.Engine.Score
                 case PolyDrumModule pd: return PolyDrum.Generate(pd);
                 case CadenceModule cm: return PatternGenerator.GenerateCadence(cm);
                 case MelodicLineModule ml: return MelodicLineEngine.GenerateLine(ml, project, resolve, key, startBeat, carry);
+                case MelodicPolyModule mp: return MelodicEuclid.Generate(mp, project, resolve, key, startBeat, carry);
                 default: return null;
             }
         }

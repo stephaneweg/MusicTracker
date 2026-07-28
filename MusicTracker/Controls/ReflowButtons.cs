@@ -6,11 +6,10 @@ using System.Windows.Controls;
 namespace MusicTracker.Controls
 {
     /// <summary>
-    /// A panel for the 3 hero action buttons that reflows by available width (button unit = widest child):
-    ///   • fits 3 → 1 row (natural width, centered)
-    ///   • fits 2 → 2 rows: first button full width, the other two side by side
-    ///   • fits 1 → 3 rows, each centered at natural width
-    ///   • narrower → 3 rows, each stretched to the full width
+    /// A panel for the hero action buttons that reflows by available width — button unit = widest child.
+    /// Généralisé à N boutons (au lieu de 3 en dur) : on calcule combien de colonnes tiennent à la largeur naturelle
+    /// et on pose une grille cols × ceil(N/cols). Le nombre de colonnes descend jusqu'à 1 si la fenêtre est étroite,
+    /// et chaque cellule s'étale pour remplir la largeur (pas de blanc à droite).
     /// </summary>
     public class ReflowButtons : Panel
     {
@@ -44,7 +43,11 @@ namespace MusicTracker.Controls
             return bw;
         }
 
-        // Rect per child for a given panel width; re-measures each child at its target width so wrapped heights are right.
+        // Rect par enfant pour une largeur donnée. Cas :
+        //   • w >= n·bw + (n-1)·Gap  → une seule rangée au NATUREL, centrée.
+        //   • sinon on descend le nombre de colonnes jusqu'à ce que ça tienne, et on étale chaque cellule sur la
+        //     largeur totale (dernière rangée éventuellement incomplète : items alignés à gauche, laissant la place).
+        //   • cols == 1 → chaque bouton sur sa ligne, pleine largeur (comportement "narrower").
         List<Rect> Layout(double w, double bw)
         {
             var kids = InternalChildren;
@@ -54,30 +57,40 @@ namespace MusicTracker.Controls
 
             double H(UIElement c, double width) { c.Measure(new Size(width, double.PositiveInfinity)); return c.DesiredSize.Height; }
 
-            if (w >= n * bw + (n - 1) * Gap)                    // 1 row, natural width, centered
+            // 1 rangée au naturel si tout tient
+            if (w >= n * bw + (n - 1) * Gap)
             {
                 double total = n * bw + (n - 1) * Gap, x = (w - total) / 2, h = 0;
                 foreach (UIElement c in kids) h = Math.Max(h, H(c, bw));
                 foreach (UIElement c in kids) { rects.Add(new Rect(x, 0, bw, h)); x += bw + Gap; }
+                return rects;
             }
-            else if (n == 3 && w >= 2 * bw + Gap)               // 2 rows: row0 full width, row1 = two halves
-            {
-                double half = (w - Gap) / 2;
-                double h0 = H(kids[0], w);
-                double h1 = Math.Max(H(kids[1], half), H(kids[2], half));
-                rects.Add(new Rect(0, 0, w, h0));
-                rects.Add(new Rect(0, h0 + Gap, half, h1));
-                rects.Add(new Rect(half + Gap, h0 + Gap, half, h1));
-            }
-            else if (w >= bw)                                   // 3 rows, centered natural width
-            {
-                double y = 0;
-                foreach (UIElement c in kids) { double h = H(c, bw); rects.Add(new Rect((w - bw) / 2, y, bw, h)); y += h + Gap; }
-            }
-            else                                               // 3 rows, full width
+
+            // Cas général : on calcule le max de colonnes qui tiennent à la largeur ACTUELLE, plafonné à n.
+            int cols;
+            if (bw <= 0) cols = 1;
+            else cols = Math.Max(1, Math.Min(n, (int)Math.Floor((w + Gap) / (bw + Gap))));
+
+            if (cols == 1)
             {
                 double y = 0;
                 foreach (UIElement c in kids) { double h = H(c, w); rects.Add(new Rect(0, y, w, h)); y += h + Gap; }
+                return rects;
+            }
+
+            // Grille cols × ceil(n/cols) — cellules ÉTALÉES pour combler la largeur (plus propre qu'un blanc à droite).
+            double cellW = (w - Gap * (cols - 1)) / cols;
+            int rows = (n + cols - 1) / cols;
+            double yy = 0;
+            for (int r = 0; r < rows; r++)
+            {
+                int start = r * cols;
+                int cnt = Math.Min(cols, n - start);       // dernière rangée éventuellement moins remplie
+                double rowH = 0;
+                for (int c = 0; c < cnt; c++) rowH = Math.Max(rowH, H(kids[start + c], cellW));
+                for (int c = 0; c < cnt; c++)
+                    rects.Add(new Rect(c * (cellW + Gap), yy, cellW, rowH));
+                yy += rowH + Gap;
             }
             return rects;
         }

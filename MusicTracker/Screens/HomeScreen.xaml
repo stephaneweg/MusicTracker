@@ -294,7 +294,7 @@
                                 <TextBlock Text="{loc:Tr 'ComposeArrangeAndSequenceYourPieces'}" HorizontalAlignment="Center" Foreground="{StaticResource SecondaryForeground}"
                             FontSize="13" Margin="2,0,0,26"/>
                             </StackPanel>
-                            <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="30,30,30,10" Gap="30">
+                            <ctl:ReflowButtons HorizontalAlignment="Stretch" Margin="10,30,10,10" Gap="30">
                                 <!-- Nouvelle musique (primary — accent chip) -->
                                 <Button Style="{StaticResource ActionCard}" Margin="0" Click="BtnNewSequencer_Click"
                                         AutomationProperties.AutomationId="BtnNewSequencer">

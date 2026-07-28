@@ -178,7 +178,10 @@
     <Compile Include="Engine\Flow\PatternGenerator.cs" />
     <Compile Include="Engine\Flow\DrumPattern.cs" />
     <Compile Include="Engine\Flow\EuclideanRhythm.cs" />
+    <Compile Include="Engine\Flow\BalancedRhythm.cs" />
+    <Compile Include="Engine\Flow\RhythmAnalysis.cs" />
     <Compile Include="Engine\Flow\PolyDrum.cs" />
+    <Compile Include="Engine\Flow\MelodicEuclid.cs" />
     <Compile Include="Controls\TimelineEditor\PolyDrumWheel.cs" />
     <Compile Include="Engine\Flow\LoopingRiffProvider.cs" />
     <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
@@ -251,6 +254,9 @@
     <Compile Include="Dialogs\AiComposeDialog.xaml.cs">
       <DependentUpon>AiComposeDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Dialogs\AiPolyDialog.xaml.cs">
+      <DependentUpon>AiPolyDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Dialogs\AiElementDialog.xaml.cs">
       <DependentUpon>AiElementDialog.xaml</DependentUpon>
     </Compile>
@@ -282,8 +288,10 @@
     <Compile Include="Engine\AI\QwenClient.cs" />
     <Compile Include="Engine\AI\AiArrangement.cs" />
     <Compile Include="Engine\AI\AiArrangementPlacer.cs" />
+    <Compile Include="Engine\AI\AiPolyrhythm.cs" />
     <Compile Include="Sources\IProjectSource.cs" />
     <Compile Include="Sources\AiComposeSource.cs" />
+    <Compile Include="Sources\AiPolySource.cs" />
     <Compile Include="Engine\BugReport\GitHubIssueClient.cs" />
     <Compile Include="Engine\Update\UpdateChecker.cs" />
     <Compile Include="Engine\BugReport\BugReportConfig.cs" />
@@ -337,6 +345,12 @@
     </Compile>
     <Compile Include="Controls\TimelineEditor\RepeatItemControl.xaml.cs">
       <DependentUpon>RepeatItemControl.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TimelineEditor\PolyDrumEditor.xaml.cs">
+      <DependentUpon>PolyDrumEditor.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\TimelineEditor\MelodicPolyEditor.xaml.cs">
+      <DependentUpon>MelodicPolyEditor.xaml</DependentUpon>
     </Compile>
     <Compile Include="Controls\TimelineEditor\TempoLaneControl.xaml.cs">
       <DependentUpon>TempoLaneControl.xaml</DependentUpon>
@@ -401,6 +415,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Dialogs\AiPolyDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Dialogs\AiComposeDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -458,6 +476,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Controls\TimelineEditor\RepeatItemControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\PolyDrumEditor.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\MelodicPolyEditor.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

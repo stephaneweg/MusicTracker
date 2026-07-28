@@ -25,11 +25,13 @@ namespace MusicTracker.Engine.Flow
                         return (double)dp.CustomSlices.Length / dp.CustomSlicesPerQuarter * dp.Repeats;
                     return (double)dp.BeatsPerBar * dp.Repeats;
                 case PolyDrumModule pd:
-                    return (double)Math.Max(1, pd.BeatsPerBar) * Math.Max(1, pd.Repeats);
+                    return PolyDrum.TotalBeats(pd);        // dérivé du cycle des couches × Repeats
                 case CadenceModule cm:
                     return (double)cm.BeatsPerBar * Math.Max(1, cm.Chords?.Count ?? 0); // one cell per chord
                 case MelodicLineModule ml:
                     return Math.Max(1, ml.BeatsPerBar);                                  // total beats of the line
+                case MelodicPolyModule mp:
+                    return MelodicEuclid.TotalBeats(mp);
                 default:
                     return 4;
             }

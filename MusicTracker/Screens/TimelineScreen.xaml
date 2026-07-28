@@ -339,6 +339,7 @@
                         <MenuItem Header="{loc:Tr 'DrumTrack2'}" Click="btnAddDrumTrack_Click"/>
                         <Separator/>
                         <MenuItem Header="{loc:Tr 'ComposeWithAI2'}" Click="btnAiCompose_Click" ToolTip="{loc:Tr 'DescribeAStyleALengthThe'}"/>
+                        <MenuItem Header="{loc:Tr 'ComposerAvecIaPolyrythmique'}" Click="btnAiPolyCompose_Click" ToolTip="{loc:Tr 'PolyrythmicComposeSubtitle'}"/>
                         <MenuItem Header="{loc:Tr 'CreateStructure'}" Click="btnCreateStructure_Click" ToolTip="{loc:Tr 'GeneratesAnEditableArrangementFrameworkF'}"/>
                         <MenuItem Header="{loc:Tr 'AddAMelodicLine'}" Click="btnAddMelodicLine_Click" ToolTip="{loc:Tr 'OnStructuredMusicComposesAnExtra'}"/>
                         <MenuItem Header="{loc:Tr 'ChordAccompaniment'}" Click="btnChordAccomp_Click" ToolTip="{loc:Tr 'OnStructuredMusicCreatesAnAccompaniment'}"/>
@@ -351,6 +352,7 @@
                         <MenuItem x:Name="miAddPattern" Header="{loc:Tr 'Chords'}" Click="btnAddPattern_Click"/>
                         <MenuItem x:Name="miAddCadence" Header="{loc:Tr 'Cadence'}" Click="btnAddCadence_Click"/>
                         <MenuItem x:Name="miInsertMelodicLine" Header="{loc:Tr 'MelodicLineRhythm'}" Click="btnInsertMelodicLine_Click" ToolTip="{loc:Tr 'AddsAMelodicLineRhythmOnly'}"/>
+                        <MenuItem x:Name="miInsertMelodicPoly" Header="{loc:Tr 'LigneMelodiquePolyrythmique'}" Click="btnAddMelodicPoly_Click" ToolTip="{loc:Tr 'UnAnneauParVoixLeMoteurChoisit'}"/>
                         <MenuItem x:Name="miAddDrum" Header="{loc:Tr 'Drums'}" Click="btnAddDrum_Click"/>
                         <MenuItem x:Name="miAddPolyDrum" Header="{loc:Tr 'BatteriePolyrythmique'}" Click="btnAddPolyDrum_Click" ToolTip="{loc:Tr 'PlusieursCalquesChacunSurSonMotif'}"/>
                         <Separator/>
