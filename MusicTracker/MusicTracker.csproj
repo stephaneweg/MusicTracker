@@ -647,6 +647,7 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="gridbg.png" />
+    <Resource Include="Images\logo-mark.png" />
   </ItemGroup>
   <ItemGroup>
     <!-- app.ico is embedded in the exe via <ApplicationIcon>; document.ico ships next to the
