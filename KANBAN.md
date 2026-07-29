@@ -2,6 +2,24 @@
 
 ## À faire
 
+### Système de plugin pour la Timeline — *idée, à analyser plus tard*
+Définir une **interface de plugin** permettant d'ajouter de nouveaux types d'éléments dans la Timeline, sans toucher au cœur. Le plugin devrait déclarer :
+- le **type de lane** cible sur lequel il s'ajoute (instrument, batterie, accords…) ;
+- la **classe du modèle** de l'élément ajouté dans la lane ;
+- la **classe de l'éditeur** à instancier dans le host pour l'éditer ;
+- une méthode de **sérialisation/désérialisation** de l'objet ;
+- une méthode pour **afficher/rafraîchir la vignette** dans la Timeline ;
+- une méthode pour **exposer le son** de l'objet — une version aplatie en slices (+ nb de slices/temps), consommable par `TimelinePlayer`, l'afficheur de partition (score view) et l'export.
+
+**Motivation** : à terme, envisage de proposer des **features téléchargeables** (modules vendus/distribués séparément) — c'est ce qui justifie un vrai chargement en DLL externe plutôt qu'une simple interface interne. Implication : le contrat du SDK devra être **versionné/stable** dès qu'un plugin est distribué à part, contrairement au reste du code qui peut évoluer librement.
+
+**Architecture envisagée** :
+- un **projet intermédiaire** (ex. `MusicTracker.PluginSdk`) référencé à la fois par MusicTracker et par les plugins, contenant les interfaces/classes du framework de plugin (contrat partagé, pas d'implémentation métier) ;
+- chaque **plugin** référence ce projet SDK et est compilé en **DLL** ;
+- les DLL de plugins sont déposées dans un **dossier `plugins/`** (à côté de l'exe) ;
+- **MusicTracker charge les plugins au démarrage** (scan du dossier + réflexion/MEF ou équivalent) ;
+- **à terme** : migrer un par un les objets existants (riff, accord, batterie, repeat…) vers ce système de plugin, pour que le cœur de la Timeline devienne agnostique du type d'élément.
+
 ### Cadence éditable comme un riff (degrés) — *idée*
 Le module Cadence devrait pouvoir se **sauver/éditer comme un riff** pour personnalisation manuelle. Ajouter un éditeur (à côté, comme l'éditeur de riff) mais **limité à l'ambitus nécessaire**, et affichant **les degrés** (pas les noms de notes), en **chromatique**. Permet de retoucher les accords générés un par un.
 

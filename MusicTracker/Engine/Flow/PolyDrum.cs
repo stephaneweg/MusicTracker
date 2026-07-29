@@ -29,10 +29,6 @@ namespace MusicTracker.Engine.Flow
         }
 
         int lane, accentLane = -1, hits = 3, steps = 8, rotation;
-        // Ancien champ StepSlices : la subdivision par calque a DISPARU — chaque anneau vaut désormais tout le cycle
-        // du module (module.Beats temps), divisé en <see cref="Steps"/> parts égales. Une cellule dure Beats/Steps.
-        // Le champ reste ignoré côté rendu ; on le garde en lecture JSON pour ne pas casser les fichiers existants.
-        [System.Text.Json.Serialization.JsonInclude] int stepSlices = 12;
         bool muted, collapsed, customMode;
         int[] customHits;
 

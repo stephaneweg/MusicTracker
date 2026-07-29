@@ -24,7 +24,6 @@ namespace MusicTracker.Engine.Flow
         }
 
         int voice, hits = 3, steps = 8, rotation, octave;
-        [System.Text.Json.Serialization.JsonInclude] int stepSlices = 12;   // legacy — ignoré au rendu, conservé pour deser.
         bool muted, collapsed, legato, customMode;
         int[] customHits;
 
