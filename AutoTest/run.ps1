@@ -23,6 +23,12 @@ Write-Host "== Build de l'application ($Configuration) =="
     Tee-Object -FilePath $buildLog
 if ($LASTEXITCODE -ne 0) { Write-Host "BUILD_FAILED"; exit 3 }
 
+# Parité des langues : le repli de Loc.T est silencieux, donc une clé oubliée ne se voit jamais à l'usage —
+# elle affiche simplement du français à un utilisateur anglais. Ce contrôle est le seul qui la détecte.
+Write-Host "== Parite des langues =="
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $here "check-lang-parity.ps1")
+if ($LASTEXITCODE -ne 0) { Write-Host "LANG_PARITY_FAILED"; exit 5 }
+
 Write-Host "== Build du harness de test =="
 & dotnet build (Join-Path $here "AutoTest.csproj") -v minimal 2>&1 | Tee-Object -FilePath $buildLog -Append
 if ($LASTEXITCODE -ne 0) { Write-Host "HARNESS_BUILD_FAILED"; exit 4 }
