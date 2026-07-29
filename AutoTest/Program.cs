@@ -88,7 +88,13 @@ namespace MusicTracker.AutoTest
                 RunScenario(report, "SaveDialogOpensAndCancels", () =>
                 {
                     ClickModal(Require("BtnSaveMusic", TimeSpan.FromSeconds(5), "le bouton Sauvegarder"));
-                    var dialog = WaitForNewWindow(TimeSpan.FromSeconds(8));
+                    // 25 s et non 8 : ce scenario echouait par INTERMITTENCE (constate 3 fois, y compris sur un
+                    // arbre propre) parce que le premier affichage du selecteur de fichiers maison depasse parfois
+                    // les 8 s — il enumere les dossiers. Une attente trop courte transforme la lenteur en echec, et
+                    // un test qui ment une fois sur trois ne protege plus rien : impossible de distinguer une vraie
+                    // regression d'un faux negatif. WaitForNewWindow rend la main des que la fenetre parait, donc
+                    // la marge ne coute rien au cas nominal.
+                    var dialog = WaitForNewWindow(TimeSpan.FromSeconds(25));
                     if (dialog == null) throw new Exception("Aucune boîte de dialogue d'enregistrement n'est apparue après clic sur Sauvegarder.");
                     CloseWindow(dialog);
                     if (app.HasExited) throw new Exception("L'application a quitté après fermeture de la boîte de dialogue.");
