@@ -37,6 +37,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="auto"/>
                     <RowDefinition Height="auto"/>
+                    <RowDefinition Height="auto"/>
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{loc:Tr 'SoundFont'}" Foreground="{StaticResource CommonForeground}"
@@ -51,6 +52,11 @@
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="{loc:Tr 'SampleRate'}" Foreground="{StaticResource CommonForeground}"
                            VerticalAlignment="Center" Margin="0,0,12,10"/>
                 <ComboBox Grid.Row="1" Grid.Column="1" x:Name="cboSampleRate" Margin="0,0,0,10"/>
+
+                <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" x:Name="chkMetricVelocity"
+                          Foreground="{StaticResource CommonForeground}" Margin="0,0,0,10"
+                          Content="{loc:Tr 'AccentuerLesTempsForts'}"
+                          ToolTip="{loc:Tr 'DecochePourUneFrappeUniforme'}"/>
             </Grid>
 
             <!-- ===== Éditeur de riff ===== -->

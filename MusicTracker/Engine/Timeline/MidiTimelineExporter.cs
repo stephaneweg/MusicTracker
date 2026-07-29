@@ -40,7 +40,9 @@ namespace MusicTracker.Engine.Timeline
                 if (!drum) tr.Add(new PatchChangeEvent(0, channel, Math.Max(0, Math.Min(127, t.Instrument))));
 
                 int baseVel = Math.Max(1, Math.Min(127, (int)Math.Round(100 * (t.Volume > 0 ? t.Volume : 1.0))));
-                var src = TimelineImporter.FlattenForExport(t, resolve); // notes at absolute slices, 24/quarter
+                // `project` est indispensable : les lignes mélodiques (classiques et polyrythmiques) tirent leurs
+                // hauteurs de la grille d'accords. Sans lui, ces pistes s'exportaient vides.
+                var src = TimelineImporter.FlattenForExport(t, resolve, project); // notes at absolute slices, 24/quarter
                 foreach (var n in src.Notes)
                 {
                     int pitch = Math.Max(0, Math.Min(127, n.Pitch));

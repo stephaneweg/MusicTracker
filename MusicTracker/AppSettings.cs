@@ -74,6 +74,11 @@ namespace MusicTracker
         /// live instrument through the audio input (you already hear it). Default on.</summary>
         public bool RiffAudition { get; set; } = true;
 
+        /// <summary>Playback: accent notes according to their METRIC position (downbeat louder than an upbeat).
+        /// The app stores no per-note velocity, so this is what gives the timeline a breathing dynamic. Turn it off
+        /// for a flat, uniform touch — every note at the same level, like the editor's preview. Default on.</summary>
+        public bool MetricVelocity { get; set; } = true;
+
         /// <summary>Mistral API key (free tier at console.mistral.ai) for the AI arrangement dialog. Stored locally.</summary>
         public string MistralApiKey { get; set; } = "";
 
@@ -234,6 +239,7 @@ namespace MusicTracker
         {
             if (SampleRate > 0) Engine.AudioFormat.SampleRate = SampleRate;
             if (RiffAudioFrameSize > 0) Engine.AudioPitch.FrameSize = RiffAudioFrameSize;
+            Engine.Timeline.TimelinePlayer.VelocityDynamics = MetricVelocity;
 
             string path = ResolveSoundFontPath();
             // (Re)load when the file or the rate the patches were resampled to differs from what we want.

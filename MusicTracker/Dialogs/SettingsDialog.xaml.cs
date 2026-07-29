@@ -53,6 +53,7 @@ namespace MusicTracker.Dialogs
             }
             cboRiffSnap.SelectedIndex = si;
 
+            chkMetricVelocity.IsChecked = settings.MetricVelocity;
             chkAudioScaleSnap.IsChecked = settings.RiffAudioScaleSnap;
             sldOnset.Value = Math.Min(100, Math.Max(0, settings.RiffAudioOnsetSensitivity * 100));
 
@@ -106,6 +107,7 @@ namespace MusicTracker.Dialogs
             if (cboRiffSnap.SelectedIndex >= 0 && cboRiffSnap.SelectedIndex < SnapFractions.Length)
                 settings.RiffSnapFraction = SnapFractions[cboRiffSnap.SelectedIndex];
 
+            settings.MetricVelocity = chkMetricVelocity.IsChecked == true;
             settings.RiffAudioScaleSnap = chkAudioScaleSnap.IsChecked == true;
             settings.RiffAudioOnsetSensitivity = sldOnset.Value / 100.0;
 

@@ -64,6 +64,12 @@ namespace MusicTracker.Engine.Timeline
         // of a flat level. Set false to revert to the flat MeltyVelocity.
         public static bool VelocityDynamics = true;
 
+        // DIAGNOSTIC : n'envoyer aucun CC7, donc laisser le volume de canal au défaut MeltySynth (100/127) comme
+        // le fait l'aperçu. Sert à isoler l'effet du schéma MasterVolume=boost max + CC7 compensé, soupçonné dans
+        // l'écart de réverbération entre la lecture et l'aperçu. Le volume par piste, le mute et le solo sont
+        // évidemment inopérants quand c'est faux — à ne pas laisser à false en usage normal.
+        public static bool ChannelVolumeCC = true;
+
         // Metric accent -> MIDI velocity for a note attacking at global slice s (Spb slices/beat). Strong metric
         // positions (downbeat > secondary strong beat > other beats > upbeats > fine offbeats) get more velocity.
         // Pickup (anacrusis) shifts the barline so the true downbeat is accented. Range ~78..118 = a musical, not
@@ -514,11 +520,16 @@ namespace MusicTracker.Engine.Timeline
                 double boost = trackProgram != null ? settings.BoostGain(trackProgram[ti]) : 1.0;
                 double ccGain = gv * Math.Sqrt(boost / maxBoost);
                 int cc = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, ccGain)) * 127);
-                synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 7, cc); // CC7 = channel volume
+                if (ChannelVolumeCC) synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 7, cc); // CC7 = channel volume
                 // Pan: −1..+1 → CC10 0..127 (64 = centre). Drums share ch 9, so multiple kits share one pan.
                 double pan = p != null ? Math.Max(-1.0, Math.Min(1.0, p.Pan)) : 0.0;
                 int cc10 = (int)Math.Round((pan + 1.0) * 0.5 * 127);
                 synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 10, cc10); // CC10 = pan
+                // CC91 = reverb send. MeltySynth adds it to the SoundFont's own per-instrument send
+                // (Voice: reverbSend = channel + instrument, clamped), so this places the track in the room
+                // without touching its level. Sending the default (40) is a no-op — a project that never
+                // touched the setting sounds exactly as before.
+                synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 91, p != null ? p.ReverbSend : TimelineTrack.DefaultReverb);
             }
         }
 

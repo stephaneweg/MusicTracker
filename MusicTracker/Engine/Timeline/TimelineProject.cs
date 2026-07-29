@@ -79,6 +79,25 @@ namespace MusicTracker.Engine.Timeline
         bool solo = false;                     // when any track is soloed, only soloed tracks are heard
         public bool Solo { get { return solo; } set { if (solo != value) { solo = value; Notify(); } } }
 
+        // REVERB (mixer → CC91). Stored as an OFFSET from the GM default (40), never as an absolute value: a .sq
+        // written before this feature has no field, deserializes the offset to 0, and therefore keeps sounding
+        // exactly as it did. An absolute field would deserialize to 0 = bone dry and silently change every
+        // existing project.
+        int reverbOffset = 0;
+        public int ReverbOffset { get { return reverbOffset; } set { int v = Math.Max(-DefaultReverb, Math.Min(127 - DefaultReverb, value)); if (reverbOffset != v) { reverbOffset = v; Notify(); Notify(nameof(ReverbSend)); } } }
+
+        /// <summary>The GM default reverb send MeltySynth gives every channel (see Channel.Reset).</summary>
+        public const int DefaultReverb = 40;
+
+        /// <summary>The absolute CC91 value, 0..127 — what the mixer edits and the player sends. Not serialized:
+        /// only the offset is, so the file stays compatible in both directions.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int ReverbSend
+        {
+            get { return Math.Max(0, Math.Min(127, DefaultReverb + reverbOffset)); }
+            set { ReverbOffset = value - DefaultReverb; }
+        }
+
         public bool Collapsed = false;         // header + lane shrunk to a minimal height (title + expand button) to save vertical space
         public List<VolumePoint> VolumeAutomation = new List<VolumePoint>(); // changes at T
         public List<TimelineItem> Items = new List<TimelineItem>();

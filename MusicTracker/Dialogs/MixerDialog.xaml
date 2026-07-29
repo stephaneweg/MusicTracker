@@ -85,6 +85,15 @@
                                     <Slider Minimum="-1" Maximum="1" SmallChange="0.05" TickFrequency="1" TickPlacement="BottomRight" VerticalAlignment="Center" Margin="4,0"
                                             Value="{Binding Pan, Mode=TwoWay}"/>
                                 </DockPanel>
+                                <!-- Réverb : place la piste dans la salle sans toucher à son niveau. 40 = défaut
+                                     GM, donc la position d'origine de toutes les pistes existantes. -->
+                                <DockPanel Margin="0,4,0,0">
+                                    <TextBlock Text="{loc:Tr 'Reverb'}" Width="34" Foreground="#999999" FontSize="11" VerticalAlignment="Center"/>
+                                    <TextBlock DockPanel.Dock="Right" Width="42" Text="{Binding ReverbSend}" Foreground="#999999" FontSize="10" TextAlignment="Right" VerticalAlignment="Center"/>
+                                    <Button DockPanel.Dock="Right" Content="D" Width="22" Height="20" Margin="4,0,0,0" Cursor="Hand" Click="ReverbDefault_Click" ToolTip="{loc:Tr 'RevenirALaReverbParDefaut'}"/>
+                                    <Slider Minimum="0" Maximum="127" SmallChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" Margin="4,0"
+                                            Value="{Binding ReverbSend, Mode=TwoWay}" ToolTip="{loc:Tr 'ProfondeurDeLaPisteDansLa'}"/>
+                                </DockPanel>
                                 <!-- Mute / Solo -->
                                 <StackPanel Orientation="Horizontal" Margin="34,6,0,0">
                                     <ToggleButton Content="M" Width="26" Height="22" Style="{StaticResource MixToggle}" IsChecked="{Binding Mute, Mode=TwoWay}" ToolTip="{loc:Tr 'MuetSilenceCettePiste'}"/>

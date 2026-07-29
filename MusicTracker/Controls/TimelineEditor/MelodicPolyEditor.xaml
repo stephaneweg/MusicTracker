@@ -126,6 +126,15 @@
                                                   ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=StepNames}"
                                                   SelectedIndex="{Binding StepSlicesIndex, Mode=TwoWay}"/>
 
+                                        <!-- Octave de la voix : le moteur place chaque voix dans une bande de
+                                             registre fixe, c'est le seul moyen de poser un anneau en basse. -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <TextBlock Text="{loc:Tr 'Octave'}" Foreground="#AAAAAA" FontSize="11"
+                                                       VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox Width="38" Text="{Binding Octave, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                     ToolTip="{loc:Tr 'DecaleCetteVoixDeNOctaves'}"/>
+                                        </StackPanel>
+
                                         <CheckBox Content="{loc:Tr 'Legato'}" Foreground="#CCCCCC" FontSize="11"
                                                   Margin="0,6,0,0"
                                                   IsChecked="{Binding Legato, Mode=TwoWay}"

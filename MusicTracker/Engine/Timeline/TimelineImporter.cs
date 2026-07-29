@@ -180,33 +180,46 @@ namespace MusicTracker.Engine.Timeline
 
         /// <summary>Flatten a timeline track to absolute slice-notes (24/quarter) — repeats expanded, silences
         /// absorbed into positions. Reused by the MIDI export. Call <see cref="TimelineProject.ResolveLoops"/> first.</summary>
-        public static MuseScoreImporter.Track FlattenForExport(TimelineTrack t, Func<Guid, Riff> resolve) => FlattenTrack(t, resolve, 24);
+        /// <summary><paramref name="project"/> est nécessaire aux modules dont les hauteurs dépendent de l'HARMONIE
+        /// (ligne mélodique, ligne mélodique polyrythmique) : sans lui, le moteur n'a pas de grille d'accords où
+        /// puiser et ces pistes sortent VIDES. Le laisser à null ne perd que ces modules-là.</summary>
+        public static MuseScoreImporter.Track FlattenForExport(TimelineTrack t, Func<Guid, Riff> resolve, TimelineProject project = null)
+            => FlattenTrack(t, resolve, 24, project);
 
         // Flatten a timeline track into a slice-note Track (absolute positions, 24 slices/quarter), expanding
         // repeats and absorbing silences into note positions — the "merge into one riff" half of re-segmenting.
-        static MuseScoreImporter.Track FlattenTrack(TimelineTrack t, Func<Guid, Riff> resolve, int spq)
+        static MuseScoreImporter.Track FlattenTrack(TimelineTrack t, Func<Guid, Riff> resolve, int spq, TimelineProject project = null)
         {
             var src = new MuseScoreImporter.Track { Name = t.Name, GmProgram = t.Instrument, IsDrum = t.Type == TimelineTrackType.Drum };
             double cur = 0;
+            // La continuité mélodique se transmet d'un module au suivant (comme à la lecture) : sans ce report,
+            // chaque module repartirait d'un registre arbitraire.
+            int[] carry = null;
             foreach (var item in t.Items)
             {
                 cur += item.SilenceBefore;
-                FlattenItem(src, item, cur, resolve, spq);
+                FlattenItem(src, item, cur, resolve, spq, project, ref carry);
                 cur += TimelineProject.ItemLength(item, resolve);
             }
             return src;
         }
 
-        static void FlattenItem(MuseScoreImporter.Track src, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, int spq)
+        static void FlattenItem(MuseScoreImporter.Track src, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, int spq, TimelineProject project, ref int[] carry)
         {
-            if (item.Module != null) FlattenLeaf(src, item.Module, startBeat, resolve, spq);
+            if (item.Module != null) FlattenLeaf(src, item.Module, startBeat, resolve, spq, project, ref carry);
         }
 
-        static void FlattenLeaf(MuseScoreImporter.Track src, FlowModule m, double startBeat, Func<Guid, Riff> resolve, int spq)
+        static void FlattenLeaf(MuseScoreImporter.Track src, FlowModule m, double startBeat, Func<Guid, Riff> resolve, int spq, TimelineProject project, ref int[] carry)
         {
-            if (src.IsDrum && m is DrumPatternModule dp) // drum hits: read the lane grid → GM keys (round-trips losslessly)
+            // Percussions : on lit la grille de lanes → touches GM (aller-retour sans perte). Vaut pour le motif de
+            // batterie ORDINAIRE comme pour la batterie POLYRYTHMIQUE — cette dernière tombait auparavant dans la
+            // résolution « riff » ci-dessous, qui ne la connaît pas, et disparaissait de l'export.
+            Riff drumGrid = m is DrumPatternModule dpm ? DrumPattern.Generate(dpm)
+                          : m is PolyDrumModule pdm ? PolyDrum.Generate(pdm)
+                          : null;
+            if (src.IsDrum && drumGrid != null)
             {
-                var grid = DrumPattern.Generate(dp);
+                var grid = drumGrid;
                 var sl = grid?.Slices;
                 if (sl == null) return;
                 int gspq = grid.SlicesPerQuarter > 0 ? grid.SlicesPerQuarter : DrumPattern.SlicesPerQuarter;
@@ -216,13 +229,44 @@ namespace MusicTracker.Engine.Timeline
                             src.Notes.Add(new MuseScoreImporter.Note { Pitch = DrumPattern.KeyForLane(lane), StartSlice = (int)Math.Round((startBeat + (double)s / gspq) * spq), LengthSlices = 1, Velocity = 100 });
                 return;
             }
-            Riff riff = m is PlayRiffModule pr ? resolve?.Invoke(pr.RiffId)
-                      : m is PatternGeneratorModule pg ? PatternGenerator.Generate(pg)
-                      : m is CadenceModule cm ? PatternGenerator.GenerateCadence(cm)
-                      : null;
+            // Aligné sur le résolveur de la partition (ScoreModel.RiffForModule) : tout module qui produit des notes
+            // doit être ici, sinon il sort SILENCIEUSEMENT de l'export. C'est ce qui manquait aux lignes mélodiques
+            // — classique comme polyrythmique — qui n'ont donc jamais été exportées en MIDI.
+            var key = project?.Key ?? new Score.KeySignature();
+            Riff riff;
+            switch (m)
+            {
+                case PlayRiffModule pr: riff = resolve?.Invoke(pr.RiffId); break;
+                case PatternGeneratorModule pg: riff = PatternGenerator.Generate(pg); break;
+                case CadenceModule cm: riff = PatternGenerator.GenerateCadence(cm); break;
+                case DrumPatternModule d: riff = DrumPattern.Generate(d); break;          // piste non-batterie
+                case PolyDrumModule pd: riff = PolyDrum.Generate(pd); break;              // idem
+                case MelodicLineModule ml: riff = MelodicLineEngine.GenerateLine(ml, project, resolve, key, startBeat, carry); break;
+                case MelodicPolyModule mp: riff = MelodicEuclid.Generate(mp, project, resolve, key, startBeat, carry); break;
+                default: riff = null; break;
+            }
             if (riff?.Notes == null) return;
+            // Un accord peut porter une CELLULE MÉLODIQUE : elle sonne à la lecture, elle doit donc s'exporter.
+            if (m is PatternGeneratorModule pgm && pgm.HasMelodic)
+            {
+                var mel = PatternGenerator.GenerateMelodic(pgm, key);
+                if (mel?.Notes != null)
+                {
+                    int mspq = mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : 4;
+                    foreach (var n in mel.Notes)
+                        src.Notes.Add(new MuseScoreImporter.Note
+                        {
+                            Pitch = n.Note + 12,
+                            StartSlice = (int)Math.Round((startBeat + (double)n.Start / mspq) * spq),
+                            LengthSlices = Math.Max(1, (int)Math.Round((double)n.Length / mspq * spq)),
+                            Velocity = 100,
+                        });
+                }
+            }
             int rspq = riff.SlicesPerQuarter > 0 ? riff.SlicesPerQuarter : 4;
+            int last = -1;
             foreach (var n in riff.Notes)
+            {
                 src.Notes.Add(new MuseScoreImporter.Note
                 {
                     Pitch = n.Note + 12, // RiffNote index → MIDI (note 0 == MIDI 12, matching GetOrCreateMeasureRiff)
@@ -230,6 +274,15 @@ namespace MusicTracker.Engine.Timeline
                     LengthSlices = Math.Max(1, (int)Math.Round((double)n.Length / rspq * spq)),
                     Velocity = 100,
                 });
+                last = n.Note + 12;
+            }
+            // Report de continuité pour le module suivant : la ligne mélodique repart près de là où elle s'est
+            // arrêtée, comme à la lecture.
+            if (last >= 0 && (m is MelodicLineModule || m is MelodicPolyModule))
+            {
+                if (carry == null) carry = new int[MelodicLineModule.MaxVoices];
+                carry[0] = last;
+            }
         }
 
         static TimelineTrack BuildMelodicTrack(MuseScoreImporter.Track track, List<int> boundaries, int measureCount,

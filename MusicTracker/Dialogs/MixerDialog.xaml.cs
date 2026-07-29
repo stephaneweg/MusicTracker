@@ -28,6 +28,12 @@ namespace MusicTracker.Dialogs
             if ((sender as FrameworkElement)?.DataContext is TimelineTrack t) t.Pan = 0;
         }
 
+        // Ramène la piste à la profondeur par défaut (offset 0) — l'état de tout projet antérieur à ce réglage.
+        void ReverbDefault_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as FrameworkElement)?.DataContext is TimelineTrack t) t.ReverbOffset = 0;
+        }
+
         void Close_Click(object sender, RoutedEventArgs e) => Close();
 
         protected override void OnKeyDown(KeyEventArgs e)

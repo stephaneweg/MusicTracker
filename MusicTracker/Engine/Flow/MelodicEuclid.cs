@@ -23,7 +23,7 @@ namespace MusicTracker.Engine.Flow
                 foreach (var d in new[] { nameof(BodyVisibility), nameof(SummaryVisibility), nameof(AnalysisVisibility), nameof(CollapseGlyph) }) PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(d));
         }
 
-        int voice, hits = 3, steps = 8, rotation;
+        int voice, hits = 3, steps = 8, rotation, octave;
         [System.Text.Json.Serialization.JsonInclude] int stepSlices = 12;   // legacy — ignoré au rendu, conservé pour deser.
         bool muted, collapsed, legato, customMode;
         int[] customHits;
@@ -32,6 +32,13 @@ namespace MusicTracker.Engine.Flow
         public int Hits { get { return hits; } set { if (hits != value) { hits = value; OnChanged(nameof(Hits)); } } }
         public int Steps { get { return steps; } set { if (steps != value) { steps = value; OnChanged(nameof(Steps)); } } }
         public int Rotation { get { return rotation; } set { if (rotation != value) { rotation = value; OnChanged(nameof(Rotation)); } } }
+
+        /// <summary>Transposition de la voix, en OCTAVES (0 = registre naturel de la voix). Le moteur place chaque
+        /// voix dans une bande de registre fixe (aigu / médium / grave) et n'offre qu'un décalage GLOBAL ; ce champ
+        /// est donc le seul moyen de poser un anneau en basse et un autre en mélodie dans le même module.
+        /// Appliqué APRÈS le choix des hauteurs, pour que le moteur continue de raisonner sur l'harmonie réelle —
+        /// transposer avant fausserait sa conduite des voix.</summary>
+        public int Octave { get { return octave; } set { int v = Math.Max(-3, Math.Min(3, value)); if (octave != v) { octave = v; OnChanged(nameof(Octave)); } } }
         public bool Muted { get { return muted; } set { if (muted != value) { muted = value; OnChanged(nameof(Muted)); } } }
         public bool Collapsed { get { return collapsed; } set { if (collapsed != value) { collapsed = value; OnChanged(nameof(Collapsed)); } } }
         public bool Legato { get { return legato; } set { if (legato != value) { legato = value; OnChanged(nameof(Legato)); } } }
@@ -174,6 +181,38 @@ namespace MusicTracker.Engine.Flow
         /// l'harmonie active à <paramref name="startBeat"/>. Retourne null si aucun calque n'a de coup (comme
         /// MelodicLineEngine.GenerateLine pour une ligne mélodique classique vide).</summary>
         public static Riff Generate(MelodicPolyModule m, Timeline.TimelineProject project, Func<Guid, Riff> resolve, Score.KeySignature key, double startBeat, int[] carry = null)
-            => Timeline.MelodicLineEngine.GenerateLine(BuildSkeleton(m), project, resolve, key, startBeat, carry);
+            => Octaved(Timeline.MelodicLineEngine.GenerateLine(BuildSkeleton(m), project, resolve, key, startBeat, carry), m);
+
+        /// <summary>Transpose chaque note dans l'octave demandée pour SA voix. Appliqué après coup : le moteur a
+        /// choisi les hauteurs sur l'harmonie réelle (note d'accord sur les temps forts, note de passage ailleurs),
+        /// et l'octave ne fait que déplacer le résultat — une transposition en amont fausserait sa conduite des voix.
+        /// Le riff produit conserve l'indice de voix sur chaque note, ce qui rend le tri possible.</summary>
+        static Riff Octaved(Riff riff, MelodicPolyModule m)
+        {
+            if (riff?.Notes == null || riff.Notes.Count == 0 || m?.Layers == null) return riff;
+
+            var shift = new int[MelodicLineModule.MaxVoices];
+            bool any = false;
+            foreach (var v in m.Layers)
+                if (v != null && v.Voice >= 0 && v.Voice < shift.Length && v.Octave != 0)
+                {
+                    shift[v.Voice] = v.Octave * 12;
+                    any = true;
+                }
+            if (!any) return riff;
+
+            var outp = new List<Engine.RiffNote>(riff.Notes.Count);
+            foreach (var n in riff.Notes)
+            {
+                int d = (n.Voice >= 0 && n.Voice < shift.Length) ? shift[n.Voice] : 0;
+                int row = n.Note + d;
+                // Hors de la tessiture jouable : on replie par octaves plutôt que de perdre la note — un silence
+                // inexpliqué serait plus déroutant qu'une note à l'octave voisine.
+                while (row < 0) row += 12;
+                while (row > 95) row -= 12;
+                outp.Add(new Engine.RiffNote(row, n.Start, n.Length) { Voice = n.Voice });
+            }
+            return new Riff { Name = riff.Name, Notes = outp, LengthSlices = riff.LengthSlices, SlicesPerQuarter = riff.SlicesPerQuarter };
+        }
     }
 }
