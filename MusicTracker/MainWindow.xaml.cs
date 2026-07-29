@@ -81,11 +81,12 @@ namespace MusicTracker
             if (editor == null || !editor.IsDirty) return true;
             Select(editor);   // montrer DE QUEL morceau on parle avant de poser la question
             string nom = string.IsNullOrEmpty(editor.CurrentPath) ? Loc.T("New") : System.IO.Path.GetFileName(editor.CurrentPath);
-            var r = MessageBox.Show(string.Format(Loc.T("EnregistrerLesModificationsDe"), nom),
-                                    Loc.T("ModificationsNonEnregistrees"),
-                                    MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
-            if (r == MessageBoxResult.Cancel) return false;
-            if (r == MessageBoxResult.No) return true;      // abandonner les modifications, assumé
+            var r = Dialogs.ConfirmDialog.AskSaveDiscardCancel(this,
+                        Loc.T("ModificationsNonEnregistrees"),
+                        string.Format(Loc.T("EnregistrerLesModificationsDe"), nom),
+                        Loc.T("Enregistrer"), Loc.T("NePasEnregistrer"), Loc.T("Annuler"));
+            if (r == Dialogs.SaveDiscardResult.Cancel) return false;
+            if (r == Dialogs.SaveDiscardResult.Discard) return true;      // abandonner les modifications, assumé
             SaveEditor(editor);
             return !editor.IsDirty;                          // l'enregistrement a pu être annulé dans le sélecteur
         }

@@ -586,6 +586,7 @@
   "NAME": "NAME",
   "NOTEDETECTIONAUDIO": "NOTE DETECTION (AUDIO)",
   "NePasEcraser": "Do not overwrite",
+  "NePasEnregistrer": "Don't save",
   "New": "(new)",
   "NewModel": "New model",
   "NewMusic": "New music",
