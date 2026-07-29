@@ -1,5 +1,14 @@
 # Rythmes équilibrés — analyse fonctionnelle
 
+> **RANGÉE le 2026-07-29 — ne pas reproposer comme idée neuve.** Décision de l'utilisateur : on n'ira pas
+> plus loin pour l'instant, parce que le module polyrythmique permet **déjà l'édition libre** du motif
+> (`EuclidLayer.CustomMode` / `EffectivePattern()`, clic sur les cellules de la roue) — un mode « équilibré »
+> ne donnerait donc accès à aucun rythme inatteignable aujourd'hui. Ce qui reste acquis et **livré** : la
+> *détection* de l'équilibre, affichée sous un calque en mode libre (`RhythmAnalysis.Describe` →
+> `BalancedRhythm.Centroid` / `IsPeriodic`). Ce qui n'est pas fait, et n'est pas demandé : le mode
+> *générateur* (polygones réguliers signés partageant une subdivision *n*, guidage vers les *n* utiles).
+> Le document ci-dessous reste valable comme analyse si le sujet revient.
+
 Évolution du module **batterie polyrythmique** (livré). Source : transcription vidéo fournie par l'utilisateur, dont le contenu mathématique a été **vérifié numériquement** avant rédaction (§5).
 
 ## 1. De quoi s'agit-il
