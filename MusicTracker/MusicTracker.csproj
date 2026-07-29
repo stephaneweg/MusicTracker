@@ -185,6 +185,7 @@
     <Compile Include="Engine\Flow\MelodicEuclid.cs" />
     <Compile Include="Engine\Flow\PolyChord.cs" />
     <Compile Include="Controls\TimelineEditor\PolyDrumWheel.cs" />
+    <Compile Include="Controls\TimelineEditor\MarkerLaneControl.cs" />
     <Compile Include="Engine\Flow\LoopingRiffProvider.cs" />
     <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
     <Compile Include="Engine\Flow\ModuleDuration.cs" />

@@ -394,20 +394,35 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- corner above the header column -->
-                <Border Grid.Row="0" Grid.Column="0" Height="20" Background="{StaticResource DarkBackground}"
-                    BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,1,1">
-                    <TextBlock Text="{loc:Tr 'BARS'}" Foreground="{StaticResource SecondaryForeground}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                </Border>
-                <!-- measure ruler: fixed vertically, scrolls horizontally with the lanes. A transparent
-                 overlay canvas carries the draggable blue play-start handle. -->
-                <ScrollViewer x:Name="rulerScroll" Grid.Row="0" Grid.Column="1" Height="20"
+                <!-- corner above the header column: two stacked strips, matching the two strips of rulerScroll
+                 (18px section-marker band + 20px measure ruler). -->
+                <Grid Grid.Row="0" Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="18"/>
+                        <RowDefinition Height="20"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="{StaticResource DarkBackground}"
+                        BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,1,1">
+                        <TextBlock Text="{loc:Tr 'MarkersLaneTitle'}" Foreground="{StaticResource SecondaryForeground}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </Border>
+                    <Border Grid.Row="1" Background="{StaticResource DarkBackground}"
+                        BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,1,1">
+                        <TextBlock Text="{loc:Tr 'BARS'}" Foreground="{StaticResource SecondaryForeground}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    </Border>
+                </Grid>
+                <!-- Section-marker band + measure ruler: fixed vertically, scrolls horizontally with the lanes.
+                 BOTH live in this ONE ScrollViewer, so they share its offset and stay pixel-aligned for free.
+                 A transparent overlay canvas carries the draggable blue play-start handle. -->
+                <ScrollViewer x:Name="rulerScroll" Grid.Row="0" Grid.Column="1" Height="38"
                           VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
-                    <Grid HorizontalAlignment="Left">
-                        <tle:MeasureRulerControl x:Name="measureRuler" HorizontalAlignment="Left"/>
-                        <Canvas x:Name="startCanvas" Height="20" Background="Transparent"
-                            MouseLeftButtonDown="startCanvas_MouseLeftButtonDown"/>
-                    </Grid>
+                    <StackPanel HorizontalAlignment="Left">
+                        <tle:MarkerLaneControl x:Name="markerLane" Height="18" HorizontalAlignment="Left"/>
+                        <Grid HorizontalAlignment="Left">
+                            <tle:MeasureRulerControl x:Name="measureRuler" HorizontalAlignment="Left"/>
+                            <Canvas x:Name="startCanvas" Height="20" Background="Transparent"
+                                MouseLeftButtonDown="startCanvas_MouseLeftButtonDown"/>
+                        </Grid>
+                    </StackPanel>
                 </ScrollViewer>
 
                 <!-- Track headers: a plain clipped Border (NOT a ScrollViewer) so the mouse wheel is never

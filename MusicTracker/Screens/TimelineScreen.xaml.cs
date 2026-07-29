@@ -28,6 +28,7 @@ namespace MusicTracker.Screens
         // a plain leaf needs, but uniform lane height keeps the layout simple.
         const double LaneH = 88, TempoH = 40, VolLaneH = 48, HeaderW = 160, ChordH = 26;
         const double CollapsedH = 26; // a collapsed track shrinks header + lane to this minimal height (issue #5)
+        const double MarkerLaneH = 18; // the section-marker band, above the 20px ruler (both inside rulerScroll)
         const double PxPerBeat = 60; // box width per beat (a 4/4 measure ≈ 240 px); RiffThumbnail must match
 
         bool autoTransposeChords;        // chord lane: when on, editing a chord also transposes the melody (else only bass+accompaniment)
@@ -71,6 +72,8 @@ namespace MusicTracker.Screens
         // Stable per-object identity for op keys (so insert:X + delete:X can neutralize, and moves of X coalesce).
         static string Id(object o) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o).ToString();
 
+        string markerDragPre;    // undo pre-state captured when a marker drag passes the threshold
+
         public TimelineScreen()
         {
             InitializeComponent();
@@ -89,6 +92,19 @@ namespace MusicTracker.Screens
             const double sbW = 18; // theme's vertical ScrollBar width (Theme/ScrollBar2.xaml)
             rulerScroll.Margin = new Thickness(rulerScroll.Margin.Left, rulerScroll.Margin.Top, sbW, rulerScroll.Margin.Bottom);
             if (chordScroll != null) chordScroll.Margin = new Thickness(chordScroll.Margin.Left, chordScroll.Margin.Top, sbW, chordScroll.Margin.Bottom);
+
+            // Section markers: wire the band's gestures ONCE (markerLane is a single instance created by
+            // InitializeComponent). Wiring this from Render() would stack one handler per render — ten renders
+            // later a double-click would open ten dialogs.
+            if (markerLane != null)
+            {
+                markerLane.CreateRequested += MarkerCreateAt;
+                markerLane.MarkerClicked += MarkerGoTo;
+                markerLane.MarkerDoubleClicked += MarkerRename;
+                markerLane.DragStarted += m => markerDragPre = BeginUndo();
+                markerLane.MarkerDropped += MarkerDrop;
+                markerLane.ContextRequested += ShowMarkerContextMenu;
+            }
 
             Loaded += (s, e) => { Render(); EnsureCursor(); };
 
@@ -786,6 +802,143 @@ namespace MusicTracker.Screens
             MoveCursor(player != null ? PlayedBeat() : startBeat);
         }
 
+        // ---- section markers (the band above the ruler) ------------------------------------------------------
+        // The band itself (MarkerLaneControl) only draws and detects gestures; the model (project.Markers), the
+        // undo keys, the localized strings and the A-B loop all live here, next to startBeat/loopEndBeat.
+
+        // Re-push the CURRENT list (ApplyDocument replaces the list instance on load and on every undo/redo, so
+        // the control must never cache it) + the current width. Called wherever the ruler width is recomputed.
+        void RefreshMarkers()
+        {
+            if (markerLane == null) return;
+            markerLane.Configure(TotalBeats() * PxPerBeat, MarkerLaneH, PxPerBeat, project.Markers,
+                                 b => TimelineHelper.SnapToBarline(project, ClampBeat(b)),
+                                 MarkerTooltip, Loc.T("MarkersLaneHint"));
+        }
+
+        // Clamp to the drawable timeline, then let SnapToBarline round to a real barline (§3.5: dropped out of
+        // bounds -> nearest valid bar).
+        double ClampBeat(double b) => Math.Max(0, Math.Min(TotalBeats(), b));
+
+        string MarkerTooltip(SectionMarker m)
+        {
+            int i = TimelineHelper.BarIndexAt(project, m.Beat);
+            string bar = i < 0 ? Loc.T("MarkerPickupBar") : Loc.T("MarkerBar") + " " + (i + 1);
+            return (m.Name ?? "") + " — " + bar;
+        }
+
+        void MarkerCreateAt(double beat)
+        {
+            var existing = MarkerAt(beat);
+            if (existing != null) { MarkerRename(existing); return; }   // §3.2: no duplicate, rename instead
+            string name = TimelineHelper.PromptText(Loc.T("MarkerNewTitle"), NextMarkerName());
+            if (string.IsNullOrWhiteSpace(name)) return;                // Cancel or blank = no marker at all
+            PushUndo("marker:add");
+            project.Markers.Add(new SectionMarker { Beat = beat, Name = name.Trim() });
+            SortMarkers();
+            RefreshMarkers();
+        }
+
+        void MarkerRename(SectionMarker m)
+        {
+            string name = TimelineHelper.PromptText(Loc.T("MarkerRenameTitle"), m.Name);
+            if (string.IsNullOrWhiteSpace(name)) return;
+            if (name.Trim() == m.Name) return;                          // no-op: don't pollute the history
+            PushUndo("marker:rename");
+            m.Name = name.Trim();
+            RefreshMarkers();
+        }
+
+        SectionMarker MarkerAt(double beat)
+        {
+            foreach (var m in project.Markers) if (Math.Abs(m.Beat - beat) < 1e-6) return m;
+            return null;
+        }
+
+        void SortMarkers() { project.Markers.Sort((a, b) => a.Beat.CompareTo(b.Beat)); }
+
+        // "Repère N" with the smallest free N (localized prefix).
+        string NextMarkerName()
+        {
+            string prefix = Loc.T("MarkerDefaultName");
+            var used = new System.Collections.Generic.HashSet<int>();
+            foreach (var m in project.Markers)
+            {
+                string s = (m.Name ?? "").Trim();
+                if (s.StartsWith(prefix + " ", StringComparison.Ordinal)
+                    && int.TryParse(s.Substring(prefix.Length + 1).Trim(), out int n)) used.Add(n);
+            }
+            int k = 1; while (used.Contains(k)) k++;
+            return prefix + " " + k;
+        }
+
+        // Click a marker = set the play START point there (exactly what clicking the ruler does). Playback, if
+        // any, is deliberately NOT interrupted: the new start applies to the next ▶ (never SeekTo here).
+        void MarkerGoTo(SectionMarker m)
+        {
+            startBeat = ClampBeat(m.Beat);
+            MoveCursor(startBeat);
+        }
+
+        // Drop: exactly ONE undo entry per drag (pre-state captured at threshold crossing, pushed here).
+        void MarkerDrop(SectionMarker m, double beat)
+        {
+            string pre = markerDragPre; markerDragPre = null;
+            var occupant = MarkerAt(beat);
+            if (Math.Abs(beat - m.Beat) < 1e-6 || (occupant != null && occupant != m))
+            {
+                RefreshMarkers();   // §3.5: unchanged, or target bar taken -> redraw from the model = snap back
+                return;
+            }
+            CommitUndo(pre, "marker:move"); // key deliberately NOT prefixed "move:" -> never coalesced with another drag
+            m.Beat = beat;
+            SortMarkers();
+            RefreshMarkers();
+        }
+
+        void ShowMarkerContextMenu(SectionMarker m, FrameworkElement anchor)
+        {
+            var menu = new ContextMenu();
+            var ren = new MenuItem { Header = Loc.T("MarkerMenuRename") }; ren.Click += (s, e) => MarkerRename(m);
+            var loop = new MenuItem { Header = Loc.T("MarkerMenuLoop") }; loop.Click += (s, e) => MarkerLoopSection(m);
+            var del = new MenuItem { Header = Loc.T("MarkerMenuDelete") }; del.Click += (s, e) => MarkerDelete(m);
+            menu.Items.Add(ren); menu.Items.Add(loop); menu.Items.Add(new Separator()); menu.Items.Add(del);
+            menu.PlacementTarget = anchor; menu.IsOpen = true;
+        }
+
+        void MarkerDelete(SectionMarker m)
+        {
+            PushUndo("marker:del");  // NOT "delete:" -> no accidental neutralization against a module insert
+            project.Markers.Remove(m);
+            RefreshMarkers();
+        }
+
+        // "Boucler cette section": A = this marker, B = the next one (or the end of the piece). Pure UI state
+        // (startBeat / loopEndBeat / loopEnabled are neither serialized nor undoable) -> NO undo entry.
+        void MarkerLoopSection(SectionMarker m)
+        {
+            int bpb = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
+            double a = ClampBeat(m.Beat);
+            double b = double.NaN;
+            foreach (var o in project.Markers) if (o.Beat > a + 1e-6 && (double.IsNaN(b) || o.Beat < b)) b = o.Beat;
+            if (double.IsNaN(b)) b = PieceEndBeats();                 // last marker -> end of the piece (§4.8)
+            if (b <= a + 1e-6) b = a + bpb;                           // never empty nor inverted: at least one bar
+            startBeat = a; loopEndBeat = b; loopEnabled = true;
+            if (btnLoop != null) btnLoop.IsChecked = true;
+            EnsureCursor();
+            if (player != null) { player.Loop = true; player.LoopEndBeat = loopEndBeat; player.ApplyLoop(); }
+            MoveCursor(player != null ? PlayedBeat() : startBeat);
+        }
+
+        // Musical end of the piece = the latest track end, floored by MinBeats — WITHOUT the +8 beats of display
+        // slack TotalBeats() adds (a loop must not run past the music into empty bars).
+        double PieceEndBeats()
+        {
+            double end = project.MinBeats;
+            foreach (var t in project.Tracks) end = Math.Max(end, SeqDispLen(t.Items));
+            return end;
+        }
+
         // A .sq file = the arrangement + the riffs it references (same idea as the graph's .graph).
         public bool Save(string path)
         {
@@ -955,6 +1108,10 @@ namespace MusicTracker.Screens
             project.PickupBeats = dp.PickupBeats;
             project.MinBeats = dp.MinBeats;
             project.SwingPercent = dp.SwingPercent > 0 ? dp.SwingPercent : 50; // pre-swing files have no value -> straight
+            // Section markers. MANDATORY: this is the only field-by-field copy from a document to the live project,
+            // and it runs on open, on import AND on every undo/redo (RestoreState) — omit it and the markers vanish
+            // at each Ctrl+Z. `?? new List<>` covers a hand-edited file with "Markers": null.
+            project.Markers = dp.Markers ?? new System.Collections.Generic.List<SectionMarker>();
             project.Tracks.Clear();
             if (dp.Tracks != null) foreach (var t in dp.Tracks) project.Tracks.Add(t);
             TimelineHelper.SyncUserStyleRefs(project);   // make chords that reference a user style authoritative from it
@@ -1209,6 +1366,7 @@ namespace MusicTracker.Screens
 
             measureRuler.Configure(laneWidth, 20, PxPerBeat, TimelineHelper.RulerBeatsPerBar(project), project.PickupBeats); // measure-number ruler on top (4 beats/bar)
             if (startCanvas != null) startCanvas.Width = laneWidth;
+            RefreshMarkers();                            // the marker band spans the same width as the ruler
             if (startBeat > TotalBeats()) startBeat = 0; // content shrank past the start handle
 
             // Tempo lane (header + ruler).
@@ -1265,6 +1423,7 @@ namespace MusicTracker.Screens
             double laneWidth = TotalBeats() * PxPerBeat;
             measureRuler.Configure(laneWidth, 20, PxPerBeat, TimelineHelper.RulerBeatsPerBar(project), project.PickupBeats);
             if (startCanvas != null) startCanvas.Width = laneWidth;
+            RefreshMarkers();
             if (startBeat > TotalBeats()) startBeat = 0;
 
             headerPanel.Children.Add(MakeHeader("Tempo", TempoH, null));
@@ -2518,6 +2677,7 @@ namespace MusicTracker.Screens
             double laneWidth = TotalBeats() * PxPerBeat;
             measureRuler.Configure(laneWidth, 20, PxPerBeat, TimelineHelper.RulerBeatsPerBar(project), project.PickupBeats);
             if (startCanvas != null) startCanvas.Width = laneWidth;
+            RefreshMarkers();   // in-place path (a riff edit changed the length): the band must widen with the ruler
 
             double rh = TrackRowH(track);
             headerPanel.Children.RemoveAt(idx);

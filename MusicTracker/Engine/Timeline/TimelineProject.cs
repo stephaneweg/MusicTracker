@@ -40,6 +40,15 @@ namespace MusicTracker.Engine.Timeline
         [System.Text.Json.Serialization.JsonIgnore] public int EffectiveCount;
     }
 
+    /// <summary>A named position marker ("Intro", "Thème A", "Coda") shown in the timeline's marker band, above
+    /// the measure ruler. A POINT, not a range: the section it opens runs to the next marker. Purely editorial —
+    /// playback, score and exports ignore it. Serialized with the project (.sq).</summary>
+    public class SectionMarker
+    {
+        public double Beat;            // position in raw quarter-beats, same axis as the ruler / PxPerBeat
+        public string Name = "";
+    }
+
     public enum TimelineTrackType { Instrument, Drum, Chord }
 
     /// <summary>A volume value (0..1+) taking effect at a beat — the per-track "volume sub-track".</summary>
@@ -144,6 +153,11 @@ namespace MusicTracker.Engine.Timeline
         /// full triplet feel (the classic jazz 2:1). A performance feel only: playback and audio export are warped,
         /// the written notes / score / MIDI export stay straight eighths, as a DAW does.</summary>
         public double SwingPercent { get; set; } = 50;
+
+        /// <summary>Named section markers (see <see cref="SectionMarker"/>), kept sorted by Beat. Empty by default:
+        /// a project created, imported or generated before/without this feature simply has none. A PROPERTY with an
+        /// initialiser on purpose — opening a .sq written before this feature leaves the list empty, never null.</summary>
+        public List<SectionMarker> Markers { get; set; } = new List<SectionMarker>();
 
         /// <summary>Les riffs que ce projet référence. Ils appartiennent AU PROJET, pas à l'application : chaque
         /// onglet a les siens. Historiquement ils vivaient dans un singleton global (vestige de l'époque où un seul

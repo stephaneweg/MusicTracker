@@ -94,6 +94,37 @@ namespace MusicTracker.Engine.Timeline
         // so the ruler is right even if a loaded file's TimeSigScale is stale.
         public static int RulerBeatsPerBar(TimelineProject project) => Engine.Timeline.ChordModelOps.BarTemps(project);
 
+        // ---- barline grid, as the RULER draws it (used by the section markers) --------------------------------
+        // Phase of the barline grid = the anacrusis remainder folded into one bar.
+        // KEEP IN SYNC with MeasureRulerControl.Configure (the `phase` line): that control is a pure drawing
+        // control and recomputes it internally; these helpers must land on exactly the same barlines.
+        public static double BarPhase(TimelineProject p)
+        {
+            int bpb = Math.Max(1, RulerBeatsPerBar(p));
+            return p != null && p.PickupBeats > 1e-6 ? p.PickupBeats % bpb : 0;
+        }
+
+        // Nearest barline of the RULER grid (pickup bar included, at beat 0). Never negative.
+        public static double SnapToBarline(TimelineProject p, double beat)
+        {
+            int bpb = Math.Max(1, RulerBeatsPerBar(p));
+            double phase = BarPhase(p);
+            if (beat < 0) beat = 0;
+            if (phase > 1e-6 && beat < phase * 0.5) return 0;      // closer to the pickup barline
+            double m = Math.Round((beat - phase) / bpb);
+            if (m < 0) m = 0;
+            return phase + m * bpb;
+        }
+
+        // Bar index at a beat: -1 = the pickup bar, else the 0-based full-bar index (displayed number = +1).
+        public static int BarIndexAt(TimelineProject p, double beat)
+        {
+            int bpb = Math.Max(1, RulerBeatsPerBar(p));
+            double phase = BarPhase(p);
+            if (phase > 1e-6 && beat < phase - 1e-6) return -1;
+            return (int)Math.Floor((beat - phase) / bpb + 1e-6);
+        }
+
         // Leading anacrusis remainder (in beats) of a motif of `totalBeats`, when a levée is set and the motif isn't
         // bar-aligned (e.g. 7 in 3/4 → 1). 0 when there's no levée (so non-anacrusis projects are untouched). Used to
         // trim the lead-in off DUPLICATED motifs — melodic line, chord rhythm, chord melodic cell.
