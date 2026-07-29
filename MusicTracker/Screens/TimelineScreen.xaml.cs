@@ -1126,12 +1126,38 @@ namespace MusicTracker.Screens
         {
             var mods = System.Windows.Input.Keyboard.Modifiers;
             if ((mods & System.Windows.Input.ModifierKeys.Control) == 0) return;
-            // Leave Ctrl+Z/Y to a text field that's being edited (its own undo).
-            if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox) return;
             bool shift = (mods & System.Windows.Input.ModifierKeys.Shift) != 0;
+
+            // Enregistrer et exporter AVANT la garde sur les champs de texte : le réflexe Ctrl+S doit marcher même
+            // quand le curseur est dans un champ — c'est justement là qu'on vient de saisir quelque chose.
+            if (e.Key == System.Windows.Input.Key.S)
+            {
+                // Le champ garde le focus : sans cela, la valeur en cours de saisie ne serait pas validée et
+                // l'enregistrement écrirait l'ancienne.
+                CommitFocusedField();
+                if (shift) SaveAsRequested?.Invoke(); else SaveRequested?.Invoke();
+                e.Handled = true; return;
+            }
+            if (e.Key == System.Windows.Input.Key.E)
+            {
+                CommitFocusedField();
+                btnExportAny_Click(this, null);
+                e.Handled = true; return;
+            }
+
+            // Laisser Ctrl+Z/Y au champ de texte en cours d'édition (il a sa propre annulation).
+            if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox) return;
             if (e.Key == System.Windows.Input.Key.Z && shift) { DoRedo(); e.Handled = true; }
             else if (e.Key == System.Windows.Input.Key.Z) { DoUndo(); e.Handled = true; }
             else if (e.Key == System.Windows.Input.Key.Y) { DoRedo(); e.Handled = true; }
+        }
+
+        // Valide le champ qui a le focus en déplaçant le focus : les champs de l'éditeur appliquent leur valeur
+        // sur LostFocus, donc enregistrer sans cela perdrait la dernière saisie.
+        void CommitFocusedField()
+        {
+            if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.TextBox tb)
+                tb.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
         }
 
       
@@ -3615,6 +3641,11 @@ namespace MusicTracker.Screens
         public event Action SaveRequested;
         void btnSaveMusic_Click(object sender, RoutedEventArgs e) => SaveRequested?.Invoke();
 
+        /// <summary>Émis par « Enregistrer sous… » : la fenêtre demande toujours un chemin, même si le morceau
+        /// en a déjà un.</summary>
+        public event Action SaveAsRequested;
+        void btnSaveMusicAs_Click(object sender, RoutedEventArgs e) => SaveAsRequested?.Invoke();
+
 
         // Right-click on a timeline box → a small context menu. Chord boxes get "Proposer la suite…" (the context-aware
         // diagram, inserting the choice right AFTER this chord).
@@ -4118,23 +4149,9 @@ namespace MusicTracker.Screens
         }
 
         // Export the whole timeline to WAV/MP3 (renders a fresh TimelinePlayer offline via WaveExporter).
-        private void btnExport_Click(object sender, RoutedEventArgs e)
+        void ExportAudio(string path, bool mp3)
         {
-            StopPlayback();
-            if (project.Tracks.Count == 0) { MessageBox.Show(Loc.T("AucunePisteAExporter")); return; }
-
-            var sfd = new Dialogs.FileBrowserDialog
-            {
-                SaveMode = true,
-                Owner = Window.GetWindow(this),
-                Filter = "WAVE (*.wav)|*.wav|MP3 (*.mp3)|*.mp3|Tous les fichiers (*.*)|*.*",
-                DefaultExt = ".wav",
-            };
             if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Export")) return;
-            if (sfd.ShowDialog() != true) return;
-
-            string path = sfd.FileName;
-            bool mp3 = string.Equals(System.IO.Path.GetExtension(path), ".mp3", StringComparison.OrdinalIgnoreCase);
             var p = new Engine.Timeline.TimelinePlayer(project, project.RiffById, AudioFormat.SampleRate);
             long cap = p.EstimatedTotalSamples + 5L * AudioFormat.SampleRate; // + a few seconds of ring-out tail
 
@@ -4223,23 +4240,72 @@ namespace MusicTracker.Screens
         }
 
         // Export the whole timeline to a Standard MIDI File.
-        private void btnExportMidi_Click(object sender, RoutedEventArgs e)
+        // ===== Export UNIQUE ====================================================================================
+        // Un seul bouton, un seul dialogue : on choisit le format dans la liste (ou on tape l'extension), et le
+        // format suit l'EXTENSION du nom donné — à la manière de GIMP. Cinq entrées de menu pour cinq formats
+        // obligeaient à décider AVANT d'avoir vu le sélecteur.
+        static readonly (string ext, string desc)[] ExportFormats =
+        {
+            (".wav",      "WAVE"),
+            (".mp3",      "MP3"),
+            (".mid",      "MIDI"),
+            (".musicxml", "MusicXML"),
+            (".mscx",     "MuseScore"),
+            (".pdf",      "PDF"),
+        };
+
+        private void btnExportAny_Click(object sender, RoutedEventArgs e)
         {
             if (project.Tracks.Count == 0) { MessageBox.Show(Loc.T("AucunePisteAExporter")); return; }
-            var sfd = new Dialogs.FileBrowserDialog { SaveMode = true, Owner = Window.GetWindow(this), Filter = "MIDI (*.mid)|*.mid", DefaultExt = ".mid" };
-            if (!string.IsNullOrEmpty(CurrentPath)) sfd.FileName = System.IO.Path.GetFileNameWithoutExtension(CurrentPath);
+            StopPlayback();
+
+            var f = new System.Text.StringBuilder();
+            foreach (var x in ExportFormats)
+            {
+                if (f.Length > 0) f.Append('|');
+                f.Append(x.desc).Append(" (*").Append(x.ext).Append(")|*").Append(x.ext);
+            }
+            string title = string.IsNullOrEmpty(CurrentPath) ? Loc.T("Partition") : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
+            var sfd = new Dialogs.FileBrowserDialog
+            {
+                SaveMode = true,
+                Owner = Window.GetWindow(this),
+                Filter = f.ToString(),
+                DefaultExt = ".wav",
+                FileName = title,
+            };
             if (sfd.ShowDialog() != true) return;
+
+            string path = sfd.FileName;
+            string ext = (System.IO.Path.GetExtension(path) ?? "").ToLowerInvariant();
+            switch (ext)
+            {
+                case ".wav": case ".mp3": ExportAudio(path, ext == ".mp3"); break;
+                case ".mid": case ".midi": ExportMidi(path); break;
+                case ".musicxml": case ".xml": ExportMusicXml(path); break;
+                case ".mscx": ExportMuseScore(path); break;
+                // Le PDF n'est pas écrit directement : l'application produit un aperçu imprimable, et c'est
+                // « Microsoft Print to PDF » qui grave le fichier. On ouvre donc l'aperçu au lieu d'écrire.
+                case ".pdf": ExportPdfPreview(); break;
+                default:
+                    MessageBox.Show(string.Format(Loc.T("FormatDExportInconnu"), ext));
+                    break;
+            }
+        }
+
+        void ExportMidi(string path)
+        {
             try
             {
-                Engine.Timeline.MidiTimelineExporter.Export(sfd.FileName, project, project.RiffById);
-                MessageBox.Show(Loc.T("ExportMIDITermine") + sfd.FileName);
+                Engine.Timeline.MidiTimelineExporter.Export(path, project, project.RiffById);
+                MessageBox.Show(Loc.T("ExportMIDITermine") + path);
             }
             catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMIDI") + ex.Message); }
         }
 
         // Export the score to a native MuseScore .mscx file (the checked ♫ tracks, else all instrument tracks;
         // drums skipped). One staff per part, with its clef + key + time signature.
-        private void btnExportMuseScore_Click(object sender, RoutedEventArgs e)
+        void ExportMuseScore(string path)
         {
             var src = new System.Collections.Generic.List<TimelineTrack>();
             foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) src.Add(t);
@@ -4254,12 +4320,10 @@ namespace MusicTracker.Screens
             if (parts.Count == 0) { MessageBox.Show(Loc.T("AucunePisteMelodiqueAExporterCoche")); return; }
 
             string title = string.IsNullOrEmpty(CurrentPath) ? Loc.T("Partition") : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
-            var sfd = new Dialogs.FileBrowserDialog { SaveMode = true, Owner = Window.GetWindow(this), Filter = "MuseScore (*.mscx)|*.mscx", DefaultExt = ".mscx", FileName = title };
-            if (sfd.ShowDialog() != true) return;
             try
             {
-                Engine.Timeline.MuseScoreExporter.Export(sfd.FileName, parts, project.TimeSigNum, project.TimeSigDen, title);
-                MessageBox.Show(Loc.T("ExportMuseScoreTermine") + sfd.FileName);
+                Engine.Timeline.MuseScoreExporter.Export(path, parts, project.TimeSigNum, project.TimeSigDen, title);
+                MessageBox.Show(Loc.T("ExportMuseScoreTermine") + path);
             }
             catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMuseScore") + ex.Message); }
         }
@@ -4267,10 +4331,8 @@ namespace MusicTracker.Screens
         // Export the score to MusicXML — the interchange format every notation program reads. Same track rule as the
         // MuseScore export (the checked ♫ tracks, else all instrument tracks; drums skipped) so there is only one
         // convention to learn; unlike the .mscx, notes are tied over the bar lines instead of being truncated.
-        private void btnExportMusicXml_Click(object sender, RoutedEventArgs e)
+        void ExportMusicXml(string path)
         {
-            if (project.Tracks.Count == 0) { MessageBox.Show(Loc.T("AucunePisteAExporter")); return; }
-
             var src = new System.Collections.Generic.List<TimelineTrack>();
             foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) src.Add(t);
             if (src.Count == 0) foreach (var t in project.Tracks) if (t.Type != TimelineTrackType.Drum) src.Add(t);
@@ -4284,19 +4346,17 @@ namespace MusicTracker.Screens
             if (parts.Count == 0) { MessageBox.Show(Loc.T("AucunePisteMelodiqueAExporterCoche")); return; }
 
             string title = string.IsNullOrEmpty(CurrentPath) ? Loc.T("Partition") : System.IO.Path.GetFileNameWithoutExtension(CurrentPath).Replace('_', ' ');
-            var sfd = new Dialogs.FileBrowserDialog { SaveMode = true, Owner = Window.GetWindow(this), Filter = "MusicXML (*.musicxml)|*.musicxml", DefaultExt = ".musicxml", FileName = title };
-            if (sfd.ShowDialog() != true) return;
             try
             {
-                Engine.Timeline.MusicXmlExporter.Export(sfd.FileName, parts, project.TimeSigNum, project.TimeSigDen,
+                Engine.Timeline.MusicXmlExporter.Export(path, parts, project.TimeSigNum, project.TimeSigDen,
                     project.TimeSigScale > 0 ? project.TimeSigScale : 1.0, project.MainBpm, title);
-                MessageBox.Show(Loc.T("ExportMusicXMLTermine") + sfd.FileName);
+                MessageBox.Show(Loc.T("ExportMusicXMLTermine") + path);
             }
             catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMusicXML") + ex.Message); }
         }
 
         // Export the checked (♫) tracks as an A4 score, broken into lines of 2/4/8/16 measures, printed to PDF.
-        private void btnExportPdf_Click(object sender, RoutedEventArgs e)
+        void ExportPdfPreview()
         {
             var list = new System.Collections.Generic.List<Engine.Score.TrackScore>();
             foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) list.Add(Engine.Score.ScoreBuilder.Build(project, t, project.RiffById));

@@ -249,7 +249,10 @@
         <!-- Transport bar (DAW-style: transport · tempo · tonalité · mesure · levée · actions) -->
         <Border Grid.Row="0" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
-                <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}" AutomationProperties.AutomationId="BtnSaveMusic"/>
+                <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,3,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}" AutomationProperties.AutomationId="BtnSaveMusic"/>
+                <!-- Enregistrer sous : sans lui, un morceau déjà enregistré ne peut plus être écrit ailleurs —
+                     impossible d'en dériver une variante sans écraser l'original. -->
+                <Button x:Name="btnSaveMusicAs" Content="{loc:Tr 'SaveAsShort'}" Click="btnSaveMusicAs_Click" Padding="8,4" Margin="0,0,10,0" Cursor="Hand" ToolTip="{loc:Tr 'EnregistrerSousUneAutreNom'}" AutomationProperties.AutomationId="BtnSaveMusicAs"/>
                 <!-- Undo / Redo -->
                 <Button x:Name="btnUndo" Content="↶" Click="btnUndo_Click" Padding="9,4" Margin="0,0,3,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'UndoCtrlZ'}" AutomationProperties.AutomationId="BtnUndo"/>
                 <Button x:Name="btnRedo" Content="↷" Click="btnRedo_Click" Padding="9,4" Margin="0,0,10,0" Cursor="Hand" IsEnabled="False" ToolTip="{loc:Tr 'RedoCtrlYCtrlShiftZ'}" AutomationProperties.AutomationId="BtnRedo"/>
@@ -359,13 +362,9 @@
                         <MenuItem x:Name="miGenTheme" Header="{loc:Tr 'Theme'}" Click="btnGenerateTheme_Click" ToolTip="{loc:Tr 'GeneratesA100ProceduralThemeSerial'}"/>
                         <MenuItem x:Name="miVariation" Header="{loc:Tr 'Variation'}" Click="btnVariation_Click" ToolTip="{loc:Tr 'AppliesAVariationTechniqueToThe'}"/>
                     </MenuItem>
-                    <MenuItem Header="Export" Foreground="#DDDDDD">
-                        <MenuItem Header="MIDI…" Click="btnExportMidi_Click" ToolTip="{loc:Tr 'ExportTheTimelineAsAMIDI'}"/>
-                        <MenuItem Header="MuseScore (.mscx)…" Click="btnExportMuseScore_Click" ToolTip="{loc:Tr 'ExportTheScoreAsANative'}"/>
-                        <MenuItem Header="MusicXML (.musicxml)…" Click="btnExportMusicXml_Click" ToolTip="{loc:Tr 'ExportTheScoreAsMusicXML'}"/>
-                        <MenuItem Header="Audio…" Click="btnExport_Click"/>
-                        <MenuItem Header="{loc:Tr 'PDFScore'}" Click="btnExportPdf_Click" ToolTip="{loc:Tr 'ExportTheCheckedTracksAsAn'}"/>
-                    </MenuItem>
+                    <!-- Un SEUL export : le format suit l'extension choisie dans le sélecteur (wav, mp3, mid,
+                         musicxml, mscx, pdf), à la manière de GIMP. -->
+                    <MenuItem x:Name="menuExport" Header="{loc:Tr 'Exporter'}" Foreground="#DDDDDD" Click="btnExportAny_Click" ToolTip="{loc:Tr 'ExporterLeFormatSuitLExtension'}"/>
                     <MenuItem x:Name="menuMixer" Header="{loc:Tr 'Mixer'}" Foreground="#DDDDDD" Click="btnMixer_Click" ToolTip="{loc:Tr 'VolumePanoramiqueMuteSoloParPiste'}"/>
                 </Menu>
                 <Border Width="1" Background="{StaticResource SubtleBorderBrush}" Margin="12,4"/>

@@ -291,6 +291,7 @@ namespace MusicTracker
                 ts.ComposeInNewTabRequested += ComposeWithAiNewTab;   // its AI menu spawns a new tab
                 ts.ComposePolyInNewTabRequested += ComposePolyWithAiNewTab;
                 ts.SaveRequested += () => SaveEditor(editor);          // its toolbar "Enregistrer" button
+                ts.SaveAsRequested += () => SaveEditorAs(editor);      // « Enregistrer sous… »
                 ts.DirtyChanged += () => SetEditorTitle(editor, editor.CurrentPath);   // astérisque de l'onglet
             }
             var btn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(14, 0, 10, 0) };
@@ -397,11 +398,17 @@ namespace MusicTracker
         }
 
         // The editor's own "Enregistrer" button (in its toolbar) calls back here.
-        void SaveEditor(IMusicEditor editor)
+        void SaveEditor(IMusicEditor editor) => SaveEditor(editor, askPath: false);
+
+        /// <summary>« Enregistrer sous… » : demande TOUJOURS un chemin, même si le morceau en a déjà un — c'est
+        /// ce qui permet d'en dériver une variante sans écraser l'original.</summary>
+        void SaveEditorAs(IMusicEditor editor) => SaveEditor(editor, askPath: true);
+
+        void SaveEditor(IMusicEditor editor, bool askPath)
         {
             if (editor == null) return;
             string path = editor.CurrentPath;
-            if (string.IsNullOrEmpty(path))
+            if (askPath || string.IsNullOrEmpty(path))
             {
                 var dlg = new Dialogs.FileBrowserDialog
                 {
@@ -410,6 +417,9 @@ namespace MusicTracker
                     Filter = editor.ModeName + " (*" + editor.FileExtension + ")|*" + editor.FileExtension,
                     DefaultExt = editor.FileExtension,
                 };
+                // Pré-remplir avec le nom actuel : on part presque toujours du morceau existant pour en faire
+                // une variante, et retaper le nom entier serait absurde.
+                if (!string.IsNullOrEmpty(path)) dlg.FileName = path;
                 if (dlg.ShowDialog() != true) return;
                 path = dlg.FileName;
             }
