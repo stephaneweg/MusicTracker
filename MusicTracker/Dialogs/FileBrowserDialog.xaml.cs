@@ -120,6 +120,23 @@ namespace MusicTracker.Dialogs
 
         bool MatchFilter(string name) => allMatch || patterns.Any(r => r.IsMatch(name));
 
+        /// <summary>L'extension à donner à un nom tapé sans extension, déduite du type sélectionné dans la liste :
+        /// la première de ses extensions. Renvoie null quand le type n'en impose aucune — c'est alors au
+        /// <see cref="DefaultExt"/> de trancher. Deux cas rendent null, et ils comptent :
+        /// un type ATTRAPE-TOUT (« Tous les fichiers (*.*) », présent dans plusieurs sélecteurs d'enregistrement)
+        /// ne veut rien dire comme extension, et le prendre au mot produirait un fichier nommé « truc.* » —
+        /// impossible sous Windows ; un motif sans point (« * ») ou une entrée sans motif ne donnent rien non plus.</summary>
+        string FilterExtension()
+        {
+            int i = cboFilter.SelectedIndex;
+            if (i < 0 || i >= filters.Count) return null;
+            var spec = filters[i];
+            if (spec.All || spec.Pats == null || spec.Pats.Length == 0) return null;
+            string ext = Path.GetExtension(spec.Pats[0]);
+            if (string.IsNullOrEmpty(ext) || ext.IndexOfAny(new[] { '*', '?' }) >= 0) return null;
+            return ext;
+        }
+
         // ---- navigation ------------------------------------------------------------------------
         void GoTo(string loc, bool record = true)
         {
@@ -227,8 +244,12 @@ namespace MusicTracker.Dialogs
 
             if (SaveMode)
             {
-                if (string.IsNullOrEmpty(Path.GetExtension(full)) && !string.IsNullOrEmpty(DefaultExt))
-                    full += DefaultExt.StartsWith(".") ? DefaultExt : "." + DefaultExt;
+                // Un nom tapé sans extension prend celle du TYPE choisi dans la liste, et non le DefaultExt :
+                // avec un sélecteur multi-formats (l'export), choisir « MP3 » puis taper « morceau » doit donner
+                // morceau.mp3, pas morceau + l'extension par défaut du dialogue.
+                string currentExt = FilterExtension() ?? DefaultExt;
+                if (string.IsNullOrEmpty(Path.GetExtension(full)) && !string.IsNullOrEmpty(currentExt))
+                    full += currentExt.StartsWith(".") ? currentExt : "." + currentExt;
 
                 string dir = SafeDir(full);
                 if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
