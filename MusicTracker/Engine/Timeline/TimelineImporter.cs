@@ -243,6 +243,7 @@ namespace MusicTracker.Engine.Timeline
                 case PolyDrumModule pd: riff = PolyDrum.Generate(pd); break;              // idem
                 case MelodicLineModule ml: riff = MelodicLineEngine.GenerateLine(ml, project, resolve, key, startBeat, carry); break;
                 case MelodicPolyModule mp: riff = MelodicEuclid.Generate(mp, project, resolve, key, startBeat, carry); break;
+                case PolyChordModule pc: riff = PolyChord.Generate(pc); break;  // accords polyrythmiques
                 default: riff = null; break;
             }
             if (riff?.Notes == null) return;

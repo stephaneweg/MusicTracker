@@ -473,6 +473,9 @@ namespace MusicTracker.Engine.Score
                 case CadenceModule cm: return PatternGenerator.GenerateCadence(cm);
                 case MelodicLineModule ml: return MelodicLineEngine.GenerateLine(ml, project, resolve, key, startBeat, carry);
                 case MelodicPolyModule mp: return MelodicEuclid.Generate(mp, project, resolve, key, startBeat, carry);
+                // Accords polyrythmiques. Generate() suffit : la conduite des voix a déjà écrit Inversion/OctaveShift
+                // sur chaque accord (ChordDegrees.Revoice, à l'édition), exactement comme pour le player.
+                case PolyChordModule pc: return PolyChord.Generate(pc);
                 default: return null;
             }
         }
