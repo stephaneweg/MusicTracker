@@ -183,6 +183,7 @@
     <Compile Include="Engine\SafeFile.cs" />
     <Compile Include="Engine\Flow\PolyDrum.cs" />
     <Compile Include="Engine\Flow\MelodicEuclid.cs" />
+    <Compile Include="Engine\Flow\PolyChord.cs" />
     <Compile Include="Controls\TimelineEditor\PolyDrumWheel.cs" />
     <Compile Include="Engine\Flow\LoopingRiffProvider.cs" />
     <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
@@ -352,6 +353,9 @@
     <Compile Include="Controls\TimelineEditor\MelodicPolyEditor.xaml.cs">
       <DependentUpon>MelodicPolyEditor.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\TimelineEditor\PolyChordEditor.xaml.cs">
+      <DependentUpon>PolyChordEditor.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\TimelineEditor\TempoLaneControl.xaml.cs">
       <DependentUpon>TempoLaneControl.xaml</DependentUpon>
     </Compile>
@@ -484,6 +488,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Controls\TimelineEditor\MelodicPolyEditor.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\PolyChordEditor.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

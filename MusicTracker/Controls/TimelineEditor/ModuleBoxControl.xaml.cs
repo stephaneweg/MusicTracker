@@ -133,6 +133,16 @@ namespace MusicTracker.Controls.TimelineEditor
             thumb.Visibility = img != null ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        /// <summary>Show a custom panel INSIDE the box (accords polyrythmiques : découpage par zones + labels).
+        /// Null hides it — mutually exclusive with the thumbnail (both live in row 1). Kept as a helper so the
+        /// box control stays render-agnostic (fabrique un panneau, ne connaît pas les modules).</summary>
+        public void SetContentPanel(FrameworkElement panel)
+        {
+            customPanel.Content = panel;
+            customPanel.Visibility = panel != null ? Visibility.Visible : Visibility.Collapsed;
+            if (panel != null) thumb.Visibility = Visibility.Collapsed;
+        }
+
         /// <summary>Show a big centred label over the thumbnail (chords: the roman degree); null/empty hides it.</summary>
         public void SetBigLabel(string s)
         {

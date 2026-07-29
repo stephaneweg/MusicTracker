@@ -188,6 +188,18 @@ namespace MusicTracker.Engine.Timeline
                             }
                             else if (tonicShift != 0) { c.Root = ((c.Root + tonicShift) % 12 + 12) % 12; any = true; }
                     }
+                    else if (m is Engine.Flow.PolyChordModule pcm && pcm.Chords != null)
+                    {
+                        // Même logique que PatternGeneratorModule (degré-verrouillé re-dérive avec couleur/susp/mode),
+                        // appliquée à chaque accord de la liste.
+                        foreach (var c in pcm.Chords)
+                            if (c.Degree >= 0)
+                            {
+                                var nd = MusicTheory.DiatonicChord(newKey, c.Degree, c.DiatonicColour, c.Suspension, c.ModeOverride);
+                                if (c.Root != nd.root || c.Quality != nd.quality) { c.Root = nd.root; c.Quality = nd.quality; any = true; }
+                            }
+                            else if (tonicShift != 0) { c.Root = ((c.Root + tonicShift) % 12 + 12) % 12; any = true; }
+                    }
                 }
             }
             return any;
@@ -227,6 +239,8 @@ namespace MusicTracker.Engine.Timeline
                     else if (m is PatternGeneratorModule pg && pg.Degree < 0) pg.Root = ((pg.Root + interval) % 12 + 12) % 12; // absolute chords (degree-locked follow the key below)
                     else if (m is CadenceModule cm && cm.Chords != null)
                         foreach (var c in cm.Chords) if (c.Degree < 0) c.Root = ((c.Root + interval) % 12 + 12) % 12; // absolute cadence chords
+                    else if (m is Engine.Flow.PolyChordModule pcm && pcm.Chords != null)
+                        foreach (var pci in pcm.Chords) if (pci.Degree < 0) pci.Root = ((pci.Root + interval) % 12 + 12) % 12; // absolute polychord chords
                 }
             }
 

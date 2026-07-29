@@ -1329,6 +1329,8 @@ namespace MusicTracker.Screens
             if (miInsertMelodicPoly != null) miInsertMelodicPoly.Visibility = instr ? Visibility.Visible : Visibility.Collapsed;
             if (miAddPattern != null) miAddPattern.Visibility = Visibility.Visible;
             if (miAddCadence != null) miAddCadence.Visibility = Visibility.Visible;
+            // Accords polyrythmiques : idem accord classique — toujours proposé (ils vont sur la piste Accords dédiée).
+            if (miAddPolyChord != null) miAddPolyChord.Visibility = Visibility.Visible;
             if (miAddDrum != null) miAddDrum.Visibility = drum ? Visibility.Visible : Visibility.Collapsed;
             if (miAddPolyDrum != null) miAddPolyDrum.Visibility = drum ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -1653,6 +1655,7 @@ namespace MusicTracker.Screens
         {
             if (item.Module is PatternGeneratorModule cpg) return ChordFill(ChordFunction(cpg));
             if (item.Module is CadenceModule) return ChordBlueBase;
+            if (item.Module is Engine.Flow.PolyChordModule) return PolyChordFill;
             return new SolidColorBrush(Controls.InstrumentColors.BoxFill(track.Instrument));
         }
 
@@ -1723,6 +1726,9 @@ namespace MusicTracker.Screens
         static readonly System.Windows.Media.Brush ChordBlueDom = Flat(0x3A, 0x72, 0xDD);
         static readonly System.Windows.Media.Brush ChordBlueTonic = Flat(0x44, 0x88, 0xFF);
         static readonly System.Windows.Media.Brush ChordBorder = Flat(0x6E, 0x9C, 0xEE);
+        // Accords polyrythmiques : fuchsia, pour se distinguer immédiatement des accords classiques (bleu) sur la piste.
+        static readonly System.Windows.Media.Brush PolyChordFill = Flat(0xA8, 0x2A, 0x6A);
+        static readonly System.Windows.Media.Brush PolyChordBorder = Flat(0xE1, 0x44, 0x96);
         static System.Windows.Media.Brush ChordFill(int fn) => fn == 0 ? ChordBlueTonic : (fn == 1 ? ChordBlueDom : ChordBlueBase);
 
         // Harmonic function of a chord relative to the current key: 0 = tonic (I), 1 = dominant (V), 2 = other.
@@ -1821,6 +1827,7 @@ namespace MusicTracker.Screens
                 bigLabel = ChordRoman(cpg);       // roman degree shown BIG in the centre, over the thumbnail
             }
             else if (item.Module is CadenceModule) { border = ChordBorder; }
+            else if (item.Module is Engine.Flow.PolyChordModule) { border = PolyChordBorder; title = Loc.T("AccordsPolyrythmiques"); info = ""; }
             else   // riff / drum / melodic-line boxes: background + border tinted by the track's INSTRUMENT FAMILY
             {
                 border = new System.Windows.Media.SolidColorBrush(Controls.InstrumentColors.BoxBorder(track.Instrument));
@@ -1851,6 +1858,11 @@ namespace MusicTracker.Screens
                 }
                 case Engine.Flow.MelodicPolyModule mp:
                     box.SetThumbnail(Controls.RiffThumbnail.Get(Engine.Flow.MelodicEuclid.Generate(mp, project, project.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat), Controls.RiffThumbnail.Melodic));
+                    break;
+                case Engine.Flow.PolyChordModule pcm:
+                    // Panneau custom : une zone par accord (largeur ∝ Beats), séparateurs 1px + label roman/qualité.
+                    // Reflète le vrai découpage temporel du module — on ne peut pas exprimer ça avec la mini-thumbnail.
+                    box.SetContentPanel(BuildPolyChordPanel(pcm));
                     break;
             }
             Canvas.SetLeft(box, startBeat * PxPerBeat);
@@ -1992,6 +2004,12 @@ namespace MusicTracker.Screens
                               ? $" · {Loc.T("Cycle")} {Math.Round(cyc, 2)}" : "";
                     return $"{Loc.T("Polyrythmique")} · {nv} {Loc.T("Calques")}{cs} · {beats}";
                 }
+                case Engine.Flow.PolyChordModule pcm2:
+                {
+                    int nc = pcm2.Chords?.Count ?? 0;
+                    int nl = 0; if (pcm2.Layers != null) foreach (var l in pcm2.Layers) if (l != null && !l.Muted) nl++;
+                    return $"{nc} {Loc.T("Accords")} · {nl} {Loc.T("Calques")} · {beats}";
+                }
                 case PlayRiffModule pr:
                     { var r = project.RiffById(pr.RiffId); return (r != null ? r.Name : Loc.T("Aucun")) + " · " + beats; }
                 default:
@@ -2063,6 +2081,7 @@ namespace MusicTracker.Screens
             else if (item.Module is DrumPatternModule dp) { txtEditorTitle.Text = Loc.T("EditeurBatterie"); editorHost.Content = BuildDrumEditor(track, item, dp); selfScroll = true; }
             else if (item.Module is Engine.Flow.PolyDrumModule pdm2) { txtEditorTitle.Text = Loc.T("EditeurBatteriePolyrythmique"); editorHost.Content = BuildPolyDrumEditor(track, item, pdm2); selfScroll = true; }
             else if (item.Module is Engine.Flow.MelodicPolyModule mpm) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodiquePolyrythmique"); editorHost.Content = BuildMelodicPolyEditor(track, item, mpm); selfScroll = true; }
+            else if (item.Module is Engine.Flow.PolyChordModule pcmm) { txtEditorTitle.Text = Loc.T("EditeurAccordsPolyrythmiques"); editorHost.Content = BuildPolyChordEditor(track, item, pcmm); selfScroll = true; }
             else if (item.Module is MelodicLineModule ml) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodique"); editorHost.Content = BuildMelodicLineEditor(track, item, ml); selfScroll = true; }
             else editorHost.Content = null;
 
@@ -3383,6 +3402,95 @@ namespace MusicTracker.Screens
         UIElement BuildMelodicPolyEditor(TimelineTrack track, TimelineItem item, Engine.Flow.MelodicPolyModule mp)
             => new Controls.TimelineEditor.MelodicPolyEditor(track, item, mp, MakePolyHost());
 
+        UIElement BuildPolyChordEditor(TimelineTrack track, TimelineItem item, Engine.Flow.PolyChordModule pc)
+            => new Controls.TimelineEditor.PolyChordEditor(track, item, pc, MakePolyHost());
+
+        // Panneau custom dessiné dans la box timeline d'un module PolyChord : une zone par accord (largeur ∝ Beats),
+        // séparateurs verticaux 1px et label (roman + qualité). Reflète la structure temporelle du module — la
+        // mini-thumbnail piano-roll utilisée par les autres modules ne peut pas exprimer ce découpage variable.
+        FrameworkElement BuildPolyChordPanel(Engine.Flow.PolyChordModule pc)
+        {
+            var grid = new Grid();
+            if (pc?.Chords == null || pc.Chords.Count == 0)
+            {
+                grid.Children.Add(new TextBlock
+                {
+                    Text = Loc.T("PolyChordVide"),
+                    Foreground = "#DDDDDD".ToBrush(), FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                });
+                return grid;
+            }
+            // Une colonne par accord, largeur = GridLength en étoile pondérée par Beats. Le layout WPF divise
+            // l'espace disponible proportionnellement — pas besoin de connaître la largeur de la box en px.
+            for (int i = 0; i < pc.Chords.Count; i++)
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(1, pc.Chords[i].Beats), GridUnitType.Star) });
+
+            var key = project.Key ?? new Engine.Score.KeySignature();
+            for (int i = 0; i < pc.Chords.Count; i++)
+            {
+                var c = pc.Chords[i];
+                var cell = new Grid();
+                // Séparateur gauche (sauf pour le premier accord) — 1px, moitié transparent, tracé DANS la cellule.
+                if (i > 0)
+                {
+                    var sep = new System.Windows.Shapes.Rectangle { Width = 1, Fill = "#66FFFFFF".ToBrush(), HorizontalAlignment = HorizontalAlignment.Left };
+                    cell.Children.Add(sep);
+                }
+                var label = new TextBlock
+                {
+                    Text = ChordFunctionLabel(c, key),
+                    Foreground = "#FFFFFF".ToBrush(), FontSize = 24, FontWeight = FontWeights.Bold,
+                    HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    // Même halo noir que le gros label roman des accords classiques (txtBig) — reste lisible sur
+                    // les cellules aux limites de la boîte fuchsia.
+                    Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, ShadowDepth = 0, BlurRadius = 5, Opacity = 0.7 }
+                };
+                cell.Children.Add(label);
+                Grid.SetColumn(cell, i);
+                grid.Children.Add(cell);
+            }
+            return grid;
+        }
+
+        // « I », « V7 », « ♭III » … pour un PolyChordItem. Réutilise la logique ChordRoman en la ré-exprimant sur
+        // les champs de PolyChordItem (pas de PatternGeneratorModule sous la main).
+        string ChordFunctionLabel(Engine.Flow.PolyChordItem c, Engine.Score.KeySignature key)
+        {
+            // Cas simple : si l'accord est en degré, on affiche le romain avec le suffixe de qualité (° / +).
+            string q = TimelineHelper.Get(PatternGenerator.QualityNames, c.Quality);
+            if (c.Degree >= 0)
+            {
+                string[] rU = { "I", "II", "III", "IV", "V", "VI", "VII" };
+                string[] rL = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
+                Engine.Flow.MusicTheory.ChordShape(c.Quality, out bool minor, out bool dim, out bool aug, out _);
+                string suffix = dim ? "°" : (aug ? "+" : "");
+                return (minor ? rL[c.Degree] : rU[c.Degree]) + suffix;
+            }
+            // Accord fixe : nom réel (« Do Maj7 ») — plus lisible qu'un romain calculé qui pourrait paraître arbitraire.
+            return Engine.Score.KeySig.SpellPc(c.Root, key) + " " + q;
+        }
+
+        // « Insérer ▸ Accords polyrythmiques » : crée un nouveau module PolyChord AVEC un premier accord (I) et
+        // deux anneaux de longueurs différentes, comme les autres modules polyrythmiques (un seul anneau n'a rien
+        // à déphaser). Va TOUJOURS sur la piste Accords (via AppendChord).
+        private void btnAddPolyChord_Click(object sender, RoutedEventArgs e)
+        {
+            var m = new Engine.Flow.PolyChordModule { Mode = Engine.Flow.PolyChordMode.OneRingPerTone };
+            // Deux anneaux par défaut (E(3,8) grave + E(5,8) plus haut) — donne quelque chose d'audible tout de suite.
+            m.Layers.Add(new Engine.Flow.EuclidChordLayer { Hits = 3, Steps = 8, ToneIndex = 0 });
+            m.Layers.Add(new Engine.Flow.EuclidChordLayer { Hits = 5, Steps = 8, ToneIndex = 1 });
+            // Un accord I par défaut (durée = un temps par beat = 1 mesure), l'utilisateur ajoute ensuite les autres.
+            int bpb = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
+            var key = project.Key ?? new Engine.Score.KeySignature();
+            var d = Engine.Flow.MusicTheory.DiatonicChord(key, 0);
+            m.Chords.Add(new Engine.Flow.PolyChordItem { Degree = 0, Root = d.root, Quality = d.quality, Beats = bpb });
+            AppendChord(m);
+            Engine.Flow.ChordDegrees.Revoice(selectedTrack);
+            Render();
+        }
+
         Grid TwoColumns(out StackPanel left, out ContentControl right)
         {
             var grid = new Grid();
@@ -3597,6 +3705,35 @@ namespace MusicTracker.Screens
             TimelineHelper.EnsureChordTrack(project);
             var chord = TimelineHelper.ChordTrack(project);                                 // chords ALWAYS go to the dedicated chords track
             var lastItem = chord.Items.Count > 0 ? chord.Items[chord.Items.Count - 1] : null;
+            // Cas particulier : si le dernier bloc est un module PolyChord, on APPEND l'accord à sa liste au lieu
+            // d'insérer un nouveau bloc — c'est le comportement attendu quand l'utilisateur enchaîne les accords
+            // sur un module d'accords polyrythmiques (voir plan). Le dialogue d'accord est le même.
+            if (lastItem?.Module is Engine.Flow.PolyChordModule pcm)
+            {
+                var key0 = project.Key ?? new Engine.Score.KeySignature();
+                ChordContext(chord, lastItem, out int[] pd, out int bi, out int pl);
+                var lastCh = pcm.Chords.Count > 0 ? pcm.Chords[pcm.Chords.Count - 1] : null;
+                int seedDeg = lastCh != null && lastCh.Degree >= 0 ? lastCh.Degree : 0;
+                var newDegs = pd.Length > 0 ? pd : new[] { seedDeg };
+                var dlg = new Dialogs.ChordSuggestionDialog(newDegs, bi, pl, key0, InstrumentCatalog.GetPreset(chord.Instrument)) { Owner = Window.GetWindow(this) };
+                if (dlg.ShowDialog() != true) return;
+                string pre = BeginUndo();
+                int beats = lastCh != null ? lastCh.Beats : Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
+                var it = new Engine.Flow.PolyChordItem { Beats = beats };
+                if (dlg.ChosenIsDiatonic)
+                {
+                    var ch = Engine.Flow.MusicTheory.DiatonicChord(key0, dlg.ChosenDegree, dlg.ChosenColour, dlg.ChosenSuspension, dlg.ChosenMode);
+                    it.Root = ch.root; it.Quality = ch.quality;
+                    it.DiatonicColour = dlg.ChosenColour; it.Suspension = dlg.ChosenSuspension; it.ModeOverride = dlg.ChosenMode;
+                    it.Degree = dlg.ChosenDegree;
+                }
+                else { it.Root = dlg.ChosenRoot; it.Quality = dlg.ChosenQuality; it.Degree = -1; }
+                pcm.Chords.Add(it);
+                Engine.Flow.ChordDegrees.Revoice(chord);
+                CommitUndo(pre, "polychord-append");
+                Render();
+                return;
+            }
             var prev = TimelineHelper.LastChordOn(chord);
             var pg = NewChordLike(prev);   // meter-length default + copies the last chord's params (voice-leading auto)
             if (prev != null)
@@ -3871,6 +4008,8 @@ namespace MusicTracker.Screens
                         degs.Add(pgm.Degree >= 0 ? pgm.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((pgm.Root % 12) + 12) % 12));
                     else if (it.Module is CadenceModule cm && cm.Chords != null && cm.Chords.Count > 0)
                     { var lc = cm.Chords[cm.Chords.Count - 1]; degs.Add(lc.Degree >= 0 ? lc.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((lc.Root % 12) + 12) % 12)); }
+                    else if (it.Module is Engine.Flow.PolyChordModule pcm && pcm.Chords != null && pcm.Chords.Count > 0)
+                    { var lc = pcm.Chords[pcm.Chords.Count - 1]; degs.Add(lc.Degree >= 0 ? lc.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((lc.Root % 12) + 12) % 12)); }
                     beats += it.SilenceBefore +  ModuleDuration.Beats(it.Module, project.RiffById);
                     if (ReferenceEquals(it, upTo)) break;
                 }

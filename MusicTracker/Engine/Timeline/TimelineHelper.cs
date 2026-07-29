@@ -37,6 +37,11 @@ namespace MusicTracker.Engine.Timeline
             {
                 var it = t.Items[i];
                 if (it.Module is PatternGeneratorModule pg) return pg;
+                // Pour piocher les valeurs par défaut du prochain accord (style/voicing/octave), un module PolyChord
+                // ne PORTE pas de PatternGeneratorModule — on n'a rien à retourner de directement compatible. On
+                // renvoie null, ce qui fait démarrer le nouvel accord avec les défauts. La FONCTION harmonique du
+                // dernier accord est de toute façon consultée par ChordContext (branche PolyChord ci-dessous).
+                if (it.Module is PolyChordModule) return null;
             }
             return null;
         }
@@ -54,10 +59,31 @@ namespace MusicTracker.Engine.Timeline
                 double s = c + it.SilenceBefore, len = project.DispLen(it);
                 c = s + len;
                 if (s >= startBeat + lenBeats - 1e-6 || s + len <= startBeat + 1e-6) continue; // no overlap
-                if (!(it.Module is PatternGeneratorModule pg)) continue;
-                int deg = pg.Degree >= 0 ? pg.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((pg.Root % 12) + 12) % 12);
-                int measure = Math.Max(1, (int)Math.Round((s - startBeat) / Math.Max(1, barTemps)) + 1);
-                res.Add(new Engine.AI.AiChord { measure = measure, degree = Math.Max(1, deg + 1), quality = TimelineHelper.Get(PatternGenerator.QualityNames, pg.Quality) });
+                if (it.Module is PatternGeneratorModule pg)
+                {
+                    int deg = pg.Degree >= 0 ? pg.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((pg.Root % 12) + 12) % 12);
+                    int measure = Math.Max(1, (int)Math.Round((s - startBeat) / Math.Max(1, barTemps)) + 1);
+                    res.Add(new Engine.AI.AiChord { measure = measure, degree = Math.Max(1, deg + 1), quality = TimelineHelper.Get(PatternGenerator.QualityNames, pg.Quality) });
+                }
+                else if (it.Module is Engine.Flow.PolyChordModule pcm && pcm.Chords != null)
+                {
+                    // Un module PolyChord = plusieurs accords à des offsets différents ; on exporte chacun d'eux
+                    // avec sa propre position en mesure (l'AI arrangement voit alors les vrais changements).
+                    double chordStart = s;
+                    foreach (var pci in pcm.Chords)
+                    {
+                        if (pci == null) continue;
+                        if (chordStart >= startBeat + lenBeats - 1e-6) break;
+                        double chordLen = Math.Max(1, pci.Beats);
+                        if (chordStart + chordLen > startBeat + 1e-6)
+                        {
+                            int deg = pci.Degree >= 0 ? pci.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((pci.Root % 12) + 12) % 12);
+                            int measure = Math.Max(1, (int)Math.Round((chordStart - startBeat) / Math.Max(1, barTemps)) + 1);
+                            res.Add(new Engine.AI.AiChord { measure = measure, degree = Math.Max(1, deg + 1), quality = TimelineHelper.Get(PatternGenerator.QualityNames, pci.Quality) });
+                        }
+                        chordStart += chordLen;
+                    }
+                }
             }
             return res;
         }
@@ -79,7 +105,7 @@ namespace MusicTracker.Engine.Timeline
         public static readonly string[] MelodicVoiceNames = { "1 voix", "2 voix", "3 voix" };
 
         // The beat position where an item starts on its track (for the melodic line's harmony lookup / preview).
-        static bool IsChordModule(FlowModule m) => m is PatternGeneratorModule || m is CadenceModule;
+        static bool IsChordModule(FlowModule m) => m is PatternGeneratorModule || m is CadenceModule || m is Engine.Flow.PolyChordModule;
         static bool TrackIsAllChords(TimelineTrack t)
         {
             if (t?.Items == null || t.Items.Count == 0) return false;

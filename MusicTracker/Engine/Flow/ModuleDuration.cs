@@ -32,6 +32,8 @@ namespace MusicTracker.Engine.Flow
                     return Math.Max(1, ml.BeatsPerBar);                                  // total beats of the line
                 case MelodicPolyModule mp:
                     return MelodicEuclid.TotalBeats(mp);
+                case PolyChordModule pc:
+                    return PolyChord.TotalBeats(pc);
                 default:
                     return 4;
             }

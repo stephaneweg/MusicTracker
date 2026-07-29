@@ -47,6 +47,21 @@ namespace MusicTracker.Engine.Timeline
                 double len = TimelineProject.ItemLength(item, resolve);
                 if (item.Module is PatternGeneratorModule pg && Covers(beat, cursor, len))
                 { root = pg.Root; quality = pg.Quality; inversion = pg.Inversion; return true; }
+                // PolyChord : on résout l'accord actif à la position DANS le module (beat − cursor). Sans cette
+                // branche, une ligne mélodique posée sous un PolyChord ne verrait aucune harmonie.
+                if (item.Module is PolyChordModule pc && Covers(beat, cursor, len)
+                    && PolyChord.ChordAt(pc, beat - cursor, out var it, out _))
+                { root = it.Root; quality = it.Quality; inversion = it.Inversion; return true; }
+                // CadenceModule : mêmes accords « invisibles » que le trou historique — combler tant qu'on y est.
+                if (item.Module is CadenceModule cm && Covers(beat, cursor, len) && cm.Chords != null && cm.Chords.Count > 0)
+                {
+                    int cellBeats = Math.Max(1, cm.BeatsPerBar);
+                    int idx = (int)Math.Floor((beat - cursor) / cellBeats + 1e-9);
+                    idx = Math.Max(0, Math.Min(cm.Chords.Count - 1, idx));
+                    var cc = cm.Chords[idx];
+                    root = cc.Root; quality = cc.Quality; inversion = cc.Inversion;
+                    return true;
+                }
                 cursor += len;
             }
             return false;

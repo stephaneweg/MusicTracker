@@ -16,6 +16,7 @@ namespace MusicTracker.Engine.Flow
     [JsonDerivedType(typeof(MelodicLineModule), "MelodicLine")]
     [JsonDerivedType(typeof(PolyDrumModule), "PolyDrum")]
     [JsonDerivedType(typeof(MelodicPolyModule), "MelodicPoly")]
+    [JsonDerivedType(typeof(PolyChordModule), "PolyChord")]
     public abstract class FlowModule : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -286,6 +287,40 @@ namespace MusicTracker.Engine.Flow
         public void Touch() { OnChanged(nameof(Layers)); }
 
         [JsonIgnore] public override string Title { get { return "Ligne mélodique polyrythmique"; } }
+    }
+
+    /// <summary>Accords polyrythmiques : une LISTE d'accords (comme <see cref="CadenceModule"/>) mais jouée par des
+    /// anneaux euclidiens (comme <see cref="PolyDrumModule"/>/<see cref="MelodicPolyModule"/>). Chaque accord porte
+    /// sa propre durée (<see cref="PolyChordItem.Beats"/>) et ses champs harmoniques (degré/qualité/couleur/suspension).
+    /// Deux modes exclusifs : un anneau par NOTE de l'accord (voicing joué en polyrythmie) ou un anneau qui SWEEPE
+    /// les notes d'accord selon un contour (Vague/Montante/...). Voicing/open-voicing/voice-leading gérés au niveau
+    /// du module — <see cref="PolyChord.RevoiceChain"/> se chaîne avec les modules voisins sur la piste Accords.</summary>
+    public class PolyChordModule : FlowModule
+    {
+        int octave = 4;
+        int cycleBeats = 4;
+        bool openVoicing;
+        int voiceLeadAnchor;                        // 0 auto / 1 basse proche / 2 haut proche (idem CadenceModule)
+        PolyChordMode mode = PolyChordMode.OneRingPerTone;
+        ChordRestartMode restart = ChordRestartMode.Nearest;
+
+        public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
+        /// <summary>Durée du CYCLE de la roue en TEMPS (noires) — c'est ce paramètre qui fixe la vitesse rythmique
+        /// des anneaux, INDÉPENDAMMENT de la durée des accords. Un accord qui dure moins n'accélère plus les notes :
+        /// on passe simplement à l'accord suivant à sa borne, et la roue continue de tourner au même tempo. Longueur
+        /// totale du module = somme des Beats des accords ; nombre de cycles = totalBeats / CycleBeats.</summary>
+        public int CycleBeats { get { return cycleBeats; } set { int v = Math.Max(1, value); if (cycleBeats != v) { cycleBeats = v; OnChanged(nameof(CycleBeats)); } } }
+        public bool OpenVoicing { get { return openVoicing; } set { if (openVoicing != value) { openVoicing = value; OnChanged(nameof(OpenVoicing)); } } }
+        public int VoiceLeadAnchor { get { return voiceLeadAnchor; } set { int v = Math.Max(0, Math.Min(2, value)); if (voiceLeadAnchor != v) { voiceLeadAnchor = v; OnChanged(nameof(VoiceLeadAnchor)); } } }
+        public PolyChordMode Mode { get { return mode; } set { if (mode != value) { mode = value; OnChanged(nameof(Mode)); } } }
+        public ChordRestartMode Restart { get { return restart; } set { if (restart != value) { restart = value; OnChanged(nameof(Restart)); } } }
+
+        public System.Collections.ObjectModel.ObservableCollection<PolyChordItem> Chords { get; set; } = new System.Collections.ObjectModel.ObservableCollection<PolyChordItem>();
+        public System.Collections.ObjectModel.ObservableCollection<EuclidChordLayer> Layers { get; set; } = new System.Collections.ObjectModel.ObservableCollection<EuclidChordLayer>();
+
+        public void Touch() { OnChanged(nameof(Chords)); OnChanged(nameof(Layers)); }
+
+        [JsonIgnore] public override string Title { get { return "Accords polyrythmiques"; } }
     }
 
     /// <summary>One chord of a <see cref="CadenceModule"/>: the absolute root/quality/inversion actually played,

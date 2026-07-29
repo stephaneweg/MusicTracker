@@ -64,6 +64,14 @@ namespace MusicTracker.Engine.Flow
             {
                 if (item == null) continue;
                 if (item.Module is PatternGeneratorModule pg) step(pg);
+                else if (item.Module is PolyChordModule pc)
+                {
+                    // Le module PolyChord porte son propre baseOctave ; on l'adopte comme base pour LUI, mais on
+                    // continue la chaîne « prev » pour que le module suivant (Pattern ou PolyChord) enchaîne.
+                    if (!haveBase) { baseOct = pc.Octave; haveBase = true; }
+                    int localBase = pc.Octave;
+                    PolyChord.RevoiceChain(pc, ref prev, ref localBase);
+                }
             }
         }
     }

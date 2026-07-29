@@ -316,6 +316,7 @@ namespace MusicTracker.Engine.Timeline
                 case DrumPatternModule d: return DrumPattern.Generate(d);
                 case PolyDrumModule pd: return PolyDrum.Generate(pd);
                 case CadenceModule cm: return PatternGenerator.GenerateCadence(cm);
+                case PolyChordModule pc: return PolyChord.Generate(pc);
                 default: return null;
             }
         }

@@ -354,6 +354,7 @@
                         <MenuItem x:Name="miAddRiff" Header="Riff" Click="btnAddRiff_Click"/>
                         <MenuItem x:Name="miAddPattern" Header="{loc:Tr 'Chords'}" Click="btnAddPattern_Click"/>
                         <MenuItem x:Name="miAddCadence" Header="{loc:Tr 'Cadence'}" Click="btnAddCadence_Click"/>
+                        <MenuItem x:Name="miAddPolyChord" Header="{loc:Tr 'AccordsPolyrythmiques'}" Click="btnAddPolyChord_Click" ToolTip="{loc:Tr 'ListeDaccordsSurAnneauxEuclidiens'}"/>
                         <MenuItem x:Name="miInsertMelodicLine" Header="{loc:Tr 'MelodicLineRhythm'}" Click="btnInsertMelodicLine_Click" ToolTip="{loc:Tr 'AddsAMelodicLineRhythmOnly'}"/>
                         <MenuItem x:Name="miInsertMelodicPoly" Header="{loc:Tr 'LigneMelodiquePolyrythmique'}" Click="btnAddMelodicPoly_Click" ToolTip="{loc:Tr 'UnAnneauParVoixLeMoteurChoisit'}"/>
                         <MenuItem x:Name="miAddDrum" Header="{loc:Tr 'Drums'}" Click="btnAddDrum_Click"/>

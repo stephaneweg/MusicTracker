@@ -1,0 +1,249 @@
+<UserControl x:Class="MusicTracker.Controls.TimelineEditor.PolyChordEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:loc="clr-namespace:MusicTracker.Localization"
+             xmlns:te="clr-namespace:MusicTracker.Controls.TimelineEditor"
+             mc:Ignorable="d" d:DesignHeight="500" d:DesignWidth="1200" x:Name="self">
+    <!-- Éditeur d'un module PolyChordModule. TROIS colonnes :
+           col 0 : options du module + LISTE d'accords (une ligne compacte par accord, ItemsControl bindé) ;
+           col 1 : LISTE d'anneaux (calques), corps variable selon module.Mode (Multi vs Sweep) ;
+           col 2 : roue polyrythmique (contrôle générique PolyDrumWheel réutilisé). -->
+    <UserControl.Resources>
+        <te:VoiceToBrushConverter x:Key="VoiceToBrush"/>
+        <te:DegreeIndexConverter x:Key="DegreeIndexConverter"/>
+        <Style x:Key="ChordCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#20FFFFFF"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+            <Setter Property="BorderThickness" Value="3,1,1,1"/>
+            <Setter Property="BorderBrush" Value="#D63384"/>
+        </Style>
+        <Style x:Key="LayerCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#20FFFFFF"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="BorderThickness" Value="3,1,1,1"/>
+            <!-- Un anneau n'a pas de « famille » d'instrument ni de « voix » naturelle : couleur fuchsia
+                 harmonisée avec le rendu box de la timeline, pour lier visuellement anneaux et module. -->
+            <Setter Property="BorderBrush" Value="#D63384"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <!-- Col 0 plus large : les 4 combos d'un accord (Degré/Qualité/Couleur/Suspension) tiennent sur UNE
+                 ligne au lieu d'être empilés sur deux. -->
+            <ColumnDefinition Width="480"/>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ================= COL 0 : options module + liste d'accords ================================= -->
+        <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="2,0,12,0">
+            <StackPanel>
+                <TextBlock Text="{loc:Tr 'Mode'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+                <ComboBox x:Name="cboMode" Width="220" HorizontalAlignment="Left" SelectionChanged="cboMode_SelectionChanged"/>
+
+                <TextBlock Text="{loc:Tr 'RestartAuChangementDaccord'}" Foreground="#AAAAAA" FontSize="11" Margin="0,6,0,1"/>
+                <ComboBox x:Name="cboRestart" Width="220" HorizontalAlignment="Left" SelectionChanged="cboRestart_SelectionChanged"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                    <TextBlock Text="{loc:Tr 'TempsCycle'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBox x:Name="txtCycleBeats" Width="40" LostFocus="txtCycleBeats_LostFocus"
+                             ToolTip="{loc:Tr 'DureeDuCycleIndependanteDesAccords'}"/>
+                    <TextBlock Text="{loc:Tr 'Octave'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="12,0,4,0"/>
+                    <TextBox x:Name="txtOctave" Width="40" LostFocus="txtOctave_LostFocus"/>
+                    <CheckBox x:Name="chkOpenVoicing" Content="{loc:Tr 'OpenVoicing'}" Foreground="#CCCCCC" FontSize="11"
+                              Margin="12,0,0,0" VerticalAlignment="Center" Click="chkOpenVoicing_Click"/>
+                </StackPanel>
+
+                <TextBlock Text="{loc:Tr 'ConduiteDesVoix'}" Foreground="#AAAAAA" FontSize="11" Margin="0,6,0,1"/>
+                <ComboBox x:Name="cboVoiceLead" Width="220" HorizontalAlignment="Left" SelectionChanged="cboVoiceLead_SelectionChanged"/>
+
+                <TextBlock Text="{loc:Tr 'ListeDesAccords'}" Foreground="#AAAAAA" FontSize="11" Margin="0,10,0,1"/>
+
+                <!-- Une ligne par accord : degré/qualité/couleur/suspension + Beats + supprimer.
+                     ItemsSource bindé côté code-behind (idem PolyDrumEditor / MelodicPolyEditor). -->
+                <ItemsControl x:Name="chordsList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource ChordCardStyle}" Tag="{Binding}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <!-- Label lisible (« Do Maj7 ») — se met à jour via PropertyChanged sur Label. -->
+                                        <TextBlock Grid.Column="0" Text="{Binding Label}" Foreground="White" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
+                                            <TextBlock Text="{loc:Tr 'Temps'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox Width="36" Text="{Binding Beats, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                     LostFocus="chordBeats_LostFocus"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="✕" FontSize="14" Width="24" Height="20" Padding="0"
+                                                Margin="6,0,0,0" Cursor="Hand" Click="chordDelete_Click"
+                                                ToolTip="{loc:Tr 'SupprimerCetAccord'}"/>
+                                    </Grid>
+                                    <!-- Détails d'accord sur UNE ligne : Degré | Qualité | Couleur | Suspension.
+                                         La col 0 du UserControl est dimensionnée en conséquence (480px). -->
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox Grid.Column="0" Margin="0,0,3,0"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=DegreeNames}"
+                                                  SelectedIndex="{Binding Degree, Converter={StaticResource DegreeIndexConverter}, Mode=TwoWay}"
+                                                  SelectionChanged="chordDegree_SelectionChanged"/>
+                                        <ComboBox Grid.Column="1" Margin="3,0,3,0"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=QualityNames}"
+                                                  SelectedIndex="{Binding Quality, Mode=TwoWay}"
+                                                  SelectionChanged="chordQuality_SelectionChanged"/>
+                                        <ComboBox Grid.Column="2" Margin="3,0,3,0"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=ColourNames}"
+                                                  SelectedIndex="{Binding DiatonicColour, Mode=TwoWay}"
+                                                  SelectionChanged="chordColour_SelectionChanged"/>
+                                        <ComboBox Grid.Column="3" Margin="3,0,0,0"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=SuspensionNames}"
+                                                  SelectedIndex="{Binding Suspension, Mode=TwoWay}"
+                                                  SelectionChanged="chordSuspension_SelectionChanged"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button x:Name="btnAddChord" Margin="0,4,0,6" Padding="10,4,10,4" Cursor="Hand"
+                        HorizontalAlignment="Left" Click="btnAddChord_Click"/>
+                <Button x:Name="btnFreeze" Margin="0,2,0,6" Padding="10,4,10,4" Cursor="Hand"
+                        HorizontalAlignment="Left" Click="btnFreeze_Click"
+                        Content="{loc:Tr 'FigerEnAccordsIndividuels'}"
+                        ToolTip="{loc:Tr 'ConvertitEnAccordsPatternGenerateur'}"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ================= COL 1 : liste d'anneaux ================================================= -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="2,0,12,0">
+            <StackPanel>
+                <TextBlock Text="{loc:Tr 'Anneaux'}" Foreground="#AAAAAA" FontSize="11" Margin="0,4,0,1"/>
+                <ItemsControl x:Name="layersList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource LayerCardStyle}"
+                                    MouseEnter="Layer_MouseEnter" MouseLeave="Layer_MouseLeave"
+                                    Tag="{Binding}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Content="{Binding CollapseGlyph}" Click="btnCollapse_Click"
+                                                Width="18" Height="18" Padding="0" FontSize="10"
+                                                Margin="0,0,4,0" Cursor="Hand"/>
+                                        <!-- Titre : selon le mode module, on affiche "Note N" (Multi) ou "Anneau N" (Sweep).
+                                             Bindé indirectement via un helper text géré côté code-behind (voir RefreshLayerTitles). -->
+                                        <TextBlock Grid.Column="1" x:Name="layerTitle" Text="—"
+                                                   Foreground="#EEEEEE" FontSize="12" VerticalAlignment="Center"/>
+                                        <CheckBox Grid.Column="2" Content="M" Foreground="White" FontSize="11"
+                                                  Margin="8,0,0,0" VerticalAlignment="Center"
+                                                  IsChecked="{Binding Muted, Mode=TwoWay}"
+                                                  ToolTip="{loc:Tr 'MuetCeCalque'}"/>
+                                        <CheckBox Grid.Column="3" Content="✎" Foreground="{Binding PersColour}" FontSize="12" FontWeight="Bold"
+                                                  Margin="10,0,0,0" VerticalAlignment="Center"
+                                                  IsChecked="{Binding CustomMode, Mode=TwoWay}"
+                                                  Click="chkCustom_Click"
+                                                  ToolTip="{loc:Tr 'ModePersonnaliseClic'}"/>
+                                        <Button Grid.Column="4" Content="✕" FontSize="16" Width="30" Padding="0"
+                                                Margin="10,0,0,0" Cursor="Hand"
+                                                Click="btnDelete_Click"
+                                                ToolTip="{loc:Tr 'SupprimerCeCalque'}"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding SummaryText}" Foreground="#999999" FontSize="11"
+                                               Margin="22,2,0,0" Visibility="{Binding SummaryVisibility}"/>
+                                    <StackPanel Visibility="{Binding BodyVisibility}">
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Visibility="{Binding HitsRotationVisibility}"
+                                                       Text="{loc:Tr 'Coups'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox Grid.Column="1" Visibility="{Binding HitsRotationVisibility}"
+                                                     Width="38" Text="{Binding Hits, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="2" Text="{loc:Tr 'Pas'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox Grid.Column="3" Width="38" Text="{Binding Steps, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
+                                            <TextBlock Grid.Column="4" Visibility="{Binding HitsRotationVisibility}"
+                                                       Text="{loc:Tr 'Decalage'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox Grid.Column="5" Visibility="{Binding HitsRotationVisibility}"
+                                                     Width="38" Text="{Binding Rotation, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                        </Grid>
+                                        <!-- Contrôle spécifique au MODE MULTI : quelle voix (0=grave, 1, 2...). -->
+                                        <StackPanel x:Name="pnlMulti" Orientation="Horizontal" Margin="0,6,0,0"
+                                                    Visibility="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=MultiVisibility}">
+                                            <TextBlock Text="{loc:Tr 'NoteDaccord'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox Width="38" Text="{Binding ToneIndex, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                     ToolTip="{loc:Tr 'IndexNoteAccord0Grave'}"/>
+                                        </StackPanel>
+                                        <!-- Contrôle spécifique au MODE SWEEP : quel contour (Vague, Montante...) + graine aléatoire. -->
+                                        <StackPanel x:Name="pnlSweep" Orientation="Vertical" Margin="0,6,0,0"
+                                                    Visibility="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=SweepVisibility}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{loc:Tr 'Contour'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                                <ComboBox Width="120"
+                                                          ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=ContourNames}"
+                                                          SelectedIndex="{Binding Contour, Mode=TwoWay}"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                <TextBlock Text="{loc:Tr 'Graine'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                                <TextBox Width="60" Text="{Binding RandomSeed, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                         ToolTip="{loc:Tr 'GraineAleatoireReproductible'}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <TextBlock Text="{loc:Tr 'Octave'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,3,0"/>
+                                            <TextBox Width="38" Text="{Binding Octave, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+                                        </StackPanel>
+                                        <CheckBox Content="{loc:Tr 'Legato'}" Foreground="#CCCCCC" FontSize="11"
+                                                  Margin="0,6,0,0"
+                                                  IsChecked="{Binding Legato, Mode=TwoWay}"/>
+                                        <TextBlock Text="{Binding AnalysisText}" Foreground="#FFC107" FontSize="11"
+                                                   Margin="0,6,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding AnalysisVisibility}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Button x:Name="btnAddLayer" Margin="0,4,0,6" Padding="10,4,10,4" Cursor="Hand"
+                        HorizontalAlignment="Left" Click="btnAddLayer_Click"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ================= COL 2 : roue polyrythmique + Play ======================================== -->
+        <DockPanel Grid.Column="2">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                <Button x:Name="btnPlay" Padding="10,4,10,4" Cursor="Hand" Click="btnPlay_Click"/>
+            </StackPanel>
+            <te:PolyDrumWheel x:Name="wheel" MinHeight="240"/>
+        </DockPanel>
+    </Grid>
+</UserControl>

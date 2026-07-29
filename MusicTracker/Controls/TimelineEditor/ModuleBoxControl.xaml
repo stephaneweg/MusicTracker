@@ -19,6 +19,10 @@
             <Image x:Name="thumb" Grid.Row="1" Margin="4,2,4,4" Stretch="None"
                    HorizontalAlignment="Left" VerticalAlignment="Center"
                    SnapsToDevicePixels="True" IsHitTestVisible="False" Visibility="Collapsed"/>
+            <!-- Panneau custom (rendu vectoriel remplaçant le thumbnail) : accords polyrythmiques dessinent leur
+                 sous-découpage (une zone par accord + séparateurs + labels de fonction) via SetContentPanel(). -->
+            <ContentControl x:Name="customPanel" Grid.Row="1" Margin="4,2,4,4"
+                            IsHitTestVisible="False" Visibility="Collapsed"/>
             <!-- Big centred label (chords: the roman degree) drawn over the thumbnail. -->
             <TextBlock x:Name="txtBig" Grid.Row="0" Grid.RowSpan="2"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
