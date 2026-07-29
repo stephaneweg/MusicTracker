@@ -367,7 +367,44 @@ namespace MusicTracker.Screens
         public string ModeName => Loc.T("Sequenceur");
         public string FileExtension => ".sq";
         public string CurrentPath { get; set; }
-        public void StopAudio() { PausePlayback(); try { activeRiffGrid?.StopPreview(); } catch { } }
+        public void StopAudio() { PausePlayback(); try { activeRiffGrid?.StopPreview(); } catch { } StopEditorPreviews(); }
+
+        // The bottom editor hosts SEVERAL preview-capable controls (riff grid, drum grid, poly melodic/drum editors),
+        // each owning its own WaveOut. Stopping only the riff grid left the others audible after the tab was closed
+        // (issue #12) — walking the host's tree silences every one, including any added later.
+        void StopEditorPreviews()
+        {
+            if (editorHost == null) return;
+            foreach (var d in Descendants(editorHost))
+            {
+                try
+                {
+                    if (d is Controls.RiffGridControl rg) rg.StopPreview();
+                    else if (d is Controls.RhythmGridControl dg) dg.StopPreview();
+                    else if (d is Controls.TimelineEditor.MelodicPolyEditor mp) mp.Stop();
+                    else if (d is Controls.TimelineEditor.PolyDrumEditor pd) pd.Stop();
+                }
+                catch { /* a preview that can't stop must not block the others */ }
+            }
+        }
+
+        // Depth-first walk of the visual tree, plus the ContentControl's Content (which may not be realised yet).
+        static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+        {
+            if (root == null) yield break;
+            yield return root;
+            if (root is ContentControl cc && cc.Content is DependencyObject content && !ReferenceEquals(content, root))
+                foreach (var d in Descendants(content)) yield return d;
+            int n = 0;
+            try { n = VisualTreeHelper.GetChildrenCount(root); } catch { n = 0; }
+            for (int i = 0; i < n; i++)
+            {
+                DependencyObject child = null;
+                try { child = VisualTreeHelper.GetChild(root, i); } catch { }
+                if (child == null) continue;
+                foreach (var d in Descendants(child)) yield return d;
+            }
+        }
 
         // ---- playback ----
         // ▶/⏸ is a toggle: play from the cursor, or pause (freeze the cursor where it is; ▶ resumes there — the
