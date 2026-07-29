@@ -333,7 +333,10 @@ namespace MusicTracker.Engine.Timeline
         // multiply — matches the volume lane), flat after the last point. Lead-in ramps base -> first.
         static double TrackGain(Track tr, double beat) => TrackGain(tr.Autom, tr.BaseVol, beat);
 
-        static double TrackGain(List<VolumePoint> a, double baseVol, double beat)
+        /// <summary>Volume absolu d'une piste à un temps donné. PUBLIC parce que l'export MIDI trace la même courbe
+        /// en CC7 : les deux doivent lire la rampe d'automation au même endroit, sinon le fichier exporté et la
+        /// lecture divergent silencieusement. <paramref name="a"/> doit être TRIÉ par <see cref="VolumePoint.Beat"/>.</summary>
+        public static double TrackGain(List<VolumePoint> a, double baseVol, double beat)
         {
             if (a == null || a.Count == 0) return baseVol;
             if (beat <= a[0].Beat)
