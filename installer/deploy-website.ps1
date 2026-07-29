@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Publie le site vitrine (WebSite\) chez l'hébergeur par FTP / FTPS / SFTP.
+  Publie le site vitrine (WebSite\) chez l'hébergeur par FTP ou FTPS.
 
 .DESCRIPTION
   Lit ses identifiants dans un fichier de configuration EXCLU DE GIT — ils ne doivent jamais
@@ -9,7 +9,7 @@
       installer\website-ftp.local.json
 
       {
-        "Protocol":   "ftps",              // "ftp" | "ftps" | "sftp"
+        "Protocol":   "ftp",               // "ftp" | "ftps"
         "Host":       "ftp.monhebergeur.tld",
         "Port":       0,                   // 0 = port par défaut du protocole
         "User":       "identifiant",
@@ -30,8 +30,14 @@
 
             Colle la longue chaîne obtenue dans "Password" et mets "PasswordEncoding": "dpapi".
 
-  FTP et FTPS sont gérés nativement (FtpWebRequest). SFTP exige WinSCP
-  (https://winscp.net) : winscp.com doit être dans le PATH ou dans %ProgramFiles(x86)%\WinSCP.
+  FTP et FTPS sont gérés nativement (FtpWebRequest).
+
+  PAS DE SFTP — abandonné le 2026-07-29, ne pas le réintroduire sans demande explicite.
+  L'endpoint OVH utilisé refuse `AUTH TLS` (500 Syntax error, quel que soit le mot de passe), donc
+  FTPS est inutilisable et seul le FTP simple fonctionne. Le port 22 répond bien, mais aucune des
+  deux voies vers le SFTP ne valait le coût : Renci.SshNet exige un binding redirect que PowerShell
+  n'a pas, et WinSCP est une dépendance externe à installer. Conséquence assumée : le mot de passe
+  circule EN CLAIR sur le réseau ; le chiffrement DPAPI ci-dessous ne protège que le stockage sur disque.
 
 .PARAMETER ConfigPath  Chemin d'un autre fichier de configuration.
 .PARAMETER WhatIf      Liste ce qui serait envoyé, sans rien transférer.
@@ -68,7 +74,8 @@ foreach ($k in @('Host', 'User', 'Password', 'RemoteRoot')) {
   if (-not $cfg.$k) { throw "Champ '$k' manquant dans $ConfigPath" }
 }
 $proto = if ($cfg.Protocol) { $cfg.Protocol.ToLowerInvariant() } else { 'ftp' }
-if ($proto -notin @('ftp', 'ftps', 'sftp')) { throw "Protocol invalide : '$proto' (attendu ftp, ftps ou sftp)" }
+if ($proto -eq 'sftp') { throw "SFTP n'est plus gere par ce script (abandonne le 2026-07-29, voir l'en-tete). Mets `"Protocol`": `"ftp`" dans $ConfigPath." }
+if ($proto -notin @('ftp', 'ftps')) { throw "Protocol invalide : '$proto' (attendu ftp ou ftps)" }
 
 # --- mot de passe : decodage selon PasswordEncoding ---------------------------
 # $pwd ne doit jamais etre affiche ni journalise : les messages d'erreur ci-dessous
@@ -113,32 +120,6 @@ Write-Host "Fichiers : $($files.Count)  ($totalKo Ko)"
 if ($WhatIf) {
   Write-Host "`n-- WhatIf : rien n'est transfere --" -ForegroundColor Yellow
   $files | ForEach-Object { Write-Host ("  " + $_.FullName.Substring($siteDir.Length + 1)) }
-  return
-}
-
-# --- SFTP : delegue a WinSCP --------------------------------------------------
-if ($proto -eq 'sftp') {
-  $winscp = Get-Command 'winscp.com' -ErrorAction SilentlyContinue
-  $winscpPath = if ($winscp) { $winscp.Source } else { Join-Path ${env:ProgramFiles(x86)} 'WinSCP\WinSCP.com' }
-  if (-not (Test-Path $winscpPath)) {
-    throw "SFTP demande mais WinSCP est introuvable (winscp.com). Installe-le depuis https://winscp.net"
-  }
-  $port = if ($cfg.Port -and $cfg.Port -gt 0) { $cfg.Port } else { 22 }
-  # -hostkey=* accepte la cle du serveur : acceptable pour un deploiement vers un hote connu et maitrise.
-  $script = @"
-open sftp://$($cfg.User):$pwd@$($cfg.Host):$port/ -hostkey=*
-synchronize remote -delete=off "$siteDir" "$($cfg.RemoteRoot)"
-exit
-"@
-  $tmp = Join-Path $env:TEMP "winscp-koton-$PID.txt"
-  try {
-    Set-Content -Path $tmp -Value $script -Encoding ASCII
-    & $winscpPath /ini=nul /script="$tmp"
-    if ($LASTEXITCODE -ne 0) { throw "WinSCP a echoue (code $LASTEXITCODE)" }
-  } finally {
-    Remove-Item $tmp -Force -ErrorAction SilentlyContinue   # contient le mot de passe
-  }
-  Write-Host "`nSite publie (sftp)." -ForegroundColor Green
   return
 }
 
