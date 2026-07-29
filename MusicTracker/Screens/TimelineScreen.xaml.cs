@@ -3960,6 +3960,10 @@ namespace MusicTracker.Screens
                 txtBpm.Text = ((int)result.ResultBpm).ToString();
                 SyncTempoReadout();
             }
+            // Les sections nommées de la recette deviennent des REPÈRES sur le bandeau (« Intro », « Thème »,
+            // « Ré-exposition »…). APRÈS l'adoption de la mesure : la position d'une barre dépend de TimeSigNum/Den,
+            // qui viennent d'être écrasés juste au-dessus. Rien n'est posé si le compositeur n'émet pas de recette.
+            TimelineHelper.AddSectionMarkersFromArrangement(project);
             SyncKeyToolbar(); // key combos + meter combo + ternary toggle follow the project
             Render();
             RefreshScore();

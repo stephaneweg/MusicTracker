@@ -125,6 +125,44 @@ namespace MusicTracker.Engine.Timeline
             return (int)Math.Floor((beat - phase) / bpb + 1e-6);
         }
 
+        // ---- sections nommées → repères de section -------------------------------------------------------------
+        // Les compositeurs et l'IA découpent déjà le morceau en sections PORTANT UN NOM lisible (« Intro »,
+        // « Thème », « Ré-exposition »… ; côté IA le modèle les rédige dans la langue de l'interface). Jusqu'ici ce
+        // nom ne vivait que dans la recette ; le bandeau de repères lui donne un endroit où s'afficher.
+
+        /// <summary>Pose un repère au DÉBUT de chaque section nommée. <paramref name="startBar"/> est un index de
+        /// mesure à base 0, relatif à <paramref name="baseBeats"/> (non nul quand on ajoute à la suite d'un morceau
+        /// existant). Chaque repère est recalé sur la vraie grille de barres via <see cref="SnapToBarline"/>, donc une
+        /// levée est respectée sans calcul côté appelant. Les sections sans nom sont ignorées (un fanion anonyme
+        /// n'apprend rien), et un repère déjà présent à la même barre n'est pas dupliqué — l'utilisateur a pu poser le
+        /// sien à la main, ou une régénération peut repasser par ici.</summary>
+        public static void AddSectionMarkers(TimelineProject p, System.Collections.Generic.IEnumerable<(string name, int startBar)> sections, double baseBeats = 0)
+        {
+            if (p == null || sections == null) return;
+            if (p.Markers == null) p.Markers = new System.Collections.Generic.List<SectionMarker>();
+            int bpb = Math.Max(1, RulerBeatsPerBar(p));
+            foreach (var s in sections)
+            {
+                if (string.IsNullOrWhiteSpace(s.name)) continue;
+                double beat = SnapToBarline(p, baseBeats + Math.Max(0, s.startBar) * (double)bpb);
+                bool already = false;
+                foreach (var m in p.Markers) if (m != null && Math.Abs(m.Beat - beat) < 1e-6) { already = true; break; }
+                if (!already) p.Markers.Add(new SectionMarker { Beat = beat, Name = s.name.Trim() });
+            }
+            p.Markers.Sort((a, b) => a.Beat.CompareTo(b.Beat));
+        }
+
+        /// <summary>Repères déduits de la recette persistante d'un morceau composé (<see cref="ComposedArrangement"/>).
+        /// Sans recette — morceau écrit à la main ou importé — il n'y a rien à poser et on ne touche à rien.</summary>
+        public static void AddSectionMarkersFromArrangement(TimelineProject p)
+        {
+            var secs = p?.Arrangement?.Sections;
+            if (secs == null || secs.Count == 0) return;
+            var list = new System.Collections.Generic.List<(string, int)>();
+            foreach (var s in secs) if (s != null) list.Add((s.Name, s.StartBar));
+            AddSectionMarkers(p, list);
+        }
+
         // Leading anacrusis remainder (in beats) of a motif of `totalBeats`, when a levée is set and the motif isn't
         // bar-aligned (e.g. 7 in 3/4 → 1). 0 when there's no levée (so non-anacrusis projects are untouched). Used to
         // trim the lead-in off DUPLICATED motifs — melodic line, chord rhythm, chord melodic cell.

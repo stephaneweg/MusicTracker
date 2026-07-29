@@ -73,13 +73,20 @@ namespace MusicTracker.Engine.AI
 
             // sections → measure→section map + section→articulation style
             var secOfMeasure = new Dictionary<int, string>();
+            // Les noms de section deviennent aussi des REPÈRES sur le bandeau : le modèle les rédige déjà dans la
+            // langue de l'interface, et c'est l'information la plus utile pour se repérer dans un morceau qu'on
+            // n'a pas écrit soi-même. En mode « développer » (append) on décale de baseBeats pour que les repères
+            // tombent sur les mesures réellement occupées, pas sur celles du morceau d'origine.
+            var markerSecs = new List<(string name, int startBar)>();
             int m = 1;
             foreach (var s in a.sections)
             {
                 int len = Math.Max(1, s.measures);
                 for (int k = 0; k < len; k++) secOfMeasure[m + k] = s.name;
+                markerSecs.Add((s.name, m - 1));   // startBar est à base 0
                 m += len;
             }
+            TimelineHelper.AddSectionMarkers(project, markerSecs, baseBeats);
             // Articulation per section: a CUSTOM voiced motif (preferred) built to note-rows, else a named built-in Style.
             const int artSpq = 4; // slices per temps for the custom chord grid
             var styleOfSection = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
