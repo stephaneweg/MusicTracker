@@ -880,5 +880,9 @@
   "RestartTonic": "Fondamentale",
   "RestartTierce": "Terza",
   "RestartQuinte": "Quinta",
-  "SupprimerCetAccord": "Elimina questo accordo"
+  "SupprimerCetAccord": "Elimina questo accordo",
+  "DupliquerLaPiste": "Duplica la traccia",
+  "MonterLaPiste": "Sposta su",
+  "DescendreLaPiste": "Sposta giù",
+  "TrackCopySuffix": "copia"
 }

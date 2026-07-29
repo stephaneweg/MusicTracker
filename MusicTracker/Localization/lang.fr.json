@@ -882,5 +882,9 @@
   "ZoomFitTip": "Ajuster le zoom pour voir tout le morceau",
   "ZoomInTip": "Zoomer (Ctrl + molette)",
   "ZoomOutTip": "Dézoomer (Ctrl + molette)",
-  "ZoomResetTip": "Revenir à 100 %"
+  "ZoomResetTip": "Revenir à 100 %",
+  "DupliquerLaPiste": "Dupliquer la piste",
+  "MonterLaPiste": "Monter",
+  "DescendreLaPiste": "Descendre",
+  "TrackCopySuffix": "copie"
 }

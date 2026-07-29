@@ -880,5 +880,9 @@
   "RestartTonic": "Grondtoon",
   "RestartTierce": "Terts",
   "RestartQuinte": "Kwint",
-  "SupprimerCetAccord": "Dit akkoord verwijderen"
+  "SupprimerCetAccord": "Dit akkoord verwijderen",
+  "DupliquerLaPiste": "De track dupliceren",
+  "MonterLaPiste": "Omhoog",
+  "DescendreLaPiste": "Omlaag",
+  "TrackCopySuffix": "kopie"
 }

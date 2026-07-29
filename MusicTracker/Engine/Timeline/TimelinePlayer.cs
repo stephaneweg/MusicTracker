@@ -32,6 +32,13 @@ namespace MusicTracker.Engine.Timeline
             public double BaseVol = 1.0;
             public double Mix = 1.0;                 // mute/solo factor (0 = silent), applied on top of the gain
             public List<VolumePoint> Autom;
+            // La piste de projet dont cette voix a été construite. Les valeurs de mixage (volume / pan / mute /
+            // solo / réverbe) y sont lues EN DIRECT à chaque buffer — mais par cette référence, jamais par un
+            // index dans project.Tracks : le thread d'interface peut insérer, échanger ou retirer une piste
+            // pendant la lecture (dupliquer / monter / descendre / supprimer), et un index désignerait alors une
+            // autre piste (mauvais mixage) voire lèverait ArgumentOutOfRangeException sur le thread de
+            // pré-rendu — où LookaheadBuffer.Produce n'a pas de try/catch, donc arrêt du processus.
+            public TimelineTrack Src;
         }
 
         readonly int sampleRate;
@@ -179,6 +186,7 @@ namespace MusicTracker.Engine.Timeline
                     BaseVol = tr.Volume,
                     Mix = (tr.Mute || (anySolo && !tr.Solo)) ? 0.0 : 1.0,
                     Autom = (tr.VolumeAutomation != null ? tr.VolumeAutomation.OrderBy(p => p.Beat).ToList() : new List<VolumePoint>()),
+                    Src = tr,
                 };
                 double cursor = 0;
                 var carry = new[] { -1, -1, -1, -1, -1, -1, -1, -1, -1 };   // cross-module continuity per voice: [0..2] last pitch, [3..5] last downbeat, [6..8] its chord root
@@ -220,7 +228,8 @@ namespace MusicTracker.Engine.Timeline
                 int nextCh = 0;
                 for (int i = 0; i < tracks.Length; i++)
                 {
-                    var tr = project.Tracks[i];
+                    var tr = tracks[i].Src;   // jamais project.Tracks[i] : la liste peut être mutée par l'UI
+                    if (tr == null) continue;
                     bool isDrum = tr.Type == TimelineTrackType.Drum || tr.Instrument == InstrumentCatalog.DrumIndex;
                     trackProgram[i] = isDrum ? InstrumentCatalog.DrumIndex : Math.Max(0, Math.Min(127, tr.Instrument));
                     if (isDrum) { trackChannel[i] = synth.PercussionChannel; continue; } // ch 9: shared by all drum tracks
@@ -242,11 +251,15 @@ namespace MusicTracker.Engine.Timeline
         // (Re)send each melodic channel's GM program (drums keep the percussion bank). Sustained instruments
         // that have an "Expr." variant are routed to bank 17 with a CC2 dynamics level (MuseScore-style).
         // Called at setup and Start.
+        // Le paramètre `project` n'est plus lu : chaque voix connaît sa piste source (Track.Src). Indexer
+        // project.Tracks ici était faux dès qu'une piste avait été insérée / échangée / retirée pendant la
+        // lecture, et ApplyPrograms est rappelée à chaque Start().
         void ApplyPrograms(TimelineProject project)
         {
             for (int i = 0; i < tracks.Length; i++)
             {
-                var tr = project.Tracks[i];
+                var tr = tracks[i].Src;
+                if (tr == null) continue;
                 bool isDrum = tr.Type == TimelineTrackType.Drum || tr.Instrument == InstrumentCatalog.DrumIndex;
                 if (isDrum)
                 {
@@ -508,14 +521,16 @@ namespace MusicTracker.Engine.Timeline
         {
             double maxBoost = AppSettings.MaxBoostFactor;
             var settings = AppSettings.Instance;
-            // Read the mixer values LIVE from the project (volume / pan / mute / solo) so the mixer takes effect
-            // mid-playback (this runs every buffer). Falls back to the setup snapshot if a project track is missing.
-            var pt = melodyProject?.Tracks;
+            // Read the mixer values LIVE from each voice's SOURCE TRACK (volume / pan / mute / solo) so the mixer
+            // takes effect mid-playback (this runs every buffer). Par la référence Track.Src et NON par un index
+            // dans melodyProject.Tracks : cette liste est mutée par le thread d'interface (dupliquer / monter /
+            // descendre / supprimer une piste), un index y appliquerait le mixage à la mauvaise voix et
+            // l'indexation elle-même pourrait lever sur le thread de pré-rendu.
             bool anySolo = false;
-            if (pt != null) for (int i = 0; i < pt.Count; i++) if (pt[i] != null && pt[i].Solo) { anySolo = true; break; }
+            for (int i = 0; i < tracks.Length; i++) if (tracks[i].Src != null && tracks[i].Src.Solo) { anySolo = true; break; }
             for (int ti = 0; ti < tracks.Length; ti++)
             {
-                var p = (pt != null && ti < pt.Count) ? pt[ti] : null;
+                var p = tracks[ti].Src;
                 double baseVol = p != null ? p.Volume : tracks[ti].BaseVol;
                 double mix = p != null ? ((p.Mute || (anySolo && !p.Solo)) ? 0.0 : 1.0) : tracks[ti].Mix;
                 double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix; // mix == 0 -> muted / non-soloed

@@ -880,5 +880,9 @@
   "RestartTonic": "Grundton",
   "RestartTierce": "Terz",
   "RestartQuinte": "Quinte",
-  "SupprimerCetAccord": "Diesen Akkord löschen"
+  "SupprimerCetAccord": "Diesen Akkord löschen",
+  "DupliquerLaPiste": "Spur duplizieren",
+  "MonterLaPiste": "Nach oben",
+  "DescendreLaPiste": "Nach unten",
+  "TrackCopySuffix": "Kopie"
 }

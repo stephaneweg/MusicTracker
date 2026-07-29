@@ -138,7 +138,7 @@ namespace MusicTracker.Screens
             undoMgr.Changed += RaiseDirtyChanged;
             UpdateUndoButtons();
             // Référence de départ : un morceau neuf, auquel personne n'a touché, n'est pas « modifié ».
-            savedState = SnapshotState();
+            savedState = DocumentJson();
             PreviewKeyDown += TimelineKeyDown; // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (unless a text field has focus)
         }
 
@@ -1095,9 +1095,7 @@ namespace MusicTracker.Screens
         // A .sq file = the arrangement + the riffs it references (same idea as the graph's .graph).
         public bool Save(string path)
         {
-            var doc = new TimelineDocument { Project = project };
-            doc.Riffs.AddRange(project.Riffs);
-            string json = System.Text.Json.JsonSerializer.Serialize(doc, JsonOpts);
+            string json = DocumentJson();
             Engine.SafeFile.WriteAllText(path, json);   // atomique : ne détruit jamais le .sq existant
             CurrentPath = path;
             savedState = json;                          // référence pour « modifié depuis l'enregistrement »
@@ -1115,7 +1113,9 @@ namespace MusicTracker.Screens
             get
             {
                 if (savedState == null) return false;   // référence pas encore posée (construction en cours)
-                try { return SnapshotState() != savedState; }
+                // DocumentJson et non SnapshotState : la sélection ♫ fait partie de l'unité d'ANNULATION, pas du
+                // fichier — la cocher ne doit pas faire apparaître l'astérisque « modifié ».
+                try { return DocumentJson() != savedState; }
                 catch { return true; }   // dans le doute, on protège le travail plutôt que de fermer en silence
             }
         }
@@ -1284,18 +1284,42 @@ namespace MusicTracker.Screens
                 // Un document qui vient d'être chargé n'est pas « modifié » : on fige ici la référence.
                 // Pendant un undo/redo on ne la touche PAS — revenir à l'état enregistré doit bien effacer
                 // l'astérisque, et s'en éloigner doit le rendre.
-                savedState = SnapshotState();
+                savedState = DocumentJson();
             }
         }
 
         // ===== Undo / redo =====================================================================================
 
-        // Serialize the whole editor state (project + referenced riffs) exactly like a .sq save — the snapshot unit.
-        string SnapshotState()
+        // L'unité d'annulation = le document .sq PLUS la sélection ♫ de l'éditeur. Cette sélection vit dans
+        // `scoreTracks`, un ensemble de RÉFÉRENCES d'objets qu'ApplyDocument vide et que la désérialisation
+        // invalide (les pistes restaurées sont de NOUVEAUX objets) — elle doit donc voyager DANS l'instantané,
+        // par index de piste. Sans ça, annuler une suppression de piste rend la piste mais pas sa case ♫ (et,
+        // défaut préexistant, chaque Ctrl+Z décochait TOUTES les cases).
+        sealed class UndoSnapshot
+        {
+            public TimelineDocument Doc { get; set; }
+            public System.Collections.Generic.List<int> Score { get; set; } // index dans Doc.Project.Tracks
+        }
+
+        // Le DOCUMENT seul, sérialisé exactement comme un enregistrement .sq. C'est ce que Save écrit et la
+        // référence du drapeau « modifié » : la sélection ♫ n'appartient pas au fichier, la cocher ne doit donc
+        // pas rendre le morceau « modifié ».
+        string DocumentJson()
         {
             var doc = new TimelineDocument { Project = project };
             doc.Riffs.AddRange(project.Riffs);
             return System.Text.Json.JsonSerializer.Serialize(doc, JsonOpts);
+        }
+
+        // Serialize the whole editor state (project + referenced riffs + the ♫ selection) — the snapshot unit.
+        string SnapshotState()
+        {
+            var doc = new TimelineDocument { Project = project };
+            doc.Riffs.AddRange(project.Riffs);
+            var score = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < project.Tracks.Count; i++)
+                if (scoreTracks.Contains(project.Tracks[i])) score.Add(i);
+            return System.Text.Json.JsonSerializer.Serialize(new UndoSnapshot { Doc = doc, Score = score }, JsonOpts);
         }
 
         // Record the state BEFORE a structural mutation, keyed by op (call this JUST before mutating).
@@ -1348,10 +1372,17 @@ namespace MusicTracker.Screens
             try
             {
                 StopPlayback();
-                var doc = System.Text.Json.JsonSerializer.Deserialize<TimelineDocument>(json, JsonOpts) ?? new TimelineDocument();
-                ApplyDocument(doc, CurrentPath);
+                var snap = System.Text.Json.JsonSerializer.Deserialize<UndoSnapshot>(json, JsonOpts) ?? new UndoSnapshot();
+                ApplyDocument(snap.Doc ?? new TimelineDocument(), CurrentPath);   // vide scoreTracks
+                // Ré-cocher les ♫ par index : ApplyDocument vient de reconstruire project.Tracks dans l'ordre du
+                // document, et EnsureChordTrack n'a rien à repositionner (l'instantané venait d'un état où
+                // l'invariant « accords en dernier » était déjà vrai). Double garde-fou sur les bornes malgré tout.
+                if (snap.Score != null)
+                    foreach (int i in snap.Score)
+                        if (i >= 0 && i < project.Tracks.Count) scoreTracks.Add(project.Tracks[i]);
                 Render();
                 if (ScoreVisible) RefreshScore();
+                RefreshMixer();   // le mixeur est non modal : l'ordre/les pistes peuvent avoir changé
             }
             finally { restoringUndo = false; }
             UpdateUndoButtons();
@@ -1690,6 +1721,14 @@ namespace MusicTracker.Screens
                 return border;
             }
 
+            // Clic droit n'importe où sur un en-tête de piste : sélectionner cette piste, puis ouvrir le menu
+            // d'organisation. Posé ICI, avant les DEUX return de la méthode, donc valable pour l'en-tête replié,
+            // l'en-tête déplié ET l'en-tête de la piste d'accords dockée (RenderChordDock passe par la même
+            // méthode). PREVIEW + Handled pour qu'un enfant (zone de nom, combo, curseur) ne l'avale pas ni
+            // n'affiche son propre menu système ; sur le bouton RELÂCHÉ, comme ModuleBoxControl, sinon le menu se
+            // refermerait aussitôt.
+            border.PreviewMouseRightButtonUp += (s, e) => { e.Handled = true; SelectTrack(track); ShowTrackContextMenu(track, border); };
+
             var panel = new StackPanel();
             var top = new StackPanel { Orientation = Orientation.Horizontal };
             // Collapse / expand toggle (issue #5): shrinks this track's header + lane to a minimal height (title + button)
@@ -1708,6 +1747,9 @@ namespace MusicTracker.Screens
             top.Children.Add(famDot);
             var name = new TextBox { Text = track.Name, Width = 88, FontSize = 11 };
             name.LostFocus += (s, e) => track.Name = name.Text;
+            // Sur la zone de nom, c'est le menu système de la TextBox (Couper/Copier/Coller) qui s'ouvrirait :
+            // le neutraliser pour que le clic droit y donne le MÊME menu de piste qu'ailleurs sur l'en-tête.
+            name.ContextMenuOpening += (s, e) => e.Handled = true;
             top.Children.Add(name);
 
             // Collapsed: minimal header (expand button + colour dot + name), skip instrument/volume/mute controls.
@@ -1727,7 +1769,7 @@ namespace MusicTracker.Screens
             if (track.Type != TimelineTrackType.Chord)   // the chords track is permanent → no delete button
             {
                 var del = new Button { Content = "✕", Margin = new Thickness(4, 0, 0, 0), Cursor = Cursors.Hand, Style = (Style)FindResource("deleteIconButton"), ToolTip = Loc.T("SupprimerLaPiste") };
-                del.Click += (s, e) => { project.Tracks.Remove(track); scoreTracks.Remove(track); if (selectedTrack == track) selectedTrack = null; Render(); RefreshScore(); };
+                del.Click += (s, e) => DeleteTrack(track);   // même chemin que « Supprimer la piste » du menu contextuel (annulable)
                 top.Children.Add(del);
             }
             panel.Children.Add(top);
@@ -3978,7 +4020,134 @@ namespace MusicTracker.Screens
             selectedItem = null;
             CommitUndo(pre, "insert:" + Id(t));
             Render();
+            RefreshMixer();                              // le mixeur ouvert doit voir la nouvelle piste
         }
+
+        // ===== Organisation des pistes (dupliquer / monter / descendre / supprimer) =============================
+        // Toute la logique de MODÈLE est dans TimelineHelper (CloneTrack / CanMoveTrack / MoveTrack / CopyName) ;
+        // ici on n'orchestre que l'annulation, la sélection, le rendu, le mixeur et la partition.
+
+        /// <summary>Clic droit sur un en-tête de piste → les quatre commandes d'organisation. La piste d'accords a le
+        /// menu elle aussi, avec les quatre entrées GRISÉES : les montrer indisponibles est plus clair qu'un menu vide.</summary>
+        void ShowTrackContextMenu(TimelineTrack track, FrameworkElement anchor)
+        {
+            if (track == null) return;
+            bool organisable = track.Type != TimelineTrackType.Chord;   // la piste d'accords est permanente et épinglée
+            var menu = new ContextMenu();
+
+            var dup = new MenuItem { Header = Loc.T("DupliquerLaPiste"), IsEnabled = organisable };
+            dup.Click += (s, e) => DuplicateTrack(track);
+            var up = new MenuItem { Header = Loc.T("MonterLaPiste"), IsEnabled = TimelineHelper.CanMoveTrack(project, track, -1) };
+            up.Click += (s, e) => MoveTrackBy(track, -1);
+            var down = new MenuItem { Header = Loc.T("DescendreLaPiste"), IsEnabled = TimelineHelper.CanMoveTrack(project, track, +1) };
+            down.Click += (s, e) => MoveTrackBy(track, +1);
+            var del = new MenuItem { Header = Loc.T("SupprimerLaPiste"), IsEnabled = organisable };
+            del.Click += (s, e) => DeleteTrack(track);
+
+            menu.Items.Add(dup);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(up);
+            menu.Items.Add(down);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(del);
+            menu.PlacementTarget = anchor;
+            menu.IsOpen = true;
+        }
+
+        /// <summary>« Dupliquer la piste » : une copie complète et INDÉPENDANTE, insérée juste en dessous, sélectionnée.</summary>
+        void DuplicateTrack(TimelineTrack track)
+        {
+            if (track == null || track.Type == TimelineTrackType.Chord) return;
+            CommitRiffEditor();                       // ce qui était en cours d'édition est validé d'abord
+            // BeginUndo AVANT CloneTrack : l'instantané pré-duplication ne contient donc pas les riffs neufs, et
+            // annuler les fait disparaître (ApplyDocument reconstruit project.Riffs depuis l'instantané) — le
+            // fichier réenregistré après annulation n'est pas plus lourd qu'avant.
+            string pre = BeginUndo();
+            var copy = TimelineHelper.CloneTrack(project, track);
+            if (copy == null) return;
+            copy.Name = TimelineHelper.CopyName(project, track.Name, Loc.T("TrackCopySuffix"));
+            project.Tracks.Insert(project.Tracks.IndexOf(track) + 1, copy);
+            TimelineHelper.EnsureChordTrack(project);                 // la piste d'accords reste épinglée en bas
+            if (scoreTracks.Contains(track)) scoreTracks.Add(copy);   // l'état ♫ suit la copie
+            selectedTrack = copy;                                     // la copie devient la piste sélectionnée…
+            // …mais selectedItem / editorHost restent sur le bloc d'ORIGINE : l'éditeur du bas continue de
+            // l'afficher et reste éditable (rien de perdu).
+            CommitUndo(pre, "track:dup");   // clé volontairement SANS préfixe insert:/move:/edit:/vol:/delete:
+            Render();
+            ScrollTrackIntoViewLater(copy);
+            RefreshMixer();
+            if (ScoreVisible) RefreshScore();
+        }
+
+        /// <summary>« Monter » / « Descendre » : échange avec la voisine. Neutre pour le son (mêmes blocs, mêmes
+        /// positions) ; seul l'ordre d'affichage, du mixeur et des portées suit.</summary>
+        void MoveTrackBy(TimelineTrack track, int delta)
+        {
+            if (!TimelineHelper.CanMoveTrack(project, track, delta)) return;
+            CommitRiffEditor();
+            PushUndo("track:move");         // une entrée par déplacement : clé NON préfixée « move: » → jamais fusionnée
+            TimelineHelper.MoveTrack(project, track, delta);
+            selectedTrack = track;          // la piste déplacée reste sélectionnée
+            Render();
+            ScrollTrackIntoViewLater(track);
+            RefreshMixer();
+            if (ScoreVisible) RefreshScore();   // l'ordre des portées suit l'ordre des pistes
+        }
+
+        /// <summary>« Supprimer la piste » — partagé par la croix ✕ de l'en-tête et le menu contextuel. DÉSORMAIS
+        /// ANNULABLE (Ctrl+Z restitue la piste à sa place, avec ses blocs, ses réglages et sa case ♫).</summary>
+        void DeleteTrack(TimelineTrack track)
+        {
+            if (track == null || track.Type == TimelineTrackType.Chord) return;
+            CommitRiffEditor();
+            PushUndo("track:del");          // capture AVANT le retrait ; clé non préfixée « delete: » → aucune neutralisation
+            project.Tracks.Remove(track);
+            scoreTracks.Remove(track);
+            if (selectedTrack == track) selectedTrack = null;
+            // L'éditeur du bas peut être ouvert sur un bloc de la piste supprimée : le vider et débrancher
+            // l'éditeur de riff, sinon RefreshEditedRiffBox re-calerait plus tard une piste qui n'existe plus.
+            if (selectedItem != null && track.Items != null && track.Items.Contains(selectedItem))
+            {
+                selectedItem = null;
+                riffEditItem = null; riffEditTrack = null; riffDirty = false;
+                editorHost.Content = null;
+                txtEditorTitle.Text = Loc.T("Editeur");
+            }
+            Render();
+            RefreshMixer();
+            RefreshScore();                 // retire la portée, ou ramène l'éditeur de module si plus aucune ♫
+        }
+
+        // ---- défilement vertical vers une piste ---------------------------------------------------------------
+
+        /// <summary>Amène la ligne d'une piste dans la vue, VERTICALEMENT. Toujours piloter laneScroll :
+        /// laneScroll_ScrollChanged recopie son offset sur headerScroll — faire défiler headerScroll directement
+        /// désynchroniserait les deux moitiés.</summary>
+        void ScrollTrackIntoView(TimelineTrack track)
+        {
+            if (track == null || laneScroll == null) return;
+            if (track.Type == TimelineTrackType.Chord) return;              // la lane d'accords est dockée, toujours visible
+            double y = TempoH + (IsComposedArrangement() ? ChordH : 0);     // lignes dessinées avant les pistes
+            foreach (var t in project.Tracks)
+            {
+                if (t == track) break;
+                if (t.Type == TimelineTrackType.Chord) continue;
+                y += TrackRowH(t);
+            }
+            double h = TrackRowH(track), top = laneScroll.VerticalOffset, view = laneScroll.ViewportHeight;
+            if (y < top) laneScroll.ScrollToVerticalOffset(y);
+            else if (y + h > top + view) laneScroll.ScrollToVerticalOffset(Math.Max(0, y + h - view));
+        }
+
+        // Juste après Render(), l'étendue du ScrollViewer est encore l'ANCIENNE (la mise en page n'a pas tourné) et
+        // une demande de défilement serait bornée à un maximum périmé. On diffère donc après la mise en page.
+        void ScrollTrackIntoViewLater(TimelineTrack track)
+            => Dispatcher.BeginInvoke(new Action(() => ScrollTrackIntoView(track)),
+                                      System.Windows.Threading.DispatcherPriority.Loaded);
+
+        /// <summary>Le mixeur est NON MODAL : ajout / retrait / réordonnancement de pistes peuvent survenir pendant
+        /// qu'il est ouvert, et sa liste source est une List&lt;T&gt; nue (aucune notification de collection).</summary>
+        void RefreshMixer() { try { mixerWindow?.RefreshTracks(); } catch { mixerWindow = null; } }
 
         // Insert a chord module — ALWAYS into the chords track (no need to select it first).
         void AppendChord(FlowModule m)

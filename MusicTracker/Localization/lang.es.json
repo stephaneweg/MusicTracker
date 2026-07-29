@@ -880,5 +880,9 @@
   "RestartTonic": "Fundamental",
   "RestartTierce": "Tercera",
   "RestartQuinte": "Quinta",
-  "SupprimerCetAccord": "Eliminar este acorde"
+  "SupprimerCetAccord": "Eliminar este acorde",
+  "DupliquerLaPiste": "Duplicar la pista",
+  "MonterLaPiste": "Subir",
+  "DescendreLaPiste": "Bajar",
+  "TrackCopySuffix": "copia"
 }

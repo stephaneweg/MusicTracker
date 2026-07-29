@@ -892,5 +892,9 @@
   "RestartTonic": "Root",
   "RestartTierce": "Third",
   "RestartQuinte": "Fifth",
-  "SupprimerCetAccord": "Delete this chord"
+  "SupprimerCetAccord": "Delete this chord",
+  "DupliquerLaPiste": "Duplicate the track",
+  "MonterLaPiste": "Move up",
+  "DescendreLaPiste": "Move down",
+  "TrackCopySuffix": "copy"
 }

@@ -16,10 +16,23 @@ namespace MusicTracker.Dialogs
     /// </summary>
     public partial class MixerDialog : Window
     {
+        readonly TimelineProject project;
+
         public MixerDialog(TimelineProject project, Window owner)
         {
             InitializeComponent();
             Owner = owner;
+            this.project = project;
+            list.ItemsSource = project?.Tracks;
+        }
+
+        /// <summary>Relire la liste des pistes après que la timeline en a ajouté, retiré ou réordonné une.
+        /// <c>Tracks</c> est une <c>List</c> nue (aucune notification de collection) : il faut réaffecter
+        /// l'ItemsSource, sinon le mixeur garde l'ordre d'avant et laisse une ligne fantôme pour une piste
+        /// supprimée. Le dialogue est non modal, donc le cas se produit vraiment.</summary>
+        public void RefreshTracks()
+        {
+            list.ItemsSource = null;
             list.ItemsSource = project?.Tracks;
         }
 

@@ -242,6 +242,90 @@ namespace MusicTracker.Engine.Timeline
             if (project.Tracks[project.Tracks.Count - 1] != chord) { project.Tracks.Remove(chord); project.Tracks.Add(chord); }
         }
 
+        // ---- organisation des pistes : dupliquer / réordonner ---------------------------------------------------
+        // Opérations de MODÈLE seulement (aucun texte d'interface, aucune dépendance à Loc) : l'écran orchestre
+        // l'annulation, la sélection, le rendu, le mixeur et la partition.
+
+        // Options de COPIE PROFONDE. TimelineTrack, TimelineItem, les modules ET les notes de riff (RiffNote est
+        // une STRUCT à champs publics) portent l'essentiel de leur contenu dans des CHAMPS PUBLICS — que
+        // System.Text.Json ignore PAR DÉFAUT. IncludeFields = true est donc OBLIGATOIRE : c'est exactement
+        // l'option de l'enregistrement .sq (TimelineScreen.JsonOpts). Sans elle on obtient, SANS AUCUNE ERREUR,
+        // une piste vide et des riffs sans notes.
+        // NB : ne pas se rabattre sur Riff.Clone(), qui sérialise avec les options PAR DÉFAUT et perd donc les
+        // notes (elles sont en champs) — voir le rapport de cette fonctionnalité.
+        static readonly System.Text.Json.JsonSerializerOptions CloneOpts =
+            new System.Text.Json.JsonSerializerOptions { IncludeFields = true };
+
+        /// <summary>Copie profonde par aller-retour JSON, avec les options qui incluent les champs.</summary>
+        static T DeepCopy<T>(T src)
+            => System.Text.Json.JsonSerializer.Deserialize<T>(System.Text.Json.JsonSerializer.Serialize(src, CloneOpts), CloneOpts);
+
+        /// <summary>Copie profonde et INDÉPENDANTE d'une piste : tous ses blocs aux mêmes positions, tous ses
+        /// réglages, et un riff NEUF (nouvel Id, MÊME nom) pour chaque bloc « joue un riff » — c'est ce qui garantit
+        /// qu'éditer la copie ne touche jamais l'original (le point de la commande). Les riffs neufs sont ajoutés au
+        /// projet ; la piste, elle, n'est PAS insérée : l'appelant la place et la nomme. null si la source est nulle.</summary>
+        public static TimelineTrack CloneTrack(TimelineProject project, TimelineTrack src)
+        {
+            if (project == null || src == null) return null;
+            var copy = DeepCopy(src);
+            if (copy?.Items == null) return copy;
+            foreach (var it in copy.Items)
+            {
+                if (it?.Module == null) continue;
+                it.Module.Id = Guid.NewGuid();                     // identifiants de modules uniques dans le projet
+                if (!(it.Module is PlayRiffModule pr)) continue;   // les autres modules portent leur contenu en propre
+                var srcRiff = project.RiffById(pr.RiffId);
+                if (srcRiff == null) continue;                     // référence pendante : on la laisse telle quelle
+                var r = DeepCopy(srcRiff);
+                if (r == null) continue;
+                r.Id = Guid.NewGuid();                             // la copie a son propre identifiant…
+                r.Name = srcRiff.Name;                             // …mais l'étiquette du bloc reste IDENTIQUE
+                project.Riffs.Add(r);
+                pr.RiffId = r.Id;
+            }
+            return copy;
+        }
+
+        /// <summary>Cette piste peut-elle échanger sa place avec sa voisine (delta = -1 monter, +1 descendre) ?
+        /// Faux pour la piste d'accords épinglée, aux extrémités de la liste, et quand la voisine du dessous EST la
+        /// piste d'accords (rien ne passe jamais sous elle). Source unique de vérité : le menu grise avec, la
+        /// mutation se garde avec.</summary>
+        public static bool CanMoveTrack(TimelineProject p, TimelineTrack t, int delta)
+        {
+            if (p?.Tracks == null || t == null || t.Type == TimelineTrackType.Chord || delta == 0) return false;
+            int i = p.Tracks.IndexOf(t), j = i + Math.Sign(delta);
+            return i >= 0 && j >= 0 && j < p.Tracks.Count && p.Tracks[j].Type != TimelineTrackType.Chord;
+        }
+
+        /// <summary>Échange la piste avec sa voisine. Retourne false — et ne change rien — quand c'est interdit.</summary>
+        public static bool MoveTrack(TimelineProject p, TimelineTrack t, int delta)
+        {
+            if (!CanMoveTrack(p, t, delta)) return false;
+            int i = p.Tracks.IndexOf(t), j = i + Math.Sign(delta);
+            p.Tracks[i] = p.Tracks[j];
+            p.Tracks[j] = t;
+            return true;
+        }
+
+        /// <summary>« Mélodie » → « Mélodie (copie) », puis « (copie 2) », « (copie 3) »… jusqu'à un nom libre dans le
+        /// projet. <paramref name="word"/> est le mot LOCALISÉ (« copie » / « copy » / « Kopie »…), passé par
+        /// l'appelant pour que ce fichier reste sans chaîne d'interface.</summary>
+        public static string CopyName(TimelineProject p, string baseName, string word)
+        {
+            string b = baseName ?? "";
+            string candidate = b + " (" + word + ")";
+            for (int n = 2; NameTaken(p, candidate); n++) candidate = b + " (" + word + " " + n + ")";
+            return candidate;
+        }
+
+        static bool NameTaken(TimelineProject p, string name)
+        {
+            if (p?.Tracks == null) return false;
+            foreach (var t in p.Tracks)
+                if (t != null && string.Equals(t.Name, name, StringComparison.Ordinal)) return true;
+            return false;
+        }
+
         // Per-bar chord degrees from the first timeline track that carries chord objects (PatternGeneratorModule /
         // CadenceModule), looped/truncated to `bars`. null if no chord track exists.
         public static List<(int rootPc, int quality)> FindChordSource(TimelineProject project, out TimelineTrack track, int bars, int barSlices)
