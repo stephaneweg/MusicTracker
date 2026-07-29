@@ -215,6 +215,17 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Zoom step button. iconButton has NO IsEnabled=False trigger, so − / + would stay bright at the bounds:
+             this local style adds the greying-out the spec asks for. -->
+        <Style x:Key="ZoomStepBtn" TargetType="Button" BasedOn="{StaticResource iconButton}">
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.3"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="SoloToggle" TargetType="ToggleButton" BasedOn="{StaticResource MuteToggle}">
             <Setter Property="Template">
                 <Setter.Value>
@@ -248,7 +259,12 @@
 
         <!-- Transport bar (DAW-style: transport · tempo · tonalité · mesure · levée · actions) -->
         <Border Grid.Row="0" Background="{StaticResource DarkBackground}" BorderBrush="{StaticResource CommonBorderBrush}" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
+            <!-- WrapPanel, not StackPanel: a horizontal StackPanel silently pushes its tail OUT OF THE WINDOW on a
+                 narrow screen. At 1280 that already hid "Mixer" and "Importer…" (and broke the two guided-tour steps
+                 that spotlight them). Wrapping keeps every command reachable at any width, each item at its natural
+                 size — unlike ReflowButtons, which forces uniform cells and suits equal-sized hero tiles, not a
+                 toolbar mixing 30 px round buttons with menus. The row is Height="auto", so the bar just gets taller. -->
+            <WrapPanel Orientation="Horizontal" Margin="8,6" VerticalAlignment="Center">
                 <Button x:Name="btnSaveMusic" Content="{loc:Tr 'Save'}" Click="btnSaveMusic_Click" Padding="10,4" Margin="0,0,3,0" Cursor="Hand" ToolTip="{loc:Tr 'SaveThePieceSq'}" AutomationProperties.AutomationId="BtnSaveMusic"/>
                 <!-- Enregistrer sous : sans lui, un morceau déjà enregistré ne peut plus être écrit ailleurs —
                      impossible d'en dériver une variante sans écraser l'original. -->
@@ -333,6 +349,26 @@
                         </Grid>
                     </Border>
                 </Popup>
+                <!-- Zoom horizontal de la timeline (affichage seul : rien n'est écrit dans le morceau, rien dans
+                     l'historique d'annulation). Le libellé de niveau est un Button : cliquable (retour à 100 %) et
+                     son Content est lu comme Name UIA par le harnais de test. -->
+                <!-- No "Zoom" caption inside the chip: the − / % / + triplet is self-evident, every element has a
+                     tooltip, and the chip itself is labelled — that buys back ~40 px on a bar that was already tight
+                     at 1280 before this feature existed. -->
+                <Border Style="{StaticResource ToolChip}" Padding="4,1" ToolTip="{loc:Tr 'Zoom'}">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="btnZoomOut" Content="−" Style="{StaticResource ZoomStepBtn}" Click="btnZoomOut_Click"
+                                ToolTip="{loc:Tr 'ZoomOutTip'}" AutomationProperties.AutomationId="BtnZoomOut"/>
+                        <Button x:Name="txtZoomLevel" Content="100 %" Style="{StaticResource ZoomStepBtn}" MinWidth="42"
+                                Click="btnZoomLevel_Click" ToolTip="{loc:Tr 'ZoomResetTip'}"
+                                AutomationProperties.AutomationId="BtnZoomLevel"/>
+                        <Button x:Name="btnZoomIn" Content="+" Style="{StaticResource ZoomStepBtn}" Click="btnZoomIn_Click"
+                                ToolTip="{loc:Tr 'ZoomInTip'}" AutomationProperties.AutomationId="BtnZoomIn"/>
+                        <Button x:Name="btnZoomFit" Content="{loc:Tr 'ZoomFit'}" Style="{StaticResource ZoomStepBtn}" Margin="4,0,0,0"
+                                Click="btnZoomFit_Click" ToolTip="{loc:Tr 'ZoomFitTip'}"
+                                AutomationProperties.AutomationId="BtnZoomFit"/>
+                    </StackPanel>
+                </Border>
                 <Border Width="1" Background="{StaticResource SubtleBorderBrush}" Margin="2,4,12,4"/>
 
                 <!-- Action menus (less dense than a row of buttons). "Insérer" adapts to the selected track type. -->
@@ -370,7 +406,7 @@
                 </Menu>
                 <Border Width="1" Background="{StaticResource SubtleBorderBrush}" Margin="12,4"/>
                 <Button x:Name="btnImport" Content="{loc:Tr 'Import2'}" Click="btnImport_Click" Padding="8,4" Cursor="Hand" ToolTip="{loc:Tr 'ImportAMIDIOrMuseScoreFile'}"/>
-            </StackPanel>
+            </WrapPanel>
         </Border>
 
         <!-- Lanes area: the scrollable tracks (which grow/shrink with the splitter) plus the permanent, content-height
@@ -437,9 +473,14 @@
                 <ScrollViewer x:Name="laneScroll" Grid.Row="1" Grid.Column="1"
                               VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible"
                               Style="{StaticResource CornerlessScroll}" ScrollChanged="laneScroll_ScrollChanged">
+                    <!-- HorizontalAlignment=Left on lanePanel: when the piece is NARROWER than the viewport (routine
+                         once the timeline can be zoomed out), a Stretch panel holding explicitly-sized lanes gets
+                         centred by WPF, so the modules would drift right of their own measures on the ruler. -->
                     <Grid>
-                        <StackPanel x:Name="lanePanel"/>
+                        <StackPanel x:Name="lanePanel" HorizontalAlignment="Left"/>
                         <!-- playback cursor overlay (scrolls horizontally with the lanes) -->
+                        <!-- cursorCanvas keeps the default Stretch: it has NO explicit Width, so it is not affected
+                             by the centring trap, and its origin is x=0 either way. -->
                         <Canvas x:Name="cursorCanvas" IsHitTestVisible="False"/>
                     </Grid>
                 </ScrollViewer>
@@ -454,7 +495,8 @@
                 </Grid.ColumnDefinitions>
                 <ContentControl Grid.Column="0" x:Name="chordHeaderHost" Background="{StaticResource DarkBackground}"/>
                 <ScrollViewer Grid.Column="1" x:Name="chordScroll" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Hidden">
-                    <StackPanel x:Name="chordLanePanel"/>
+                    <!-- Left, for the same reason as lanePanel: the docked chords lane must stay glued to the ruler. -->
+                    <StackPanel x:Name="chordLanePanel" HorizontalAlignment="Left"/>
                 </ScrollViewer>
             </Grid>
 

@@ -166,6 +166,11 @@ namespace MusicTracker
         /// up to ~24576 = max reasoning. Only applied to Gemini 2.5 models.</summary>
         public int AiThinkingBudget { get; set; } = -1;
 
+        /// <summary>Dernier niveau de zoom horizontal de l'éditeur de morceau, en FACTEUR (1.0 = 100 %).
+        /// Réglage de confort d'affichage : il n'appartient PAS au morceau (jamais écrit dans un .sq).
+        /// Sert de niveau de départ aux onglets ouverts ensuite. Valeur inconnue → ramenée au cran le plus proche.</summary>
+        public double TimelineZoom { get; set; } = 1.0;
+
         // ---- persistence -----------------------------------------------------------
 
         public void Save()

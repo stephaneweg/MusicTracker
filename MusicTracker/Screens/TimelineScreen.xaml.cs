@@ -29,7 +29,24 @@ namespace MusicTracker.Screens
         const double LaneH = 88, TempoH = 40, VolLaneH = 48, HeaderW = 160, ChordH = 26;
         const double CollapsedH = 26; // a collapsed track shrinks header + lane to this minimal height (issue #5)
         const double MarkerLaneH = 18; // the section-marker band, above the 20px ruler (both inside rulerScroll)
-        const double PxPerBeat = 60; // box width per beat (a 4/4 measure ≈ 240 px); RiffThumbnail must match
+        const double BasePxPerBeat = 60; // REFERENCE scale = 100 % zoom (a 4/4 measure ≈ 240 px); RiffThumbnail renders at this value
+
+        // ---- horizontal zoom (display only: never written to the .sq, never in the undo history) ----
+        /// <summary>Zoom steps, as factors of <see cref="BasePxPerBeat"/>. 100 % = index 6 = the historical display.</summary>
+        static readonly double[] ZoomLevels = { 0.10, 0.15, 0.25, 0.35, 0.50, 0.75, 1.00, 1.50, 2.00, 3.00, 4.00 };
+        const int ZoomDefaultIdx = 6;   // 100 %
+        const double MaxLaneWidth = 1_000_000; // WPF canvas-width guard: past this the "+" button disables instead
+        int zoomIdx = ZoomDefaultIdx;   // UI state: per tab, NOT serialized and NOT undoable
+        int pendingZoomIdx = -1;        // step awaiting the debounced re-render (-1 = none)
+        double zoomAnchorBeat;          // musical time to keep under the anchor point
+        double zoomAnchorViewX;         // its position, in px, inside laneScroll's viewport
+        System.Windows.Threading.DispatcherTimer zoomTimer; // 50 ms debounce: one Render per wheel burst
+        double Zoom => ZoomLevels[Math.Max(0, Math.Min(ZoomLevels.Length - 1, zoomIdx))];
+
+        /// <summary>Pixels per beat AT THE CURRENT ZOOM. Single point of the feature: every timeline geometry
+        /// (ruler, marker band, boxes, tempo/volume lanes, chord trame, cursor & handles, px→beat conversions)
+        /// already goes through this symbol, so the whole editor scales without touching those call sites.</summary>
+        double PxPerBeat => BasePxPerBeat * Zoom;
 
         bool autoTransposeChords;        // chord lane: when on, editing a chord also transposes the melody (else only bass+accompaniment)
         readonly TimelineProject project = new TimelineProject();
@@ -105,6 +122,15 @@ namespace MusicTracker.Screens
                 markerLane.MarkerDropped += MarkerDrop;
                 markerLane.ContextRequested += ShowMarkerContextMenu;
             }
+
+            // Horizontal zoom: start at the level the APP remembers (per-tab from then on). An unknown/corrupt
+            // settings value falls back to 100 %, i.e. the historical display. Ctrl+wheel is wired on exactly the
+            // three time viewports (never on headerScroll, the bottom editor or the toolbar).
+            zoomIdx = ClampZoomIdx(NearestZoomIdx(AppSettings.Instance.TimelineZoom));
+            rulerScroll.PreviewMouseWheel += Timeline_PreviewMouseWheel;
+            laneScroll.PreviewMouseWheel += Timeline_PreviewMouseWheel;
+            if (chordScroll != null) chordScroll.PreviewMouseWheel += Timeline_PreviewMouseWheel;
+            UpdateZoomUi();
 
             Loaded += (s, e) => { Render(); EnsureCursor(); };
 
@@ -939,6 +965,133 @@ namespace MusicTracker.Screens
             return end;
         }
 
+        // ---- horizontal zoom (display only) ------------------------------------------------------------------
+        // Everything drawn against time reads PxPerBeat, so a Render() at a new zoomIdx rescales the WHOLE
+        // timeline (ruler, marker band, boxes, tempo/volume lanes, chord trame, cursor, handles) at once. The
+        // zoom is UI state: no undo entry, nothing written to the .sq, and each tab has its own level.
+
+        /// <summary>Highest step reachable without exceeding <see cref="MaxLaneWidth"/> for THIS piece's length
+        /// (a several-hundred-bar piece at 400 % must degrade by disabling "+", never by building a monstrous canvas).</summary>
+        int MaxZoomIdx()
+        {
+            double beats = Math.Max(1, TotalBeats());
+            for (int i = ZoomLevels.Length - 1; i > 0; i--)
+                if (beats * BasePxPerBeat * ZoomLevels[i] <= MaxLaneWidth) return i;
+            return 0;
+        }
+
+        int ClampZoomIdx(int i) => Math.Max(0, Math.Min(MaxZoomIdx(), i));
+
+        /// <summary>Nearest step to a stored FACTOR (settings.json keeps the factor, not the index, so an older or
+        /// corrupt file stays interpretable). Unknown / ≤ 0 / NaN → 100 %.</summary>
+        static int NearestZoomIdx(double factor)
+        {
+            if (double.IsNaN(factor) || double.IsInfinity(factor) || factor <= 0) return ZoomDefaultIdx;
+            int best = ZoomDefaultIdx; double bestD = double.MaxValue;
+            for (int i = 0; i < ZoomLevels.Length; i++)
+            {
+                double d = Math.Abs(ZoomLevels[i] - factor);
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            return best;
+        }
+
+        /// <summary>Contract: after application, musical time <paramref name="anchorBeat"/> sits
+        /// <paramref name="anchorViewX"/> px from the left edge of the visible area. The level (hence the label and
+        /// the button states) changes at once; the re-render is debounced so a wheel burst costs ONE Render.</summary>
+        void RequestZoom(int newIdx, double anchorBeat, double anchorViewX)
+        {
+            newIdx = ClampZoomIdx(newIdx);
+            if (newIdx == zoomIdx && pendingZoomIdx < 0) return;
+            // FIRST step of a burst only: at later steps the caller computed anchorBeat with an already-changed
+            // (but not yet rendered) PxPerBeat, so that value is wrong and must be ignored.
+            if (pendingZoomIdx < 0) { zoomAnchorBeat = anchorBeat; zoomAnchorViewX = anchorViewX; }
+            pendingZoomIdx = newIdx;
+            zoomIdx = newIdx;
+            UpdateZoomUi();
+            if (zoomTimer == null)
+            {
+                zoomTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+                zoomTimer.Tick += (s, e) => ApplyPendingZoom();
+            }
+            zoomTimer.Stop(); zoomTimer.Start();
+        }
+
+        void ApplyPendingZoom()
+        {
+            zoomTimer?.Stop();
+            if (pendingZoomIdx < 0) return;
+            pendingZoomIdx = -1;
+
+            Render();                    // redraws everything at the new scale
+            laneScroll.UpdateLayout();   // MANDATORY: Render() emptied lanePanel, so ScrollableWidth is still stale
+                                         // and ScrollToHorizontalOffset would be silently clamped to 0.
+            // WPF clamps the offset to [0, ScrollableWidth] itself -> "never before the start nor past the end".
+            laneScroll.ScrollToHorizontalOffset(zoomAnchorBeat * PxPerBeat - zoomAnchorViewX);
+            // rulerScroll (ruler + marker band) and chordScroll follow through laneScroll_ScrollChanged: the zoom
+            // drives ONE viewport, never a fourth synchronisation point.
+
+            AppSettings.Instance.TimelineZoom = Zoom;   // app-level memory: the next tab opens at this level
+            AppSettings.Instance.Save();
+        }
+
+        // Musical time at the CENTRE of the visible area — the anchor for the toolbar commands (§3.3).
+        double CentreBeat()
+        {
+            double px = PxPerBeat;
+            if (px <= 0 || laneScroll == null) return 0;
+            return (laneScroll.HorizontalOffset + laneScroll.ViewportWidth / 2) / px;
+        }
+
+        void btnZoomOut_Click(object sender, RoutedEventArgs e) => RequestZoom(zoomIdx - 1, CentreBeat(), laneScroll.ViewportWidth / 2);
+        void btnZoomIn_Click(object sender, RoutedEventArgs e) => RequestZoom(zoomIdx + 1, CentreBeat(), laneScroll.ViewportWidth / 2);
+        void btnZoomLevel_Click(object sender, RoutedEventArgs e) => RequestZoom(ZoomDefaultIdx, CentreBeat(), laneScroll.ViewportWidth / 2);
+
+        // "Ajuster": the LARGEST predefined step at which the whole piece fits the visible lane width — never
+        // above 100 % (§3.4), and 10 % without any error message when even that is not enough.
+        void btnZoomFit_Click(object sender, RoutedEventArgs e)
+        {
+            bool empty = true;
+            foreach (var t in project.Tracks) if (t.Items.Count > 0) { empty = false; break; }
+            if (empty) return;                            // empty project: nothing visible to fit
+
+            double avail = laneScroll.ViewportWidth;
+            if (avail < 50) return;                       // not laid out yet
+            double beats = Math.Max(1, TotalBeats());     // already includes TotalBeats()'s +8 beats of slack
+
+            int idx = 0;
+            for (int i = ZoomDefaultIdx; i >= 0; i--)
+                if (beats * BasePxPerBeat * ZoomLevels[i] <= avail) { idx = i; break; }
+
+            // Already at that step (e.g. a very long piece pinned at 10 %): RequestZoom would no-op, so honour the
+            // "the whole piece becomes visible" part by going back to the start ourselves.
+            if (idx == zoomIdx && pendingZoomIdx < 0) { laneScroll.ScrollToHorizontalOffset(0); return; }
+            RequestZoom(idx, 0, 0);                       // anchor = start of the piece
+        }
+
+        /// <summary>Refresh the zoom chip (level label + border states). Called by UpdateToolbar (hence by every
+        /// Render), so the upper bound follows the piece's length.</summary>
+        void UpdateZoomUi()
+        {
+            if (txtZoomLevel == null) return;
+            txtZoomLevel.Content = (int)Math.Round(Zoom * 100) + " %";  // same format in all 7 languages
+            if (btnZoomOut != null) btnZoomOut.IsEnabled = zoomIdx > 0;
+            if (btnZoomIn != null) btnZoomIn.IsEnabled = zoomIdx < MaxZoomIdx();
+        }
+
+        // Ctrl + wheel over the ruler / the lanes / the docked chords lane: one step per notch, anchored on the
+        // musical position UNDER THE POINTER. Wheel WITHOUT Ctrl is left completely alone (we return before
+        // touching e.Handled), and the track headers are deliberately not subscribed.
+        void Timeline_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+            var sv = sender as ScrollViewer; if (sv == null) return;
+            e.Handled = true;                                  // don't let the ScrollViewer scroll as well
+            double vx = e.GetPosition(sv).X;                   // px from the viewport's left edge
+            double beat = PxPerBeat > 0 ? (sv.HorizontalOffset + vx) / PxPerBeat : 0;
+            RequestZoom(zoomIdx + (e.Delta > 0 ? 1 : -1), beat, vx);
+        }
+
         // A .sq file = the arrangement + the riffs it references (same idea as the graph's .graph).
         public bool Save(string path)
         {
@@ -1441,8 +1594,8 @@ namespace MusicTracker.Screens
                 double rh = TrackRowH(track);
                 headerPanel.Children.Add(MakeHeader(null, rh, track));
                 if (track.Collapsed) { lanePanel.Children.Add(LaneRow(MakeTrackRow(track, laneWidth), rh)); continue; } // no items to batch-fill
-                var stack = new StackPanel();
-                var vol = new Controls.TimelineEditor.VolumeLaneControl();
+                var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+                var vol = new Controls.TimelineEditor.VolumeLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
                 vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
                 stack.Children.Add(vol);
                 var lane = MakeTrackLane(track, laneWidth, fillItems: false);
@@ -1492,6 +1645,7 @@ namespace MusicTracker.Screens
             if (miAddPolyChord != null) miAddPolyChord.Visibility = Visibility.Visible;
             if (miAddDrum != null) miAddDrum.Visibility = drum ? Visibility.Visible : Visibility.Collapsed;
             if (miAddPolyDrum != null) miAddPolyDrum.Visibility = drum ? Visibility.Visible : Visibility.Collapsed;
+            UpdateZoomUi();   // the "+" bound depends on the piece's length, which a render may have changed
         }
 
        
@@ -1502,8 +1656,12 @@ namespace MusicTracker.Screens
 
         // Wrap a lane row (tempo lane, or a track's volume+lane stack) so it gets the same bottom divider as its
         // header. Fixed Height = the header's height (border drawn INSIDE it), so header and lane rows stay aligned.
+        // HorizontalAlignment=Left is LOAD-BEARING here (and on every explicitly-sized element below): WPF CENTRES an
+        // element whose HorizontalAlignment is Stretch (the default) but which has an explicit Width. When the piece is
+        // narrower than the viewport — routine once you can zoom out — the lanes would drift right by
+        // (viewport - laneWidth)/2 while the ruler (already Left) stayed put, so a module no longer faced its measure.
         Border LaneRow(UIElement content, double height)
-            => new Border { Height = height, Child = content, BorderBrush = TrackSeparatorBrush, BorderThickness = new Thickness(0, 0, 0, 1) };
+            => new Border { Height = height, Child = content, BorderBrush = TrackSeparatorBrush, BorderThickness = new Thickness(0, 0, 0, 1), HorizontalAlignment = HorizontalAlignment.Left };
 
         // Height of a track's header + lane row: minimal when collapsed (issue #5), else the full volume + lane stack.
         double TrackRowH(TimelineTrack track) => track != null && track.Collapsed ? CollapsedH : VolLaneH + LaneH;
@@ -1513,8 +1671,8 @@ namespace MusicTracker.Screens
         {
             if (track.Collapsed)
                 return MakeCollapsedLane(track, laneWidth);
-            var stack = new StackPanel();
-            var vol = new Controls.TimelineEditor.VolumeLaneControl();
+            var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+            var vol = new Controls.TimelineEditor.VolumeLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
             vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
             stack.Children.Add(vol);
             stack.Children.Add(MakeTrackLane(track, laneWidth, fillItems));
@@ -1631,7 +1789,7 @@ namespace MusicTracker.Screens
 
         UIElement MakeTempoLane(double width)
         {
-            var lane = new Controls.TimelineEditor.TempoLaneControl();
+            var lane = new Controls.TimelineEditor.TempoLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
             lane.Configure(width, TempoH, PxPerBeat, project.Tempo);
             return lane;
         }
@@ -1739,7 +1897,7 @@ namespace MusicTracker.Screens
 
         UIElement MakeChordLane(double width)
         {
-            var lane = new Controls.TimelineEditor.ChordLaneControl();
+            var lane = new Controls.TimelineEditor.ChordLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
             lane.Configure(width, ChordH, PxPerBeat, project.Arrangement,
                 Engine.Flow.MusicTheory.TonicPc(project.Key), Engine.Score.MusicalMode.Effective(project.Key), project.PickupBeats);
             lane.ChordEdited += (idx, deg, color) => ApplyChordEdit(idx, deg, color);
@@ -1794,7 +1952,7 @@ namespace MusicTracker.Screens
 
         Canvas MakeTrackLane(TimelineTrack track, double width, bool fillItems = true)
         {
-            var canvas = new Canvas { Height = LaneH, Width = width, Background = new SolidColorBrush(LaneBgColor(track)) };
+            var canvas = new Canvas { Height = LaneH, Width = width, Background = new SolidColorBrush(LaneBgColor(track)), HorizontalAlignment = HorizontalAlignment.Left };
             canvas.MouseLeftButtonDown += (s, e) => SelectTrack(track); // click empty lane area selects the track
             for (int b = 0; b * PxPerBeat < width; b += 4)
             {
@@ -1822,7 +1980,7 @@ namespace MusicTracker.Screens
         // position + length (same colours as the full boxes), so the lane doesn't read as empty (issue #5 follow-up).
         Canvas MakeCollapsedLane(TimelineTrack track, double width)
         {
-            var canvas = new Canvas { Height = CollapsedH, Width = width, Background = new SolidColorBrush(LaneBgColor(track)) };
+            var canvas = new Canvas { Height = CollapsedH, Width = width, Background = new SolidColorBrush(LaneBgColor(track)), HorizontalAlignment = HorizontalAlignment.Left };
             canvas.MouseLeftButtonDown += (s, e) => SelectTrack(track);
             for (int b = 0; b * PxPerBeat < width; b += 4)   // faint bar ticks, like the full lane
             {
@@ -1970,7 +2128,10 @@ namespace MusicTracker.Screens
         FrameworkElement MakeLeafBox(TimelineTrack track, TimelineItem item, double startBeat, bool interactive, double opacity, double top, double height, Action<double> onDrop = null)
         {
             double len = TimelineProject.ItemLength(item, project.RiffById);
-            double w = Math.Max(40, len * PxPerBeat - 2);
+            // NO readability floor: a box must start and end exactly where its module does on the ruler (§3.6 of the
+            // functional spec). The old Math.Max(40, …) widened short modules, which shifted a whole lane out of
+            // alignment — invisible at 60 px/beat, glaring at 6.
+            double w = Math.Max(2, len * PxPerBeat - 2);
             bool sel = interactive && item == selectedItem;
             var box = new Controls.TimelineEditor.ModuleBoxControl();
             // CHORDS render in BLUE: a distinct blue for the TONIC (I), a mid blue for the DOMINANT (V), the base blue for
@@ -2024,6 +2185,9 @@ namespace MusicTracker.Screens
                     box.SetContentPanel(BuildPolyChordPanel(pcm));
                     break;
             }
+            // Thumbnails are bitmaps rendered ONCE at the reference scale (60 px/beat): scale them for DISPLAY
+            // instead of re-rendering (and re-caching) one image per zoom level. Horizontal only.
+            box.SetThumbnailScale(Zoom);
             Canvas.SetLeft(box, startBeat * PxPerBeat);
             Canvas.SetTop(box, top);
             if (interactive)

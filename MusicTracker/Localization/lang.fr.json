@@ -876,5 +876,11 @@
   "WHATSNEW": "NOUVEAUTÉS",
   "WhatSNew": "Nouveautés",
   "YouCanTryAgainAtThe": "\n\nVous pourrez réessayer au prochain démarrage, ou placer un fichier .sf2 manuellement (voir Réglages → Audio).",
-  "ZoomDefilementBoutonImprimerPourLe": "  (zoom + défilement ; bouton Imprimer pour le PDF)"
+  "Zoom": "Zoom",
+  "ZoomDefilementBoutonImprimerPourLe": "  (zoom + défilement ; bouton Imprimer pour le PDF)",
+  "ZoomFit": "Ajuster",
+  "ZoomFitTip": "Ajuster le zoom pour voir tout le morceau",
+  "ZoomInTip": "Zoomer (Ctrl + molette)",
+  "ZoomOutTip": "Dézoomer (Ctrl + molette)",
+  "ZoomResetTip": "Revenir à 100 %"
 }

@@ -5,7 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:loc="clr-namespace:MusicTracker.Localization"
              mc:Ignorable="d" d:DesignHeight="60" d:DesignWidth="200">
-    <Border x:Name="box" CornerRadius="4">
+    <!-- ClipToBounds: at small zoom levels a box can be a few px wide — the big chord label, the ✕ button and a
+         scaled thumbnail must be cut off INSIDE the box, never spill over the neighbouring modules. -->
+    <Border x:Name="box" CornerRadius="4" ClipToBounds="True">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

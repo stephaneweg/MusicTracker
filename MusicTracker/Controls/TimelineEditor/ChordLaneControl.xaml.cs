@@ -28,6 +28,7 @@ namespace MusicTracker.Controls.TimelineEditor
         double laneW, laneH, pxPerBeat;
         double pickup;                   // anacrusis (levée) in beats: shifts the whole grid + its barlines right
         int editingIndex = -1;
+        bool showLabels = true;          // at small zoom levels the degree labels would overlap: marks only
 
         /// <summary>Raised when the user edits chord #index: (index, degree 0..6, colour 0..6 = triade/7e/9e/11e/13e/sus2/sus4).</summary>
         public event Action<int, int, int> ChordEdited;
@@ -97,6 +98,11 @@ namespace MusicTracker.Controls.TimelineEditor
         {
             canvas.Children.Clear();
             if (arr == null || arr.Chords == null) return;
+            // Spacing between two chords, in px: below the threshold the labels would overlap, so only the vertical
+            // marks are drawn. Chord EDITING (double-click on the label) is therefore unavailable at that zoom —
+            // accepted trade-off: you zoom out to read the structure, you zoom in to edit.
+            double stepBeats = (arr.SlicesPerQuarter > 0) ? (double)arr.ChordSlices / arr.SlicesPerQuarter : 1;
+            showLabels = stepBeats * pxPerBeat >= 20;
             double barBeats = (arr.SlicesPerQuarter > 0) ? (double)arr.BarSlices / arr.SlicesPerQuarter : 4;
             double phase = barBeats > 0 ? pickup % barBeats : 0; // partial pickup bar, then full bars
             if (phase > 1e-6) { var t0 = new Rectangle { Width = 1, Height = laneH, Fill = TickBrush }; Canvas.SetLeft(t0, 0); canvas.Children.Add(t0); }
@@ -114,6 +120,7 @@ namespace MusicTracker.Controls.TimelineEditor
             double x = BeatOfChord(i) * pxPerBeat;
             var mark = new Rectangle { Width = 1, Height = laneH, Fill = MarkBrush };
             Canvas.SetLeft(mark, x); canvas.Children.Add(mark);
+            if (!showLabels && i != editingIndex) return;   // marks only (zoomed out) — the grid stays exact
 
             if (i == editingIndex)
             {

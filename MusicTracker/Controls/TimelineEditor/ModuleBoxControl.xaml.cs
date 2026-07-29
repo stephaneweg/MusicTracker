@@ -21,6 +21,14 @@ namespace MusicTracker.Controls.TimelineEditor
         bool isSelected;                   // kept so a recolour can restore the right border without a reconfigure
         Brush normalBorder = NormalBorder; // per-box unselected border (chords use a lighter blue)
 
+        // Readability thresholds (px): below each one the element is HIDDEN rather than allowed to overflow — the
+        // box is never widened to fit its text (that would shift the whole lane out of step with the ruler).
+        // The order follows the functional spec: the title goes first, then the secondary info.
+        const double MinTitlePx = 60, MinInfoPx = 34, MinDelPx = 46, MinBigLabelPx = 26, MinThumbPx = 14;
+        double lastWidth = double.MaxValue;   // width of the last Configure (drives the thresholds above)
+        double thumbScale = 1;                // requested horizontal thumbnail scale (= the timeline zoom)
+
+
         /// <summary>Raised when the user clicks the box (only when configured interactive).</summary>
         public event Action Selected;
 
@@ -95,6 +103,7 @@ namespace MusicTracker.Controls.TimelineEditor
             this.interactive = interactive;
             isSelected = selected;
             normalBorder = border ?? NormalBorder;
+            lastWidth = width;
             Width = width; Height = height; Opacity = opacity;
             box.Width = width; box.Height = height;
             box.Background = fill ?? Fill;
@@ -103,10 +112,15 @@ namespace MusicTracker.Controls.TimelineEditor
             Cursor = interactive ? Cursors.Hand : Cursors.Arrow;
             txtTitle.Text = title;
             txtInfo.Text = info;
-            btnDel.Visibility = interactive ? Visibility.Visible : Visibility.Collapsed;
+            // Too narrow for its content: drop the title, then the info, then the ✕ — the fill and the border
+            // (including the turquoise selection border) always stay, so a 3 px box is still spottable.
+            txtTitle.Visibility = width >= MinTitlePx ? Visibility.Visible : Visibility.Collapsed;
+            txtInfo.Visibility = width >= MinInfoPx ? Visibility.Visible : Visibility.Collapsed;
+            btnDel.Visibility = (interactive && width >= MinDelPx) ? Visibility.Visible : Visibility.Collapsed;
             // Ghost copies (non-interactive) ignore the mouse so clicks fall through to the Repeat
             // backdrop behind -> clicking inside a Repeat selects the Repeat (and later moves it).
             IsHitTestVisible = interactive;
+            ApplyThumbScale();   // the width just changed, so the thumbnail's fit clamp must be recomputed
         }
 
         /// <summary>Update only the selection border (cheap — no full reconfigure).</summary>
@@ -130,7 +144,39 @@ namespace MusicTracker.Controls.TimelineEditor
         public void SetThumbnail(ImageSource img)
         {
             thumb.Source = img;
-            thumb.Visibility = img != null ? Visibility.Visible : Visibility.Collapsed;
+            thumb.Visibility = (img != null && lastWidth >= MinThumbPx) ? Visibility.Visible : Visibility.Collapsed;
+            ApplyThumbScale();   // the fit clamp below depends on the bitmap's own width
+        }
+
+        /// <summary>HORIZONTAL display scale of the thumbnail. The bitmap is rendered once and for all at the
+        /// reference scale (60 px/beat) and scaled at display time, so no image is re-generated (nor re-cached) per
+        /// zoom level. Vertical untouched: the zoom is purely horizontal.
+        /// (thumb is HorizontalAlignment=Left with the default RenderTransformOrigin 0,0 → the scale starts at the
+        /// left edge, i.e. at the module's own start.)</summary>
+        public void SetThumbnailScale(double sx)
+        {
+            thumbScale = sx;
+            ApplyThumbScale();
+        }
+
+        // The bitmap is ceil(len·60) px wide while the box is only len·PxPerBeat − 2, and inside it the thumbnail
+        // loses the border (≤2 px each side) and its own 4 px margins. At 100 % the bitmap is therefore ~12 px WIDER
+        // than the room available, so the last notes of the line fell outside — invisible before, and actually cut off
+        // once ClipToBounds was added to protect the neighbouring boxes.
+        // Fix: never let the drawn thumbnail exceed the usable width. The clamp only bites when the bitmap would
+        // overflow (a barely perceptible squeeze of a few %), and it keeps the WHOLE line visible at every zoom level
+        // without giving up the clipping.
+        void ApplyThumbScale()
+        {
+            double sx = thumbScale;
+            double bmp = thumb.Source == null ? 0 : thumb.Source.Width;
+            if (bmp > 0 && !double.IsInfinity(lastWidth))
+            {
+                const double BorderReserve = 4;   // 2 px of border each side (worst case = a selected box)
+                double usable = lastWidth - BorderReserve - thumb.Margin.Left - thumb.Margin.Right;
+                if (usable > 0 && bmp * sx > usable) sx = usable / bmp;
+            }
+            thumb.RenderTransform = (Math.Abs(sx - 1) < 1e-6) ? null : new ScaleTransform(sx, 1);
         }
 
         /// <summary>Show a custom panel INSIDE the box (accords polyrythmiques : découpage par zones + labels).
@@ -147,7 +193,7 @@ namespace MusicTracker.Controls.TimelineEditor
         public void SetBigLabel(string s)
         {
             txtBig.Text = s ?? "";
-            txtBig.Visibility = string.IsNullOrEmpty(s) ? Visibility.Collapsed : Visibility.Visible;
+            txtBig.Visibility = (string.IsNullOrEmpty(s) || lastWidth < MinBigLabelPx) ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void btnDel_Click(object sender, RoutedEventArgs e) => Deleted?.Invoke();

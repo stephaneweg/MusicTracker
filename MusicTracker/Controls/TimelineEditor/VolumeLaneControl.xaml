@@ -4,7 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignHeight="48" d:DesignWidth="600">
-    <Canvas x:Name="canvas" Background="#121614"
+    <!-- Left: explicit Width + default Stretch would CENTRE the canvas, breaking alignment with the ruler. -->
+    <Canvas x:Name="canvas" Background="#121614" HorizontalAlignment="Left"
             MouseLeftButtonDown="canvas_MouseLeftButtonDown"
             MouseMove="canvas_MouseMove"
             MouseLeftButtonUp="canvas_MouseLeftButtonUp"

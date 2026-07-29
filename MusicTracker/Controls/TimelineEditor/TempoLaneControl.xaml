@@ -4,5 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignHeight="40" d:DesignWidth="600">
-    <Canvas x:Name="canvas" Background="#1A1A20"/>
+    <!-- Left: the canvas has an explicit Width (set per lane width); with the default Stretch, WPF would CENTRE it
+         inside a wider host and the drawing origin would no longer line up with the measure ruler. -->
+    <Canvas x:Name="canvas" Background="#1A1A20" HorizontalAlignment="Left"/>
 </UserControl>

@@ -16,9 +16,12 @@ namespace MusicTracker.Controls
     /// </summary>
     public static class RiffThumbnail
     {
-        // Drawn at the timeline's own scale: each slice is PxPerBeat/SlicesPerQuarter px wide (so a note's
-        // length matches the lane grid exactly) and each note row is 1px tall. Hosts render it 1:1 (Stretch=None).
-        const double PxPerBeat = 60; // must match TimelineScreen.PxPerBeat
+        // Drawn at the timeline's REFERENCE scale: each slice is PxPerBeat/SlicesPerQuarter px wide (so a note's
+        // length matches the lane grid exactly at 100 % zoom) and each note row is 1px tall. Hosts render it 1:1
+        // (Stretch=None) and, when the timeline is zoomed, apply a horizontal display ScaleTransform
+        // (ModuleBoxControl.SetThumbnailScale) — 60 is the RENDER resolution, not the display scale, so the cache
+        // holds ONE bitmap per riff whatever the zoom level.
+        const double PxPerBeat = 60; // must match TimelineScreen.BasePxPerBeat
 
         // Note colours per module kind.
         public static readonly Color Melody = Color.FromRgb(0xFF, 0xA5, 0x3D); // Play-riff (orange)

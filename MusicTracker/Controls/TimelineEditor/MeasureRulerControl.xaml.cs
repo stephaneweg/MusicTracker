@@ -27,6 +27,17 @@ namespace MusicTracker.Controls.TimelineEditor
 
             double phase = pickupBeats > 1e-6 ? pickupBeats % beatsPerBar : 0; // fold a >1-bar levée into one bar
 
+            // At small zoom levels the measure numbers would overlap: show only one every `stride` bars (1, 2, 4,
+            // 8, …) and drop the in-between beat ticks. Purely visual — the GRID (where the barlines sit) is
+            // untouched, which is exactly what keeps the ruler aligned with the lanes and the marker band.
+            const double MinLabelPx = 34;    // minimum room reserved for one measure number
+            const double MinBeatTickPx = 12; // below this a beat tick is just noise
+            double barPx = beatsPerBar * pxPerBeat;
+            int stride = 1;
+            while (stride * barPx < MinLabelPx && stride < 4096) stride *= 2;
+            bool beatTicks = pxPerBeat >= MinBeatTickPx;
+            bool allBarTicks = barPx >= 4;
+
             void Tick(double atBeat, bool measure)
             {
                 double x = atBeat * pxPerBeat;
@@ -44,18 +55,23 @@ namespace MusicTracker.Controls.TimelineEditor
             if (phase > 1e-6)
             {
                 Tick(0, true);
-                for (int j = 1; j < phase - 1e-9; j++) Tick(j, false);
+                if (beatTicks) for (int j = 1; j < phase - 1e-9; j++) Tick(j, false);
             }
 
             // Full bars: measure tick + number (1,2,3,…) at phase + m·bpb, beat ticks in between.
             for (int m = 0; (phase + m * beatsPerBar) * pxPerBeat < width; m++)
             {
                 double barStart = phase + m * beatsPerBar;
-                Tick(barStart, true);
-                var num = new TextBlock { Text = (m + 1).ToString(), Foreground = NumberFg, FontSize = 10 };
-                Canvas.SetLeft(num, barStart * pxPerBeat + 3); Canvas.SetTop(num, 1);
-                canvas.Children.Add(num);
-                for (int j = 1; j < beatsPerBar && (barStart + j) * pxPerBeat < width; j++) Tick(barStart + j, false);
+                bool numbered = m % stride == 0;
+                if (allBarTicks || numbered) Tick(barStart, true);
+                if (numbered)
+                {
+                    var num = new TextBlock { Text = (m + 1).ToString(), Foreground = NumberFg, FontSize = 10 };
+                    Canvas.SetLeft(num, barStart * pxPerBeat + 3); Canvas.SetTop(num, 1);
+                    canvas.Children.Add(num);
+                }
+                if (beatTicks)
+                    for (int j = 1; j < beatsPerBar && (barStart + j) * pxPerBeat < width; j++) Tick(barStart + j, false);
             }
         }
     }
