@@ -221,6 +221,8 @@
   "Croche": "Achtste noot",
   "TrioletDeCroche": "Achtsten-triool",
   "Reverb": "Galm",
+  "EnregistrerLesModificationsDe": "Wijzigingen in \"{0}\" opslaan?",
+  "ModificationsNonEnregistrees": "Niet-opgeslagen wijzigingen",
   "AccentuerLesTempsForts": "Sterke tellen accentueren",
   "DecochePourUneFrappeUniforme": "Vink uit voor een gelijkmatige aanslag: alle noten op hetzelfde niveau, zoals in het voorbeeld",
   "DecaleCetteVoixDeNOctaves": "Verschuift deze stem N octaven (0 = natuurlijk bereik van de stem)",

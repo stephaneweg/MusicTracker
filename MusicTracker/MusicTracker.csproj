@@ -180,6 +180,7 @@
     <Compile Include="Engine\Flow\EuclideanRhythm.cs" />
     <Compile Include="Engine\Flow\BalancedRhythm.cs" />
     <Compile Include="Engine\Flow\RhythmAnalysis.cs" />
+    <Compile Include="Engine\SafeFile.cs" />
     <Compile Include="Engine\Flow\PolyDrum.cs" />
     <Compile Include="Engine\Flow\MelodicEuclid.cs" />
     <Compile Include="Controls\TimelineEditor\PolyDrumWheel.cs" />

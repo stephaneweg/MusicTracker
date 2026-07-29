@@ -93,7 +93,10 @@ namespace MusicTracker.Screens
             Loaded += (s, e) => { Render(); EnsureCursor(); };
 
             undoMgr.Changed += UpdateUndoButtons;
+            undoMgr.Changed += RaiseDirtyChanged;
             UpdateUndoButtons();
+            // Référence de départ : un morceau neuf, auquel personne n'a touché, n'est pas « modifié ».
+            savedState = SnapshotState();
             PreviewKeyDown += TimelineKeyDown; // Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (unless a text field has focus)
         }
 
@@ -788,9 +791,27 @@ namespace MusicTracker.Screens
         {
             var doc = new TimelineDocument { Project = project };
             doc.Riffs.AddRange(project.Riffs);
-            System.IO.File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(doc, JsonOpts));
+            string json = System.Text.Json.JsonSerializer.Serialize(doc, JsonOpts);
+            Engine.SafeFile.WriteAllText(path, json);   // atomique : ne détruit jamais le .sq existant
             CurrentPath = path;
+            savedState = json;                          // référence pour « modifié depuis l'enregistrement »
             return true;
+        }
+
+        // L'état sérialisé au dernier enregistrement (ou à l'ouverture). Comparer la sérialisation courante à
+        // celle-ci donne une réponse EXACTE : pas de faux « modifié » après une action annulée puis rétablie,
+        // contrairement à un simple drapeau posé à chaque mutation.
+        string savedState;
+
+        /// <inheritdoc/>
+        public bool IsDirty
+        {
+            get
+            {
+                if (savedState == null) return false;   // référence pas encore posée (construction en cours)
+                try { return SnapshotState() != savedState; }
+                catch { return true; }   // dans le doute, on protège le travail plutôt que de fermer en silence
+            }
         }
 
         /// <summary>Gather this project's state as attachable context for a GitHub bug report (see
@@ -947,7 +968,14 @@ namespace MusicTracker.Screens
             SetBpmText();
 
             // A freshly-loaded document starts a new history (unless we're restoring an undo/redo state).
-            if (!restoringUndo) { undoMgr.Clear(); pendingUndo = null; pendingUndoKey = null; }
+            if (!restoringUndo)
+            {
+                undoMgr.Clear(); pendingUndo = null; pendingUndoKey = null;
+                // Un document qui vient d'être chargé n'est pas « modifié » : on fige ici la référence.
+                // Pendant un undo/redo on ne la touche PAS — revenir à l'état enregistré doit bien effacer
+                // l'astérisque, et s'en éloigner doit le rendre.
+                savedState = SnapshotState();
+            }
         }
 
         // ===== Undo / redo =====================================================================================
@@ -3578,6 +3606,12 @@ namespace MusicTracker.Screens
         void btnAiPolyCompose_Click(object sender, RoutedEventArgs e) => ComposePolyInNewTabRequested?.Invoke();
 
         /// <summary>Raised by the toolbar "Enregistrer" button — the shell handles the save (file dialog + recent + title).</summary>
+        /// <summary>Émis quand l'état « modifié » a pu changer, pour que l'onglet rafraîchisse son astérisque.
+        /// Branché sur la pile d'annulation : elle bouge exactement quand le document est muté, ce qui évite de
+        /// re-sérialiser le projet en boucle sur une minuterie.</summary>
+        public event Action DirtyChanged;
+        void RaiseDirtyChanged() => DirtyChanged?.Invoke();
+
         public event Action SaveRequested;
         void btnSaveMusic_Click(object sender, RoutedEventArgs e) => SaveRequested?.Invoke();
 

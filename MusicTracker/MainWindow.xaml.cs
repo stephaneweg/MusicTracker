@@ -60,6 +60,36 @@ namespace MusicTracker
 
         private void btnClose_Click(object sender, RoutedEventArgs e) => Close();
 
+        // Dernier rempart avant la perte de travail : la fenêtre ne se ferme pas sans demander ce qu'il advient
+        // des onglets modifiés. Couvre le ✕ de la fenêtre, Alt+F4 et la fin de session Windows.
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            if (e.Cancel) return;
+            // Copie du tableau : ConfirmDiscard peut enregistrer, donc toucher à la liste des onglets.
+            var tabs = editorTabs.ToArray();
+            foreach (var t in tabs)
+            {
+                if (!ConfirmDiscard(t.editor)) { e.Cancel = true; return; }
+            }
+        }
+
+        /// <summary>Demande quoi faire d'un éditeur modifié. Renvoie false si l'utilisateur annule — auquel cas
+        /// rien ne doit se fermer. Un éditeur intact passe sans rien demander.</summary>
+        bool ConfirmDiscard(IMusicEditor editor)
+        {
+            if (editor == null || !editor.IsDirty) return true;
+            Select(editor);   // montrer DE QUEL morceau on parle avant de poser la question
+            string nom = string.IsNullOrEmpty(editor.CurrentPath) ? Loc.T("New") : System.IO.Path.GetFileName(editor.CurrentPath);
+            var r = MessageBox.Show(string.Format(Loc.T("EnregistrerLesModificationsDe"), nom),
+                                    Loc.T("ModificationsNonEnregistrees"),
+                                    MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+            if (r == MessageBoxResult.Cancel) return false;
+            if (r == MessageBoxResult.No) return true;      // abandonner les modifications, assumé
+            SaveEditor(editor);
+            return !editor.IsDirty;                          // l'enregistrement a pu être annulé dans le sélecteur
+        }
+
         // Keep the maximize/restore glyph in sync, and compensate the WindowChrome overflow
         // that would otherwise push a few pixels of content off-screen when maximized.
         private void Window_StateChanged(object sender, EventArgs e)
@@ -261,6 +291,7 @@ namespace MusicTracker
                 ts.ComposeInNewTabRequested += ComposeWithAiNewTab;   // its AI menu spawns a new tab
                 ts.ComposePolyInNewTabRequested += ComposePolyWithAiNewTab;
                 ts.SaveRequested += () => SaveEditor(editor);          // its toolbar "Enregistrer" button
+                ts.DirtyChanged += () => SetEditorTitle(editor, editor.CurrentPath);   // astérisque de l'onglet
             }
             var btn = new Button { Style = (Style)Resources["TabButton"], Padding = new Thickness(14, 0, 10, 0) };
             SetTabButtonContent(btn, editor, TabTitle(path), true);
@@ -274,7 +305,10 @@ namespace MusicTracker
         void SetTabButtonContent(Button btn, IMusicEditor editor, string title, bool closable)
         {
             var sp = new StackPanel { Orientation = Orientation.Horizontal };
-            sp.Children.Add(new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center });
+            // Astérisque = travail non enregistré. Convention universelle, et le seul indice visuel qu'il reste
+            // quelque chose à sauver avant de fermer.
+            string mark = (editor != null && editor.IsDirty) ? " *" : "";
+            sp.Children.Add(new TextBlock { Text = title + mark, VerticalAlignment = VerticalAlignment.Center });
             if (closable)
             {
                 var close = new TextBlock
@@ -288,7 +322,7 @@ namespace MusicTracker
                     VerticalAlignment = VerticalAlignment.Center,
                     ToolTip = Loc.T("Close"),
                 };
-                close.PreviewMouseLeftButtonDown += (s, e) => { e.Handled = true; CloseEditor(editor); };
+                close.PreviewMouseLeftButtonDown += (s, e) => { e.Handled = true; if (ConfirmDiscard(editor)) CloseEditor(editor); };
                 sp.Children.Add(close);
             }
             btn.Content = sp;

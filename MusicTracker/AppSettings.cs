@@ -170,7 +170,7 @@ namespace MusicTracker
 
         public void Save()
         {
-            try { File.WriteAllText(AppPaths.Roaming(FileName), System.Text.Json.JsonSerializer.Serialize(this)); }
+            try { Engine.SafeFile.WriteAllText(AppPaths.Roaming(FileName), System.Text.Json.JsonSerializer.Serialize(this)); }
             catch { /* settings are best-effort; ignore write failures */ }
         }
 

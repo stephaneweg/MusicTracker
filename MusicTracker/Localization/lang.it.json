@@ -221,6 +221,8 @@
   "Croche": "Croma",
   "TrioletDeCroche": "Terzina di crome",
   "Reverb": "Riverbero",
+  "EnregistrerLesModificationsDe": "Salvare le modifiche a «{0}»?",
+  "ModificationsNonEnregistrees": "Modifiche non salvate",
   "AccentuerLesTempsForts": "Accentua i tempi forti",
   "DecochePourUneFrappeUniforme": "Deseleziona per un tocco uniforme: tutte le note allo stesso livello, come nell'anteprima",
   "DecaleCetteVoixDeNOctaves": "Sposta questa voce di N ottave (0 = registro naturale della voce)",

@@ -221,6 +221,8 @@
   "Croche": "Eighth note",
   "TrioletDeCroche": "Eighth-note triplet",
   "Reverb": "Reverb",
+  "EnregistrerLesModificationsDe": "Save the changes to \"{0}\"?",
+  "ModificationsNonEnregistrees": "Unsaved changes",
   "AccentuerLesTempsForts": "Accent the strong beats",
   "DecochePourUneFrappeUniforme": "Uncheck for a flat, uniform touch: every note at the same level, like the editor's preview",
   "DecaleCetteVoixDeNOctaves": "Shift this voice by N octaves (0 = the voice's natural register)",

@@ -223,6 +223,8 @@
   "Croche": "Croche",
   "TrioletDeCroche": "Triolet de croche",
   "Reverb": "Réverb",
+  "EnregistrerLesModificationsDe": "Enregistrer les modifications de « {0} » ?",
+  "ModificationsNonEnregistrees": "Modifications non enregistrées",
   "AccentuerLesTempsForts": "Accentuer les temps forts",
   "DecochePourUneFrappeUniforme": "Décoche pour une frappe uniforme : toutes les notes au même niveau, comme dans l'aperçu de l'éditeur",
   "DecaleCetteVoixDeNOctaves": "Décale cette voix de N octaves (0 = registre naturel de la voix)",

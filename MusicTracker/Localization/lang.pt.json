@@ -221,6 +221,8 @@
   "Croche": "Colcheia",
   "TrioletDeCroche": "Tercina de colcheias",
   "Reverb": "Reverb",
+  "EnregistrerLesModificationsDe": "Guardar as alterações de «{0}»?",
+  "ModificationsNonEnregistrees": "Alterações não guardadas",
   "AccentuerLesTempsForts": "Acentuar os tempos fortes",
   "DecochePourUneFrappeUniforme": "Desmarca para um toque uniforme: todas as notas ao mesmo nível, como na pré-visualização",
   "DecaleCetteVoixDeNOctaves": "Desloca esta voz N oitavas (0 = registo natural da voz)",

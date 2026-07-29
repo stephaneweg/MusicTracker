@@ -44,7 +44,7 @@ namespace MusicTracker
 
         public void Save()
         {
-            try { System.IO.File.WriteAllText(AppPaths.Roaming("recent.json"), System.Text.Json.JsonSerializer.Serialize(this)); }
+            try { Engine.SafeFile.WriteAllText(AppPaths.Roaming("recent.json"), System.Text.Json.JsonSerializer.Serialize(this)); }
             catch { /* best-effort */ }
         }
 

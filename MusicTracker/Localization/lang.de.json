@@ -221,6 +221,8 @@
   "Croche": "Achtelnote",
   "TrioletDeCroche": "Achteltriole",
   "Reverb": "Hall",
+  "EnregistrerLesModificationsDe": "Änderungen an „{0}“ speichern?",
+  "ModificationsNonEnregistrees": "Nicht gespeicherte Änderungen",
   "AccentuerLesTempsForts": "Betonte Zählzeiten",
   "DecochePourUneFrappeUniforme": "Deaktivieren für einen gleichmäßigen Anschlag: alle Noten auf gleicher Stärke, wie in der Vorschau",
   "DecaleCetteVoixDeNOctaves": "Verschiebt diese Stimme um N Oktaven (0 = natürliche Lage der Stimme)",
