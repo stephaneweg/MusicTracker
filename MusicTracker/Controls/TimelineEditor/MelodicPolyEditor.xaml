@@ -122,9 +122,8 @@
                                                 Width="38" Text="{Binding Rotation, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Margin="0,0,8,0"/>
                                         </Grid>
 
-                                        <ComboBox Width="168" Margin="0,4,0,0"
-                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=StepNames}"
-                                                  SelectedIndex="{Binding StepSlicesIndex, Mode=TwoWay}"/>
+                                        <!-- (Ici se trouvait une liste « unité » par voix : supprimée, même raison que dans
+                                             l'éditeur de batterie polyrythmique — la subdivision n'appartient plus au calque.) -->
 
                                         <!-- Octave de la voix : le moteur place chaque voix dans une bande de
                                              registre fixe, c'est le seul moyen de poser un anneau en basse. -->

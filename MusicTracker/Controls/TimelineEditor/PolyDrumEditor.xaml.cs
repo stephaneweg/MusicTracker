@@ -58,7 +58,6 @@ namespace MusicTracker.Controls.TimelineEditor
             var accent = new System.Collections.Generic.List<string> { "— " + Loc.T("AucunAccent") + " —" };
             accent.AddRange(DrumPattern.LaneNames);
             AccentLaneNames = accent;
-            StepNames = new[] { Loc.T("Noire"), Loc.T("Croche"), Loc.T("DoubleCroche"), Loc.T("TrioletDeCroche") };
             LayersView = pd.Layers;
             // Les bindings {ElementName=self, Path=...} évaluent leur cible AVANT que le constructeur ait fini de
             // remplir les propriétés, et les propriétés CLR simples ne notifient pas ; on assigne donc les
@@ -120,7 +119,6 @@ namespace MusicTracker.Controls.TimelineEditor
         /// <summary>Comme <see cref="LaneNames"/>, mais préfixé par « (aucun) » — utilisé par le ComboBox « Accent »
         /// (0 = pas d'accent, 1..N = lane N-1). Se marie avec <see cref="EuclidLayer.AccentLaneIndex"/>.</summary>
         public System.Collections.Generic.IReadOnlyList<string> AccentLaneNames { get; private set; }
-        public string[] StepNames { get; private set; }
 
         // ---- clic-cellule sur la roue -----------------------------------------------------------------------
         void Wheel_CellClicked(int layerIndex, int step)

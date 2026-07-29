@@ -41,7 +41,6 @@ namespace MusicTracker.Controls.TimelineEditor
             InitializeComponent();
             this.track = track; this.item = item; this.mp = mp; this.host = host;
 
-            StepNames = new[] { Loc.T("Noire"), Loc.T("Croche"), Loc.T("DoubleCroche"), Loc.T("TrioletDeCroche") };
             LayersView = mp.Layers;
             // Assignation directe : les bindings ElementName sont évalués trop tôt, on court-circuite.
             layersList.ItemsSource = LayersView;
@@ -111,7 +110,6 @@ namespace MusicTracker.Controls.TimelineEditor
         }
 
         public ObservableCollection<EuclidVoice> LayersView { get; private set; }
-        public string[] StepNames { get; private set; }
         // Bindé par la croix de suppression : cachée quand il n'y a qu'un seul calque, pour ne pas laisser
         // supprimer la dernière voix (le module deviendrait vide).
         public Visibility DeleteVisibility { get; private set; } = Visibility.Visible;

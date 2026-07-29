@@ -123,9 +123,10 @@
                                             
                                         </Grid>
 
-                                        <ComboBox Width="168" Margin="0,4,0,0"
-                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=StepNames}"
-                                                  SelectedIndex="{Binding StepSlicesIndex, Mode=TwoWay}"/>
+                                        <!-- (Ici se trouvait une liste « unité » par calque : supprimée. La subdivision
+                                             n'appartient plus au calque — un anneau vaut tout le cycle du module, découpé
+                                             en Pas parts égales. La liste se liait donc à un membre qui n'existe plus,
+                                             s'affichait vide et ne faisait rien.) -->
 
                                         <!-- Accent : instrument JOUÉ SUR LE 1er COUP de chaque cycle. Optionnel : « (aucun) » = pas d'accent. -->
                                         <TextBlock Text="{loc:Tr 'AccentPremierCoup'}" Foreground="#AAAAAA" FontSize="11" Margin="0,6,0,1"/>
