@@ -26,7 +26,6 @@ namespace MusicTracker.Controls.TimelineEditor
         // The order follows the functional spec: the title goes first, then the secondary info.
         const double MinTitlePx = 60, MinInfoPx = 34, MinDelPx = 46, MinBigLabelPx = 26, MinThumbPx = 14;
         double lastWidth = double.MaxValue;   // width of the last Configure (drives the thresholds above)
-        double thumbScale = 1;                // requested horizontal thumbnail scale (= the timeline zoom)
 
 
         /// <summary>Raised when the user clicks the box (only when configured interactive).</summary>
@@ -148,35 +147,37 @@ namespace MusicTracker.Controls.TimelineEditor
             ApplyThumbScale();   // the fit clamp below depends on the bitmap's own width
         }
 
-        /// <summary>HORIZONTAL display scale of the thumbnail. The bitmap is rendered once and for all at the
-        /// reference scale (60 px/beat) and scaled at display time, so no image is re-generated (nor re-cached) per
-        /// zoom level. Vertical untouched: the zoom is purely horizontal.
-        /// (thumb is HorizontalAlignment=Left with the default RenderTransformOrigin 0,0 → the scale starts at the
-        /// left edge, i.e. at the module's own start.)</summary>
-        public void SetThumbnailScale(double sx)
-        {
-            thumbScale = sx;
-            ApplyThumbScale();
-        }
+        /// <summary>Conservé pour compatibilité d'appel : l'échelle du thumbnail se déduit désormais de la largeur de
+        /// la boîte (voir <see cref="ApplyThumbScale"/>), le zoom n'a plus besoin de la fournir.</summary>
+        public void SetThumbnailScale(double sx) { ApplyThumbScale(); }
 
-        // The bitmap is ceil(len·60) px wide while the box is only len·PxPerBeat − 2, and inside it the thumbnail
-        // loses the border (≤2 px each side) and its own 4 px margins. At 100 % the bitmap is therefore ~12 px WIDER
-        // than the room available, so the last notes of the line fell outside — invisible before, and actually cut off
-        // once ClipToBounds was added to protect the neighbouring boxes.
-        // Fix: never let the drawn thumbnail exceed the usable width. The clamp only bites when the bitmap would
-        // overflow (a barely perceptible squeeze of a few %), and it keeps the WHOLE line visible at every zoom level
-        // without giving up the clipping.
+        // Le bitmap est rendu UNE fois à l'échelle de référence (60 px/temps), donc il ne mesure la bonne largeur qu'à
+        // 100 % de zoom. Il faut l'afficher à la largeur réelle de la boîte.
+        //
+        // Une ScaleTransform en RenderTransform NE MARCHE PAS ici, et c'est le piège qui a coûté deux tentatives :
+        // une RenderTransform s'applique APRÈS la mise en page. L'image est donc mesurée et arrangée à la largeur NON
+        // mise à l'échelle — donc ROGNÉE à cette largeur par le ClipToBounds — et c'est ce résultat déjà tronqué qui
+        // est ensuite réduit. À 75 % on ne voyait littéralement que 75 % du dessin : symptôme rapporté par
+        // l'utilisateur (« le module ne dessine que 75 % de l'image, le render transform est correct »).
+        //
+        // La bonne façon est de ne pas transformer du tout : on donne à l'Image sa largeur cible et on passe en
+        // Stretch=Fill, ce qui RESSAMPLE le bitmap horizontalement pendant la mise en page. La correspondance est
+        // exacte à tout niveau : le bitmap couvre `len` temps et la boîte aussi.
+        //
+        // La HAUTEUR est fixée explicitement à celle du bitmap, et c'est indispensable : la rangée qui accueille le
+        // thumbnail a une hauteur en « * », donc sans consigne Fill étirerait AUSSI verticalement — les notes
+        // devenaient des barres hautes (signalé par l'utilisateur). En imposant la hauteur naturelle on retrouve
+        // exactement le comportement vertical d'avant le zoom (Stretch=None + VerticalAlignment=Center) : le zoom
+        // reste purement horizontal.
         void ApplyThumbScale()
         {
-            double sx = thumbScale;
-            double bmp = thumb.Source == null ? 0 : thumb.Source.Width;
-            if (bmp > 0 && !double.IsInfinity(lastWidth))
-            {
-                const double BorderReserve = 4;   // 2 px of border each side (worst case = a selected box)
-                double usable = lastWidth - BorderReserve - thumb.Margin.Left - thumb.Margin.Right;
-                if (usable > 0 && bmp * sx > usable) sx = usable / bmp;
-            }
-            thumb.RenderTransform = (Math.Abs(sx - 1) < 1e-6) ? null : new ScaleTransform(sx, 1);
+            var src = thumb.Source;
+            if (src == null || src.Width <= 0 || double.IsInfinity(lastWidth))
+            { thumb.Width = double.NaN; thumb.Height = double.NaN; return; }
+            const double BorderReserve = 4;   // 2 px de bordure de chaque côté (pire cas : boîte sélectionnée)
+            double usable = lastWidth - BorderReserve - thumb.Margin.Left - thumb.Margin.Right;
+            thumb.Width = usable > 0 ? usable : double.NaN;
+            thumb.Height = src.Height;        // hauteur NATURELLE : pas d'étirement vertical
         }
 
         /// <summary>Show a custom panel INSIDE the box (accords polyrythmiques : découpage par zones + labels).

@@ -7,7 +7,7 @@
              mc:Ignorable="d" d:DesignHeight="60" d:DesignWidth="200">
     <!-- ClipToBounds: at small zoom levels a box can be a few px wide — the big chord label, the ✕ button and a
          scaled thumbnail must be cut off INSIDE the box, never spill over the neighbouring modules. -->
-    <Border x:Name="box" CornerRadius="4" ClipToBounds="True">
+    <Border x:Name="box" CornerRadius="4" ClipToBounds="False">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -18,9 +18,12 @@
                 <TextBlock x:Name="txtInfo" Foreground="#AAAAAA" FontSize="10" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
             <!-- Play-riff: cached mini-preview of the melodic line, filling the area below the labels. -->
-            <Image x:Name="thumb" Grid.Row="1" Margin="4,2,4,4" Stretch="None"
+            <!-- Stretch=Fill (et non None) : le bitmap est rendu à 60 px/temps, donc juste à 100 % de zoom seulement.
+                 Le code lui donne la largeur réelle de la boîte (ApplyThumbScale) et Fill le rééchantillonne PENDANT
+                 la mise en page. Une ScaleTransform ne convient pas : elle agit après, sur une image déjà rognée. -->
+            <Image x:Name="thumb" Grid.Row="1" Margin="4,2,4,4" Stretch="Fill"
                    HorizontalAlignment="Left" VerticalAlignment="Center"
-                   SnapsToDevicePixels="True" IsHitTestVisible="False" Visibility="Collapsed"/>
+                   SnapsToDevicePixels="False" IsHitTestVisible="False" Visibility="Collapsed"/>
             <!-- Panneau custom (rendu vectoriel remplaçant le thumbnail) : accords polyrythmiques dessinent leur
                  sous-découpage (une zone par accord + séparateurs + labels de fonction) via SetContentPanel(). -->
             <ContentControl x:Name="customPanel" Grid.Row="1" Margin="4,2,4,4"
