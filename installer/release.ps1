@@ -73,11 +73,16 @@ if ($Version) {
   $newVer = $Version
 }
 else {
+  # Les parentheses autour du "+ 1" sont OBLIGATOIRES : en PowerShell la virgule lie plus fort que
+  # l'addition, donc @($cur[0], $cur[1], $cur[2] + 1, 0) se lit @($cur[0],$cur[1],$cur[2]) + @(1,0)
+  # — une CONCATENATION de tableaux, qui rendait 5 elements. -Bump minor incrementait alors le 3e
+  # chiffre au lieu du 2e, -Bump patch le 4e au lieu du 3e, et -Bump major levait "op_Addition".
   switch ($Bump) {
-    'major' { $cur = @($cur[0] + 1, 0, 0, 0) }
-    'minor' { $cur = @($cur[0], $cur[1] + 1, 0, 0) }
-    'patch' { $cur = @($cur[0], $cur[1], $cur[2] + 1, 0) }
+    'major' { $cur = @(($cur[0] + 1), 0, 0, 0) }
+    'minor' { $cur = @($cur[0], ($cur[1] + 1), 0, 0) }
+    'patch' { $cur = @($cur[0], $cur[1], ($cur[2] + 1), 0) }
   }
+  if ($cur.Count -ne 4) { throw "Calcul de version casse : $($cur.Count) composantes au lieu de 4." }
   $newVer = "$($cur[0]).$($cur[1]).$($cur[2]).$($cur[3])"
 }
 Write-Host "Version : $($m.Groups[1].Value).$($m.Groups[2].Value).$($m.Groups[3].Value).$($m.Groups[4].Value) -> $newVer" -ForegroundColor Cyan
