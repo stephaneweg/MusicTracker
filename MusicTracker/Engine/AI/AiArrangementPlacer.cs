@@ -34,10 +34,11 @@ namespace MusicTracker.Engine.AI
         }
 
         /// <summary>"Develop the theme": append the arrangement AFTER the current project's content, in place. The new riffs
-        /// go into the shared <see cref="RiffLibrary"/> (the live project keeps its existing riffs). The caller re-renders.</summary>
+        /// go into the project's own riff collection (<see cref="TimelineProject.Riffs"/>) — never a shared global,
+        /// so another open tab is untouched. The caller re-renders.</summary>
         public static void Develop(TimelineProject project, AiArrangement a, bool fixRiffNotes, bool silentChords)
         {
-            Place(project, RiffLibrary.Instance.Riffs, a, fixRiffNotes, append: true, silentChords: silentChords);
+            Place(project, project.Riffs, a, fixRiffNotes, append: true, silentChords: silentChords);
         }
 
         /// <summary>"Add a track with the AI": lay the arrangement's melodic-lines / riffs / drums onto the current project
@@ -45,7 +46,7 @@ namespace MusicTracker.Engine.AI
         /// chords/articulation are ignored here (no chord modules are added). The caller re-renders.</summary>
         public static void AddTrack(TimelineProject project, AiArrangement a, bool fixRiffNotes)
         {
-            Place(project, RiffLibrary.Instance.Riffs, a, fixRiffNotes, append: false, silentChords: false, overlay: true);
+            Place(project, project.Riffs, a, fixRiffNotes, append: false, silentChords: false, overlay: true);
         }
 
         // ---- core placement (pure model) ---------------------------------------------------------------------------

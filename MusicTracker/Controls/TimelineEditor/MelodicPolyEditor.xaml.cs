@@ -186,13 +186,13 @@ namespace MusicTracker.Controls.TimelineEditor
         void btnFreeze_Click(object sender, RoutedEventArgs e)
         {
             if (MessageBox.Show(Loc.T("FigerRiffPerdLesParametres"), Loc.T("FigerEnRiff"), MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
-            double startBeat = TimelineHelper.ItemStartBeat(track, item);
+            double startBeat = host.Project.ItemStartBeat(track, item);
             var key = host.Project.Key ?? new Engine.Score.KeySignature();
-            var riff = MelodicEuclid.Generate(mp, host.Project, TimelineHelper.RiffById, key, startBeat);
+            var riff = MelodicEuclid.Generate(mp, host.Project, host.Project.RiffById, key, startBeat);
             if (riff?.Notes == null || riff.Notes.Count == 0) { MessageBox.Show(Loc.T("AucunCoupARienAFiger")); return; }
             host.PushUndo?.Invoke("mlpoly:freeze");
-            riff.Name = "Ligne poly " + (RiffLibrary.Instance.Riffs.Count + 1);
-            RiffLibrary.Instance.Riffs.Add(riff);
+            riff.Name = "Ligne poly " + (host.Project.Riffs.Count + 1);
+            host.Project.Riffs.Add(riff);
             item.Module = new PlayRiffModule { RiffId = riff.Id };
             host.SelectItem?.Invoke(track, item);
             host.Render?.Invoke();
@@ -205,11 +205,11 @@ namespace MusicTracker.Controls.TimelineEditor
             host.EnsureSoundFont?.Invoke(w, "Playback");
             try
             {
-                double startBeat = TimelineHelper.ItemStartBeat(track, item);
+                double startBeat = host.Project.ItemStartBeat(track, item);
                 var key = host.Project.Key ?? new Engine.Score.KeySignature();
                 var preset = InstrumentCatalog.GetPreset(track.Instrument);
                 var ctx = new FlowContext { GmProgram = preset?.PatchNumber ?? 0, Drum = preset?.BankNumber == InstrumentCatalog.DrumIndex, Bpm = host.Project.MainBpm };
-                provider = new LoopingRiffProvider(() => MelodicEuclid.Generate(mp, host.Project, TimelineHelper.RiffById, key, startBeat), ctx);
+                provider = new LoopingRiffProvider(() => MelodicEuclid.Generate(mp, host.Project, host.Project.RiffById, key, startBeat), ctx);
                 wave = new NAudio.Wave.WaveOutEvent { DesiredLatency = 120 };
                 wave.Init(provider); wave.Play();
                 btnPlay.Content = "■ " + Loc.T("Stop");

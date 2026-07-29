@@ -86,7 +86,7 @@ namespace MusicTracker.Engine.AI
             var inv = System.Globalization.CultureInfo.InvariantCulture;
             string Num(double v) => v.ToString("0.##", inv);
             int barTemps = TimelineHelper.RulerBeatsPerBar(project);
-            Func<Guid, Riff> resolve = TimelineHelper.RiffById;
+            Func<Guid, Riff> resolve = project.RiffById;
 
             double maxEnd = 0;
             foreach (var t in project.Tracks)
@@ -191,7 +191,7 @@ namespace MusicTracker.Engine.AI
             var key = project.Key ?? new Engine.Score.KeySignature();
             int barTemps = TimelineHelper.RulerBeatsPerBar(project);
             int spq = Math.Max(1, riff.SlicesPerQuarter);
-            double themeStart = TimelineHelper.ItemStartBeat(track, item);
+            double themeStart = project.ItemStartBeat(track, item);
             double themeLen = riff.LengthSlices / (double)spq;
             System.Globalization.CultureInfo inv = System.Globalization.CultureInfo.InvariantCulture;
             string Num(double v) => v.ToString("0.##", inv);
@@ -206,7 +206,7 @@ namespace MusicTracker.Engine.AI
                 foreach (var it in ct.Items)
                 {
                     cur += it.SilenceBefore;
-                    double len = Engine.Timeline.TimelineProject.ItemLength(it, TimelineHelper.RiffById);
+                    double len = Engine.Timeline.TimelineProject.ItemLength(it, project.RiffById);
                     if (it.Module is PatternGeneratorModule pg && cur + len > themeStart + 0.01 && cur < themeStart + themeLen - 0.01)
                     {
                         int deg = pg.Degree >= 0 ? pg.Degree + 1 : Engine.Flow.MusicTheory.DegreeOf(key, ((pg.Root % 12) + 12) % 12) + 1;

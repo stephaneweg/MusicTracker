@@ -145,6 +145,57 @@ namespace MusicTracker.Engine.Timeline
         /// the written notes / score / MIDI export stay straight eighths, as a DAW does.</summary>
         public double SwingPercent { get; set; } = 50;
 
+        /// <summary>Les riffs que ce projet référence. Ils appartiennent AU PROJET, pas à l'application : chaque
+        /// onglet a les siens. Historiquement ils vivaient dans un singleton global (vestige de l'époque où un seul
+        /// morceau pouvait être ouvert) ; ouvrir un second morceau vidait alors le premier, et le réenregistrer
+        /// écrivait son .sq avec les riffs du voisin. Le format de fichier, lui, n'a pas changé : ils restent
+        /// sérialisés au niveau du DOCUMENT (voir TimelineDocument.Riffs).</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public System.Collections.ObjectModel.ObservableCollection<Riff> Riffs { get; }
+            = new System.Collections.ObjectModel.ObservableCollection<Riff>();
+
+        /// <summary>Résout un riff par son identifiant, dans CE projet. Remplace l'ancien résolveur statique :
+        /// c'est le point qui garantit qu'un onglet ne voit jamais les riffs d'un autre.</summary>
+        public Riff RiffById(Guid id)
+        {
+            foreach (var r in Riffs) if (r != null && r.Id == id) return r;
+            return null;
+        }
+
+        /// <summary>Le résolveur sous forme de délégué, pour les nombreuses fonctions du moteur qui en attendent un.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public Func<Guid, Riff> Resolver => RiffById;
+
+        // ---- mesures de géométrie, résolues DANS ce projet -------------------------------------------------
+        // Elles vivaient dans TimelineHelper en statique et lisaient le résolveur global. Les porter ici leur
+        // donne le bon contexte sans alourdir les appels : `project.DispLen(it)` a la même arité qu'avant.
+
+        /// <summary>Longueur affichée d'un bloc, en temps (un Repeat compte pour toutes ses répétitions).</summary>
+        public double DispLen(TimelineItem it) => ItemLength(it, RiffById);
+
+        /// <summary>Fin d'une piste, en temps depuis le début du morceau.</summary>
+        public double TrackEndBeats(TimelineTrack t)
+        {
+            if (t?.Items == null) return 0;
+            double cur = 0;
+            foreach (var it in t.Items) cur += it.SilenceBefore + ItemLength(it, RiffById);
+            return cur;
+        }
+
+        /// <summary>Temps auquel un bloc commence sur sa piste.</summary>
+        public double ItemStartBeat(TimelineTrack track, TimelineItem item)
+        {
+            if (track?.Items == null) return 0;
+            double cur = 0;
+            foreach (var it in track.Items)
+            {
+                cur += it.SilenceBefore;
+                if (ReferenceEquals(it, item)) return cur;
+                cur += ItemLength(it, RiffById);
+            }
+            return 0;
+        }
+
         public double MainBpm => Tempo != null && Tempo.Count > 0 ? Tempo[0].Bpm : 120;
 
         // ---- duration helpers (beats) ----

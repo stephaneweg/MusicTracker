@@ -221,7 +221,6 @@
     <Resource Include="Fonts\Bravura.otf" />
     <Compile Include="FileAssociations.cs" />
     <Compile Include="Localization\Loc.cs" />
-    <Compile Include="RiffLibrary.cs" />
     <Compile Include="RecentFiles.cs" />
     <Compile Include="Screens\IMusicEditor.cs" />
     <Compile Include="Screens\HomeScreen.xaml.cs">

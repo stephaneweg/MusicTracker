@@ -275,8 +275,8 @@ namespace MusicTracker.Screens
             project.TimeSigNum = num; project.TimeSigDen = den;
             project.TimeSigScale = den == 8 ? 1.5 : 1.0;
 
-            var added = Engine.Timeline.TimelineImporter.ReSegment(project, barBeats, TimelineHelper.RiffById);
-            foreach (var r in added) RiffLibrary.Instance.Riffs.Add(r);
+            var added = Engine.Timeline.TimelineImporter.ReSegment(project, barBeats, project.RiffById);
+            foreach (var r in added) project.Riffs.Add(r);
             if (activeRiffGrid != null) activeRiffGrid.MeterDen = project.TimeSigDen;
             selectedItem = null; // items were rebuilt; drop the stale selection
             Render();
@@ -348,7 +348,7 @@ namespace MusicTracker.Screens
             if (dlg.ShowDialog() != true) return;
             CommitRiffEditor();
             PushUndo("transpose");
-            if (!Engine.Timeline.ChordModelOps.TransposeProject(project, TimelineHelper.RiffById, dlg.Result, dlg.ResultDirection, dlg.ResultMode)) return;
+            if (!Engine.Timeline.ChordModelOps.TransposeProject(project, project.RiffById, dlg.Result, dlg.ResultDirection, dlg.ResultMode)) return;
             SyncKeyToolbar();
             Render();
             RefreshScore();
@@ -434,7 +434,7 @@ namespace MusicTracker.Screens
             if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Playback")) return;
             try
             {
-                player = new Engine.Timeline.TimelinePlayer(project, TimelineHelper.RiffById, AudioFormat.SampleRate);
+                player = new Engine.Timeline.TimelinePlayer(project, project.RiffById, AudioFormat.SampleRate);
                 player.StartBeat = startBeat; // start at the cursor; tempo/volume are set for that beat in Start()
                 player.Loop = loopEnabled; player.LoopEndBeat = loopEndBeat; // A-B loop region ([startBeat, loopEndBeat])
                 // A background thread pre-renders ahead so the audio device only copies samples (absorbs the
@@ -666,7 +666,7 @@ namespace MusicTracker.Screens
 
             // ResolveLoops mutates the project (sizes looping Repeats) — run it ONCE here on the UI thread, then
             // the per-track builds (parallel, background) only read.
-            Engine.Timeline.TimelineProject.ResolveLoops(project, TimelineHelper.RiffById);
+            Engine.Timeline.TimelineProject.ResolveLoops(project, project.RiffById);
 
             List<Engine.Score.TrackScore> list;
             try
@@ -679,8 +679,8 @@ namespace MusicTracker.Screens
                         var t = toBuild[k];
                         var l = new List<Engine.Score.TrackScore>();
                         // A chord track that carries melodic cells shows an EXTRA melody staff ABOVE the chord staff.
-                        if (Engine.Score.ScoreBuilder.TrackHasMelodic(t)) l.Add(Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById, false, melodic: true));
-                        l.Add(Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById, false));
+                        if (Engine.Score.ScoreBuilder.TrackHasMelodic(t)) l.Add(Engine.Score.ScoreBuilder.Build(project, t, project.RiffById, false, melodic: true));
+                        l.Add(Engine.Score.ScoreBuilder.Build(project, t, project.RiffById, false));
                         perTrack[k] = l;
                     });
                     var flat = new List<Engine.Score.TrackScore>();
@@ -787,7 +787,7 @@ namespace MusicTracker.Screens
         public bool Save(string path)
         {
             var doc = new TimelineDocument { Project = project };
-            doc.Riffs.AddRange(RiffLibrary.Instance.Riffs);
+            doc.Riffs.AddRange(project.Riffs);
             System.IO.File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(doc, JsonOpts));
             CurrentPath = path;
             return true;
@@ -797,7 +797,7 @@ namespace MusicTracker.Screens
         /// <see cref="Dialogs.ReportBugDialog"/>). The serialization/formatting lives in the decoupled
         /// <see cref="Engine.BugReport.BugReportContext"/>; this only forwards the screen's state.</summary>
         public Engine.BugReport.BugReportContext BuildBugReportContext()
-            => Engine.BugReport.BugReportContext.Build(project, RiffLibrary.Instance.Riffs, templateSpec, CurrentPath, TemplateSeed);
+            => Engine.BugReport.BugReportContext.Build(project, project.Riffs, templateSpec, CurrentPath, TemplateSeed);
 
         // Open a .sq (native) or import a .mid/.mscz/.mscx into the timeline.
         public void LoadFile(string path)
@@ -917,8 +917,8 @@ namespace MusicTracker.Screens
         void ApplyDocument(TimelineDocument doc, string path)
         {
             if (doc == null) return;
-            RiffLibrary.Instance.Riffs.Clear();
-            if (doc.Riffs != null) foreach (var r in doc.Riffs) RiffLibrary.Instance.Riffs.Add(r);
+            project.Riffs.Clear();
+            if (doc.Riffs != null) foreach (var r in doc.Riffs) project.Riffs.Add(r);
 
             var dp = doc.Project ?? new TimelineProject();
             project.Tempo = (dp.Tempo != null && dp.Tempo.Count > 0)
@@ -956,7 +956,7 @@ namespace MusicTracker.Screens
         string SnapshotState()
         {
             var doc = new TimelineDocument { Project = project };
-            doc.Riffs.AddRange(RiffLibrary.Instance.Riffs);
+            doc.Riffs.AddRange(project.Riffs);
             return System.Text.Json.JsonSerializer.Serialize(doc, JsonOpts);
         }
 
@@ -1079,16 +1079,16 @@ namespace MusicTracker.Screens
 
             // Empty 1-bar riff on the instrument track.
             var riff = new Riff { Name = "Riff", LengthSlices = temps * 24, SlicesPerQuarter = 24 };
-            RiffLibrary.Instance.Riffs.Add(riff);
+            project.Riffs.Add(riff);
             riffItem = new TimelineItem { Module = new PlayRiffModule { RiffId = riff.Id } };
-            TimelineHelper.PlaceAtCursor(instrTrack, riffItem, temps, 0, TimelineHelper.RiffById);
+            TimelineHelper.PlaceAtCursor(instrTrack, riffItem, temps, 0, project.RiffById);
 
             // Drum module on a new drum track.
             drumTrack = new TimelineTrack { Name = "Batterie", Type = TimelineTrackType.Drum, Instrument = InstrumentCatalog.DrumIndex };
             project.Tracks.Add(drumTrack);
             TimelineHelper.EnsureChordTrack(project); // keep the chords track pinned at the bottom
             drumItem = new TimelineItem { Module = new DrumPatternModule() };
-            TimelineHelper.PlaceAtCursor(drumTrack, drumItem, temps, 0, TimelineHelper.RiffById);
+            TimelineHelper.PlaceAtCursor(drumTrack, drumItem, temps, 0, project.RiffById);
 
             undoMgr.Clear(); pendingUndo = null; pendingUndoKey = null; // the demo isn't a user action
             Render();
@@ -1111,7 +1111,7 @@ namespace MusicTracker.Screens
         double SeqDispLen(System.Collections.Generic.IList<TimelineItem> items)
         {
             double c = 0;
-            if (items != null) foreach (var it in items) c += it.SilenceBefore + TimelineHelper.DispLen(it);
+            if (items != null) foreach (var it in items) c += it.SilenceBefore + project.DispLen(it);
             return c;
         }
 
@@ -1150,7 +1150,7 @@ namespace MusicTracker.Screens
             trackHeaders.Clear();
             leafBoxes.Clear();
             boxOwner.Clear();
-            TimelineProject.ResolveLoops(project, TimelineHelper.RiffById); // size looping Repeats to fill up to the end
+            TimelineProject.ResolveLoops(project, project.RiffById); // size looping Repeats to fill up to the end
             double laneWidth = TotalBeats() * PxPerBeat;
 
             measureRuler.Configure(laneWidth, 20, PxPerBeat, TimelineHelper.RulerBeatsPerBar(project), project.PickupBeats); // measure-number ruler on top (4 beats/bar)
@@ -1207,7 +1207,7 @@ namespace MusicTracker.Screens
             trackHeaders.Clear();
             leafBoxes.Clear();
             boxOwner.Clear();
-            TimelineProject.ResolveLoops(project, TimelineHelper.RiffById);
+            TimelineProject.ResolveLoops(project, project.RiffById);
             double laneWidth = TotalBeats() * PxPerBeat;
             measureRuler.Configure(laneWidth, 20, PxPerBeat, TimelineHelper.RulerBeatsPerBar(project), project.PickupBeats);
             if (startCanvas != null) startCanvas.Width = laneWidth;
@@ -1250,7 +1250,7 @@ namespace MusicTracker.Screens
                 {
                     cursor += item.SilenceBefore;
                     AddItem(canvas, track, item, cursor);
-                    cursor += TimelineHelper.DispLen(item);
+                    cursor += project.DispLen(item);
                     if (++done % 24 == 0)
                     {
                         prog?.Set(0.7 + 0.29 * done / Math.Max(1, total), Loc.T("Affichage") + done + "/" + total + ")");
@@ -1452,7 +1452,7 @@ namespace MusicTracker.Screens
             foreach (var item in tr.Items)
                 if (item.Module is PlayRiffModule pr)
                 {
-                    var r = TimelineHelper.RiffById(pr.RiffId);
+                    var r = project.RiffById(pr.RiffId);
                     if (r != null && r.Notes != null)
                         foreach (var n in r.Notes) outl.Add(new Engine.RiffNote(n.Note, pos + n.Start, n.Length));
                     pos += (r != null && r.LengthSlices > 0) ? r.LengthSlices : barSlices;
@@ -1498,7 +1498,7 @@ namespace MusicTracker.Screens
                 foreach (var n in line) if (n.Start >= lo && n.Start < hi)
                     bn.Add(new Engine.RiffNote(n.Note, n.Start - lo, Math.Max(1, Math.Min(n.Length, hi - n.Start))));
                 var br = new Riff { Name = name + " m." + (b + 1), Notes = bn, LengthSlices = arr.BarSlices, SlicesPerQuarter = spq };
-                RiffLibrary.Instance.Riffs.Add(br);
+                project.Riffs.Add(br);
                 track.Items.Add(new TimelineItem { Module = new PlayRiffModule { RiffId = br.Id } });
             }
             // insert AFTER the last melodic voice (Mélodie / Contre-chant / Ligne mélodique N), before pad/accomp/bass
@@ -1564,7 +1564,7 @@ namespace MusicTracker.Screens
 
         void RemoveAt(System.Collections.Generic.IList<TimelineItem> list, int idx, TimelineItem containerRepeat, TimelineTrack track)
         {
-            double comp = list[idx].SilenceBefore + TimelineHelper.DispLen(list[idx]); // freed time
+            double comp = list[idx].SilenceBefore + project.DispLen(list[idx]); // freed time
             list.RemoveAt(idx);
             if (idx < list.Count)
                 list[idx].SilenceBefore += comp; // next item in the same list keeps its position
@@ -1618,7 +1618,7 @@ namespace MusicTracker.Screens
             foreach (var item in track.Items)
             {
                 cursor += item.SilenceBefore;
-                double len = TimelineHelper.DispLen(item);
+                double len = project.DispLen(item);
                 var rect = new Rectangle
                 {
                     Width = Math.Max(3, len * PxPerBeat - 2), Height = h, RadiusX = 2, RadiusY = 2,
@@ -1644,7 +1644,7 @@ namespace MusicTracker.Screens
             {
                 cursor += item.SilenceBefore;
                 AddItem(canvas, track, item, cursor);
-                cursor += TimelineHelper.DispLen(item); // compact: a Repeat advances by one cycle
+                cursor += project.DispLen(item); // compact: a Repeat advances by one cycle
             }
         }
 
@@ -1750,7 +1750,7 @@ namespace MusicTracker.Screens
 
         FrameworkElement MakeLeafBox(TimelineTrack track, TimelineItem item, double startBeat, bool interactive, double opacity, double top, double height, Action<double> onDrop = null)
         {
-            double len = TimelineProject.ItemLength(item, TimelineHelper.RiffById);
+            double len = TimelineProject.ItemLength(item, project.RiffById);
             double w = Math.Max(40, len * PxPerBeat - 2);
             bool sel = interactive && item == selectedItem;
             var box = new Controls.TimelineEditor.ModuleBoxControl();
@@ -1775,7 +1775,7 @@ namespace MusicTracker.Screens
             box.SetBigLabel(bigLabel);
             switch (item.Module) // cached mini-preview (orange = riff, red = chords, yellow = drums)
             {
-                case PlayRiffModule pr: box.SetThumbnail(Controls.RiffThumbnail.Get(TimelineHelper.RiffById(pr.RiffId))); break;
+                case PlayRiffModule pr: box.SetThumbnail(Controls.RiffThumbnail.Get(project.RiffById(pr.RiffId))); break;
                 case PatternGeneratorModule pg:
                     box.SetThumbnail(pg.HasMelodic
                         ? Controls.RiffThumbnail.GetCombined(PatternGenerator.Generate(pg), Controls.RiffThumbnail.Chords, PatternGenerator.GenerateMelodic(pg, project.Key ?? new Engine.Score.KeySignature()), Controls.RiffThumbnail.Melodic)
@@ -1789,14 +1789,14 @@ namespace MusicTracker.Screens
                     // Prefer the pitched line the engine derives from the chords; fall back to the raw rhythm skeleton
                     // (so the box still shows something when no chord is in effect). Blue, matching the melodic accent.
                     int spq = ml.SlicesPerQuarter > 0 ? ml.SlicesPerQuarter : 4;
-                    var gen = Engine.Timeline.MelodicLineEngine.GenerateLine(ml, project, TimelineHelper.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat);
+                    var gen = Engine.Timeline.MelodicLineEngine.GenerateLine(ml, project, project.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat);
                     if (gen == null && ml.Notes != null && ml.Notes.Count > 0)
                         gen = new Riff { Notes = new System.Collections.Generic.List<RiffNote>(ml.Notes), LengthSlices = Math.Max(1, ml.BeatsPerBar) * spq, SlicesPerQuarter = spq };
                     box.SetThumbnail(Controls.RiffThumbnail.Get(gen, Controls.RiffThumbnail.Melodic));
                     break;
                 }
                 case Engine.Flow.MelodicPolyModule mp:
-                    box.SetThumbnail(Controls.RiffThumbnail.Get(Engine.Flow.MelodicEuclid.Generate(mp, project, TimelineHelper.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat), Controls.RiffThumbnail.Melodic));
+                    box.SetThumbnail(Controls.RiffThumbnail.Get(Engine.Flow.MelodicEuclid.Generate(mp, project, project.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat), Controls.RiffThumbnail.Melodic));
                     break;
             }
             Canvas.SetLeft(box, startBeat * PxPerBeat);
@@ -1825,12 +1825,12 @@ namespace MusicTracker.Screens
             if (di < 0) return;
             PushUndo("move:" + Id(dragged)); // a drag emits several — coalesced into one undo entry
 
-            double Ld = TimelineHelper.DispLen(dragged);
+            double Ld = project.DispLen(dragged);
 
             // Absolute start of every current item (including the dragged one).
             var allStart = new double[items.Count];
             double cur = 0;
-            for (int i = 0; i < items.Count; i++) { cur += items[i].SilenceBefore; allStart[i] = cur; cur += TimelineHelper.DispLen(items[i]); }
+            for (int i = 0; i < items.Count; i++) { cur += items[i].SilenceBefore; allStart[i] = cur; cur += project.DispLen(items[i]); }
 
             // The remaining items KEEP their original absolute positions, so removing the dragged module
             // doesn't pull the ones after it leftwards — the freed gap becomes the next item's larger
@@ -1841,7 +1841,7 @@ namespace MusicTracker.Screens
             var L = new double[n];
             int k = 0;
             for (int i = 0; i < items.Count; i++)
-                if (i != di) { rest[k] = items[i]; s[k] = allStart[i]; L[k] = TimelineHelper.DispLen(items[i]); k++; }
+                if (i != di) { rest[k] = items[i]; s[k] = allStart[i]; L[k] = project.DispLen(items[i]); k++; }
 
             if (dropStart < 0) dropStart = 0;
             dropStart = Math.Round(dropStart); // snap to the nearest beat
@@ -1891,7 +1891,7 @@ namespace MusicTracker.Screens
                 double sb = (i == 0) ? starts[i] : starts[i] - prev;
                 order[i].SilenceBefore = sb < 0 ? 0 : sb;
                 items.Add(order[i]);
-                prev = starts[i] + TimelineHelper.DispLen(order[i]);
+                prev = starts[i] + project.DispLen(order[i]);
             }
 
             // Structure changed -> select the dragged item (builds its editor if needed) then rebuild lanes.
@@ -1939,7 +1939,7 @@ namespace MusicTracker.Screens
                     return $"{Loc.T("Polyrythmique")} · {nv} {Loc.T("Calques")}{cs} · {beats}";
                 }
                 case PlayRiffModule pr:
-                    { var r = TimelineHelper.RiffById(pr.RiffId); return (r != null ? r.Name : Loc.T("Aucun")) + " · " + beats; }
+                    { var r = project.RiffById(pr.RiffId); return (r != null ? r.Name : Loc.T("Aucun")) + " · " + beats; }
                 default:
                     return beats;
             }
@@ -2035,7 +2035,7 @@ namespace MusicTracker.Screens
             foreach (var it in t.Items)
             {
                 cur += it.SilenceBefore;
-                double len = Math.Max(1e-6, TimelineHelper.DispLen(it));
+                double len = Math.Max(1e-6, project.DispLen(it));
                 if (rawBeat >= cur - 1e-6 && rawBeat < cur + len - 1e-6) { found = it; foundStart = cur; break; }
                 cur += len;
             }
@@ -2214,11 +2214,11 @@ namespace MusicTracker.Screens
             foreach (var it in t.Items)
             {
                 cur += it.SilenceBefore;
-                double len = Math.Max(1e-6, TimelineHelper.DispLen(it));
+                double len = Math.Max(1e-6, project.DispLen(it));
                 if (rawBeat >= cur - 1e-6 && rawBeat < cur + len - 1e-6)
                 {
                     if (!(it.Module is PlayRiffModule pr)) return false;   // Accords/Batterie/Cadence… = read-only
-                    riff = TimelineHelper.RiffById(pr.RiffId); if (riff == null) return false;
+                    riff = project.RiffById(pr.RiffId); if (riff == null) return false;
                     spq = riff.SlicesPerQuarter > 0 ? riff.SlicesPerQuarter : 24;
                     off = Math.Max(0, (int)Math.Round((rawBeat - cur) * spq));
                     Engine.Score.ScoreClef.ForTrack(t.Instrument, t.Type == TimelineTrackType.Drum, out _, out transpose, out _);
@@ -2420,15 +2420,15 @@ namespace MusicTracker.Screens
         void RefreshEditedRiffBox()
         {
             if (riffEditItem == null) { Render(); return; }
-            if (Math.Abs(TimelineHelper.DispLen(riffEditItem) - riffOpenLen) < 1e-6)
+            if (Math.Abs(project.DispLen(riffEditItem) - riffOpenLen) < 1e-6)
             {
                 if (leafBoxes.TryGetValue(riffEditItem, out var box))
                 {
-                    if (riffEditItem.Module is PlayRiffModule pr) box.SetThumbnail(Controls.RiffThumbnail.Get(TimelineHelper.RiffById(pr.RiffId)));
+                    if (riffEditItem.Module is PlayRiffModule pr) box.SetThumbnail(Controls.RiffThumbnail.Get(project.RiffById(pr.RiffId)));
                     else if (riffEditItem.Module is DrumPatternModule dp) box.SetThumbnail(Controls.RiffThumbnail.GetDrums(DrumPattern.Generate(dp)));
                 }
             }
-            else { RefreshTrackLane(riffEditTrack ?? selectedTrack); riffOpenLen = TimelineHelper.DispLen(riffEditItem); }
+            else { RefreshTrackLane(riffEditTrack ?? selectedTrack); riffOpenLen = project.DispLen(riffEditItem); }
         }
 
         // Rebuild a single track's header + lane stack in place (re-positions its modules) and widen the
@@ -2441,7 +2441,7 @@ namespace MusicTracker.Screens
             int idx = ti + 1; // index 0 = the tempo lane/header
             if (ti < 0 || idx >= lanePanel.Children.Count || idx >= headerPanel.Children.Count) { Render(); return; }
 
-            TimelineProject.ResolveLoops(project, TimelineHelper.RiffById);
+            TimelineProject.ResolveLoops(project, project.RiffById);
             double laneWidth = TotalBeats() * PxPerBeat;
             measureRuler.Configure(laneWidth, 20, PxPerBeat, TimelineHelper.RulerBeatsPerBar(project), project.PickupBeats);
             if (startCanvas != null) startCanvas.Width = laneWidth;
@@ -2517,7 +2517,7 @@ namespace MusicTracker.Screens
 
             var top = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 6) };
             top.Children.Add(new TextBlock { Text = "Riff :", Foreground = "#AAAAAA".ToBrush(), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 5, 0) });
-            var combo = new ComboBox { Width = 200, ItemsSource = RiffLibrary.Instance.Riffs, DisplayMemberPath = "Name", SelectedValuePath = "Id" };
+            var combo = new ComboBox { Width = 200, ItemsSource = project.Riffs, DisplayMemberPath = "Name", SelectedValuePath = "Id" };
             var neu = new Button { Content = Loc.T("Nouveau"), Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(8, 2, 8, 2), Cursor = Cursors.Hand };
             top.Children.Add(combo); top.Children.Add(neu);
             // "Appliquer le thème": treat THIS riff as the theme → copy it into the theme riff and regenerate the derived
@@ -2552,7 +2552,7 @@ namespace MusicTracker.Screens
                 rg.SetBacking(TimelineHelper.BackingForRiff(project,r.Id), BackingInstrument()); // play the chord line under this riff (clamped), when it's a composed section
                 combo.SelectedValue = asDraft ? null : (object)r.Id; // blank while it's a draft
                 // Baseline for the on-leave refresh: which item, its track, and its length before editing.
-                riffEditItem = editedItem; riffEditTrack = track; riffOpenLen = TimelineHelper.DispLen(editedItem); riffDirty = false;
+                riffEditItem = editedItem; riffEditTrack = track; riffOpenLen = project.DispLen(editedItem); riffDirty = false;
                 if (rerender) Render();
             };
 
@@ -2561,11 +2561,11 @@ namespace MusicTracker.Screens
                 // The draft becomes a real library riff the moment it gets content.
                 if (draft != null && rg.CurrentNotes().Count > 0)
                 {
-                    RiffLibrary.Instance.Riffs.Add(draft);
+                    project.Riffs.Add(draft);
                     combo.SelectedValue = draft.Id; // now listed -> show it selected
                     draft = null;
                 }
-                var rr = TimelineHelper.RiffById(pr.RiffId);
+                var rr = project.RiffById(pr.RiffId);
                 if (rr != null) { rr.Notes = rg.CurrentNotes(); rr.LengthSlices = rg.LengthSlices; rr.SlicesPerQuarter = rg.Spb; }
                 riffDirty = true; // persisted live; the timeline box is refreshed when we leave the riff
             };
@@ -2580,16 +2580,16 @@ namespace MusicTracker.Screens
             {
                 if (combo.SelectedValue is Guid id && id != pr.RiffId)
                 {
-                    var r = TimelineHelper.RiffById(id);
+                    var r = project.RiffById(id);
                     if (r != null) show(r, false, true);
                 }
             };
-            neu.Click += (s, e) => show(new Riff { Name = "Riff " + (RiffLibrary.Instance.Riffs.Count + 1) }, true, true);
+            neu.Click += (s, e) => show(new Riff { Name = "Riff " + (project.Riffs.Count + 1) }, true, true);
 
             // Initial content: the module's existing riff, or auto-"Nouveau" (a draft). No Render on open.
-            var cur = TimelineHelper.RiffById(pr.RiffId);
+            var cur = project.RiffById(pr.RiffId);
             if (cur != null) show(cur, false, false);
-            else show(new Riff { Name = "Riff " + (RiffLibrary.Instance.Riffs.Count + 1) }, true, false);
+            else show(new Riff { Name = "Riff " + (project.Riffs.Count + 1) }, true, false);
             return grid;
         }
 
@@ -2612,7 +2612,7 @@ namespace MusicTracker.Screens
                 System.Windows.MessageBox.Show(Loc.T("AucunArrangementARegenererComposezD"), Loc.T("AppliquerLeTheme"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            var src = TimelineHelper.RiffById(pr.RiffId);
+            var src = project.RiffById(pr.RiffId);
             if (src == null || src.Notes == null || src.Notes.Count == 0)
             {
                 System.Windows.MessageBox.Show(Loc.T("LeRiffEstVideRienA"), Loc.T("AppliquerLeTheme"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -2621,7 +2621,7 @@ namespace MusicTracker.Screens
             var theme = new System.Collections.Generic.List<Engine.RiffNote>(src.Notes);
             var changes = Engine.Timeline.ArrangementEngine.RegenerateFromTheme(arr, theme);
             int applied = 0;
-            foreach (var ch in changes) { var r = TimelineHelper.RiffById(ch.riffId); if (r != null) { r.Notes = ch.notes; applied++; } }
+            foreach (var ch in changes) { var r = project.RiffById(ch.riffId); if (r != null) { r.Notes = ch.notes; applied++; } }
             arr.Theme = theme;       // this riff is now the canonical theme
             CommitRiffEditor();      // close the inline editor; the riff boxes/score are about to be redrawn
             Render();
@@ -2664,8 +2664,8 @@ namespace MusicTracker.Screens
                 RedistributeToBars(arr, "Basse", built.bass);
             }
             if (autoTransposeChords)
-                foreach (var rf in Engine.Timeline.ArrangementEngine.RefitMelodyToTrame(arr, id => { var r = TimelineHelper.RiffById(id); return r != null ? r.Notes : null; }))
-                { var r = TimelineHelper.RiffById(rf.riffId); if (r != null) r.Notes = rf.notes; }
+                foreach (var rf in Engine.Timeline.ArrangementEngine.RefitMelodyToTrame(arr, id => { var r = project.RiffById(id); return r != null ? r.Notes : null; }))
+                { var r = project.RiffById(rf.riffId); if (r != null) r.Notes = rf.notes; }
             CommitRiffEditor();
             Render();
             RefreshScore();
@@ -2682,7 +2682,7 @@ namespace MusicTracker.Screens
             {
                 if (item.Module is PlayRiffModule pr)
                 {
-                    var r = TimelineHelper.RiffById(pr.RiffId);
+                    var r = project.RiffById(pr.RiffId);
                     if (r != null)
                     {
                         int lo = bar * arr.BarSlices, hi = lo + arr.BarSlices;
@@ -3047,7 +3047,7 @@ namespace MusicTracker.Screens
         {
             // Baseline for the deferred, on-leave box refresh (the grid persists live via GridChanged, but the
             // timeline thumbnail is only rebuilt when we leave the editor — a full Render per stroke is too slow).
-            riffEditItem = item; riffEditTrack = track; riffOpenLen = TimelineHelper.DispLen(item); riffDirty = false;
+            riffEditItem = item; riffEditTrack = track; riffOpenLen = project.DispLen(item); riffDirty = false;
 
             var grid = TwoColumns(out StackPanel left, out ContentControl host);
             Action refresh = null;
@@ -3238,11 +3238,11 @@ namespace MusicTracker.Screens
         // ---- Riff generator (IA) --------------------------------------------------------------------------------
         void GenerateRiffWithAi(TimelineTrack track, PlayRiffModule pr, TimelineItem editedItem, Controls.RiffGridControl rg)
         {
-            var riff = TimelineHelper.RiffById(pr.RiffId);
+            var riff = project.RiffById(pr.RiffId);
             if (riff == null) return;
             int barTemps = TimelineHelper.RulerBeatsPerBar(project);
-            double startBeat = TimelineHelper.ItemStartBeat(track, editedItem);
-            double lenBeats = Math.Max(barTemps, TimelineHelper.DispLen(editedItem));
+            double startBeat = project.ItemStartBeat(track, editedItem);
+            double lenBeats = Math.Max(barTemps, project.DispLen(editedItem));
             int measures = Math.Max(1, (int)Math.Round(lenBeats / Math.Max(1, barTemps)));
             string keyStr = txtKeySummary?.Text ?? "";
             string meterStr = txtMeterSummary?.Text ?? (project.TimeSigNum + "/" + project.TimeSigDen);
@@ -3444,7 +3444,7 @@ namespace MusicTracker.Screens
             scoreTracks.Clear();
             activeScore = null;
             selectedItem = null;
-            foreach (var r in result.Riffs) RiffLibrary.Instance.Riffs.Add(r);
+            foreach (var r in result.Riffs) project.Riffs.Add(r);
             foreach (var t in result.Tracks) project.Tracks.Add(t);
             // show all melodic parts (melody voices + chords + bass) in the score; drums are percussion.
             foreach (var t in result.Tracks) if (t.Type != TimelineTrackType.Drum) scoreTracks.Add(t);
@@ -3509,8 +3509,8 @@ namespace MusicTracker.Screens
             // If a Repeat is selected, add INSIDE it (its sub-track); keep the Repeat selected so you
             string pre = BeginUndo();
             var item = new TimelineItem { Module = m }; // inserted after the block at the cursor (truncated to fit), else appended
-            double len = Engine.Timeline.TimelineProject.ItemLength(item, TimelineHelper.RiffById);
-            TimelineHelper.PlaceAtCursor(selectedTrack, item, len, startBeat, TimelineHelper.RiffById);
+            double len = Engine.Timeline.TimelineProject.ItemLength(item, project.RiffById);
+            TimelineHelper.PlaceAtCursor(selectedTrack, item, len, startBeat, project.RiffById);
             SelectItem(selectedTrack, item);
             CommitUndo(pre, "insert:" + Id(item));
             Render(); // new box -> rebuild lanes
@@ -3526,11 +3526,11 @@ namespace MusicTracker.Screens
 
             int temps = TimelineHelper.RulerBeatsPerBar(project);                // one bar in temps: num in /4, num/3 in /8
             const int spq = 24;                            // canonical resolution: 1 temps = 24 slices (like imports)
-            var riff = new Riff { Name = "Riff " + (RiffLibrary.Instance.Riffs.Count + 1), LengthSlices = temps * spq, SlicesPerQuarter = spq };
-            RiffLibrary.Instance.Riffs.Add(riff);
+            var riff = new Riff { Name = "Riff " + (project.Riffs.Count + 1), LengthSlices = temps * spq, SlicesPerQuarter = spq };
+            project.Riffs.Add(riff);
             var item = new TimelineItem { Module = new PlayRiffModule { RiffId = riff.Id } };
 
-            TimelineHelper.PlaceAtCursor(track, item, temps, startBeat, TimelineHelper.RiffById);
+            TimelineHelper.PlaceAtCursor(track, item, temps, startBeat, project.RiffById);
 
             SelectItem(track, item); // open the riff editor on the new 1-measure riff
             CommitUndo(pre, "insert:" + Id(item));
@@ -3678,7 +3678,7 @@ namespace MusicTracker.Screens
             if (item?.Module == null) return;
             CommitRiffEditor();
             clipModule = CloneModule(item.Module);
-            clipRiff = item.Module is PlayRiffModule pr ? TimelineHelper.RiffById(pr.RiffId)?.Clone() : null;
+            clipRiff = item.Module is PlayRiffModule pr ? project.RiffById(pr.RiffId)?.Clone() : null;
         }
 
         // Paste the clipboard module right after the block at the cursor on `track` (truncated to fit), as an
@@ -3693,12 +3693,12 @@ namespace MusicTracker.Screens
                 var r = clipRiff.Clone();
                 r.Id = Guid.NewGuid();                       // Clone() preserves the Id → give the copy a new one
                 r.Name = clipRiff.Name + " (copie)";
-                RiffLibrary.Instance.Riffs.Add(r);
+                project.Riffs.Add(r);
                 pr.RiffId = r.Id;
             }
             var newItem = new TimelineItem { Module = m };
-            double len = Engine.Timeline.TimelineProject.ItemLength(newItem, TimelineHelper.RiffById);
-            TimelineHelper.PlaceAtCursor(track, newItem, len, startBeat, TimelineHelper.RiffById);
+            double len = Engine.Timeline.TimelineProject.ItemLength(newItem, project.RiffById);
+            TimelineHelper.PlaceAtCursor(track, newItem, len, startBeat, project.RiffById);
             selectedTrack = track;
             SelectItem(track, newItem);
             Render();
@@ -3712,7 +3712,7 @@ namespace MusicTracker.Screens
         {
             CommitRiffEditor();
             PushUndo("convert:" + Id(item));
-            TimelineHelper.ConvertRiffToDrums(track, item, prm);
+            TimelineHelper.ConvertRiffToDrums(project, track, item, prm);
             Render();
 
             if (track.Type != TimelineTrackType.Drum)
@@ -3806,7 +3806,7 @@ namespace MusicTracker.Screens
                         degs.Add(pgm.Degree >= 0 ? pgm.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((pgm.Root % 12) + 12) % 12));
                     else if (it.Module is CadenceModule cm && cm.Chords != null && cm.Chords.Count > 0)
                     { var lc = cm.Chords[cm.Chords.Count - 1]; degs.Add(lc.Degree >= 0 ? lc.Degree : Engine.Flow.MusicTheory.DegreeOf(key, ((lc.Root % 12) + 12) % 12)); }
-                    beats += it.SilenceBefore +  ModuleDuration.Beats(it.Module, TimelineHelper.RiffById);
+                    beats += it.SilenceBefore +  ModuleDuration.Beats(it.Module, project.RiffById);
                     if (ReferenceEquals(it, upTo)) break;
                 }
             int take = Math.Min(3, degs.Count);
@@ -3874,7 +3874,7 @@ namespace MusicTracker.Screens
 
         UIElement BuildMelodicLineEditor(TimelineTrack track, TimelineItem item, MelodicLineModule ml)
         {
-            double startBeat = TimelineHelper.ItemStartBeat(track, item);
+            double startBeat = project.ItemStartBeat(track, item);
             var grid = TwoColumns(out StackPanel left, out ContentControl host);
             Action refresh = null;
             refresh = () => { RefreshMelodicLineGrid(host, track, item, ml, startBeat); Render(); };
@@ -4018,7 +4018,7 @@ namespace MusicTracker.Screens
             {
                 var t = new MelodicLineModule { BeatsPerBar = ml.BeatsPerBar, VoiceCount = ml.VoiceCount };
                 t.SetNotes(rg.CurrentNotes(), gs, rg.Beats * gs);
-                return Engine.Timeline.MelodicLineEngine.GenerateLine(t, project, TimelineHelper.RiffById, project.Key, startBeat);
+                return Engine.Timeline.MelodicLineEngine.GenerateLine(t, project, project.RiffById, project.Key, startBeat);
             };
             // The motif picker + "Appliquer" live in the LEFT panel now, so the grid keeps only "Enregistrer" (save-as).
             Action onSaveStyle = () =>
@@ -4063,7 +4063,7 @@ namespace MusicTracker.Screens
         private void btnVariation_Click(object sender, RoutedEventArgs e)
         {
             var pr = selectedItem != null ? selectedItem.Module as PlayRiffModule : null;
-            var src = pr != null ? TimelineHelper.RiffById(pr.RiffId) : null;
+            var src = pr != null ? project.RiffById(pr.RiffId) : null;
             if (src == null || src.Notes == null || src.Notes.Count == 0)
             {
                 MessageBox.Show(Loc.T("SelectionneDAbordUnRiffLe"), Loc.T("Variation"), MessageBoxButton.OK, MessageBoxImage.Information);
@@ -4101,7 +4101,7 @@ namespace MusicTracker.Screens
 
             string path = sfd.FileName;
             bool mp3 = string.Equals(System.IO.Path.GetExtension(path), ".mp3", StringComparison.OrdinalIgnoreCase);
-            var p = new Engine.Timeline.TimelinePlayer(project, TimelineHelper.RiffById, AudioFormat.SampleRate);
+            var p = new Engine.Timeline.TimelinePlayer(project, project.RiffById, AudioFormat.SampleRate);
             long cap = p.EstimatedTotalSamples + 5L * AudioFormat.SampleRate; // + a few seconds of ring-out tail
 
             var dlg = new ExportProgressDialog((progress, token) =>
@@ -4168,7 +4168,7 @@ namespace MusicTracker.Screens
                 prog.Show();
 
                 prog.Set(0.85, Loc.T("ConstructionDuSequenceur"));
-                foreach (var r in result.Riffs) RiffLibrary.Instance.Riffs.Add(r);
+                foreach (var r in result.Riffs) project.Riffs.Add(r);
                 project.Tempo = result.Project.Tempo;
                 project.Key = chosenKey; // detected concert key, confirmed/corrected by the user
                 project.TimeSigNum = chosenNum; project.TimeSigDen = chosenDen;
@@ -4197,7 +4197,7 @@ namespace MusicTracker.Screens
             if (sfd.ShowDialog() != true) return;
             try
             {
-                Engine.Timeline.MidiTimelineExporter.Export(sfd.FileName, project, TimelineHelper.RiffById);
+                Engine.Timeline.MidiTimelineExporter.Export(sfd.FileName, project, project.RiffById);
                 MessageBox.Show(Loc.T("ExportMIDITermine") + sfd.FileName);
             }
             catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMIDI") + ex.Message); }
@@ -4215,7 +4215,7 @@ namespace MusicTracker.Screens
             foreach (var t in src)
             {
                 if (t.Type == TimelineTrackType.Drum) continue; // percussion needs a drum staff — not exported yet
-                parts.Add(new Engine.Timeline.MuseScoreExporter.Part { Name = t.Name, Program = t.Instrument, Score = Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById) });
+                parts.Add(new Engine.Timeline.MuseScoreExporter.Part { Name = t.Name, Program = t.Instrument, Score = Engine.Score.ScoreBuilder.Build(project, t, project.RiffById) });
             }
             if (parts.Count == 0) { MessageBox.Show(Loc.T("AucunePisteMelodiqueAExporterCoche")); return; }
 
@@ -4245,7 +4245,7 @@ namespace MusicTracker.Screens
             foreach (var t in src)
             {
                 if (t.Type == TimelineTrackType.Drum) continue; // percussion needs a drum staff — not exported yet
-                parts.Add(new Engine.Timeline.MusicXmlExporter.Part { Name = t.Name, Program = t.Instrument, Score = Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById) });
+                parts.Add(new Engine.Timeline.MusicXmlExporter.Part { Name = t.Name, Program = t.Instrument, Score = Engine.Score.ScoreBuilder.Build(project, t, project.RiffById) });
             }
             if (parts.Count == 0) { MessageBox.Show(Loc.T("AucunePisteMelodiqueAExporterCoche")); return; }
 
@@ -4265,7 +4265,7 @@ namespace MusicTracker.Screens
         private void btnExportPdf_Click(object sender, RoutedEventArgs e)
         {
             var list = new System.Collections.Generic.List<Engine.Score.TrackScore>();
-            foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) list.Add(Engine.Score.ScoreBuilder.Build(project, t, TimelineHelper.RiffById));
+            foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) list.Add(Engine.Score.ScoreBuilder.Build(project, t, project.RiffById));
             if (list.Count == 0) { MessageBox.Show(Loc.T("CocheAuMoinsUnePistePour")); return; }
 
             // Title: the file name (no extension, '_' → space); fallback when unsaved.
