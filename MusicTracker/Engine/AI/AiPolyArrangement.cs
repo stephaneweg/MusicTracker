@@ -359,6 +359,16 @@ namespace MusicTracker.Engine.AI
             bool diaDim = MusicTheory.DiatonicIsDim(key, it.Degree);
             bool diaMin = !diaDim && MusicTheory.DiatonicThird(key, it.Degree) == 3;
             if (reqMin != diaMin || reqDim != diaDim) it.Degree = -1;
+            else
+            {
+                // Même correctif que ChordModelOps.AddAiChord, et il est encore plus visible ici : sur un accord
+                // VERROUILLÉ à son degré, PolyChord.VoicedNotes dérive les notes de DiatonicColour/Suspension et
+                // IGNORE Quality. DiatonicColour restant à 0 (triade), toute septième diatonique était rejouée en
+                // triade. Le test ci-dessus ne l'attrape pas : il ne compare que la TIERCE.
+                var trio = ChordDegrees.ColourForQuality(it.Quality);
+                it.DiatonicColour = trio.colour;
+                it.Suspension = trio.suspension;
+            }
             return it;
         }
 

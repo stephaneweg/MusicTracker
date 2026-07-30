@@ -15,14 +15,46 @@ using MusicTracker.Localization;
 
 namespace MusicTracker.Controls.TimelineEditor
 {
-    /// <summary>Convertit un Degree stocké (-1 = fixe, 0..6 = degré diatonique) en/depuis l'index du ComboBox
-    /// (0 = « Fixe », 1..7 = degré I..VII). En pur XAML on ne peut pas décaler un binding d'un cran.</summary>
-    public class DegreeIndexConverter : IValueConverter
+    /// <summary>Accord stocké (Degree + Root + Quality) → index du combo de degrés, DOMINANTES SECONDAIRES incluses.
+    ///
+    /// Pourquoi un MultiBinding EN LECTURE SEULE et pas un binding TwoWay comme avant : l'aller-retour degré↔V/x n'est
+    /// pas une propriété du modèle mais une CONVERSION qui a besoin (a) de la tonalité du projet, que seul l'éditeur
+    /// connaît, et (b) des trois propriétés Degree/Root/Quality — une V/x est un accord chromatique stocké en « fixe ».
+    /// L'écriture n'est donc pas symétrique (un seul index → trois propriétés) et ne peut pas passer par ConvertBack :
+    /// elle est faite en code-behind (<c>chordDegree_SelectionChanged</c>), en UNE transaction. La lecture, elle, reste
+    /// déclarative — donc virtualisation-compatible : rien ne force la réalisation des conteneurs, chaque carte
+    /// n'observe que son propre accord.</summary>
+    public class PolyDegreeIndexConverter : IMultiValueConverter
+    {
+        /// <summary>Le vocabulaire de la tonalité courante, injecté par l'éditeur (et remplacé si la tonalité change).</summary>
+        public ChordDegreeChoices Choices;
+
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            var ch = Choices;
+            if (ch == null || values == null || values.Length < 3) return 0;
+            if (!(values[0] is int degree) || !(values[1] is int root) || !(values[2] is int quality)) return 0;
+            return ch.IndexOf(degree, root, quality);
+        }
+        // OneWay : jamais appelé. On renvoie DoNothing plutôt que de lever, pour ne pas transformer une régression de
+        // binding en plantage.
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+        {
+            var r = new object[targetTypes?.Length ?? 0];
+            for (int i = 0; i < r.Length; i++) r[i] = Binding.DoNothing;
+            return r;
+        }
+    }
+
+    /// <summary>Degré stocké → « l'accord est-il FIXE ? ». Sert à n'activer le combo de fondamentale que sur un accord
+    /// manuel : sur un accord verrouillé à un degré, la fondamentale est dérivée de la tonalité et la saisir n'aurait
+    /// aucun effet durable (la prochaine dérivation l'écraserait) — même règle que <c>RootEnabled</c> dans l'éditeur
+    /// d'accord ordinaire.</summary>
+    public class DegreeIsFixedConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-            => value is int i ? Math.Max(0, i + 1) : 0;
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-            => value is int i ? i - 1 : -1;
+            => value is int i && i < 0;
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
     }
 
     /// <summary>Éditeur d'un module <see cref="PolyChordModule"/>. Trois colonnes : options du module + liste
@@ -46,6 +78,7 @@ namespace MusicTracker.Controls.TimelineEditor
             this.track = track; this.item = item; this.pc = pc; this.host = host;
 
             InitStaticLists();
+            NormalizeFixedChords();
 
             // Assignation directe : idem PolyDrumEditor/MelodicPolyEditor — les {ElementName=self, Path=...}
             // s'évaluent avant que le constructeur ait fini.
@@ -85,12 +118,14 @@ namespace MusicTracker.Controls.TimelineEditor
             txtCycleBeats.Text = pc.CycleBeats.ToString();
             chkOpenVoicing.IsChecked = pc.OpenVoicing;
 
-            // Combos accords : « Fixe » + I..VII (romains). Les V/x et couleurs avancées se règlent via le combo Qualité
-            // (comme le dialogue d'ajout d'accord classique) — on garde l'UI simple.
-            DegreeNames = new List<string> { Loc.T("ManuelAccordFixe"), "I", "II", "III", "IV", "V", "VI", "VII" };
+            // Combos accords : MÊME vocabulaire que l'éditeur d'accord ordinaire, dominantes secondaires comprises
+            // (ChordDegreeChoices est partagé par les deux). La liste dépend de la tonalité, donc EnsureChoices.
+            EnsureChoices();
+            RootNames = PatternGenerator.RootNames;
             QualityNames = PatternGenerator.QualityNames;
             ColourNames = MusicTheory.DiatonicColourNames;
             SuspensionNames = MusicTheory.SuspensionNames;
+            ModeNames = MusicTheory.ModeOverrideNames;
 
             // Noms de contour (mode 1-anneau). Alignés sur ceux de MelodicLineEngine.ContourNames pour l'utilisateur.
             ContourNames = new List<string> { Loc.T("ContourVague"), Loc.T("ContourMontante"), Loc.T("ContourDescendante"),
@@ -99,10 +134,31 @@ namespace MusicTracker.Controls.TimelineEditor
 
         // ---- ItemsSource / bindings sur self ---------------------------------------------------------------
         public IReadOnlyList<string> DegreeNames { get; private set; }
+        public IReadOnlyList<string> RootNames { get; private set; }
         public IReadOnlyList<string> QualityNames { get; private set; }
         public IReadOnlyList<string> ColourNames { get; private set; }
         public IReadOnlyList<string> SuspensionNames { get; private set; }
+        public IReadOnlyList<string> ModeNames { get; private set; }
         public IReadOnlyList<string> ContourNames { get; private set; }
+
+        // ---- vocabulaire harmonique (dépend de la TONALITÉ) -------------------------------------------------
+        Engine.Score.KeySignature Key => host?.Project?.Key ?? new Engine.Score.KeySignature();
+        ChordDegreeChoices choices;
+
+        /// <summary>(Re)construit la liste de degrés si elle ne correspond plus à la tonalité du projet. Appelée à
+        /// l'ouverture ET à chaque redessin : si la tonalité change pendant que l'éditeur est ouvert, la liste des V/x
+        /// (qui dépend des degrés tonicisables) et la casse des romains suivent.</summary>
+        void EnsureChoices()
+        {
+            var key = Key;
+            if (choices != null && choices.Matches(key)) return;
+            choices = ChordDegreeChoices.For(key);
+            DegreeNames = choices.Names;
+            // Le convertisseur du DataTemplate est l'INSTANCE déclarée dans les ressources : on lui injecte la
+            // tonalité courante (impossible en pur XAML — un IValueConverter n'a pas accès au projet).
+            if (Resources["PolyDegreeIndex"] is PolyDegreeIndexConverter conv) conv.Choices = choices;
+            OnPC(nameof(DegreeNames));
+        }
 
         // Visibilité conditionnelle du bloc « Mode Multi » / « Mode Sweep » sur chaque carte d'anneau.
         // Change quand cboMode change → on notifie pour rafraîchir toutes les cartes d'un coup.
@@ -136,7 +192,86 @@ namespace MusicTracker.Controls.TimelineEditor
             if (e.NewItems != null) foreach (INotifyPropertyChanged o in e.NewItems) if (o != null) o.PropertyChanged += Item_PropertyChanged;
             RedrawAll();
         }
-        void Item_PropertyChanged(object sender, PropertyChangedEventArgs e) => RedrawAll();
+        // Un champ d'accord ou d'anneau a changé. Les combos couleur/suspension/mode/qualité d'un accord sont bindés
+        // TwoWay : on détecte leur édition ICI, sur le MODÈLE, et pas via SelectionChanged sur les combos. C'est
+        // volontaire et nécessaire : la liste d'accords est virtualisée EN RECYCLAGE, donc réaliser ou recycler une
+        // carte réaffecte le SelectedIndex de ses combos et lève SelectionChanged sans qu'aucun utilisateur n'ait
+        // cliqué — un simple défilement re-dérivait alors la qualité des accords dont la qualité ne suit pas leur
+        // degré. Un setter de PolyChordItem, lui, ne lève PropertyChanged que sur un VRAI changement de valeur.
+        void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (applying) return;   // écritures de la transaction en cours : un seul redessin, à la fin
+            if (sender is PolyChordItem c && DeriveOnChange(c, e.PropertyName)) return;
+            RedrawAll();
+        }
+
+        // Retourne true si le changement a été traité (transaction + redessin déjà faits).
+        bool DeriveOnChange(PolyChordItem c, string prop)
+        {
+            switch (prop)
+            {
+                case nameof(PolyChordItem.DiatonicColour):
+                case nameof(PolyChordItem.Suspension):
+                case nameof(PolyChordItem.ModeOverride):
+                    ApplyToChord(() => Derive(c));
+                    return true;
+                case nameof(PolyChordItem.Quality):
+                    // Qualité posée à la main : l'accord devient FIXE si elle ne colle plus avec son degré (même
+                    // comportement que l'import/AiChord — on ne re-dérive plus la qualité au prochain changement de
+                    // degré), et le trio couleur/suspension/mode se réaligne sur la qualité réelle.
+                    bool becomesFixed = c.Degree >= 0
+                        && c.Quality != MusicTheory.DiatonicChord(Key, c.Degree, c.DiatonicColour, c.Suspension, c.ModeOverride).quality;
+                    if (c.Degree >= 0 && !becomesFixed) return false;   // qualité conforme au degré : rien à réaligner
+                    ApplyToChord(() => { if (becomesFixed) c.Degree = -1; SyncColourTrio(c); });
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        // Garde de TRANSACTION : poser une dominante secondaire écrit Degree PUIS Root PUIS Quality PUIS le trio
+        // couleur/suspension/mode, soit 5 à 7 PropertyChanged selon l'accord de départ (mesuré). Sans regroupement,
+        // chacun déclenchait un RedrawAll complet — donc autant de passes de Revoice et de rendus de la timeline pour
+        // un seul clic. On neutralise les notifications le temps de l'écriture et on redessine UNE fois.
+        bool applying;
+        void ApplyToChord(Action mutate)
+        {
+            applying = true;
+            try { mutate(); }
+            finally { applying = false; }
+            RedrawAll();
+        }
+
+        /// <summary>Re-dérive (Root, Quality) d'un accord d'après son degré et son trio couleur/suspension/mode —
+        /// exactement comme <c>ChordEditorViewModel.ApplyDiatonic</c> pour un accord ordinaire, cas FIXE compris : la
+        /// fondamentale d'un accord fixe ne bouge pas, seule sa qualité suit les combos (lue sur le degré I d'un Do
+        /// majeur de référence).</summary>
+        void Derive(PolyChordItem c)
+        {
+            if (c.Degree < 0) { c.Quality = ChordDegrees.QualityForColour(c.DiatonicColour, c.Suspension, c.ModeOverride); return; }
+            var d = MusicTheory.DiatonicChord(Key, c.Degree, c.DiatonicColour, c.Suspension, c.ModeOverride);
+            c.Root = d.root; c.Quality = d.quality;
+        }
+
+        /// <summary>L'inverse : relit le trio couleur/suspension/mode depuis la qualité réelle d'un accord fixe, pour
+        /// que les trois combos décrivent l'accord. Ignoré si le système de couleurs ne sait pas exprimer cette qualité
+        /// (tensions exotiques) : mieux vaut un trio inchangé qu'un trio qui mentirait et écraserait la qualité au
+        /// prochain réglage.</summary>
+        static void SyncColourTrio(PolyChordItem c)
+        {
+            var t = ChordDegrees.ColourForQuality(c.Quality);
+            if (ChordDegrees.QualityForColour(t.colour, t.suspension, t.mode) != c.Quality) return;
+            c.DiatonicColour = t.colour; c.Suspension = t.suspension; c.ModeOverride = t.mode;
+        }
+
+        // À l'ouverture : aligner le trio des accords FIXES sur leur qualité réelle (même normalisation qu'à
+        // l'ouverture de l'éditeur d'accord ordinaire), sinon les combos affichent « Triade » pour un accord de
+        // septième et le premier réglage de couleur détruirait la qualité. Fait AVANT SubscribeAll : aucun redessin.
+        void NormalizeFixedChords()
+        {
+            if (pc?.Chords == null) return;
+            foreach (var c in pc.Chords) if (c != null && c.Degree < 0) SyncColourTrio(c);
+        }
 
         void SyncModuleControls()
         {
@@ -165,6 +300,9 @@ namespace MusicTracker.Controls.TimelineEditor
 
         void RedrawCore()
         {
+            // La tonalité du projet peut changer pendant que l'éditeur est ouvert (transposition, changement d'armure) :
+            // la liste de degrés en dépend (casse des romains + degrés tonicisables), on la resynchronise ici.
+            EnsureChoices();
             pc.Touch();
             // La revoice se chaîne aussi avec les modules voisins de la piste — on la déclenche ici pour que
             // les inversions/octaves soient à jour AVANT le rendu de la roue et de la timeline.
@@ -295,32 +433,40 @@ namespace MusicTracker.Controls.TimelineEditor
             RedrawAll();
         }
 
-        // ---- accords : dérivation degré → root/qualité -----------------------------------------------------
-        // Quand l'utilisateur change le degré, on re-dérive (Root, Quality) via MusicTheory.DiatonicChord — SAUF
-        // pour « Fixe » (Degree = -1) qui laisse l'utilisateur poser à la main via le combo Qualité.
+        // ---- accords : choix du degré (ou d'une DOMINANTE SECONDAIRE) ---------------------------------------
+        // Le combo de degrés est bindé en LECTURE SEULE (MultiBinding, voir PolyDegreeIndexConverter) : l'écriture se
+        // fait ici, en une transaction, parce qu'une V/x écrit trois propriétés d'un coup et a besoin de la tonalité.
         void chordDegree_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var c = ChordFrom(sender); if (c == null) return;
-            if (c.Degree < 0) return;   // Fixe : rien à re-dériver
-            var key = host.Project?.Key ?? new Engine.Score.KeySignature();
-            var d = MusicTheory.DiatonicChord(key, c.Degree, c.DiatonicColour, c.Suspension, c.ModeOverride);
-            if (c.Root != d.root) c.Root = d.root;
-            if (c.Quality != d.quality) c.Quality = d.quality;
-        }
-        void chordColour_SelectionChanged(object sender, SelectionChangedEventArgs e) => chordDegree_SelectionChanged(sender, e);
-        void chordSuspension_SelectionChanged(object sender, SelectionChangedEventArgs e) => chordDegree_SelectionChanged(sender, e);
-        void chordQuality_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            var c = ChordFrom(sender); if (c == null) return;
-            // L'utilisateur touche la qualité → on considère qu'il pose une qualité « à la main » et bascule en
-            // accord Fixe si la nouvelle qualité ne colle pas avec le degré actuel (comportement calqué sur
-            // AiChord/import : on ne re-drift pas la qualité au prochain changement de degré).
-            if (c.Degree >= 0)
+            if (applying) return;
+            var cb = sender as ComboBox; var c = ChordFrom(sender);
+            if (cb == null || c == null || cb.SelectedIndex < 0) return;
+            EnsureChoices();
+            int idx = cb.SelectedIndex;
+            // Le SelectedIndex bougeant aussi quand la liste réalise/recycle un conteneur ou quand le modèle change,
+            // seule une différence avec l'état réel de l'accord signale un choix de l'utilisateur.
+            if (idx == choices.IndexOf(c.Degree, c.Root, c.Quality)) return;
+            host.PushUndo?.Invoke("polychord:chord-degree");
+            ApplyToChord(() =>
             {
-                var key = host.Project?.Key ?? new Engine.Score.KeySignature();
-                var d = MusicTheory.DiatonicChord(key, c.Degree, c.DiatonicColour, c.Suspension, c.ModeOverride);
-                if (c.Quality != d.quality) c.Degree = -1;
-            }
+                if (choices.TrySecondary(idx, out int secRoot, out int secQuality))
+                {
+                    // Dominante secondaire : accord CHROMATIQUE, donc stocké en fixe (Degree = −1), fondamentale à la
+                    // quinte au-dessus du degré tonicisé et qualité de dominante 7 (cf. ChordDegreeChoices).
+                    c.Degree = -1;
+                    c.Root = secRoot;
+                    if (secQuality >= 0) c.Quality = secQuality;
+                    SyncColourTrio(c);
+                    return;
+                }
+                c.Degree = idx <= 0 ? -1 : idx - 1;
+                Derive(c);
+            });
+            // Le modèle ne change pas forcément : choisir « Manuel » sur un accord qui RESTE une dominante secondaire
+            // (un accord de 7e de dominante à la quinte d'un degré tonicisable SE LIT comme tel) n'écrit rien, donc
+            // aucun PropertyChanged ne rafraîchit le MultiBinding. On force la relecture pour que le combo n'affiche
+            // jamais autre chose que ce que l'accord vaut réellement.
+            BindingOperations.GetMultiBindingExpression(cb, ComboBox.SelectedIndexProperty)?.UpdateTarget();
         }
         void chordBeats_LostFocus(object sender, RoutedEventArgs e) { /* Binding TwoWay a déjà écrit ; le PropertyChanged déclenche RedrawAll */ }
         void chordDelete_Click(object sender, RoutedEventArgs e)

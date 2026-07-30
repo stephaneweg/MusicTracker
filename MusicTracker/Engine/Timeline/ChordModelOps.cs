@@ -53,6 +53,21 @@ namespace MusicTracker.Engine.Timeline
                 bool diaDim = MusicTheory.DiatonicIsDim(k, pg.Degree);
                 bool diaMin = !diaDim && MusicTheory.DiatonicThird(k, pg.Degree) == 3;
                 if (reqMin != diaMin || reqDim != diaDim) pg.Degree = -1;
+                else
+                {
+                    // Le degré reste VERROUILLÉ : ses notes sont alors dérivées du degré + DiatonicColour + Suspension,
+                    // et Quality est IGNORÉE. Sans la ligne ci-dessous, DiatonicColour restait à 0 = TRIADE, et toute
+                    // septième diatonique demandée par l'IA était rejouée en triade — silencieusement, puisque le test
+                    // ci-dessus ne compare que la TIERCE (une Maj7 sur le degré I a la même tierce que sa triade).
+                    // Constaté sur une réponse réelle : 63 des 64 accords étaient des septièmes ou plus riches
+                    // (26 Maj7, 25 Min7, 7 dom7, 2 neuvièmes, 2 7sus4, 1 Maj9) et AUCUNE ne s'entendait.
+                    // ColourForQuality rend le trio (couleur, suspension, mode) qui REPRODUIT la qualité demandée sur un
+                    // degré ; quand la qualité n'est pas exprimable ainsi, il rend (0,0,0) et on retombe sur la triade,
+                    // c'est-à-dire l'ancien comportement. Le mode n'est pas repris : il est déjà porté par la tonalité.
+                    var trio = Engine.Flow.ChordDegrees.ColourForQuality(pg.Quality);
+                    pg.DiatonicColour = trio.colour;
+                    pg.Suspension = trio.suspension;
+                }
             }
             if (silent)
             {

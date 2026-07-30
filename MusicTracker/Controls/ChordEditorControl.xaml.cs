@@ -128,7 +128,7 @@ namespace MusicTracker.Controls
             this.project = project; this.track = track; this.pg = pg; this.host = host;
             pg.BeatsPerBar = Math.Max(1, pg.BeatsPerBar * Math.Max(1, pg.Repeats));   // normalize legacy chords once
             pg.Repeats = 1;
-            if (pg.Degree < 0) { var d = ChordDegrees.ColourForQuality(pg.Quality); pg.DiatonicColour = d.colour; pg.Suspension = d.suspension; pg.ModeOverride = d.mode; }
+            if (pg.Degree < 0) SyncColourTrio();
             RebuildStyleList();
             ApplyMotifCommand = new RelayCommand(_ => ApplyMotif());
         }
@@ -144,27 +144,11 @@ namespace MusicTracker.Controls
         // Diatonic degrees, then the SECONDARY DOMINANTS (V/x) so they can be picked directly instead of being
         // hand-built as a "manual" chord. The V/x list is KEY-DEPENDENT: a degree whose diatonic triad is diminished
         // cannot be tonicised (no V/ii in a minor key, where ii° is diminished), so it isn't offered.
-        const int SecondaryBase = 8;   // first index of the V/x entries
-        static readonly string[] RomanU = { "I", "II", "III", "IV", "V", "VI", "VII" };
-        static readonly string[] RomanL = { "i", "ii", "iii", "iv", "v", "vi", "vii" };
-        string[] degreeNames; int[] secondaryTargets;
-        public IReadOnlyList<string> DegreeNames { get { EnsureDegreeList(); return degreeNames; } }
-
-        void EnsureDegreeList()
-        {
-            if (degreeNames != null) return;
-            var key = project?.Key ?? new Engine.Score.KeySignature();
-            var names = new List<string> { Loc.T("ManuelAccordFixe") };
-            for (int d = 0; d < 7; d++) names.Add(MusicTheory.DiatonicThird(key, d) == 4 ? RomanU[d] : RomanL[d]);
-            var targets = new List<int>();
-            foreach (int t in MusicTheory.SecondaryTargets)
-            {
-                if (MusicTheory.DiatonicIsDim(key, t)) continue;   // a diminished degree can't be tonicised
-                names.Add("V/" + (MusicTheory.DiatonicThird(key, t) == 4 ? RomanU[t] : RomanL[t]));
-                targets.Add(t);
-            }
-            degreeNames = names.ToArray(); secondaryTargets = targets.ToArray();
-        }
+        // The list itself lives in ChordDegreeChoices, SHARED with the polyrhythmic chord editor so both offer exactly
+        // the same vocabulary for a given key.
+        ChordDegreeChoices choices;
+        ChordDegreeChoices Choices => choices ?? (choices = ChordDegreeChoices.For(project?.Key));
+        public IReadOnlyList<string> DegreeNames => Choices.Names;
         public IReadOnlyList<string> ColourNames => MusicTheory.DiatonicColourNames;
         public IReadOnlyList<string> SuspensionNames => MusicTheory.SuspensionNames;
         public IReadOnlyList<string> ModeNames => MusicTheory.ModeOverrideNames;
@@ -205,30 +189,21 @@ namespace MusicTracker.Controls
         // ---- degree / note / quality colours ----
         public int DegreeIndex
         {
-            get
-            {
-                if (pg.Degree >= 0) return pg.Degree + 1;
-                // A "manual" chord that actually IS a secondary dominant shows up as such (V/V rather than Manuel).
-                EnsureDegreeList();
-                int t = MusicTheory.SecondaryDominantTarget(project?.Key ?? new Engine.Score.KeySignature(), pg.Root, pg.Quality);
-                int i = t < 0 ? -1 : Array.IndexOf(secondaryTargets, t);
-                return i >= 0 ? SecondaryBase + i : 0;
-            }
+            // A "manual" chord that actually IS a secondary dominant shows up as such (V/V rather than Manuel).
+            get => Choices.IndexOf(pg.Degree, pg.Root, pg.Quality);
             set
             {
-                EnsureDegreeList();
-                if (value >= SecondaryBase && value - SecondaryBase < secondaryTargets.Length)
+                // Secondary dominant: a chromatic chord, so it is stored with a fixed root (Degree = −1) placed a
+                // fifth above the degree it tonicises, with a DOMINANT 7th quality (see ChordDegreeChoices).
+                if (Choices.TrySecondary(value, out int secRoot, out int secQuality))
                 {
-                    // Secondary dominant: a chromatic chord, so it is stored with a fixed root (Degree = −1) placed a
-                    // fifth above the degree it tonicises, with a DOMINANT 7th quality. The 7th matters: a plain major
-                    // triad would often coincide with a diatonic chord (V/IV in C is just a C major = I) and so would
-                    // not read back as a secondary dominant at all.
-                    int target = secondaryTargets[value - SecondaryBase];
                     pg.Degree = -1;
-                    pg.Root = MusicTheory.SecondaryDominantRoot(project?.Key ?? new Engine.Score.KeySignature(), target);
+                    pg.Root = secRoot;
                     ApplyDiatonic();
-                    int dom7 = PatternGenerator.IndexOfQuality("7 (dom)");
-                    if (dom7 >= 0) pg.Quality = dom7;
+                    if (secQuality >= 0) pg.Quality = secQuality;
+                    // Align the colour trio with the dominant 7th we just wrote, so the colour/suspension/mode combos
+                    // reflect the chord instead of showing a stale triad the next edit would silently apply.
+                    SyncColourTrio();
                     Raise(nameof(RootEnabled)); Raise(nameof(RootIndex)); Changed();
                     return;
                 }
@@ -282,12 +257,22 @@ namespace MusicTracker.Controls
         }
 
         // ---- internals ----
+        // Read the (colour, suspension, mode) trio back from a FIXED chord's actual quality, so the three combos show
+        // what the chord really is. Skipped when the colour system can't express that quality (exotic tensions): the
+        // trio is then left alone rather than reset to a triad it doesn't describe.
+        void SyncColourTrio()
+        {
+            var d = ChordDegrees.ColourForQuality(pg.Quality);
+            if (ChordDegrees.QualityForColour(d.colour, d.suspension, d.mode) != pg.Quality) return;
+            pg.DiatonicColour = d.colour; pg.Suspension = d.suspension; pg.ModeOverride = d.mode;
+            Raise(nameof(ColourIndex)); Raise(nameof(SuspensionIndex)); Raise(nameof(ModeIndex));
+        }
+
         void ApplyDiatonic()
         {
             if (pg.Degree < 0)
             {
-                var tk = new Engine.Score.KeySignature { TonicLetter = 0, Accidental = 0, Mode = 0 };
-                pg.Quality = MusicTheory.DiatonicChord(tk, 0, pg.DiatonicColour, pg.Suspension, pg.ModeOverride).quality;
+                pg.Quality = ChordDegrees.QualityForColour(pg.DiatonicColour, pg.Suspension, pg.ModeOverride);
                 return;
             }
             var ch = MusicTheory.DiatonicChord(project.Key ?? new Engine.Score.KeySignature(), pg.Degree, pg.DiatonicColour, pg.Suspension, pg.ModeOverride);

@@ -3834,7 +3834,13 @@ namespace MusicTracker.Screens
                 string suffix = dim ? "°" : (aug ? "+" : "");
                 return (minor ? rL[c.Degree] : rU[c.Degree]) + suffix;
             }
-            // Accord fixe : nom réel (« Do Maj7 ») — plus lisible qu'un romain calculé qui pourrait paraître arbitraire.
+            // Accord fixe : d'abord les FONCTIONS secondaires (une V/V posée dans l'éditeur doit se lire « V/V » sur la
+            // boîte, comme pour un accord ordinaire — même source de vérité MusicTheory que ChordRoman).
+            int secDom = Engine.Flow.MusicTheory.SecondaryDominantTarget(key, c.Root, c.Quality);
+            if (secDom >= 0) return "V/" + Engine.Flow.ChordDegreeChoices.Roman(key, secDom);
+            int secLt = Engine.Flow.MusicTheory.SecondaryLeadingToneTarget(key, c.Root, c.Quality);
+            if (secLt >= 0) return "vii°/" + Engine.Flow.ChordDegreeChoices.Roman(key, secLt);
+            // Sinon le nom réel (« Do Maj7 ») — plus lisible qu'un romain calculé qui pourrait paraître arbitraire.
             return Engine.Score.KeySig.SpellPc(c.Root, key) + " " + q;
         }
 

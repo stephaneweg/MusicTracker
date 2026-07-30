@@ -12,7 +12,9 @@
            col 2 : roue polyrythmique (contrôle générique PolyDrumWheel réutilisé). -->
     <UserControl.Resources>
         <te:VoiceToBrushConverter x:Key="VoiceToBrush"/>
-        <te:DegreeIndexConverter x:Key="DegreeIndexConverter"/>
+        <!-- Instance UNIQUE : le code-behind lui injecte la tonalité courante (EnsureChoices). -->
+        <te:PolyDegreeIndexConverter x:Key="PolyDegreeIndex"/>
+        <te:DegreeIsFixedConverter x:Key="DegreeIsFixed"/>
         <Style x:Key="ChordCardStyle" TargetType="Border">
             <Setter Property="Background" Value="#20FFFFFF"/>
             <Setter Property="CornerRadius" Value="3"/>
@@ -112,8 +114,10 @@
                                                 Margin="6,0,0,0" Cursor="Hand" Click="chordDelete_Click"
                                                 ToolTip="{loc:Tr 'SupprimerCetAccord'}"/>
                                     </Grid>
-                                    <!-- Détails d'accord sur UNE ligne : Degré | Qualité | Couleur | Suspension.
-                                         La col 0 du UserControl est dimensionnée en conséquence (480px). -->
+                                    <!-- Détails d'accord : Degré | Qualité | Couleur | Suspension, puis le mode forcé
+                                         (majeur/mineur/augmenté/diminué/dominante) sur une 2e ligne — MÊME vocabulaire
+                                         que l'éditeur d'accord ordinaire. La col 0 du UserControl est dimensionnée en
+                                         conséquence (480px). -->
                                     <Grid Margin="0,4,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -121,22 +125,49 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <ComboBox Grid.Column="0" Margin="0,0,3,0"
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <!-- Degré : lecture par MultiBinding (Degree+Root+Quality → index, dominantes
+                                             secondaires comprises), écriture en code-behind. Voir
+                                             PolyDegreeIndexConverter pour le pourquoi. -->
+                                        <ComboBox Grid.Row="0" Grid.Column="0" Margin="0,0,3,0"
+                                                  ToolTip="{loc:Tr 'DegreDansLaTonalite'}"
                                                   ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=DegreeNames}"
-                                                  SelectedIndex="{Binding Degree, Converter={StaticResource DegreeIndexConverter}, Mode=TwoWay}"
-                                                  SelectionChanged="chordDegree_SelectionChanged"/>
-                                        <ComboBox Grid.Column="1" Margin="3,0,3,0"
+                                                  SelectionChanged="chordDegree_SelectionChanged">
+                                            <ComboBox.SelectedIndex>
+                                                <MultiBinding Converter="{StaticResource PolyDegreeIndex}" Mode="OneWay">
+                                                    <Binding Path="Degree"/>
+                                                    <Binding Path="Root"/>
+                                                    <Binding Path="Quality"/>
+                                                </MultiBinding>
+                                            </ComboBox.SelectedIndex>
+                                        </ComboBox>
+                                        <ComboBox Grid.Row="0" Grid.Column="1" Margin="3,0,3,0"
+                                                  ToolTip="{loc:Tr 'QualiteDeLAccord'}"
                                                   ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=QualityNames}"
-                                                  SelectedIndex="{Binding Quality, Mode=TwoWay}"
-                                                  SelectionChanged="chordQuality_SelectionChanged"/>
-                                        <ComboBox Grid.Column="2" Margin="3,0,3,0"
+                                                  SelectedIndex="{Binding Quality, Mode=TwoWay}"/>
+                                        <ComboBox Grid.Row="0" Grid.Column="2" Margin="3,0,3,0"
+                                                  ToolTip="{loc:Tr 'Couleur'}"
                                                   ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=ColourNames}"
-                                                  SelectedIndex="{Binding DiatonicColour, Mode=TwoWay}"
-                                                  SelectionChanged="chordColour_SelectionChanged"/>
-                                        <ComboBox Grid.Column="3" Margin="3,0,0,0"
+                                                  SelectedIndex="{Binding DiatonicColour, Mode=TwoWay}"/>
+                                        <ComboBox Grid.Row="0" Grid.Column="3" Margin="3,0,0,0"
+                                                  ToolTip="{loc:Tr 'SuspenduCouleurSecondaire'}"
                                                   ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=SuspensionNames}"
-                                                  SelectedIndex="{Binding Suspension, Mode=TwoWay}"
-                                                  SelectionChanged="chordSuspension_SelectionChanged"/>
+                                                  SelectedIndex="{Binding Suspension, Mode=TwoWay}"/>
+                                        <ComboBox Grid.Row="1" Grid.Column="0" Margin="0,3,3,0"
+                                                  ToolTip="{loc:Tr 'MajeurMineurForcer'}"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=ModeNames}"
+                                                  SelectedIndex="{Binding ModeOverride, Mode=TwoWay}"/>
+                                        <!-- Fondamentale : n'a de sens que sur un accord MANUEL (sur un degré, elle est
+                                             dérivée de la tonalité) — d'où le IsEnabled conditionnel, comme dans
+                                             l'éditeur d'accord ordinaire. -->
+                                        <ComboBox Grid.Row="1" Grid.Column="1" Margin="3,3,3,0"
+                                                  ToolTip="{loc:Tr 'FondamentaleNote'}"
+                                                  ItemsSource="{Binding RelativeSource={RelativeSource AncestorType={x:Type UserControl}}, Path=RootNames}"
+                                                  SelectedIndex="{Binding Root, Mode=TwoWay}"
+                                                  IsEnabled="{Binding Degree, Converter={StaticResource DegreeIsFixed}}"/>
                                     </Grid>
                                 </StackPanel>
                             </Border>
