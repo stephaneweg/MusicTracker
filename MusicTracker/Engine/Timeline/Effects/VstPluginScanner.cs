@@ -23,9 +23,15 @@ namespace MusicTracker.Engine.Timeline.Effects
         static List<PluginEntry> _cache;
         static readonly object _lock = new object();
 
-        /// <summary>Dossiers Steinberg standards, testés dans l'ordre. Un futur écran de préférences pourra en ajouter.</summary>
+        /// <summary>Dossiers testés dans l'ordre. Le dossier LOCAL <c>vst\</c> (à côté de l'exécutable) passe EN
+        /// PREMIER : il permet de bundler des plugins gratuits avec un install portable, ou de tester un plugin sans
+        /// l'installer système-wide, et un plugin local peut ainsi masquer un plugin système du même nom. Suivent
+        /// les dossiers Steinberg standards. Un futur écran de préférences pourra en ajouter d'autres.
+        /// Un dossier qui n'existe pas est skippé silencieusement (voir <see cref="Scan"/>) — le dossier local
+        /// n'est PAS créé automatiquement : c'est un opt-in de l'utilisateur.</summary>
         public static readonly string[] DefaultFolders = new[]
         {
+            Path.Combine(AppPaths.BaseDir, "vst"),
             Environment.ExpandEnvironmentVariables(@"%ProgramFiles%\VstPlugins"),
             Environment.ExpandEnvironmentVariables(@"%ProgramFiles%\Steinberg\VstPlugins"),
             Environment.ExpandEnvironmentVariables(@"%CommonProgramFiles%\VST2"),
