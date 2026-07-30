@@ -459,7 +459,7 @@
   "Genetique": "Genetic",
   "GenetiqueDev": "Genetic (dev.)",
   "GlisserPourDefinirLePointDe": "Drag to set the playback start point",
-  "GlisserPourDeplacerClicDroitPour": "Drag to move · right-click to delete",
+  "GlisserPourDeplacerClicDroitPour": "Drag to move · double-click to reset · right-click to delete",
   "Grave": "Low",
   "Graves": " — low",
   "HarmonieAccords": "Harmony — chords",

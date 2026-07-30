@@ -470,7 +470,7 @@
   "GlisserPourDefinirLePointDe": "Glisser pour définir le point de départ de la lecture",
   "GlisserPourDefinirLaFinDeBoucle": "Glisser pour définir la fin de boucle (B)",
   "LoopTheABRegion": "Boucler la portion A→B (en continu)",
-  "GlisserPourDeplacerClicDroitPour": "Glisser pour déplacer · clic droit pour supprimer",
+  "GlisserPourDeplacerClicDroitPour": "Glisser pour déplacer · double-clic pour réinitialiser · clic droit pour supprimer",
   "Grave": "Grave",
   "Graves": " — graves",
   "HarmonieAccords": "Harmonie — accords",

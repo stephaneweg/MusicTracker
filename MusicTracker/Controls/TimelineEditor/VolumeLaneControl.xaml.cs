@@ -133,6 +133,16 @@ namespace MusicTracker.Controls.TimelineEditor
             if (track == null) return;
             var pos = e.GetPosition(canvas);
             var hit = HitPoint(pos);
+            // Double-clic sur un point = ramener la valeur au volume de base de la piste (ligne de
+            // référence). Pratique pour « annuler » un point sans le supprimer, ou pour aligner
+            // plusieurs points sur le même niveau neutre.
+            if (e.ClickCount == 2 && hit != null)
+            {
+                hit.Volume = track.Volume;
+                Redraw(); Changed?.Invoke();
+                e.Handled = true;
+                return;
+            }
             if (hit != null) { dragging = hit; canvas.CaptureMouse(); } // start moving an existing point
             else
             {

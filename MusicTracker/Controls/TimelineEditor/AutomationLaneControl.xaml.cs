@@ -187,6 +187,16 @@ namespace MusicTracker.Controls.TimelineEditor
             if (track == null || lane == null) return;
             var pos = e.GetPosition(canvas);
             var hit = HitPoint(pos);
+            // Double-clic sur un point = ramener la valeur à la position neutre (0 pour la plupart,
+            // 1 pour Expression, 0 = centre pour Pan/PitchBend). Pratique quand on cherche « la
+            // ligne du milieu / le max » sans y arriver précisément à la souris.
+            if (e.ClickCount == 2 && hit != null)
+            {
+                hit.Value = DefaultValue(lane.Param);
+                Redraw(); Changed?.Invoke();
+                e.Handled = true;
+                return;
+            }
             if (hit != null) { dragging = hit; canvas.CaptureMouse(); }
             else
             {
