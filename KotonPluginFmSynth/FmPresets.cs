@@ -29,6 +29,14 @@ namespace KotonPluginFmSynth
 
             /// <summary>Forme d'onde du carrier (défaut Sine — preserve le son des presets historiques).</summary>
             public FmWaveform CarWave = FmWaveform.Sine;
+
+            /// <summary>Feedback 0..1 sur le modulator (auto-modulation de phase). Défaut 0 — les
+            /// presets historiques n'en avaient pas.</summary>
+            public double Feedback = 0.0;
+
+            /// <summary>Algorithme : false = FM (modulator module carrier — le classique) ; true =
+            /// Additif (les 2 opérateurs sortent en parallèle, sommés).</summary>
+            public bool Additive = false;
         }
 
         internal static readonly IReadOnlyList<Preset> All = new List<Preset>

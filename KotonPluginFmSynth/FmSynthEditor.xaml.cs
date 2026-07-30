@@ -83,10 +83,12 @@ namespace KotonPluginFmSynth
                 ParamsGrid.Children.Add(lbl);
 
                 // Colonnes 1 + 2 : contrôle éditeur + valeur affichée. Le contrôle dépend du type de
-                // paramètre — un waveform (Id se termine par `_wave`) est un enum discret rendu en
-                // ComboBox ; un paramètre continu (float) reste un Slider + libellé numérique.
-                if (IsWaveformParam(p))
-                    BuildWaveformRow(p, row);
+                // paramètre — un waveform (Id se termine par `_wave`) OU un algorithme (Id = `algo`)
+                // est un enum discret rendu en ComboBox ; un paramètre continu (float) reste un
+                // Slider + libellé numérique.
+                var enumNames = EnumNamesFor(p);
+                if (enumNames != null)
+                    BuildEnumRow(p, row, enumNames);
                 else
                     BuildSliderRow(p, row);
 
@@ -94,10 +96,20 @@ namespace KotonPluginFmSynth
             }
         }
 
-        /// <summary>Convention interne : un KotonParameter dont l'Id se termine par <c>_wave</c> est un
-        /// sélecteur de forme d'onde (enum <see cref="FmWaveform"/>). L'éditeur le rend en ComboBox
-        /// avec les noms de <see cref="Osc.Names"/> plutôt qu'en slider (0-5 non-monotone à l'oreille).</summary>
-        static bool IsWaveformParam(KotonParameter p) => p.Id != null && p.Id.EndsWith("_wave", StringComparison.Ordinal);
+        /// <summary>Retourne les libellés de ComboBox pour les paramètres discrets connus, ou null
+        /// pour un paramètre continu qui restera un slider. Convention :
+        /// - Id se termine par <c>_wave</c> → 6 formes d'onde <see cref="Osc.Names"/>
+        /// - Id == <c>algo</c> → FM / Additif
+        /// </summary>
+        static string[] EnumNamesFor(KotonParameter p)
+        {
+            if (p == null || p.Id == null) return null;
+            if (p.Id.EndsWith("_wave", StringComparison.Ordinal)) return Osc.Names;
+            if (p.Id == "algo") return AlgoNames;
+            return null;
+        }
+
+        static readonly string[] AlgoNames = { "FM", "Additif" };
 
         void BuildSliderRow(KotonParameter p, int row)
         {
@@ -162,9 +174,9 @@ namespace KotonPluginFmSynth
             };
         }
 
-        void BuildWaveformRow(KotonParameter p, int row)
+        void BuildEnumRow(KotonParameter p, int row, string[] names)
         {
-            // Colonne 1 : ComboBox avec les 6 formes d'onde. SelectedIndex ↔ (int)p.Value.
+            // Colonne 1 : ComboBox avec les libellés. SelectedIndex ↔ (int)Math.Round(p.Value).
             var cb = new ComboBox
             {
                 Background = (System.Windows.Media.Brush)FindResource("PanelBg"),
@@ -175,7 +187,7 @@ namespace KotonPluginFmSynth
                 MinWidth = 140,
                 FontSize = 12,
             };
-            foreach (var n in Osc.Names) cb.Items.Add(n);
+            foreach (var n in names) cb.Items.Add(n);
             int cur = (int)Math.Round(p.Value);
             if (cur < 0) cur = 0; else if (cur >= cb.Items.Count) cur = cb.Items.Count - 1;
             cb.SelectedIndex = cur;
@@ -183,7 +195,7 @@ namespace KotonPluginFmSynth
             Grid.SetColumn(cb, 1);
             ParamsGrid.Children.Add(cb);
 
-            // Colonne 2 : vide (la ComboBox porte déjà le nom de la forme, pas besoin de dupliquer).
+            // Colonne 2 : vide (la ComboBox porte déjà le nom, pas besoin de dupliquer).
             // On garde un placeholder pour que l'alignement des colonnes ne saute pas.
             var spacer = new TextBlock { MinWidth = 65 };
             Grid.SetRow(spacer, row);

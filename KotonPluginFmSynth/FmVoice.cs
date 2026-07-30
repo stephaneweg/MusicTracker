@@ -39,6 +39,11 @@ namespace KotonPluginFmSynth
         double _phaseM;
         double _phaseLfo;
 
+        // ---- feedback : dernière sortie du modulator, réinjectée dans sa propre phase au sample
+        // suivant pour créer un signal auto-modulé (riche en harmoniques, "distordu"). Reset à zéro
+        // sur Reset() ; sur NoteOn on garde la valeur (phase continue = plus naturel). ----
+        double _lastModOut;
+
         // ---- enveloppe ADSR ----
         enum Stage { Idle, Attack, Decay, Sustain, Release }
         Stage _stage = Stage.Idle;
@@ -78,6 +83,7 @@ namespace KotonPluginFmSynth
             _stage = Stage.Idle;
             _env = 0f;
             _phaseC = _phaseM = _phaseLfo = 0;
+            _lastModOut = 0;
         }
 
         /// <summary>Rend un sample mono. Le buffer stéréo est peuplé au niveau du plugin (les 2 canaux
@@ -85,10 +91,15 @@ namespace KotonPluginFmSynth
         /// est un multiplicateur de fréquence (pitch bend global appliqué à la carrier). Les
         /// <paramref name="modWave"/> / <paramref name="carWave"/> définissent la forme d'onde de
         /// chaque opérateur (voir <see cref="FmWaveform"/>) — deux formes différentes produisent
-        /// des timbres très variés (ex. mod=Square + car=Sine = "chip 8-bit").</summary>
+        /// des timbres très variés (ex. mod=Square + car=Sine = "chip 8-bit").
+        /// <paramref name="feedback"/> (0..1) réinjecte la sortie du modulator dans sa propre phase
+        /// pour créer un signal auto-modulé (harmoniques riches / distortion douce à agressive).
+        /// <paramref name="additive"/> = false : mode FM classique (modulator modifie la phase du
+        /// carrier) ; true : mode additif (les 2 opérateurs sortent en parallèle et sont sommés).</summary>
         public float RenderSample(float ratio, float index, float lfoRate, float lfoDepth,
                                   float attackSec, float decaySec, float sustainLvl, float releaseSec,
-                                  float bendMul, FmWaveform modWave, FmWaveform carWave)
+                                  float bendMul, FmWaveform modWave, FmWaveform carWave,
+                                  float feedback, bool additive)
         {
             if (!Active) return 0f;
 
@@ -143,9 +154,30 @@ namespace KotonPluginFmSynth
             // Modulator : forme d'onde libre (pas seulement sinus). Le "mod" produit un signal
             // dans [-1, +1] indépendamment de la forme, puis effIndex l'échelonne comme depth de
             // modulation de phase avant de le donner au carrier.
-            double modOut = Osc.Sample(modWave, _phaseM);
-            double mod = effIndex * modOut;
-            double s = Osc.Sample(carWave, _phaseC + mod);
+            //
+            // FEEDBACK : la sortie précédente du modulator est réinjectée dans sa propre phase,
+            // scaled par `feedback * π` (feedback=1 → self-modulation forte, ~180°). C'est ce
+            // qui donne aux presets OPL leur caractère "métallique" ou "sifflant". Un feedback
+            // trop fort tend vers le bruit — c'est le comportement attendu.
+            double fbPhase = _phaseM + feedback * Math.PI * _lastModOut;
+            double modOut = Osc.Sample(modWave, fbPhase);
+            _lastModOut = modOut;
+
+            double s;
+            if (additive)
+            {
+                // Mode additif : les 2 opérateurs sortent en parallèle, on somme. On normalise à
+                // ×0.5 pour rester dans [-1, +1] (deux signaux à amplitude 1). Le modulator perd
+                // son rôle de "modulateur" — il devient un 2e oscillator qu'on entend directement.
+                double carOut = Osc.Sample(carWave, _phaseC);
+                s = 0.5 * (carOut + modOut);
+            }
+            else
+            {
+                // Mode FM classique : le modulator module la phase du carrier avec depth = effIndex.
+                double mod = effIndex * modOut;
+                s = Osc.Sample(carWave, _phaseC + mod);
+            }
 
             return (float)(s * _env * Velocity);
         }
