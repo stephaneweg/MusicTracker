@@ -251,8 +251,8 @@ namespace MusicTracker.Engine.Timeline
         // System.Text.Json ignore PAR DÉFAUT. IncludeFields = true est donc OBLIGATOIRE : c'est exactement
         // l'option de l'enregistrement .sq (TimelineScreen.JsonOpts). Sans elle on obtient, SANS AUCUNE ERREUR,
         // une piste vide et des riffs sans notes.
-        // NB : ne pas se rabattre sur Riff.Clone(), qui sérialise avec les options PAR DÉFAUT et perd donc les
-        // notes (elles sont en champs) — voir le rapport de cette fonctionnalité.
+        // NB : Riff.Clone() souffrait du même défaut (options par défaut -> notes remises à zéro en silence) ;
+        // il utilise désormais les mêmes options, c'est donc un équivalent sûr pour un riff seul.
         static readonly System.Text.Json.JsonSerializerOptions CloneOpts =
             new System.Text.Json.JsonSerializerOptions { IncludeFields = true };
 

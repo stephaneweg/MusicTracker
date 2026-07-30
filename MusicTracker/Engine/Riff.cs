@@ -64,9 +64,18 @@ namespace MusicTracker.Engine
             }
         }
 
+        // Copie profonde par aller-retour JSON. IncludeFields = true est OBLIGATOIRE : RiffNote est une STRUCT
+        // dont Note/Start/Length/Bend/Voice sont des CHAMPS PUBLICS, que System.Text.Json ignore PAR DÉFAUT.
+        // Sans cette option chaque note repart à zéro SANS AUCUNE ERREUR (le nombre de notes est conservé, leur
+        // contenu est perdu). C'est exactement l'option de l'enregistrement .sq (TimelineScreen.JsonOpts).
+        // Les propriétés (dont Id) ne sont pas affectées : Clone() conserve l'Id, comme avant.
+        static readonly System.Text.Json.JsonSerializerOptions CloneOpts =
+            new System.Text.Json.JsonSerializerOptions { IncludeFields = true };
+
         public Riff Clone()
         {
-            return System.Text.Json.JsonSerializer.Deserialize<Riff>(System.Text.Json.JsonSerializer.Serialize(this));
+            return System.Text.Json.JsonSerializer.Deserialize<Riff>(
+                System.Text.Json.JsonSerializer.Serialize(this, CloneOpts), CloneOpts);
         }
     }
 }
