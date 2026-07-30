@@ -9,8 +9,12 @@
     1. Bump AssemblyVersion / AssemblyFileVersion in Properties\AssemblyInfo.cs (patch by default).
     2. Build the solution in Release (the GitHub token is injected from releases\releases.token).
     3. Compile installer\MusicTracker.iss with ISCC -> installer\Output\KotonStudioSetup-<ver>.exe.
-    4. Copy the installer into releases\ and write releases\latest.json { version, installer, notes }.
-    5. Unless -NoPush: commit the version bump on the main repo and commit+push the releases repo.
+    4. Bundle the same Release output as a portable ZIP under a single top-level folder
+       KotonStudio-<ver>/, excluding what the .iss also excludes (*.pdb, SoundFont, user files) ->
+       installer\Output\KotonStudioPortable-<ver>.zip.
+    5. Copy both artifacts into releases\ and write releases\latest.json { version, installer,
+       portable, notes }. The in-app updater only reads 'installer' — 'portable' is for the website.
+    6. Unless -NoPush: commit the version bump on the main repo and commit+push the releases repo.
 
 .PARAMETER Bump      patch | minor | major   (ignored when -Version is given)
 .PARAMETER Version   explicit 4-part version, e.g. 1.2.0.0
@@ -107,13 +111,47 @@ $setupPath = Join-Path $issOut $setupName
 if (-not (Test-Path $setupPath)) { throw "Installeur introuvable après compilation : $setupPath" }
 Write-Host "Installeur : $setupPath" -ForegroundColor Green
 
-# --- 4. publish into releases/ + latest.json ----------------------------------
+# --- 4. build the portable ZIP -----------------------------------------------
+# Doit rester ALIGNÉ avec le champ 'Excludes' de MusicTracker.iss (§[Files]). Le doublon est assumé :
+# ISCC lit ses excludes depuis le .iss (syntaxe Pascal) et n'a pas d'API pour les partager côté PS.
+# On stage dans %TEMP% puis on zippe en une passe : plus simple et sans dépendance à l'enum
+# System.IO.Compression.ZipArchiveMode (chargé de façon inégale selon les hôtes PowerShell).
+Write-Host "Emballage de la version portable…" -ForegroundColor Cyan
+$portableName = "KotonStudioPortable-$newVer.zip"
+$portablePath = Join-Path $issOut $portableName
+# Dossier racine dans le zip = l'utilisateur dézippe n'importe où sans exploser son dossier
+# courant, et garde plusieurs versions côte à côte s'il télécharge plusieurs releases.
+$topFolder = "KotonStudio-$newVer"
+$stageRoot = Join-Path $env:TEMP "kotonstudio-portable-$newVer"
+$stageTop  = Join-Path $stageRoot $topFolder
+
+if (Test-Path -LiteralPath $stageRoot)   { Remove-Item -LiteralPath $stageRoot -Recurse -Force }
+if (Test-Path -LiteralPath $portablePath) { Remove-Item -LiteralPath $portablePath -Force }
+New-Item -ItemType Directory -Path $stageTop -Force | Out-Null
+
+# robocopy exit code : 0-7 = succès (bit 3 = fichiers copiés), >= 8 = échec réel.
+& robocopy $releaseBin $stageTop /E `
+  /XF *.pdb *.vshost.* settings.json recent.json userdata.json `
+  /XD SoundFont userdata `
+  /NFL /NDL /NJH /NJS /NP | Out-Null
+if ($LASTEXITCODE -ge 8) { throw "robocopy a échoué (code $LASTEXITCODE) pour la version portable." }
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
+# includeBaseDirectory=$true => l'archive contient KotonStudio-<ver>/ à sa racine.
+[System.IO.Compression.ZipFile]::CreateFromDirectory($stageTop, $portablePath, 'Optimal', $true)
+Remove-Item -LiteralPath $stageRoot -Recurse -Force
+
+$portableSize = [math]::Round((Get-Item -LiteralPath $portablePath).Length / 1MB, 1)
+Write-Host "Portable   : $portablePath ($portableSize Mo)" -ForegroundColor Green
+
+# --- 5. publish into releases/ + latest.json ---------------------------------
 if (-not (Test-Path $releasesDir)) { throw "Dossier releases/ absent (clone de MusicTracker_Releases attendu)." }
-Copy-Item $setupPath (Join-Path $releasesDir $setupName) -Force
+Copy-Item $setupPath    (Join-Path $releasesDir $setupName)    -Force
+Copy-Item $portablePath (Join-Path $releasesDir $portableName) -Force
 
 # notes = language-neutral fallback (French); notesFr/notesEn feed the language-aware changelog (UpdateChecker).
 $notesEnFinal = if ($NotesEn) { $NotesEn } else { $Notes }
-$manifest = [ordered]@{ version = $newVer; installer = $setupName; notes = $Notes; notesFr = $Notes; notesEn = $notesEnFinal }
+$manifest = [ordered]@{ version = $newVer; installer = $setupName; portable = $portableName; notes = $Notes; notesFr = $Notes; notesEn = $notesEnFinal }
 $json = $manifest | ConvertTo-Json -Depth 4
 [System.IO.File]::WriteAllText((Join-Path $releasesDir 'latest.json'), $json, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host "latest.json mis à jour (version $newVer)." -ForegroundColor Green
