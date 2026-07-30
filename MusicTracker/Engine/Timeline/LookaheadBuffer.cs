@@ -36,7 +36,12 @@ namespace MusicTracker.Engine.Timeline
         /// The device should only start playing then — otherwise it drains the buffer as fast as it fills.</summary>
         public event Action Primed;
 
-        public LookaheadBuffer(WaveProvider16 inner, Action start, Action stop, int sampleRate, double leadSeconds = 5.0, double primeSeconds = 3.0)
+        // Défauts choisis pour rester réactif à l'UI (fader, panoramique, sliders d'insert) TOUT en absorbant les
+        // à-coups CPU/GC : ce qui est déjà rendu dans le ring joue avec les ANCIENS paramètres, donc la latence
+        // perçue entre « je bouge le slider » et « je l'entends » est bornée par la taille du ring. Historique :
+        // 5 s de ring / 3 s de prime rendaient les changements audibles ~5 s après. 1 s / 0.5 s = compromis
+        // réactif (musicalement acceptable) sans sacrifier la robustesse sur les pièces lourdes (Ghibli, orchestral).
+        public LookaheadBuffer(WaveProvider16 inner, Action start, Action stop, int sampleRate, double leadSeconds = 1.0, double primeSeconds = 0.5)
             : base(sampleRate, inner.WaveFormat.Channels)     // match the inner provider (mono OR stereo)
         {
             this.inner = inner;
