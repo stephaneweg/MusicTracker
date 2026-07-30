@@ -34,12 +34,14 @@ namespace KotonPluginFmSynth
 
         // ---- Paramètres exposés ----
         // Ordre = ordre d'affichage dans l'éditeur. Les Ids servent aussi de clés JSON dans SaveState.
+        // Les temps ADSR sont exposés en MILLISECONDES (unité usuelle dans un DAW / synthé),
+        // convertis en secondes pour la voix (formule DSP) via *0.001 au Render.
         readonly KotonParameter _ratio    = new KotonParameter("ratio",    "Ratio",       0.5, 8.0,  1.0);
         readonly KotonParameter _index    = new KotonParameter("index",    "Index",       0.0, 10.0, 3.0);
-        readonly KotonParameter _attack   = new KotonParameter("attack",   "Attaque",     0.001, 2.000, 0.010, "s");
-        readonly KotonParameter _decay    = new KotonParameter("decay",    "Decay",       0.001, 2.000, 0.300, "s");
+        readonly KotonParameter _attack   = new KotonParameter("attack",   "Attaque",     1.0, 2000.0,  10.0, "ms");
+        readonly KotonParameter _decay    = new KotonParameter("decay",    "Decay",       1.0, 2000.0, 300.0, "ms");
         readonly KotonParameter _sustain  = new KotonParameter("sustain",  "Sustain",     0.0, 1.0,  0.6);
-        readonly KotonParameter _release  = new KotonParameter("release",  "Release",     0.001, 4.000, 0.400, "s");
+        readonly KotonParameter _release  = new KotonParameter("release",  "Release",     1.0, 4000.0, 400.0, "ms");
         readonly KotonParameter _volume   = new KotonParameter("volume",   "Volume",      0.0, 1.0,  0.75, "%");
         readonly KotonParameter _lfoRate  = new KotonParameter("lfo_rate", "LFO Rate",    0.1, 20.0, 3.0, "Hz");
         readonly KotonParameter _lfoDepth = new KotonParameter("lfo_depth","LFO Depth",   0.0, 1.0,  0.1);
@@ -153,10 +155,11 @@ namespace KotonPluginFmSynth
             // qu'au prochain — c'est OK à 10-30 ms de buffer typique (largement < seuil de perception).
             float ratio    = (float)_ratio.Value;
             float index    = (float)_index.Value;
-            float attack   = (float)_attack.Value;
-            float decay    = (float)_decay.Value;
+            // ms → s pour l'enveloppe DSP (les KotonParameter sont exposés en ms côté UI, plus lisible).
+            float attack   = (float)(_attack.Value * 0.001);
+            float decay    = (float)(_decay.Value * 0.001);
             float sustain  = (float)_sustain.Value;
-            float release  = (float)_release.Value;
+            float release  = (float)(_release.Value * 0.001);
             float volume   = (float)_volume.Value;
             float lfoRate  = (float)_lfoRate.Value;
             float lfoDepth = (float)_lfoDepth.Value;
