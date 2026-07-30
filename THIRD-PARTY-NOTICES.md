@@ -86,5 +86,22 @@ plugins strictly as a host — no VST SDK code is distributed with the applicati
 
 ---
 
+## Steinberg VST3 SDK (interface definitions only)
+
+VST3 plugin hosting is implemented by direct P/Invoke against the Windows binary
+interface described by the Steinberg VST3 SDK — https://github.com/steinbergmedia/vst3sdk.
+The Koton Studio source files under `MusicTracker/Engine/Timeline/Vst3/Interop/`
+re-express in C# the COM interface signatures, TUID constants and struct layouts
+needed to call `IPluginFactory`, `IComponent`, `IAudioProcessor`, `IEditController`,
+`IPlugView`, `IEventList`, `IParameterChanges` and `IBStream`.
+
+The SDK itself is distributed under the GNU General Public License version 3
+(GPL-3.0-only), see https://www.gnu.org/licenses/gpl-3.0.html. No SDK source code
+is bundled with Koton Studio — only the derived interface bindings needed to talk
+to third-party VST3 plugins. VST3 is a trademark of Steinberg Media Technologies GmbH;
+Koton Studio acts strictly as a host.
+
+---
+
 The default SoundFont offered for download at first launch, **MuseScore_General.sf2**, is
 distributed by MuseScore and is not bundled with this application.
