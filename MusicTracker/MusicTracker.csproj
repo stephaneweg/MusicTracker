@@ -12,10 +12,17 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Deterministic>true</Deterministic>
     <LangVersion>latest</LangVersion>
-    <!-- Preserve legacy output layout (bin\Release\KotonStudio.exe, no TFM/RID subfolders) so
+    <!-- x64 forced: VST.NET2-Host targets refuse AnyCPU (they hint-path lib\...\x64\Jacobi.Vst.Host.Interop.dll,
+         a C++/CLI DLL that only exists in x86 or x64 flavors). Since our synth pipeline already assumes 64-bit
+         addresses (large SoundFont buffers), x64 is the only sensible choice; 32-bit VSTs will not load. -->
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Preserve legacy output layout (bin\Release\KotonStudio.exe, no TFM/RID/platform subfolders) so
          installer\MusicTracker.iss and installer\release.ps1 keep working unchanged. -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
     <!-- Keep the hand-maintained Properties/AssemblyInfo.cs (title, version bumped by release.ps1). -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <!-- CA1416: the app is Windows-only by design (net{8,10}.0-windows); registry / WPF / Win32
@@ -44,6 +51,7 @@
          System.Configuration.ConfigurationManager, which is a package on .NET Core+ instead of
          being in the BCL like on .NET Framework. -->
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.0" />
+    <PackageReference Include="VST.NET2-Host" Version="2.1.10" />
   </ItemGroup>
 
   <ItemGroup>
@@ -154,6 +162,20 @@
     <ItemGroup>
       <Compile Include="$(IntermediateOutputPath)BuildSecrets.g.cs" />
     </ItemGroup>
+  </Target>
+
+  <!-- ================= Silence VST.NET2-Host's DeployVstNet AfterBuild step =================
+       The package ships a VstNetDeploy.targets that runs `vstnet.exe publish` AfterBuild to stage a
+       bin/deploy folder for single-file bundles. We ship bin\Release\KotonStudio.exe directly (via
+       installer\MusicTracker.iss); the publish tool then warns twice about MeltySynth / MS.Ext.Config
+       not being in the local nuget cache (they're transitive dependencies). A top-level
+       <PropertyGroup> can't win — VstNetDeploy.targets is imported by Sdk.targets AFTER the project
+       body, so its assignment overwrites ours. But a target-time assignment DOES win: run our
+       override BeforeTargets="DeployVstNet" and rewrite the CLI command to a Windows shell no-op. -->
+  <Target Name="_SilenceVstNetDeploy" BeforeTargets="DeployVstNet">
+    <PropertyGroup>
+      <VstNetCliExe>cmd /c rem</VstNetCliExe>
+    </PropertyGroup>
   </Target>
 
 </Project>
