@@ -1,0 +1,56 @@
+<UserControl x:Class="KotonPluginArpeggiator.ArpeggiatorEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#1E1E24" Foreground="#DDDDDD" FontFamily="Segoe UI">
+    <!-- Layout simple 2 colonnes (label / contrôle) sur une StackPanel + une ligne Preview en bas.
+         Le contrôle n'a AUCUNE dépendance sur le thème de l'hôte : on définit les couleurs en dur,
+         chargées par le dictionnaire dark générique de MusicTracker (KotonPluginEditorDialog embarque
+         cet UserControl dans son Border). -->
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="130"/>
+            <ColumnDefinition Width="230"/>
+            <ColumnDefinition Width="70"/>
+        </Grid.ColumnDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Motif" VerticalAlignment="Center" Margin="0,6"/>
+        <ComboBox x:Name="cboPattern" Grid.Row="0" Grid.Column="1" Margin="0,6"/>
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="Vitesse" VerticalAlignment="Center" Margin="0,6"/>
+        <ComboBox x:Name="cboRate" Grid.Row="1" Grid.Column="1" Margin="0,6"/>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Octaves" VerticalAlignment="Center" Margin="0,6"/>
+        <Slider x:Name="sldOctaves" Grid.Row="2" Grid.Column="1" Minimum="1" Maximum="3" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,6"/>
+        <TextBlock x:Name="lblOctaves" Grid.Row="2" Grid.Column="2" Text="1" VerticalAlignment="Center" Margin="8,0"/>
+
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="Gate (%)" VerticalAlignment="Center" Margin="0,6"/>
+        <Slider x:Name="sldGate" Grid.Row="3" Grid.Column="1" Minimum="5" Maximum="100" TickFrequency="5" Margin="0,6"/>
+        <TextBlock x:Name="lblGate" Grid.Row="3" Grid.Column="2" Text="50" VerticalAlignment="Center" Margin="8,0"/>
+
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Vélocité" VerticalAlignment="Center" Margin="0,6"/>
+        <Slider x:Name="sldVelocity" Grid.Row="4" Grid.Column="1" Minimum="1" Maximum="127" Margin="0,6"/>
+        <TextBlock x:Name="lblVelocity" Grid.Row="4" Grid.Column="2" Text="100" VerticalAlignment="Center" Margin="8,0"/>
+
+        <TextBlock Grid.Row="5" Grid.Column="0" Text="Note base (MIDI)" VerticalAlignment="Center" Margin="0,6"/>
+        <Slider x:Name="sldBase" Grid.Row="5" Grid.Column="1" Minimum="12" Maximum="108" Margin="0,6"/>
+        <TextBlock x:Name="lblBase" Grid.Row="5" Grid.Column="2" Text="60" VerticalAlignment="Center" Margin="8,0"/>
+
+        <TextBlock Grid.Row="6" Grid.Column="0" Text="Durée (temps)" VerticalAlignment="Center" Margin="0,6"/>
+        <Slider x:Name="sldDuration" Grid.Row="6" Grid.Column="1" Minimum="0.5" Maximum="32" TickFrequency="0.5" IsSnapToTickEnabled="True" Margin="0,6"/>
+        <TextBlock x:Name="lblDuration" Grid.Row="6" Grid.Column="2" Text="4" VerticalAlignment="Center" Margin="8,0"/>
+
+        <StackPanel Grid.Row="7" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,14,0,0">
+            <TextBlock Text="L'arpège suit les accords posés sur la piste d'accords." Opacity="0.8" FontStyle="Italic" VerticalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
