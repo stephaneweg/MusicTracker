@@ -1629,6 +1629,15 @@ namespace MusicTracker.Screens
                 var vol = new Controls.TimelineEditor.VolumeLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
                 vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
                 stack.Children.Add(vol);
+                if (track.AutomationLanes != null)
+                {
+                    foreach (var ln in track.AutomationLanes)
+                    {
+                        var auto = new Controls.TimelineEditor.AutomationLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
+                        auto.Configure(track, ln, PxPerBeat, AutomLaneH, laneWidth);
+                        stack.Children.Add(auto);
+                    }
+                }
                 var lane = MakeTrackLane(track, laneWidth, fillItems: false);
                 stack.Children.Add(lane);
                 lanePanel.Children.Add(LaneRow(stack, rh));
@@ -1694,10 +1703,20 @@ namespace MusicTracker.Screens
         Border LaneRow(UIElement content, double height)
             => new Border { Height = height, Child = content, BorderBrush = TrackSeparatorBrush, BorderThickness = new Thickness(0, 0, 0, 1), HorizontalAlignment = HorizontalAlignment.Left };
 
-        // Height of a track's header + lane row: minimal when collapsed (issue #5), else the full volume + lane stack.
-        double TrackRowH(TimelineTrack track) => track != null && track.Collapsed ? CollapsedH : VolLaneH + LaneH;
+        // Hauteur d'une lane d'automation additionnelle (Pan/Expression/Modulation/Sustain/Réverbe/Chorus/PitchBend) :
+        // plus mince que la lane de volume pour empiler plusieurs paramètres sans dévorer la hauteur verticale.
+        const double AutomLaneH = 36;
 
-        // The lane-column content for a track: a thin filler when collapsed, else the volume sub-track + module lane.
+        // Height of a track's header + lane row: minimal when collapsed (issue #5), else the full volume + extra lanes + module lane stack.
+        double TrackRowH(TimelineTrack track)
+        {
+            if (track == null || track.Collapsed) return track != null && track.Collapsed ? CollapsedH : VolLaneH + LaneH;
+            int extras = track.AutomationLanes != null ? track.AutomationLanes.Count : 0;
+            return VolLaneH + extras * AutomLaneH + LaneH;
+        }
+
+        // The lane-column content for a track: a thin filler when collapsed, else the volume sub-track + additional
+        // automation lanes (one per AutomationLane) + module lane.
         UIElement MakeTrackRow(TimelineTrack track, double laneWidth, bool fillItems = true)
         {
             if (track.Collapsed)
@@ -1706,6 +1725,15 @@ namespace MusicTracker.Screens
             var vol = new Controls.TimelineEditor.VolumeLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
             vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
             stack.Children.Add(vol);
+            if (track.AutomationLanes != null)
+            {
+                foreach (var ln in track.AutomationLanes)
+                {
+                    var auto = new Controls.TimelineEditor.AutomationLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
+                    auto.Configure(track, ln, PxPerBeat, AutomLaneH, laneWidth);
+                    stack.Children.Add(auto);
+                }
+            }
             stack.Children.Add(MakeTrackLane(track, laneWidth, fillItems));
             return stack;
         }
@@ -2901,8 +2929,15 @@ namespace MusicTracker.Screens
                 if (i == 0) { if (inner is Controls.TimelineEditor.TempoLaneControl tl) tl.Configure(laneWidth, TempoH, PxPerBeat, project.Tempo); continue; }
                 if (inner is StackPanel st && st.Children.Count >= 2 && i - 1 < project.Tracks.Count)
                 {
-                    if (st.Children[0] is Controls.TimelineEditor.VolumeLaneControl vl) vl.Configure(project.Tracks[i - 1], PxPerBeat, VolLaneH, laneWidth);
-                    if (st.Children[1] is System.Windows.Controls.Canvas cv) cv.Width = laneWidth;
+                    var tk = project.Tracks[i - 1];
+                    if (st.Children[0] is Controls.TimelineEditor.VolumeLaneControl vl) vl.Configure(tk, PxPerBeat, VolLaneH, laneWidth);
+                    // Extra automation lanes vivent entre le volume et la lane de modules ; les élargir aussi
+                    // pour rester alignés avec la règle de mesure et le lecteur.
+                    for (int c = 1; c < st.Children.Count - 1; c++)
+                        if (st.Children[c] is Controls.TimelineEditor.AutomationLaneControl al && tk.AutomationLanes != null && (c - 1) < tk.AutomationLanes.Count)
+                            al.Configure(tk, tk.AutomationLanes[c - 1], PxPerBeat, AutomLaneH, laneWidth);
+                    var last = st.Children[st.Children.Count - 1];
+                    if (last is System.Windows.Controls.Canvas cv) cv.Width = laneWidth;
                 }
             }
 
@@ -4055,9 +4090,71 @@ namespace MusicTracker.Screens
             menu.Items.Add(up);
             menu.Items.Add(down);
             menu.Items.Add(new Separator());
+            // Automation MIDI par canal (Pan/Expression/Modulation/Sustain/Réverbe/Chorus/Pitch bend). Volume
+            // reste géré par la lane historique (toujours affichée), donc pas offert ici.
+            menu.Items.Add(BuildAddAutomationMenu(track));
+            menu.Items.Add(BuildRemoveAutomationMenu(track));
+            menu.Items.Add(new Separator());
             menu.Items.Add(del);
             menu.PlacementTarget = anchor;
             menu.IsOpen = true;
+        }
+
+        // Paramètres offerts dans le menu "Ajouter automation" (Volume est déjà présent en permanence via la lane
+        // dédiée). ORDRE : les plus utiles en tête, Pitch bend en dernier (spécialisé).
+        static readonly Engine.Timeline.AutomationParam[] AddableParams = new[]
+        {
+            Engine.Timeline.AutomationParam.Pan,
+            Engine.Timeline.AutomationParam.Expression,
+            Engine.Timeline.AutomationParam.Modulation,
+            Engine.Timeline.AutomationParam.Sustain,
+            Engine.Timeline.AutomationParam.ReverbSend,
+            Engine.Timeline.AutomationParam.ChorusSend,
+            Engine.Timeline.AutomationParam.PitchBend,
+        };
+
+        MenuItem BuildAddAutomationMenu(TimelineTrack track)
+        {
+            var root = new MenuItem { Header = Loc.T("AjouterAutomation") };
+            if (track.AutomationLanes == null) track.AutomationLanes = new List<Engine.Timeline.AutomationLane>();
+            foreach (var p in AddableParams)
+            {
+                bool exists = false;
+                foreach (var l in track.AutomationLanes) if (l != null && l.Param == p) { exists = true; break; }
+                var mi = new MenuItem { Header = Controls.TimelineEditor.AutomationLaneControl.LaneLabel(p), IsEnabled = !exists };
+                var pp = p;
+                mi.Click += (s, e) =>
+                {
+                    PushUndo("track:autom+");
+                    track.AutomationLanes.Add(new Engine.Timeline.AutomationLane { Param = pp, Enabled = true });
+                    Render();
+                };
+                root.Items.Add(mi);
+            }
+            return root;
+        }
+
+        MenuItem BuildRemoveAutomationMenu(TimelineTrack track)
+        {
+            var root = new MenuItem { Header = Loc.T("SupprimerAutomation") };
+            var lanes = track.AutomationLanes;
+            if (lanes == null || lanes.Count == 0) { root.IsEnabled = false; return root; }
+            // Copie défensive : les Click handlers vont muter la liste ; itérer directement dessus ne casserait rien
+            // (les handlers ne s'exécutent pas pendant la construction) mais un tableau explicite documente l'intention.
+            var snapshot = new List<Engine.Timeline.AutomationLane>(lanes);
+            foreach (var l in snapshot)
+            {
+                var lane = l;
+                var mi = new MenuItem { Header = Controls.TimelineEditor.AutomationLaneControl.LaneLabel(lane.Param) };
+                mi.Click += (s, e) =>
+                {
+                    PushUndo("track:autom-");
+                    track.AutomationLanes.Remove(lane);
+                    Render();
+                };
+                root.Items.Add(mi);
+            }
+            return root;
         }
 
         /// <summary>« Dupliquer la piste » : une copie complète et INDÉPENDANTE, insérée juste en dessous, sélectionnée.</summary>

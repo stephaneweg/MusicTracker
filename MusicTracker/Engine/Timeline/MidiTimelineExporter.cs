@@ -40,7 +40,7 @@ namespace MusicTracker.Engine.Timeline
             meta.Add(new TimeSignatureEvent(0, barQuarters, 2, 24, 8)); // numerator/4
 
             // Solo : dès qu'une piste est en solo, les autres se taisent — même règle qu'à la lecture
-            // (TimelinePlayer.ApplyChannelVolumes), pour que les deux ne puissent pas diverger.
+            // (TimelinePlayer.ApplyChannelAutomation), pour que les deux ne puissent pas diverger.
             bool anySolo = false;
             foreach (var t in project.Tracks) if (t != null && t.Solo) { anySolo = true; break; }
 

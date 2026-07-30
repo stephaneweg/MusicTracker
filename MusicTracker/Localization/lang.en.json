@@ -908,5 +908,15 @@
   "TechnicalDetail": "Technical detail",
   "TheApplicationWillClose": "The application will close.",
   "DoNotSend": "Do not send",
-  "ThankYouTheErrorHasBeen": "Thank you, the error has been sent."
+  "ThankYouTheErrorHasBeen": "Thank you, the error has been sent.",
+  "AjouterAutomation": "Add automation",
+  "SupprimerAutomation": "Remove automation",
+  "AutomationVolume": "Volume",
+  "AutomationPan": "Pan",
+  "AutomationExpression": "Expression",
+  "AutomationModulation": "Modulation",
+  "AutomationSustain": "Sustain (pedal)",
+  "AutomationReverb": "Reverb",
+  "AutomationChorus": "Chorus",
+  "AutomationPitchBend": "Pitch bend"
 }

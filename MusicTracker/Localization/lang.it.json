@@ -896,5 +896,15 @@
   "TechnicalDetail": "Dettaglio tecnico",
   "TheApplicationWillClose": "L'applicazione verrà chiusa.",
   "DoNotSend": "Non inviare",
-  "ThankYouTheErrorHasBeen": "Grazie, l'errore è stato inviato."
+  "ThankYouTheErrorHasBeen": "Grazie, l'errore è stato inviato.",
+  "AjouterAutomation": "Aggiungi automazione",
+  "SupprimerAutomation": "Rimuovi automazione",
+  "AutomationVolume": "Volume",
+  "AutomationPan": "Pan",
+  "AutomationExpression": "Espressione",
+  "AutomationModulation": "Modulazione",
+  "AutomationSustain": "Sustain (pedale)",
+  "AutomationReverb": "Riverbero",
+  "AutomationChorus": "Chorus",
+  "AutomationPitchBend": "Pitch bend"
 }

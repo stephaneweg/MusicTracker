@@ -15,6 +15,7 @@ Les entrées les plus **récentes** vont **en premier** ; l'application n'en aff
 
 ## Entrées
 
+- 🎛️ Automation MIDI par piste : clic droit sur l'en-tête d'une piste → « Ajouter une automation » pour poser une courbe de Pan, Expression, Modulation, Sustain, Réverbe, Chorus ou Pitch bend en plus du volume — dessine les points à la souris comme la lane de volume.
 - 🎼 Export MusicXML (menu Export) : sors ta partition dans le format d'échange lu par tous les logiciels de notation — Finale, Sibelius, Dorico, MuseScore, les éditeurs en ligne et les liseuses sur tablette. Les notes qui traversent une barre de mesure sont désormais écrites liées, au lieu d'être tronquées.
 - 🎵 Swing : dans « Mesure », choisis des croches inégales (léger, moyen, swing, ternaire). La lecture et l'export audio suivent le groove ; la partition et l'export MIDI gardent des croches égales.
 - 🎶 « Ajouter un instrument / une batterie avec l'IA » (menu Piste) : décris une intention, l'IA reçoit TOUT le morceau (toutes les pistes + les accords) et compose une nouvelle piste — ligne mélodique (rythme seul) ou mélodie complète, ou un groove — qui s'intègre à l'arrangement existant.

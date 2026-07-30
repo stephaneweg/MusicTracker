@@ -32,6 +32,10 @@ namespace MusicTracker.Engine.Timeline
             public double BaseVol = 1.0;
             public double Mix = 1.0;                 // mute/solo factor (0 = silent), applied on top of the gain
             public List<VolumePoint> Autom;
+            /// <summary>Snapshots triés des lanes d'automation additionnelles (pan/expression/modulation/sustain/reverb/chorus/pitchbend),
+            /// prises au démarrage. Ajouter/retirer une lane en cours de lecture n'a pas d'effet audible jusqu'au prochain Start —
+            /// même règle qu'avec <see cref="Autom"/>, et raisonnable puisque l'utilisateur relance de toute façon la lecture après édition.</summary>
+            public Dictionary<AutomationParam, List<AutomationPoint>> LaneSnaps;
             // La piste de projet dont cette voix a été construite. Les valeurs de mixage (volume / pan / mute /
             // solo / réverbe) y sont lues EN DIRECT à chaque buffer — mais par cette référence, jamais par un
             // index dans project.Tracks : le thread d'interface peut insérer, échanger ou retirer une piste
@@ -186,6 +190,7 @@ namespace MusicTracker.Engine.Timeline
                     BaseVol = tr.Volume,
                     Mix = (tr.Mute || (anySolo && !tr.Solo)) ? 0.0 : 1.0,
                     Autom = (tr.VolumeAutomation != null ? tr.VolumeAutomation.OrderBy(p => p.Beat).ToList() : new List<VolumePoint>()),
+                    LaneSnaps = SnapshotLanes(tr.AutomationLanes),
                     Src = tr,
                 };
                 double cursor = 0;
@@ -343,6 +348,49 @@ namespace MusicTracker.Engine.Timeline
             return bpm;
         }
 
+        // Snapshot (tri par beat) des lanes actives d'une piste, indexé par paramètre. Une lane vide ou
+        // désactivée n'entre PAS dans le dictionnaire : la lecture retombe alors sur la valeur statique de la piste.
+        static Dictionary<AutomationParam, List<AutomationPoint>> SnapshotLanes(List<AutomationLane> lanes)
+        {
+            var d = new Dictionary<AutomationParam, List<AutomationPoint>>();
+            if (lanes == null) return d;
+            foreach (var ln in lanes)
+            {
+                if (ln == null || !ln.Enabled || ln.Points == null || ln.Points.Count == 0) continue;
+                var sorted = ln.Points.OrderBy(p => p.Beat).ToList();
+                d[ln.Param] = sorted;    // une seule lane par paramètre : la dernière définie gagne
+            }
+            return d;
+        }
+
+        // Interpolation générique d'une courbe : valeur par défaut avant le 1er point (rampe base -> premier
+        // si le premier est en 0), linéaire entre points, plate après le dernier. Même sémantique que TrackGain.
+        static double SampleCurve(List<AutomationPoint> pts, double defaultVal, double beat)
+        {
+            if (pts == null || pts.Count == 0) return defaultVal;
+            if (beat <= pts[0].Beat)
+            {
+                if (pts[0].Beat <= 1e-9) return pts[0].Value;
+                double f = Math.Max(0, beat) / pts[0].Beat;
+                return defaultVal + (pts[0].Value - defaultVal) * f;
+            }
+            for (int i = 0; i < pts.Count - 1; i++)
+                if (beat >= pts[i].Beat && beat <= pts[i + 1].Beat)
+                {
+                    double span = pts[i + 1].Beat - pts[i].Beat;
+                    double f = span > 1e-9 ? (beat - pts[i].Beat) / span : 0;
+                    return pts[i].Value + (pts[i + 1].Value - pts[i].Value) * f;
+                }
+            return pts[pts.Count - 1].Value;
+        }
+
+        // 0..1 -> 0..127 (clamp).
+        static int CcByte(double v)
+        {
+            int i = (int)Math.Round(v * 127);
+            return i < 0 ? 0 : (i > 127 ? 127 : i);
+        }
+
         // Absolute volume at a beat: base before the first point, linear between points (override, not a
         // multiply — matches the volume lane), flat after the last point. Lead-in ramps base -> first.
         static double TrackGain(Track tr, double beat) => TrackGain(tr.Autom, tr.BaseVol, beat);
@@ -448,13 +496,13 @@ namespace MusicTracker.Engine.Timeline
         // ---- MeltySynth render path : advance the tempo cursor slice-by-slice, dispatch each slice's note on/off
         //      to the shared synth, render the slice's samples, then write INTERLEAVED STEREO (L,R per frame).
         //      `sampleCount` is the number of shorts to fill (= 2 × frames); pan is baked into mL/mR by the synth
-        //      (per-track CC10 in ApplyChannelVolumes), so we just emit L and R. ----
+        //      (per-track CC10 in ApplyChannelAutomation), so we just emit L and R. ----
         int ReadMelty(short[] buffer, int offset, int sampleCount)
         {
             int frames = sampleCount / 2;                                   // 2 shorts (L,R) per frame
             if (mL == null || mL.Length < frames) { mL = new float[frames]; mR = new float[frames]; }
 
-            ApplyChannelVolumes(CurrentBeat); // per-buffer: LIVE volume + mute/solo (CC7) + pan (CC10)
+            ApplyChannelAutomation(CurrentBeat); // per-buffer: LIVE volume + mute/solo (CC7) + pan (CC10) + lanes additionnelles
 
             int end = loopEndSlice > 0 ? loopEndSlice : totalSlices;  // region end (B) or the whole piece
             int done = 0;
@@ -517,7 +565,7 @@ namespace MusicTracker.Engine.Timeline
             }
         }
 
-        void ApplyChannelVolumes(double beat)
+        void ApplyChannelAutomation(double beat)
         {
             double maxBoost = AppSettings.MaxBoostFactor;
             var settings = AppSettings.Instance;
@@ -531,6 +579,8 @@ namespace MusicTracker.Engine.Timeline
             for (int ti = 0; ti < tracks.Length; ti++)
             {
                 var p = tracks[ti].Src;
+                int ch = trackChannel[ti];
+                var lanes = tracks[ti].LaneSnaps;
                 double baseVol = p != null ? p.Volume : tracks[ti].BaseVol;
                 double mix = p != null ? ((p.Mute || (anySolo && !p.Solo)) ? 0.0 : 1.0) : tracks[ti].Mix;
                 double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix; // mix == 0 -> muted / non-soloed
@@ -539,16 +589,48 @@ namespace MusicTracker.Engine.Timeline
                 double boost = trackProgram != null ? settings.BoostGain(trackProgram[ti]) : 1.0;
                 double ccGain = gv * Math.Sqrt(boost / maxBoost);
                 int cc = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, ccGain)) * 127);
-                if (ChannelVolumeCC) synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 7, cc); // CC7 = channel volume
+                if (ChannelVolumeCC) synth.ProcessMidiMessage(ch, 0xB0, 7, cc); // CC7 = channel volume
                 // Pan: −1..+1 → CC10 0..127 (64 = centre). Drums share ch 9, so multiple kits share one pan.
-                double pan = p != null ? Math.Max(-1.0, Math.Min(1.0, p.Pan)) : 0.0;
-                int cc10 = (int)Math.Round((pan + 1.0) * 0.5 * 127);
-                synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 10, cc10); // CC10 = pan
+                // Une lane Pan prend le dessus sur la valeur statique de la piste ; sinon on retombe sur p.Pan.
+                double pan;
+                if (lanes != null && lanes.TryGetValue(AutomationParam.Pan, out var panPts))
+                    pan = SampleCurve(panPts, p != null ? p.Pan : 0.0, beat);
+                else
+                    pan = p != null ? p.Pan : 0.0;
+                if (pan < -1.0) pan = -1.0; else if (pan > 1.0) pan = 1.0;
+                synth.ProcessMidiMessage(ch, 0xB0, 10, (int)Math.Round((pan + 1.0) * 0.5 * 127)); // CC10 = pan
                 // CC91 = reverb send. MeltySynth adds it to the SoundFont's own per-instrument send
                 // (Voice: reverbSend = channel + instrument, clamped), so this places the track in the room
                 // without touching its level. Sending the default (40) is a no-op — a project that never
-                // touched the setting sounds exactly as before.
-                synth.ProcessMidiMessage(trackChannel[ti], 0xB0, 91, p != null ? p.ReverbSend : TimelineTrack.DefaultReverb);
+                // touched the setting sounds exactly as before. Une lane Réverbe (0..1) prend le dessus.
+                int reverb;
+                if (lanes != null && lanes.TryGetValue(AutomationParam.ReverbSend, out var rvPts))
+                    reverb = CcByte(SampleCurve(rvPts, (p != null ? p.ReverbSend : TimelineTrack.DefaultReverb) / 127.0, beat));
+                else
+                    reverb = p != null ? p.ReverbSend : TimelineTrack.DefaultReverb;
+                synth.ProcessMidiMessage(ch, 0xB0, 91, reverb);
+
+                if (lanes == null || lanes.Count == 0) continue;
+
+                // Les autres CC : chaque lane -> son numéro de CC. Défaut = valeur neutre du contrôleur MIDI
+                // (Expression 127, Modulation/Sustain/Chorus 0). Envoyer même valeur en boucle n'a pas d'effet
+                // notable (MeltySynth court-circuite les modulateurs constants) — la simplicité prime ici.
+                if (lanes.TryGetValue(AutomationParam.Expression, out var exPts))
+                    synth.ProcessMidiMessage(ch, 0xB0, 11, CcByte(SampleCurve(exPts, 1.0, beat))); // CC11 = expression, défaut 127
+                if (lanes.TryGetValue(AutomationParam.Modulation, out var modPts))
+                    synth.ProcessMidiMessage(ch, 0xB0, 1, CcByte(SampleCurve(modPts, 0.0, beat)));  // CC1 = modulation LFO
+                if (lanes.TryGetValue(AutomationParam.Sustain, out var suPts))
+                    synth.ProcessMidiMessage(ch, 0xB0, 64, CcByte(SampleCurve(suPts, 0.0, beat))); // CC64 = pédale de piano (>=64 = enfoncée)
+                if (lanes.TryGetValue(AutomationParam.ChorusSend, out var chPts))
+                    synth.ProcessMidiMessage(ch, 0xB0, 93, CcByte(SampleCurve(chPts, 0.0, beat))); // CC93 = chorus send
+                if (lanes.TryGetValue(AutomationParam.PitchBend, out var pbPts))
+                {
+                    double v = SampleCurve(pbPts, 0.0, beat);
+                    if (v < -1.0) v = -1.0; else if (v > 1.0) v = 1.0;
+                    int b14 = 8192 + (int)Math.Round(v * 8191);          // -1..+1 -> 0..16383, 0 -> 8192 (centre)
+                    if (b14 < 0) b14 = 0; else if (b14 > 16383) b14 = 16383;
+                    synth.ProcessMidiMessage(ch, 0xE0, b14 & 0x7F, (b14 >> 7) & 0x7F); // 0xE0 = pitch wheel (LSB, MSB)
+                }
             }
         }
 

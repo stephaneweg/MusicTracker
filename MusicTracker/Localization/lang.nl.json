@@ -896,5 +896,15 @@
   "TechnicalDetail": "Technische details",
   "TheApplicationWillClose": "De toepassing wordt gesloten.",
   "DoNotSend": "Niet verzenden",
-  "ThankYouTheErrorHasBeen": "Bedankt, de fout is verzonden."
+  "ThankYouTheErrorHasBeen": "Bedankt, de fout is verzonden.",
+  "AjouterAutomation": "Automatisering toevoegen",
+  "SupprimerAutomation": "Automatisering verwijderen",
+  "AutomationVolume": "Volume",
+  "AutomationPan": "Panorama",
+  "AutomationExpression": "Expressie",
+  "AutomationModulation": "Modulatie",
+  "AutomationSustain": "Sustain (pedaal)",
+  "AutomationReverb": "Reverb",
+  "AutomationChorus": "Chorus",
+  "AutomationPitchBend": "Pitch bend"
 }

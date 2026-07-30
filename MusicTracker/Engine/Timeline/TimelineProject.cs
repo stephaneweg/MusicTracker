@@ -58,6 +58,39 @@ namespace MusicTracker.Engine.Timeline
         public double Volume = 1.0;
     }
 
+    /// <summary>Paramètre d'automation par canal MIDI, un par lane. Volume et Panoramique restent stockés
+    /// respectivement dans <see cref="TimelineTrack.VolumeAutomation"/> (rétro-compatibilité) et sur la valeur
+    /// statique de la piste ; les autres sont posés en lanes additionnelles (<see cref="TimelineTrack.AutomationLanes"/>).</summary>
+    public enum AutomationParam
+    {
+        Volume,        // CC7   — géré à part par VolumeAutomation (existant), présent ici pour l'énumération complète.
+        Pan,           // CC10  — -1..+1
+        Expression,    // CC11  — 0..1
+        Modulation,    // CC1   — 0..1  (LFO)
+        Sustain,       // CC64  — 0..1  (pédale piano ; le synthé bascule à 64/127)
+        ReverbSend,    // CC91  — 0..1
+        ChorusSend,    // CC93  — 0..1
+        PitchBend,     // 0xE0  — -1..+1 (mappé sur ±8192, plage définie par le RPN 0 côté patch, 2 demi-tons par défaut)
+    }
+
+    /// <summary>Un point d'une courbe d'automation générique. <see cref="Value"/> a la plage propre au
+    /// <see cref="AutomationParam"/> de la lane (0..1 pour les CC unipolaires, -1..+1 pour Pan/PitchBend).</summary>
+    public class AutomationPoint
+    {
+        public double Beat;
+        public double Value;
+    }
+
+    /// <summary>Une lane d'automation posée sur une piste : une courbe (points triés par beat) qui pilote un
+    /// paramètre MIDI (<see cref="Param"/>). Interpolation linéaire entre les points, valeur par défaut de la
+    /// piste avant le premier point, plate après le dernier — même sémantique que la courbe de volume.</summary>
+    public class AutomationLane
+    {
+        public AutomationParam Param;
+        public bool Enabled = true;
+        public List<AutomationPoint> Points = new List<AutomationPoint>();
+    }
+
     /// <summary>
     /// A horizontal lane. INSTRUMENT type: pick an instrument + base volume, holds riffs / chord
     /// patterns / repeats. DRUM type: base volume only (instrument is implicitly the drum kit), holds
@@ -108,7 +141,13 @@ namespace MusicTracker.Engine.Timeline
         }
 
         public bool Collapsed = false;         // header + lane shrunk to a minimal height (title + expand button) to save vertical space
-        public List<VolumePoint> VolumeAutomation = new List<VolumePoint>(); // changes at T
+        public List<VolumePoint> VolumeAutomation = new List<VolumePoint>(); // changes at T (CC7 automation, rétro-compat)
+
+        /// <summary>Lanes d'automation MIDI par canal, ajoutées par l'utilisateur : Pan/Expression/Modulation/Sustain/
+        /// Réverbe/Chorus/Pitch bend. Volume reste porté par <see cref="VolumeAutomation"/> pour ne pas casser les fichiers
+        /// existants ni l'export MIDI. Une piste ouverte avant cette version n'a pas ce champ dans son JSON : le
+        /// désérialiseur garde la liste vide (initialiseur) — aucun impact au chargement.</summary>
+        public List<AutomationLane> AutomationLanes = new List<AutomationLane>();
         public List<TimelineItem> Items = new List<TimelineItem>();
     }
 

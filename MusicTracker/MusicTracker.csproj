@@ -344,6 +344,9 @@
     <Compile Include="Controls\TimelineEditor\VolumeLaneControl.xaml.cs">
       <DependentUpon>VolumeLaneControl.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\TimelineEditor\AutomationLaneControl.xaml.cs">
+      <DependentUpon>AutomationLaneControl.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Controls\TimelineEditor\ModuleBoxControl.xaml.cs">
       <DependentUpon>ModuleBoxControl.xaml</DependentUpon>
     </Compile>
@@ -475,6 +478,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Controls\TimelineEditor\VolumeLaneControl.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\TimelineEditor\AutomationLaneControl.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
