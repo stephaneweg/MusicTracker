@@ -86,7 +86,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("PingPong", out v)) PingPong = v;
         }
 
-        public string SaveState() { return null; }
+        // Aucun état interne à sérialiser (les buffers de retard se remplissent en jouant).
+        public string SaveState() => null;
         public void LoadState(string state) { }
     }
 }

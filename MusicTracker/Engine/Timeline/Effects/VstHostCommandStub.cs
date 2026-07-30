@@ -1,25 +1,26 @@
-using System;
 using System.Reflection;
 using Jacobi.Vst.Core;
 using Jacobi.Vst.Core.Host;
-// NB : on n'importe PAS Jacobi.Vst.Core.Plugin — ce namespace contient un homonyme IVstHostCommandStub
-// (l'interface côté plugin) et l'ambiguïté fait exploser la résolution.
 
 namespace MusicTracker.Engine.Timeline.Effects
 {
     /// <summary>
     /// Implémentation minimale d'un stub hôte VST : c'est ce que Koton PRÉSENTE à un plugin quand celui-ci
-    /// demande des services (« quelle est ma sample rate ? », « quel est le nom de l'hôte ? », etc.). VST.NET
-    /// nous impose d'implémenter la totalité de <see cref="IVstHostCommands20"/> (qui étend
-    /// <see cref="IVstHostCommands10"/>), même si 90 % des callbacks n'ont pas de sens pour un simple hôte
-    /// d'inserts stéréo — on renvoie des valeurs neutres (0, false, null) qui sont interprétées par les
-    /// plugins « pas supporté ».
+    /// demande des services (« quelle est ma sample rate ? », « quel est le nom de l'hôte ? », etc.).
     ///
-    /// Ce stub est PAR INSTANCE de plugin (chaque <see cref="VstEffect"/> en crée un) : c'est <see cref="PluginContext"/>
-    /// qui référence le plugin en question, et <see cref="IVstHostCommandStub.PluginContext"/> est renseigné par
-    /// VST.NET quand le contexte est créé.
+    /// **Différence API majeure vs VST.NET 1.x (l'ancienne branche <c>main</c>)** : en v2.x le contrat
+    /// <see cref="IVstHostCommandStub"/> n'expose PLUS les callbacks eux-mêmes — il n'a plus que
+    /// <see cref="IVstHostCommandStub.PluginContext"/> et une propriété <see cref="IVstHostCommandStub.Commands"/>
+    /// qui renvoie l'objet implémentant <see cref="IVstHostCommands20"/>. On économise du typage en faisant
+    /// implémenter les deux interfaces par la MÊME instance et en renvoyant <c>this</c> depuis
+    /// <see cref="Commands"/>.
+    ///
+    /// 90 % des callbacks n'ont pas de sens pour un simple hôte d'inserts stéréo : on renvoie des valeurs neutres
+    /// (0, false, null) que les plugins interprètent comme « non supporté ». Ce stub est PAR INSTANCE de plugin
+    /// (chaque <see cref="VstEffect"/> en crée un) : <see cref="PluginContext"/> est renseigné par VST.NET quand
+    /// le contexte est créé.
     /// </summary>
-    internal sealed class VstHostCommandStub : IVstHostCommandStub
+    internal sealed class VstHostCommandStub : IVstHostCommandStub, IVstHostCommands20
     {
         readonly int _sampleRate;
         readonly int _blockSize;
@@ -32,33 +33,36 @@ namespace MusicTracker.Engine.Timeline.Effects
 
         public IVstPluginContext PluginContext { get; set; }
 
+        /// <summary>C'est nous-mêmes qui portons les 30+ méthodes de <see cref="IVstHostCommands20"/> — pas la peine de composer avec un adapter séparé.</summary>
+        public IVstHostCommands20 Commands => this;
+
         // ============ IVstHostCommands20 ============
-        public bool BeginEdit(int index) { return true; }
-        public bool EndEdit(int index) { return true; }
+        public bool BeginEdit(int index) => true;
+        public bool EndEdit(int index) => true;
 
         public VstCanDoResult CanDo(string cando)
         {
-            // Réponse conservative : les plugins d'effets audio (le seul cas qui nous concerne en v1) n'utilisent
+            // Réponse conservative : les plugins d'effets audio (le seul cas qui nous concerne en bêta) n'utilisent
             // quasiment jamais l'API MIDI-vers-hôte, on peut donc dire « no » à presque tout. On accepte les deux
-            // envois VST events les plus courants au cas où (les strings VST sont en camelCase — VstCanDoHelper
-            // convertit une valeur d'enum vers la chaîne officielle).
+            // envois VST events les plus courants au cas où.
             var kind = VstCanDoHelper.ParseHostCanDo(cando);
             if (kind == VstHostCanDo.SendVstEvents || kind == VstHostCanDo.SendVstMidiEvent) return VstCanDoResult.Yes;
             return VstCanDoResult.No;
         }
 
-        public bool CloseFileSelector(VstFileSelect fileSelect) { return false; }
-        public string GetDirectory() { return null; }
-        public int GetInputLatency() { return 0; }
-        public VstHostLanguage GetLanguage() { return VstHostLanguage.English; }
-        public int GetOutputLatency() { return 0; }
-        public string GetProductString() { return "Koton Studio"; }
-        public VstProcessLevels GetProcessLevel() { return VstProcessLevels.Realtime; }
+        public bool CloseFileSelector(VstFileSelect fileSelect) => false;
+        public string GetDirectory() => null;
+        public int GetInputLatency() => 0;
+        public VstHostLanguage GetLanguage() => VstHostLanguage.English;
+        public int GetOutputLatency() => 0;
+        public string GetProductString() => "Koton Studio";
+        public VstProcessLevels GetProcessLevel() => VstProcessLevels.Realtime;
+
         public VstTimeInfo GetTimeInfo(VstTimeInfoFlags filterFlags)
         {
-            // Le timeline Koton n'expose pas encore la position musicale au plugin (v1 = pas d'automation, pas de
-            // tempo-aware). On renvoie une time-info minimale : sample-count = 0, sample-rate correct — assez pour
-            // que les plugins qui font juste du DSP audio soient contents.
+            // Le timeline Koton n'expose pas encore la position musicale au plugin (bêta = pas d'automation, pas
+            // de tempo-aware). On renvoie une time-info minimale : sample-count = 0, sample-rate correct — assez
+            // pour que les plugins qui font juste du DSP audio soient contents.
             return new VstTimeInfo
             {
                 SamplePosition = 0.0,
@@ -69,26 +73,27 @@ namespace MusicTracker.Engine.Timeline.Effects
                 Flags = VstTimeInfoFlags.TempoValid,
             };
         }
-        public string GetVendorString() { return "Koton"; }
-        public int GetVendorVersion() { return 100; }
-        public bool IoChanged() { return false; }
-        public bool OpenFileSelector(VstFileSelect fileSelect) { return false; }
-        public bool ProcessEvents(VstEvent[] events) { return false; }
-        public bool SizeWindow(int width, int height) { return false; }
-        public bool UpdateDisplay() { return true; }
-        public VstAutomationStates GetAutomationState() { return VstAutomationStates.Off; }
-        public float GetSampleRate() { return _sampleRate; }
-        public int GetBlockSize() { return _blockSize; }
 
-        // ============ IVstHostCommands10 ============
-        public int GetCurrentPluginID() { return 0; }
+        public string GetVendorString() => "Koton";
+        public int GetVendorVersion() => 100;
+        public bool IoChanged() => false;
+        public bool OpenFileSelector(VstFileSelect fileSelect) => false;
+        public bool ProcessEvents(VstEvent[] events) => false;
+        public bool SizeWindow(int width, int height) => false;
+        public bool UpdateDisplay() => true;
+        public VstAutomationStates GetAutomationState() => VstAutomationStates.Off;
+        public float GetSampleRate() => _sampleRate;
+        public int GetBlockSize() => _blockSize;
+
+        // ============ IVstHostCommands10 (héritées via IVstHostCommands20) ============
+        public int GetCurrentPluginID() => 0;
         public int GetVersion()
         {
-            // Version de l'HÔTE (Koton) — libre, on renvoie le build number de l'assembly.
+            // Version de l'HÔTE (Koton) — libre, on renvoie un entier dérivé du build.
             var v = Assembly.GetExecutingAssembly().GetName().Version;
             return v != null ? v.Major * 1000 + v.Minor * 100 + v.Build * 10 + v.Revision : 1000;
         }
         public void ProcessIdle() { }
-        public void SetParameterAutomated(int index, float value) { /* pas d'automation en v1 */ }
+        public void SetParameterAutomated(int index, float value) { /* pas d'automation en bêta */ }
     }
 }

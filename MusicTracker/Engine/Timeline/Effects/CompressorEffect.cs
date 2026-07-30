@@ -77,8 +77,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("MakeupDb", out v)) MakeupDb = v;
         }
 
-        // Effet maison — pas d'état opaque à sérialiser (tout est dans le dict).
-        public string SaveState() { return null; }
+        // Aucun état interne à sérialiser en plus des 5 paramètres de Save().
+        public string SaveState() => null;
         public void LoadState(string state) { }
     }
 }

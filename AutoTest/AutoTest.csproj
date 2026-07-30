@@ -2,11 +2,16 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net48</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>MusicTracker.AutoTest</RootNamespace>
     <AssemblyName>MusicTracker.AutoTest</AssemblyName>
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
+    <!-- FlaUI 4.0.0 drags in System.Drawing.Common 5.0.2 which NuGet audit flags as vulnerable
+         (GHSA-rxg9-xrhp-64gj); the harness never asks for GDI+ rendering, only for FlaUI's own
+         helpers, so it's a transitive false-positive here. NU1510: System.Text.Json is in-box on
+         net10 but we keep it referenced explicitly to survive a rollback. -->
+    <NoWarn>$(NoWarn);NU1510;NU1904</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using Jacobi.Vst.Core;
-using Jacobi.Vst.Interop.Host;
+using Jacobi.Vst.Host.Interop;
 
 namespace MusicTracker.Engine.Timeline.Effects
 {
     /// <summary>
-    /// Effet d'insert qui héberge un plugin VST2 (via VST.NET / TruDan-VST.NET, LGPL-2.1). Le plugin est chargé
+    /// Effet d'insert qui héberge un plugin VST2 (via VST.NET 2.x, LGPL-2.1). Le plugin est chargé
     /// paresseusement (au premier <see cref="Process"/>) parce que le pipeline audio Koton snapshotte les inserts
     /// AU DÉMARRAGE de la lecture — retarder le vrai chargement au thread audio évite deux gros risques :
     /// (1) figer le thread UI le temps du chargement (certains plugins prennent 1-2 s), (2) crasher au chargement
@@ -17,19 +17,25 @@ namespace MusicTracker.Engine.Timeline.Effects
     /// <see cref="VstAudioBufferManager"/> (mémoire non-managée, gérée par VST.NET) et redimensionnés à la volée
     /// si <c>frames</c> change entre deux appels.
     ///
+    /// **Différence API vs VST.NET 1.x (l'ancienne branche <c>main</c>)** : en v2.x, on ne fait plus
+    /// <c>_ctx.PluginCommandStub.Open()</c> — la propriété <c>PluginCommandStub</c> n'expose plus les commandes
+    /// directement, il faut passer par <c>PluginCommandStub.Commands</c> (une <see cref="IVstPluginCommands24"/>).
+    /// Même pattern côté <see cref="VstHostCommandStub"/>. Une variable locale <c>cmd</c> masque la verbosité.
+    ///
     /// **Politique de crash** : tout jet depuis le plugin est capturé en silence dans <see cref="Process"/> — un
     /// plugin qui explose passe en bypass permanent pour cette instance (pas de rechargement automatique). Le
-    /// projet continue de jouer.
+    /// projet continue de jouer. En bêta, un plugin vraiment buggé (AccessViolation natif) peut tuer le process
+    /// hôte : c'est le compromis pour héberger du code C++ dans le même AppDomain.
     ///
     /// **Persistance** : le PluginPath vit dans <see cref="TrackEffectData.PluginPath"/> ; le chunk d'état interne
     /// est sérialisé en base64 dans <see cref="TrackEffectData.StateBlob"/> via <see cref="SaveState"/> /
-    /// <see cref="LoadState"/>. Load(dict) est un no-op délibéré : le pipeline appelle Load à CHAQUE buffer pour
-    /// relire les sliders des effets maison, mais un plugin VST a sa propre GUI native qui mute l'état à l'intérieur
-    /// du plugin — le dictionnaire de l'hôte n'a aucune vérité à raconter.
+    /// <see cref="LoadState"/>. <see cref="Load(Dictionary{string,double})"/> est un no-op délibéré : le pipeline
+    /// appelle Load à CHAQUE buffer pour relire les sliders des effets maison, mais un plugin VST a sa propre GUI
+    /// native qui mute l'état à l'intérieur du plugin — le dictionnaire de l'hôte n'a aucune vérité à raconter.
     /// </summary>
     public class VstEffect : IAudioEffect, IDisposable
     {
-        public string Kind { get { return EffectFactory.VstKind; } }
+        public string Kind => "vst";
 
         /// <summary>Chemin absolu vers le fichier .dll du plugin. Doit être posé AVANT le premier Process (sinon l'effet reste no-op).</summary>
         public string PluginPath { get; set; }
@@ -46,10 +52,10 @@ namespace MusicTracker.Engine.Timeline.Effects
         }
 
         /// <summary><c>true</c> une fois que le contexte VST est ouvert (utile pour l'UI qui veut savoir si le HWND peut être demandé).</summary>
-        public bool IsLoaded { get { return _ctx != null && !_failed; } }
+        public bool IsLoaded => _ctx != null && !_failed;
 
         /// <summary><c>true</c> si le plugin a jeté à un moment (bypass permanent). L'UI peut afficher un badge d'alerte.</summary>
-        public bool IsFailed { get { return _failed; } }
+        public bool IsFailed => _failed;
 
         readonly int _sampleRate;
         VstPluginContext _ctx;
@@ -78,7 +84,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             {
                 var host = new VstHostCommandStub(_sampleRate, blockSize);
                 _ctx = VstPluginContext.Create(PluginPath, host);
-                var cmd = _ctx.PluginCommandStub;
+                var cmd = _ctx.PluginCommandStub.Commands;
                 cmd.Open();
                 cmd.SetSampleRate(_sampleRate);
                 cmd.SetBlockSize(blockSize);
@@ -118,9 +124,9 @@ namespace MusicTracker.Engine.Timeline.Effects
             _inBufs = new VstAudioBuffer[2];
             _outBufs = new VstAudioBuffer[2];
             int i = 0;
-            foreach (var b in _inMgr) { _inBufs[i++] = b; if (i == 2) break; }
+            foreach (var b in _inMgr.Buffers) { _inBufs[i++] = b; if (i == 2) break; }
             i = 0;
-            foreach (var b in _outMgr) { _outBufs[i++] = b; if (i == 2) break; }
+            foreach (var b in _outMgr.Buffers) { _outBufs[i++] = b; if (i == 2) break; }
             _currentBlockSize = blockSize;
         }
 
@@ -133,14 +139,15 @@ namespace MusicTracker.Engine.Timeline.Effects
                 {
                     EnsureLoaded(frames);
                     if (_ctx == null || _failed) return;
+                    var cmd = _ctx.PluginCommandStub.Commands;
                     if (_currentBlockSize != frames)
                     {
                         // Le plugin doit être averti d'un changement de taille de bloc : MainsChanged(false) → SetBlockSize → MainsChanged(true).
                         try
                         {
-                            _ctx.PluginCommandStub.MainsChanged(false);
-                            _ctx.PluginCommandStub.SetBlockSize(frames);
-                            _ctx.PluginCommandStub.MainsChanged(true);
+                            cmd.MainsChanged(false);
+                            cmd.SetBlockSize(frames);
+                            cmd.MainsChanged(true);
                         }
                         catch { }
                         AllocBuffers(frames);
@@ -150,7 +157,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                     var iL = _inBufs[0]; var iR = _inBufs[1];
                     for (int i = 0; i < frames; i++) { iL[i] = left[i]; iR[i] = right[i]; }
 
-                    _ctx.PluginCommandStub.ProcessReplacing(_inBufs, _outBufs);
+                    cmd.ProcessReplacing(_inBufs, _outBufs);
 
                     // Copie OUT.
                     var oL = _outBufs[0]; var oR = _outBufs[1];
@@ -173,16 +180,17 @@ namespace MusicTracker.Engine.Timeline.Effects
             {
                 try
                 {
-                    _ctx.PluginCommandStub.MainsChanged(false);
-                    _ctx.PluginCommandStub.MainsChanged(true);
-                    _ctx.PluginCommandStub.StartProcess();
+                    var cmd = _ctx.PluginCommandStub.Commands;
+                    cmd.MainsChanged(false);
+                    cmd.MainsChanged(true);
+                    cmd.StartProcess();
                 }
                 catch { _failed = true; }
             }
         }
 
         // Le dict nom→double n'est pas utilisé côté VST — c'est la GUI native du plugin qui pilote son état.
-        public Dictionary<string, double> Save() { return new Dictionary<string, double>(); }
+        public Dictionary<string, double> Save() => new Dictionary<string, double>();
         public void Load(Dictionary<string, double> data) { /* no-op : appelé À CHAQUE BUFFER par le renderer */ }
 
         public string SaveState()
@@ -190,7 +198,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (_ctx == null || _failed) return _pendingState; // rien à sérialiser tant que le plugin n'a jamais été chargé.
             try
             {
-                var bytes = _ctx.PluginCommandStub.GetChunk(false); // false = bank chunk (voir SetChunk symétrique).
+                var bytes = _ctx.PluginCommandStub.Commands.GetChunk(false); // false = bank chunk (voir SetChunk symétrique).
                 if (bytes == null || bytes.Length == 0) return null;
                 return Convert.ToBase64String(bytes);
             }
@@ -210,7 +218,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                     var bytes = Convert.FromBase64String(state);
                     lock (_lock)
                     {
-                        _ctx.PluginCommandStub.SetChunk(bytes, false);
+                        _ctx.PluginCommandStub.Commands.SetChunk(bytes, false);
                     }
                     _pendingState = null;
                 }
@@ -238,7 +246,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             try
             {
                 System.Drawing.Rectangle rc;
-                if (_ctx.PluginCommandStub.EditorGetRect(out rc))
+                if (_ctx.PluginCommandStub.Commands.EditorGetRect(out rc))
                     return new System.Drawing.Size(rc.Width, rc.Height);
             }
             catch { }
@@ -254,7 +262,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (_ctx == null || _failed) return false;
             try
             {
-                return _ctx.PluginCommandStub.EditorOpen(parentHwnd);
+                return _ctx.PluginCommandStub.Commands.EditorOpen(parentHwnd);
             }
             catch { return false; }
         }
@@ -263,14 +271,14 @@ namespace MusicTracker.Engine.Timeline.Effects
         public void CloseEditor()
         {
             if (_ctx == null || _failed) return;
-            try { _ctx.PluginCommandStub.EditorClose(); } catch { }
+            try { _ctx.PluginCommandStub.Commands.EditorClose(); } catch { }
         }
 
         /// <summary>À appeler par un timer pendant que l'éditeur est ouvert : beaucoup de plugins ont besoin d'un idle régulier pour redessiner leurs sliders.</summary>
         public void EditorIdle()
         {
             if (_ctx == null || _failed) return;
-            try { _ctx.PluginCommandStub.EditorIdle(); } catch { }
+            try { _ctx.PluginCommandStub.Commands.EditorIdle(); } catch { }
         }
 
         void DisposeBuffers()
@@ -286,7 +294,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             {
                 try
                 {
-                    var cmd = _ctx.PluginCommandStub;
+                    var cmd = _ctx.PluginCommandStub.Commands;
                     try { cmd.StopProcess(); } catch { }
                     try { cmd.MainsChanged(false); } catch { }
                     try { cmd.Close(); } catch { }

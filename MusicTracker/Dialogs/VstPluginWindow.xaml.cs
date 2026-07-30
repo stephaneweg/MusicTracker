@@ -44,7 +44,7 @@ namespace MusicTracker.Dialogs
             var sz = _fx.GetEditorSize();
             if (sz.Width > 100 && sz.Height > 50)
             {
-                // 6 = borders, 40 = header height ≈ padding — ne pas être trop serré.
+                // 6 = bordures, 46 = hauteur en-tête + padding — ne pas être trop serré.
                 Width = sz.Width + 6;
                 Height = sz.Height + 46;
             }
@@ -91,9 +91,8 @@ namespace MusicTracker.Dialogs
 
         protected override HandleRef BuildWindowCore(HandleRef hwndParent)
         {
-            // On crée un HWND "STATIC" (contrôle Win32 built-in) — sert de conteneur passif que le plugin peut
-            // repeupler. Style WS_CHILD+WS_VISIBLE, taille égale à ce que WPF nous donne (redimensionné automatiquement
-            // par HwndHost via WM_SIZE).
+            // HWND "STATIC" (contrôle Win32 built-in) — conteneur passif que le plugin peut repeupler.
+            // Style WS_CHILD+WS_VISIBLE, taille 1×1 initiale (redimensionnée automatiquement par HwndHost via WM_SIZE).
             _child = CreateWindowEx(0, "STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 1, 1, hwndParent.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
             _fx.OpenEditor(_child);
             return new HandleRef(this, _child);

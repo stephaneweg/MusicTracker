@@ -49,7 +49,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("Mix", out v)) Mix = v;
         }
 
-        public string SaveState() { return null; }
+        // Aucun état interne à sérialiser (Drive + Mix suffisent).
+        public string SaveState() => null;
         public void LoadState(string state) { }
     }
 }

@@ -173,7 +173,7 @@ namespace MusicTracker.Dialogs
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // Le libellé d'un VST = nom du fichier (le vrai « nice name » n'est connu qu'après chargement du plugin).
+            // Le libellé d'un VST = nom du fichier (le vrai "nice name" n'est connu qu'après chargement du plugin).
             string label = d.Kind == EffectFactory.VstKind && !string.IsNullOrEmpty(d.PluginPath)
                 ? System.IO.Path.GetFileNameWithoutExtension(d.PluginPath)
                 : Loc.T(EffectFactory.LocKey(d.Kind));
@@ -198,7 +198,8 @@ namespace MusicTracker.Dialogs
             return row;
         }
 
-        // Menu contextuel « Ajouter un effet » → un item par type déclaré dans EffectFactory.Kinds + un sous-menu VST.
+        // Menu contextuel « Ajouter un effet » → un item par type déclaré dans EffectFactory.Kinds +
+        // un sous-menu VST peuplé dynamiquement par VstPluginScanner.
         void ShowAddFxMenu(FrameworkElement anchor, List<TrackEffectData> owner, Action onChanged)
         {
             var m = new ContextMenu { PlacementTarget = anchor, Placement = PlacementMode.Bottom };
@@ -241,7 +242,7 @@ namespace MusicTracker.Dialogs
             parent.Items.Add(vstMenu);
         }
 
-        /// <summary>Ajoute un insert VST après avoir vérifié le runtime VC++ 2012 — sinon propose le lien de téléchargement.</summary>
+        /// <summary>Ajoute un insert VST après avoir vérifié le runtime VC++ — sinon propose le lien de téléchargement.</summary>
         void TryAddVst(string path, List<TrackEffectData> owner, Action onChanged)
         {
             if (!VstRuntimeCheck.IsVcRedistInstalled())
@@ -270,9 +271,9 @@ namespace MusicTracker.Dialogs
                     return;
                 }
                 // Instance VstEffect dédiée à l'UI (indépendante de celle du renderer, qui vit dans un thread audio).
-                // Ce n'est PAS l'instance qui joue — l'UI ouvre sa propre copie pour afficher/éditer les paramètres
-                // via la GUI native, et on récupère le nouveau chunk d'état à la fermeture pour le pousser dans le
-                // TrackEffectData → au prochain Start de lecture, le renderer relit ce chunk.
+                // L'UI ouvre sa propre copie pour afficher/éditer les paramètres via la GUI native, et on récupère
+                // le nouveau chunk d'état à la fermeture pour le pousser dans le TrackEffectData → au prochain Start
+                // de lecture, le renderer relit ce chunk.
                 var fx = new VstEffect(44100) { PluginPath = d.PluginPath };
                 if (!string.IsNullOrEmpty(d.StateBlob)) fx.LoadState(d.StateBlob);
                 if (!fx.EnsureOpenedSync(512))

@@ -6,19 +6,20 @@ using System.Linq;
 namespace MusicTracker.Engine.Timeline.Effects
 {
     /// <summary>
-    /// Cherche des plugins VST2 (fichiers .dll) dans les dossiers Steinberg standards + un dossier personnalisable
-    /// via <see cref="AppSettings.VstFolders"/>. Résultat mis en cache pour la session (un premier accès scanne,
-    /// les suivants sont instantanés). L'utilisateur peut re-scanner explicitement via <see cref="ForceRescan"/>.
+    /// Cherche des plugins VST2 (fichiers .dll) dans les dossiers Steinberg standards. Résultat mis en
+    /// cache pour la session (un premier accès scanne, les suivants sont instantanés). L'utilisateur peut
+    /// re-scanner explicitement via <see cref="ForceRescan"/>.
     ///
-    /// Le scan ne CHARGE PAS les DLL (juste `Directory.EnumerateFiles`) — donc pas de risque de charger un plugin
-    /// buggé au démarrage. La validation (est-ce vraiment un VST ?) n'a lieu qu'au moment de l'instanciation.
+    /// Le scan ne CHARGE PAS les DLL (juste <see cref="Directory.EnumerateFiles"/>) — pas de risque de
+    /// charger un plugin buggé au démarrage. La validation « est-ce vraiment un VST ? » n'a lieu qu'au
+    /// moment de l'instanciation (VST.NET jette si le .dll ne répond pas au contrat).
     /// </summary>
     public static class VstPluginScanner
     {
         static List<PluginEntry> _cache;
         static readonly object _lock = new object();
 
-        /// <summary>Dossiers Steinberg standards, testés dans l'ordre. On peut ajouter d'autres racines via <see cref="AppSettings.VstFolders"/>.</summary>
+        /// <summary>Dossiers Steinberg standards, testés dans l'ordre. Un futur écran de préférences pourra en ajouter.</summary>
         public static readonly string[] DefaultFolders = new[]
         {
             Environment.ExpandEnvironmentVariables(@"%ProgramFiles%\VstPlugins"),
