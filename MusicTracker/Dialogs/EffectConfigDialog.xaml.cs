@@ -11,9 +11,11 @@ namespace MusicTracker.Dialogs
 {
     /// <summary>
     /// Petit éditeur générique de paramètres d'effet : lit et écrit directement dans
-    /// <see cref="TrackEffectData.Params"/>. On ne relit pas le player (le snapshot des inserts est pris
-    /// au Start) — les changements sont audibles à la prochaine mise en lecture. C'est cohérent avec la
-    /// façon dont l'app traite déjà l'automation, et évite d'avoir à re-synchroniser des effets vivants.
+    /// <see cref="TrackEffectData.Params"/>. Le player relit ce dictionnaire à CHAQUE buffer via
+    /// <c>IAudioEffect.Load</c> (voir <c>TimelinePlayer.RenderTrackSlice</c>), donc bouger un slider
+    /// s'entend immédiatement — pas besoin de relancer la lecture. Ajouter ou retirer un effet reste
+    /// snapshot-at-Start (la liste d'inserts est mutée par ce thread, on ne peut pas la parcourir en
+    /// concurrent depuis l'audio thread sans risque).
     /// </summary>
     public partial class EffectConfigDialog : Window
     {

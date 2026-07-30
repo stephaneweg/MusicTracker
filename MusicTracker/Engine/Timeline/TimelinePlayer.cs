@@ -51,6 +51,11 @@ namespace MusicTracker.Engine.Timeline
             public int Program;                     // programme GM (drumIndex si batterie) — utilisé pour le boost par instrument
             public float[] BufL, BufR;              // buffer de rendu de la piste — alloué à la volée quand la taille change
             public IAudioEffect[] Effects;          // chaîne d'inserts instanciée au démarrage (snapshot, voir SnapshotInserts)
+            /// <summary>Sources parallèles à <see cref="Effects"/> — mêmes objets que dans <c>Src.Inserts</c> au moment du Start,
+            /// gardés pour relire EN LIVE les paramètres (sliders du dialogue d'effet) et le toggle Enabled sans avoir à
+            /// relancer la lecture. Ajouter/retirer un effet reste snapshot-at-Start (la liste elle-même peut être mutée
+            /// par le thread d'interface — on ne pourrait pas la parcourir sans risque).</summary>
+            public TrackEffectData[] EffectsSrc;
             public float PeakL, PeakR;              // dernier peak par canal — lu en LIVE par le mixeur pour les vu-mètres
         }
 
@@ -145,6 +150,7 @@ namespace MusicTracker.Engine.Timeline
         float[] mIn;                        // scratch mono pour le pré-mix des inserts master (réutilisé)
         // Chaîne d'inserts du bus master (snapshot au démarrage, comme les lanes) + peaks lus par le vu-mètre master.
         IAudioEffect[] masterFx;
+        TrackEffectData[] masterFxSrc;      // parallèle à masterFx — pour relecture live des paramètres et Enabled
         public float MasterPeakL { get; private set; }
         public float MasterPeakR { get; private set; }
         readonly TimelineProject srcProject;
@@ -494,28 +500,38 @@ namespace MusicTracker.Engine.Timeline
                     if (s != null) s.Reset();
                 }
                 ApplyPrograms(melodyProject);        // Reset() clears program changes -> re-send them
-                // Snapshot des inserts (par piste + master) au démarrage — comme les lanes d'automation :
-                // ajouter/retirer un effet en cours de lecture n'a d'effet qu'au prochain Start (raisonnable
-                // puisque le pré-buffer LookaheadBuffer contient déjà plusieurs secondes de son passé).
-                for (int i = 0; i < tracks.Length; i++) tracks[i].Effects = SnapshotInserts(tracks[i].Src?.Inserts);
-                masterFx = SnapshotInserts(srcProject?.MasterInserts);
+                // Snapshot des inserts (par piste + master) au démarrage : instance IAudioEffect créée UNE fois,
+                // avec en parallèle la référence à TrackEffectData d'origine. Les PARAMÈTRES et l'état Enabled
+                // sont ensuite relus À CHAQUE BUFFER (voir RenderTrackSlice et la boucle master) → les sliders du
+                // dialogue d'effet s'entendent immédiatement, plus besoin de relancer la lecture. Ajouter/retirer
+                // un effet reste snapshot-at-Start (la liste Src.Inserts peut être mutée par le thread d'UI et on
+                // ne veut pas la parcourir depuis l'audio thread).
+                for (int i = 0; i < tracks.Length; i++)
+                    SnapshotInserts(tracks[i].Src?.Inserts, out tracks[i].Effects, out tracks[i].EffectsSrc);
+                SnapshotInserts(srcProject?.MasterInserts, out masterFx, out masterFxSrc);
                 mDispatched = sliceIndex - 1;        // dispatch from the start slice onward
                 for (int i = 0; i < tracks.Length; i++) { tracks[i].PeakL = 0; tracks[i].PeakR = 0; }
                 MasterPeakL = 0; MasterPeakR = 0;
             }
         }
 
-        IAudioEffect[] SnapshotInserts(List<TrackEffectData> src)
+        /// <summary>Instancie la chaîne d'inserts + garde la référence à la donnée source EN PARALLÈLE (mêmes index).
+        /// Un d.Enabled == false au moment du Start est CONSERVÉ dans le snapshot (rempli quand même) : le toggle
+        /// est relu live par le renderer, ce qui permet d'activer/désactiver un effet sans relancer la lecture.
+        /// Les d == null (ne devrait pas arriver) sont sautés.</summary>
+        void SnapshotInserts(List<TrackEffectData> src, out IAudioEffect[] outFx, out TrackEffectData[] outSrc)
         {
-            if (src == null || src.Count == 0) return Array.Empty<IAudioEffect>();
-            var list = new List<IAudioEffect>(src.Count);
+            if (src == null || src.Count == 0) { outFx = Array.Empty<IAudioEffect>(); outSrc = Array.Empty<TrackEffectData>(); return; }
+            var fxList = new List<IAudioEffect>(src.Count);
+            var dList = new List<TrackEffectData>(src.Count);
             foreach (var d in src)
             {
-                if (d == null || !d.Enabled) continue;
+                if (d == null) continue;
                 var fx = EffectFactory.Create(d, sampleRate);
-                if (fx != null) { fx.Reset(); list.Add(fx); }
+                if (fx != null) { fx.Reset(); fxList.Add(fx); dList.Add(d); }
             }
-            return list.ToArray();
+            outFx = fxList.ToArray();
+            outSrc = dList.ToArray();
         }
 
         /// <summary>Beat at an absolute sample offset (from beat 0), via the tempo map. For a playback cursor.</summary>
@@ -626,9 +642,15 @@ namespace MusicTracker.Engine.Timeline
                 done += n;
             }
 
-            // Inserts master appliqués sur toute la fenêtre déjà sommée.
+            // Inserts master appliqués sur toute la fenêtre déjà sommée (mêmes règles live que les inserts de piste).
             if (masterFx != null)
-                for (int i = 0; i < masterFx.Length; i++) masterFx[i].Process(mL, mR, frames);
+                for (int i = 0; i < masterFx.Length; i++)
+                {
+                    var d = (masterFxSrc != null && i < masterFxSrc.Length) ? masterFxSrc[i] : null;
+                    if (d != null && !d.Enabled) continue;
+                    if (d != null) masterFx[i].Load(d.Params);
+                    masterFx[i].Process(mL, mR, frames);
+                }
 
             // Peaks master pour le vu-mètre (décay entre buffers pour rester lisible).
             float mpL = MasterPeakL * 0.85f, mpR = MasterPeakR * 0.85f;
@@ -681,6 +703,7 @@ namespace MusicTracker.Engine.Timeline
             if (tk.Synth == null || tk.BufL == null) return;
             tk.Synth.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
             var fx = tk.Effects;
+            var fxSrc = tk.EffectsSrc;
             if (fx != null && fx.Length > 0)
             {
                 // Les effets prennent (float[] l, float[] r, int frames) sans offset : copie tampon.
@@ -689,7 +712,13 @@ namespace MusicTracker.Engine.Timeline
                 var tmpR = new float[nn];
                 Array.Copy(tk.BufL, startOff, tmpL, 0, nn);
                 Array.Copy(tk.BufR, startOff, tmpR, 0, nn);
-                for (int i = 0; i < fx.Length; i++) fx[i].Process(tmpL, tmpR, nn);
+                for (int i = 0; i < fx.Length; i++)
+                {
+                    var d = (fxSrc != null && i < fxSrc.Length) ? fxSrc[i] : null;
+                    if (d != null && !d.Enabled) continue;                     // toggle live : effet passé en bypass
+                    if (d != null) fx[i].Load(d.Params);                       // params live : slider = audible immédiat
+                    fx[i].Process(tmpL, tmpR, nn);
+                }
                 Array.Copy(tmpL, 0, tk.BufL, startOff, nn);
                 Array.Copy(tmpR, 0, tk.BufR, startOff, nn);
             }
