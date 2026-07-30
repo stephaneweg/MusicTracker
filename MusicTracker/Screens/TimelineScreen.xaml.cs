@@ -553,7 +553,7 @@ namespace MusicTracker.Screens
             if (playTimer != null) { playTimer.Stop(); playTimer = null; }
             if (playWaveOut != null) { try { playWaveOut.Stop(); playWaveOut.Dispose(); } catch { } playWaveOut = null; }
             if (playBuffer != null) { try { playBuffer.Stop(); } catch { } playBuffer = null; } // stops the producer + inner
-            if (player != null) { try { player.Stop(); } catch { } player = null; }
+            if (player != null) { try { player.Stop(); } catch { } try { player.Dispose(); } catch { } player = null; }
             SetPlayGlyph("▶");
         }
 
@@ -1104,6 +1104,11 @@ namespace MusicTracker.Screens
         // A .sq file = the arrangement + the riffs it references (same idea as the graph's .graph).
         public bool Save(string path)
         {
+            // Si un player est en cours de lecture (ou récemment stoppé), lui demander de capturer l'état
+            // courant de chaque VSTi (patch chargé, sliders, banque de presets) avant la sérialisation.
+            // Le SaveState() par piste coûte l'appel getChunk du plugin (rapide en général) ; on ne le fait
+            // pas dans DocumentJson (appelé aussi par IsDirty) — uniquement à la vraie sauvegarde.
+            if (player != null) { try { player.CaptureVstiStates(); } catch { } }
             string json = DocumentJson();
             Engine.SafeFile.WriteAllText(path, json);   // atomique : ne détruit jamais le .sq existant
             CurrentPath = path;
@@ -1826,6 +1831,8 @@ namespace MusicTracker.Screens
                     // If this track's score is shown, the clef/transposition may have changed -> rebuild it.
                     if (activeScore != null && scoreTracks.Contains(track)) RefreshScore();
                 };
+                // Le combo GM est grisé quand un VSTi est actif : le patch GM n'est plus rendu (le plugin le remplace).
+                if (!string.IsNullOrEmpty(track.VstiPath)) inst.IsEnabled = false;
                 panel.Children.Add(inst);
             }
             else
@@ -1841,8 +1848,15 @@ namespace MusicTracker.Screens
                     if (riffEditTrack == track && selectedItem?.Module is DrumPatternModule dpm)
                         editorHost.Content = BuildDrumEditor(track, selectedItem, dpm);
                 };
+                if (!string.IsNullOrEmpty(track.VstiPath)) kit.IsEnabled = false;
                 panel.Children.Add(kit);
             }
+
+            // Bouton VSTi : ouvre un menu (choix, éditer, retirer). L'étiquette montre le nom du plugin actif
+            // ou "VSTi…" quand aucun n'est chargé. Un ⚠ apparaît si le plugin a été référencé mais est
+            // introuvable (fichier déplacé/désinstallé). Disponible sur les 3 types de pistes — un VSTi peut
+            // être une drum machine, un synthé mélodique ou un pad d'accompagnement.
+            panel.Children.Add(BuildVstiButton(track));
 
             // base volume
             var volRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
