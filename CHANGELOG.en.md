@@ -17,6 +17,7 @@ The most **recent** entries go **first**; the app only shows the first few.
 
 ## Entries
 
+- 🎛 VST plugins (beta): mixer inserts can now host third-party VST2 plugins in addition to the four built-in effects. Menu "+ FX ▸ VST…" scans `%ProgramFiles%\VstPlugins` and `%CommonProgramFiles%\VST2` and lists what it finds; clicking the plugin's name opens its native GUI, and the patch is persisted with your project. Beta: a crashing plugin can take Koton down with it — use at your own risk.
 - 🎚 Console-style mixer + per-track insert effects: open the mixer to get a vertical strip per track (fader, pan, mute/solo, level meter) plus a Master strip. Each track (and the master bus) has its own insert chain to fill in as needed: 3-band EQ, Compressor, Delay (with ping-pong) and Saturation. Under the hood, each track now has its own synth and is rendered in parallel — that's what makes per-track processing possible.
 - 🎛️ Per-track MIDI automation: right-click a track header → "Add automation" to draw a curve for Pan, Expression, Modulation, Sustain, Reverb, Chorus or Pitch bend alongside the volume lane — click the curve to add points, drag to move, right-click to delete. Double-click a point to reset it to its neutral value.
 - 🎼 MusicXML export (Export menu): save your score in the interchange format every notation program reads — Finale, Sibelius, Dorico, MuseScore, online editors and tablet score readers. Notes crossing a barline are now written tied instead of being truncated.
