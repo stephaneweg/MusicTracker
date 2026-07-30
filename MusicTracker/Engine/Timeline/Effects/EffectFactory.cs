@@ -8,8 +8,11 @@ namespace MusicTracker.Engine.Timeline.Effects
     /// </summary>
     public static class EffectFactory
     {
-        /// <summary>Ordre affiché dans le menu « Ajouter un effet ».</summary>
+        /// <summary>Ordre affiché dans le menu « Ajouter un effet » — n'inclut PAS le VST (il a son propre sous-menu peuplé dynamiquement par <see cref="VstPluginScanner"/>).</summary>
         public static readonly string[] Kinds = new[] { "eq", "comp", "delay", "sat" };
+
+        /// <summary>Identifiant stable d'un insert VST — extériorisé en constante pour éviter les "vst" littéraux disséminés.</summary>
+        public const string VstKind = "vst";
 
         /// <summary>Clé de localisation associée à un type (le nom d'affichage).</summary>
         public static string LocKey(string kind)
@@ -20,6 +23,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "comp":  return "FxCompressor";
                 case "delay": return "FxDelay";
                 case "sat":   return "FxSaturation";
+                case VstKind: return "FxVst";
                 default:      return kind ?? "";
             }
         }
@@ -32,6 +36,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "comp":  return new CompressorEffect(sampleRate);
                 case "delay": return new DelayEffect(sampleRate);
                 case "sat":   return new SaturationEffect(sampleRate);
+                case VstKind: return new VstEffect(sampleRate); // PluginPath posé par le caller (Create(data,sr) ci-dessous).
                 default:      return null;
             }
         }
@@ -42,6 +47,14 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (data == null) return null;
             var fx = Create(data.Kind, sampleRate);
             if (fx == null) return null;
+            // VST : le PluginPath et le blob d'état viennent des champs dédiés de TrackEffectData
+            // (Params reste vide côté VST). Load(Params) est appelé quand même par symétrie,
+            // mais côté VstEffect c'est un no-op délibéré.
+            if (fx is VstEffect vst)
+            {
+                vst.PluginPath = data.PluginPath;
+                vst.LoadState(data.StateBlob);
+            }
             fx.Load(data.Params);
             return fx;
         }
