@@ -167,6 +167,20 @@ namespace MusicTracker.Engine.Timeline
         /// <c>null</c> = pas d'état sauvé (nouveau VSTi ou plugin qui ne supporte pas <c>getChunk</c>).</summary>
         public string VstiStateBlob { get; set; }
 
+        /// <summary>Id d'un plugin Koton NATIF (framework KotonStudio.Library) qui rend cette piste au lieu du
+        /// synthé MeltySynth GM. <c>null</c> = pas de plugin Koton (mode MeltySynth ou VSTi via <see cref="VstiPath"/>).
+        /// Non-null = mode Koton natif : le player instancie via <c>KotonPluginRegistry.InstantiateInstrument</c>
+        /// et route notes/CC/render à travers un <c>KotonInstrumentAdapter</c>. Un .sq antérieur à cette
+        /// fonctionnalité n'a pas ce champ (System.Text.Json ignore les absents) → mode MeltySynth comme avant.
+        /// Précédence si les deux sont non-null : VstiPath gagne (les plugins Koton sont ajoutés après le
+        /// routage VST existant, un fichier hérité qui aurait les deux garde son comportement historique).</summary>
+        public string KotonInstrumentId { get; set; }
+
+        /// <summary>Blob d'état sérialisé (base64) du plugin Koton natif attaché à cette piste. Écrit à
+        /// chaque sauvegarde via <c>TimelineScreen</c> qui interroge <c>IKotonInstrument.SaveState()</c>.
+        /// <c>null</c> = pas d'état sauvé (plugin fraîchement sélectionné, valeurs par défaut).</summary>
+        public string KotonInstrumentStateBlob { get; set; }
+
         public List<TimelineItem> Items = new List<TimelineItem>();
     }
 

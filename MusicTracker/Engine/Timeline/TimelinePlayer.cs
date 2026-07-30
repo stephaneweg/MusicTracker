@@ -277,11 +277,33 @@ namespace MusicTracker.Engine.Timeline
                         else
                             vsti = new VstInstrument(tr.VstiPath, sampleRate);
                         if (!string.IsNullOrEmpty(tr.VstiStateBlob)) vsti.LoadState(tr.VstiStateBlob);
-                       
+
                         tracks[i].Vsti = vsti;
                         tracks[i].Channel = 0;   // VSTi = canal 0 par convention (les instruments ne connaissent pas le "9=batterie" de GM)
                         tracks[i].Program = 0;
                         continue;
+                    }
+                    // Plugin Koton NATIF (framework KotonStudio.Library, chargé depuis plugins/*.ksl). Même
+                    // routage que VSTi mais l'instance vient du registre. Un id inconnu (plugin absent /
+                    // supprimé) → InstantiateInstrument renvoie null → on retombe silencieusement sur
+                    // MeltySynth, comme un VstiPath introuvable. L'adaptateur KotonInstrumentAdapter
+                    // implémente IVstInstrumentHost donc le reste du pipeline audio (RenderTrackSlice,
+                    // Dispatch, capture d'état) est inchangé.
+                    if (!string.IsNullOrEmpty(tr.KotonInstrumentId))
+                    {
+                        var koton = MusicTracker.Engine.Timeline.Effects.KotonPluginRegistry.InstantiateInstrument(tr.KotonInstrumentId);
+                        if (koton != null)
+                        {
+                            var adapter = new MusicTracker.Engine.Timeline.Effects.KotonInstrumentAdapter(
+                                koton, sampleRate, koton.DisplayName);
+                            if (!string.IsNullOrEmpty(tr.KotonInstrumentStateBlob))
+                                adapter.LoadState(tr.KotonInstrumentStateBlob);
+                            tracks[i].Vsti = adapter;
+                            tracks[i].Channel = 0;
+                            tracks[i].Program = 0;
+                            continue;
+                        }
+                        // Sinon fallthrough → MeltySynth (plugin manquant, l'utilisateur verra un badge dans l'UI).
                     }
                     var settings = new MeltySynth.SynthesizerSettings(sampleRate)
                     {
@@ -783,10 +805,12 @@ namespace MusicTracker.Engine.Timeline
             return sampleCount;
         }
 
-        /// <summary>Capture l'état interne (chunk base64) de chaque VSTi vivant et le réécrit dans son
-        /// <see cref="TimelineTrack.VstiStateBlob"/> — pour que la prochaine sauvegarde du projet embarque
-        /// le patch courant du plugin. Appelée juste avant chaque <c>Save</c>. Un VSTi absent (mode MeltySynth)
-        /// ou en échec de chargement est ignoré.</summary>
+        /// <summary>Capture l'état interne (chunk base64) de chaque instrument vivant et le réécrit dans le
+        /// bon champ de la piste — <see cref="TimelineTrack.VstiStateBlob"/> pour un VSTi, ou
+        /// <see cref="TimelineTrack.KotonInstrumentStateBlob"/> pour un plugin Koton natif (l'adaptateur
+        /// reste polymorphe : un <c>KotonInstrumentAdapter</c> est reconnaissable par son type et route
+        /// l'état sur le bon slot). Appelée juste avant chaque <c>Save</c>. Un instrument absent (mode
+        /// MeltySynth) ou en échec de chargement est ignoré.</summary>
         public void CaptureVstiStates()
         {
             for (int i = 0; i < tracks.Length; i++)
@@ -794,7 +818,18 @@ namespace MusicTracker.Engine.Timeline
                 var v = tracks[i].Vsti;
                 var tr = tracks[i].Src;
                 if (v == null || tr == null || v.IsFailed) continue;
-                try { tr.VstiStateBlob = v.SaveState(); } catch { }
+                try
+                {
+                    var blob = v.SaveState();
+                    // Dispatcher par type : un adaptateur Koton natif écrit sur le champ Koton (l'ancien
+                    // champ VstiStateBlob resterait un blob VST inapplicable au prochain Load, on ne veut
+                    // pas pop-uper les deux). Un VstInstrument / Vst3Instrument garde le champ VstiStateBlob.
+                    if (v is MusicTracker.Engine.Timeline.Effects.KotonInstrumentAdapter)
+                        tr.KotonInstrumentStateBlob = blob;
+                    else
+                        tr.VstiStateBlob = blob;
+                }
+                catch { }
             }
         }
 
