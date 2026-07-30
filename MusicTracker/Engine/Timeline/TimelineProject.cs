@@ -148,6 +148,12 @@ namespace MusicTracker.Engine.Timeline
         /// existants ni l'export MIDI. Une piste ouverte avant cette version n'a pas ce champ dans son JSON : le
         /// désérialiseur garde la liste vide (initialiseur) — aucun impact au chargement.</summary>
         public List<AutomationLane> AutomationLanes = new List<AutomationLane>();
+
+        /// <summary>Chaîne d'effets d'insert de la piste (dans l'ordre du signal). Vide par défaut — un .sq
+        /// antérieur à cette fonctionnalité n'a pas ce champ dans son JSON, l'initialiseur laisse la liste
+        /// vide, donc rétro-compatibilité totale.</summary>
+        public List<Effects.TrackEffectData> Inserts = new List<Effects.TrackEffectData>();
+
         public List<TimelineItem> Items = new List<TimelineItem>();
     }
 
@@ -156,6 +162,10 @@ namespace MusicTracker.Engine.Timeline
     {
         public List<TempoChange> Tempo = new List<TempoChange> { new TempoChange { Beat = 0, Bpm = 120 } };
         public List<TimelineTrack> Tracks = new List<TimelineTrack>();
+
+        /// <summary>Chaîne d'inserts du bus master (après la sommation des pistes). Vide par défaut ; un .sq
+        /// antérieur n'a pas ce champ — l'initialiseur laisse la liste vide.</summary>
+        public List<Effects.TrackEffectData> MasterInserts = new List<Effects.TrackEffectData>();
 
         /// <summary>User-saved custom CHORD accompaniment styles (degree grids), authored in the chord rhythm editor and
         /// reusable across the project: they show up in the editor's "Copier" style dropdown alongside the built-ins.</summary>

@@ -156,7 +156,6 @@
     <Compile Include="Engine\Compose\ProceduralComposer.cs" />
     <Compile Include="Engine\ComposerV3\ComposerV3Factory.cs" />
     <Compile Include="Engine\ComposerV3\BaseComposerV3.cs" />
-    <Compile Include="Engine\ComposerV3\StyleDistanceV3.cs" />
     <Compile Include="Engine\ComposerV3\MathComposerV3.cs" />
     <Compile Include="Engine\ComposerV3\GhibliComposerV3.cs" />
     <Compile Include="Engine\ComposerV3\BachComposerV3.cs" />
@@ -192,6 +191,14 @@
     <Compile Include="Engine\Timeline\TimelineHelper.cs" />
     <Compile Include="Engine\Timeline\UndoManager.cs" />
     <Compile Include="Engine\Timeline\TimelineProject.cs" />
+    <Compile Include="Engine\Timeline\Effects\IAudioEffect.cs" />
+    <Compile Include="Engine\Timeline\Effects\TrackEffectData.cs" />
+    <Compile Include="Engine\Timeline\Effects\EffectFactory.cs" />
+    <Compile Include="Engine\Timeline\Effects\BiquadStereo.cs" />
+    <Compile Include="Engine\Timeline\Effects\EqEffect.cs" />
+    <Compile Include="Engine\Timeline\Effects\CompressorEffect.cs" />
+    <Compile Include="Engine\Timeline\Effects\DelayEffect.cs" />
+    <Compile Include="Engine\Timeline\Effects\SaturationEffect.cs" />
     <Compile Include="Engine\Timeline\ChordModelOps.cs" />
     <Compile Include="Engine\Timeline\TemplateProjectBuilder.cs" />
     <Compile Include="Engine\Timeline\ScoreSlicing.cs" />
@@ -240,6 +247,9 @@
     </Compile>
     <Compile Include="Dialogs\MixerDialog.xaml.cs">
       <DependentUpon>MixerDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\EffectConfigDialog.xaml.cs">
+      <DependentUpon>EffectConfigDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="Dialogs\RiffEditorWindow.xaml.cs">
       <DependentUpon>RiffEditorWindow.xaml</DependentUpon>
@@ -306,7 +316,6 @@
     <Compile Include="Dialogs\CadenceDialog.xaml.cs">
       <DependentUpon>CadenceDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Dialogs\NewModelDialog.cs" />
     <Compile Include="Dialogs\ConfirmDialog.cs" />
     <Compile Include="Dialogs\CreateStructureDialog.xaml.cs">
       <DependentUpon>CreateStructureDialog.xaml</DependentUpon>
@@ -410,6 +419,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\MixerDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\EffectConfigDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

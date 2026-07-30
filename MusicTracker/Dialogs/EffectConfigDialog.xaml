@@ -1,0 +1,22 @@
+<Window x:Class="MusicTracker.Dialogs.EffectConfigDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ctrl="clr-namespace:MusicTracker.Controls"
+        xmlns:loc="clr-namespace:MusicTracker.Localization"
+        mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
+        Title="{loc:Tr 'EditEffect'}" Width="380" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="{StaticResource CommonBackground}" ctrl:WindowDrag.Enable="True" CornerRadius="6,6,0,0" Padding="20,12,20,8">
+                <TextBlock Name="titleText" Foreground="{StaticResource CommonForeground}" FontSize="14" FontWeight="Bold"/>
+            </Border>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,10,20,14">
+                <Button Content="{loc:Tr 'Close'}" Style="{StaticResource okButton}" Padding="18,4" Cursor="Hand" Click="Close_Click"/>
+            </StackPanel>
+            <StackPanel Name="paramsHost" Margin="20,8,20,4"/>
+        </DockPanel>
+    </Border>
+</Window>

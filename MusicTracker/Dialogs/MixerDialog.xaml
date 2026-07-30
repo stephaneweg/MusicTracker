@@ -7,20 +7,19 @@
         xmlns:local="clr-namespace:MusicTracker.Dialogs"
         xmlns:loc="clr-namespace:MusicTracker.Localization"
         mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
-        Title="{loc:Tr 'Mixer'}" Width="470" SizeToContent="Height" MaxHeight="720" ResizeMode="NoResize"
+        Title="{loc:Tr 'Mixer'}" Width="820" Height="520" MinWidth="480" MinHeight="460"
         WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent">
     <Window.Resources>
         <local:PanTextConverter x:Key="panText"/>
-        <!-- Compact M/S toggle: grey by default, red when active (self-contained; the header's MuteToggle/SoloToggle
-             styles live in the timeline UserControl and aren't visible from this window). -->
+        <!-- Compact M/S toggle: grey by default, red when active. -->
         <Style x:Key="MixToggle" TargetType="ToggleButton">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Foreground" Value="#DDDDDD"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontSize" Value="10"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Border x:Name="bd" CornerRadius="4" Background="#3A3A46" BorderBrush="#555555" BorderThickness="1">
+                        <Border x:Name="bd" CornerRadius="3" Background="#3A3A46" BorderBrush="#555555" BorderThickness="1">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -37,73 +36,95 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Small flat button (Fx list, effect actions). -->
+        <Style x:Key="TinyButton" TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="#DDDDDD"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Padding" Value="4,1"/>
+            <Setter Property="Margin" Value="0,1,0,1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="3" Background="#33333F" BorderBrush="#555" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3E3E4C"/>
+                                <Setter TargetName="bd" Property="BorderBrush" Value="#1FB6C3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Vertical slider (fader). -->
+        <Style x:Key="Fader" TargetType="Slider">
+            <Setter Property="Orientation" Value="Vertical"/>
+            <Setter Property="MinHeight" Value="140"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
     </Window.Resources>
 
     <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
         <DockPanel>
-            <!-- Draggable title bar (no ✕ — like the other dialogs; closes via the bottom button / Esc). -->
-            <Border DockPanel.Dock="Top" Background="{StaticResource CommonBackground}" ctrl:WindowDrag.Enable="True" CornerRadius="6,6,0,0" Padding="20,14,20,8">
-                <TextBlock Text="{loc:Tr 'Mixer'}" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="Bold"/>
+            <!-- Draggable title bar. -->
+            <Border DockPanel.Dock="Top" Background="{StaticResource CommonBackground}" ctrl:WindowDrag.Enable="True" CornerRadius="6,6,0,0" Padding="20,12,20,8">
+                <DockPanel>
+                    <TextBlock Text="{loc:Tr 'Mixer'}" Foreground="{StaticResource CommonForeground}" FontSize="15" FontWeight="Bold"/>
+                    <TextBlock DockPanel.Dock="Right" Text="{loc:Tr 'MixerHint'}" Foreground="#9AA" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </DockPanel>
             </Border>
 
-            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,10,20,16">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,8,20,14">
                 <Button Content="{loc:Tr 'Close'}" Style="{StaticResource okButton}" Padding="18,4" Cursor="Hand" Click="Close_Click"/>
             </StackPanel>
 
-            <ListBox Name="list" Margin="12,4,12,8" Background="Transparent" BorderThickness="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Focusable" Value="False"/>
-                        <Setter Property="Padding" Value="0"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="#2C2C38" CornerRadius="5" Margin="0,0,0,6" Padding="10,8">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="{StaticResource CommonForeground}" Margin="0,0,0,6"/>
-                                <!-- Volume -->
-                                <DockPanel Margin="0,0,0,4">
-                                    <TextBlock Text="{loc:Tr 'Vol'}" Width="34" Foreground="#999999" FontSize="11" VerticalAlignment="Center"/>
-                                    <TextBlock DockPanel.Dock="Right" Width="42" Text="{Binding Volume, StringFormat={}{0:P0}}" Foreground="#999999" FontSize="10" TextAlignment="Right" VerticalAlignment="Center"/>
-                                    <Slider Minimum="0" Maximum="1.5" SmallChange="0.05" VerticalAlignment="Center" Margin="4,0"
-                                            Value="{Binding Volume, Mode=TwoWay}"/>
-                                </DockPanel>
-                                <!-- Pan -->
-                                <DockPanel>
-                                    <TextBlock Text="{loc:Tr 'Pan'}" Width="34" Foreground="#999999" FontSize="11" VerticalAlignment="Center"/>
-                                    <TextBlock DockPanel.Dock="Right" Width="52" Text="{Binding Pan, Converter={StaticResource panText}}" Foreground="#999999" FontSize="10" TextAlignment="Right" VerticalAlignment="Center"/>
-                                    <Button DockPanel.Dock="Right" Content="C" Width="22" Height="20" Margin="4,0,0,0" Cursor="Hand" Click="Center_Click" ToolTip="{loc:Tr 'CentrerLePanoramique'}"/>
-                                    <Slider Minimum="-1" Maximum="1" SmallChange="0.05" TickFrequency="1" TickPlacement="BottomRight" VerticalAlignment="Center" Margin="4,0"
-                                            Value="{Binding Pan, Mode=TwoWay}"/>
-                                </DockPanel>
-                                <!-- Réverb : place la piste dans la salle sans toucher à son niveau. 40 = défaut
-                                     GM, donc la position d'origine de toutes les pistes existantes. -->
-                                <DockPanel Margin="0,4,0,0">
-                                    <TextBlock Text="{loc:Tr 'Reverb'}" Width="34" Foreground="#999999" FontSize="11" VerticalAlignment="Center"/>
-                                    <TextBlock DockPanel.Dock="Right" Width="42" Text="{Binding ReverbSend}" Foreground="#999999" FontSize="10" TextAlignment="Right" VerticalAlignment="Center"/>
-                                    <Button DockPanel.Dock="Right" Content="D" Width="22" Height="20" Margin="4,0,0,0" Cursor="Hand" Click="ReverbDefault_Click" ToolTip="{loc:Tr 'RevenirALaReverbParDefaut'}"/>
-                                    <Slider Minimum="0" Maximum="127" SmallChange="1" IsSnapToTickEnabled="True" TickFrequency="1" VerticalAlignment="Center" Margin="4,0"
-                                            Value="{Binding ReverbSend, Mode=TwoWay}" ToolTip="{loc:Tr 'ProfondeurDeLaPisteDansLa'}"/>
-                                </DockPanel>
-                                <!-- Mute / Solo -->
-                                <StackPanel Orientation="Horizontal" Margin="34,6,0,0">
-                                    <ToggleButton Content="M" Width="26" Height="22" Style="{StaticResource MixToggle}" IsChecked="{Binding Mute, Mode=TwoWay}" ToolTip="{loc:Tr 'MuetSilenceCettePiste'}"/>
-                                    <ToggleButton Content="S" Width="26" Height="22" Margin="4,0,0,0" Style="{StaticResource MixToggle}" IsChecked="{Binding Solo, Mode=TwoWay}" ToolTip="{loc:Tr 'SoloNEntendreQueLesPistes'}"/>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Strips par piste (scroll horizontal si beaucoup de pistes). -->
+                <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="8,4,4,8">
+                    <ItemsControl Name="list">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- Séparateur avant la strip Master. -->
+                <Rectangle Grid.Column="1" Width="1" Fill="#444" Margin="4,10,4,10"/>
+
+                <!-- Strip Master (fixe à droite). -->
+                <Border Grid.Column="2" Name="masterHost" Background="#2A2A34" CornerRadius="5" Padding="8,10" Margin="4,4,10,8" Width="86">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="{loc:Tr 'MasterBus'}" Foreground="#1FB6C3" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                        <!-- Vu-mètre master : deux barres verticales L/R alimentées par un timer. -->
+                        <Grid Height="140" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Grid.Column="0" Background="#111" CornerRadius="1" Margin="4,0">
+                                <Rectangle Name="masterMeterL" Fill="#1FB6C3" VerticalAlignment="Bottom" Height="0"/>
+                            </Border>
+                            <Border Grid.Column="1" Background="#111" CornerRadius="1" Margin="4,0">
+                                <Rectangle Name="masterMeterR" Fill="#1FB6C3" VerticalAlignment="Bottom" Height="0"/>
+                            </Border>
+                        </Grid>
+                        <TextBlock Text="{loc:Tr 'Inserts'}" Foreground="#999" FontSize="10" Margin="0,4,0,3"/>
+                        <ItemsControl Name="masterInsertsList"/>
+                        <Button Content="{loc:Tr 'AddFxDots'}" Style="{StaticResource TinyButton}" Click="MasterAddFx_Click" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </DockPanel>
     </Border>
 </Window>

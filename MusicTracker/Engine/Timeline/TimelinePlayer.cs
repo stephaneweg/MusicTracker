@@ -1,5 +1,6 @@
 using MeltySynth;
 using MusicTracker.Engine.Flow;
+using MusicTracker.Engine.Timeline.Effects;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
@@ -43,6 +44,14 @@ namespace MusicTracker.Engine.Timeline
             // autre piste (mauvais mixage) voire lèverait ArgumentOutOfRangeException sur le thread de
             // pré-rendu — où LookaheadBuffer.Produce n'a pas de try/catch, donc arrêt du processus.
             public TimelineTrack Src;
+
+            // ---- rendu par piste (1 synth par voix — voir TrySetupMeltySynth) --------------------------------
+            public MeltySynth.Synthesizer Synth;   // synthé dédié à cette piste : 1 canal utile (0 mélodique, 9 batterie)
+            public int Channel;                     // 0 (mélodique) ou 9 (batterie) — sur SON synth
+            public int Program;                     // programme GM (drumIndex si batterie) — utilisé pour le boost par instrument
+            public float[] BufL, BufR;              // buffer de rendu de la piste — alloué à la volée quand la taille change
+            public IAudioEffect[] Effects;          // chaîne d'inserts instanciée au démarrage (snapshot, voir SnapshotInserts)
+            public float PeakL, PeakR;              // dernier peak par canal — lu en LIVE par le mixeur pour les vu-mètres
         }
 
         readonly int sampleRate;
@@ -126,11 +135,22 @@ namespace MusicTracker.Engine.Timeline
                 : swingPoint + (within - half) * ((Spb - swingPoint) / (double)half);
             return beat * Spb + (int)Math.Round(w);
         }
-        MeltySynth.Synthesizer synth;
-        int[] trackChannel;                 // MIDI channel per track (drum tracks -> 9)
-        int[] trackProgram;                 // GM program per track (drum tracks -> DrumIndex) for the per-instrument boost
-        float[] mL, mR;                     // stereo render scratch
-        int mDispatched;                    // last slice whose note-on/off were sent to the synth
+        // 1 synth PAR PISTE (voir TrySetupMeltySynth) : chaque piste rend son propre buffer stéréo, la chaîne
+        // d'inserts s'y applique, puis on somme dans le master (soft-clip + sortie short). Historiquement, un
+        // seul synthé était partagé par toutes les pistes via le multiplexage MIDI par canal — mais on ne pouvait
+        // alors ni router un traitement DIFFÉRENT par piste, ni mixer des sorties audio séparées, ni éditer les
+        // paramètres d'insert (EQ, comp, delay, sat) qui vivent en dehors du synthé.
+        int mDispatched;                    // last slice whose note-on/off were sent to the synths
+        float[] mL, mR;                     // master mix scratch (stereo, alloué à la volée)
+        float[] mIn;                        // scratch mono pour le pré-mix des inserts master (réutilisé)
+        // Chaîne d'inserts du bus master (snapshot au démarrage, comme les lanes) + peaks lus par le vu-mètre master.
+        IAudioEffect[] masterFx;
+        public float MasterPeakL { get; private set; }
+        public float MasterPeakR { get; private set; }
+        readonly TimelineProject srcProject;
+        readonly bool meltyReady;
+        // Pool de tâches réutilisées pour le rendu parallèle par piste — évite l'alloc à chaque buffer audio.
+        readonly Task[] renderTasks;
 
         public event Action Ended;
 
@@ -204,47 +224,52 @@ namespace MusicTracker.Engine.Timeline
                 list.Add(T);
             }
             tracks = list.ToArray();
+            renderTasks = new Task[tracks.Length];
 
-            TrySetupMeltySynth(project);
+            srcProject = project;
+            meltyReady = TrySetupMeltySynth(project);
         }
 
-        // Build one MeltySynth.Synthesizer sized to the project (one channel per track, drums on ch 9), so a
-        // single synth renders the whole arrangement. On any failure we leave synth == null (legacy path).
-        void TrySetupMeltySynth(TimelineProject project)
+        /// <summary>Peak instantané d'une piste (pour vu-mètre) — 0..1+, lu par la fenêtre mixeur pendant la lecture.</summary>
+        public float TrackPeakL(int index) => (index >= 0 && index < tracks.Length) ? tracks[index].PeakL : 0f;
+        public float TrackPeakR(int index) => (index >= 0 && index < tracks.Length) ? tracks[index].PeakR : 0f;
+
+        // Un MeltySynth.Synthesizer PAR PISTE (16 canaux nominaux, on n'en utilise qu'un par piste : 0
+        // pour l'instrumental, 9 pour la batterie). Le SoundFont, lui, est PARTAGÉ entre synthés — c'est
+        // juste le descripteur des données de patchs, seule la voice-pool doit être indépendante. On garde
+        // aussi la logique historique du « boost par instrument » (MasterVolume × CC7) : ici, comme chaque
+        // piste a son propre MasterVolume, on peut simplement le fixer au boost et laisser CC7 varier
+        // linéairement — le résultat audio est identique à l'ancien schéma partagé mais plus lisible.
+        bool TrySetupMeltySynth(TimelineProject project)
         {
             var sf = InstrumentCatalog.SoundFontObject;
-            if (sf == null) return;
+            if (sf == null) return false;
             try
             {
-                int need = Math.Max(16, Math.Min(1024, tracks.Length + 1));
-                var settings = new MeltySynth.SynthesizerSettings(sampleRate)
-                {
-                    ChannelCount = need,
-                    EnableReverbAndChorus = true,
-                    MaximumPolyphony = 256,        // dense arrangements
-                };
-                synth = new MeltySynth.Synthesizer(sf, settings);
-                // Headroom for the per-instrument boost: MasterVolume = the max boost factor, and each channel's
-                // CC7 is scaled down by sqrt(boost/MaxBoost) so an un-boosted track keeps its exact current level
-                // (net = gv² unchanged) while a boosted one can reach up to ×MaxBoost.
-                synth.MasterVolume = (float)AppSettings.MaxBoostFactor;
-                trackChannel = new int[tracks.Length];
-                trackProgram = new int[tracks.Length];
-                int nextCh = 0;
                 for (int i = 0; i < tracks.Length; i++)
                 {
-                    var tr = tracks[i].Src;   // jamais project.Tracks[i] : la liste peut être mutée par l'UI
+                    var tr = tracks[i].Src;
                     if (tr == null) continue;
+                    var settings = new MeltySynth.SynthesizerSettings(sampleRate)
+                    {
+                        ChannelCount = 16,
+                        EnableReverbAndChorus = true,
+                        MaximumPolyphony = 64,   // large plage pour un instrument seul — bien assez sans exploser la mémoire quand N pistes
+                    };
+                    var s = new MeltySynth.Synthesizer(sf, settings);
                     bool isDrum = tr.Type == TimelineTrackType.Drum || tr.Instrument == InstrumentCatalog.DrumIndex;
-                    trackProgram[i] = isDrum ? InstrumentCatalog.DrumIndex : Math.Max(0, Math.Min(127, tr.Instrument));
-                    if (isDrum) { trackChannel[i] = synth.PercussionChannel; continue; } // ch 9: shared by all drum tracks
-                    if (nextCh == synth.PercussionChannel) nextCh++;                      // skip the percussion channel
-                    int ch = nextCh < need ? nextCh++ : need - 1;                          // clamp (absurd track counts)
-                    trackChannel[i] = ch;
+                    tracks[i].Channel = isDrum ? s.PercussionChannel : 0;
+                    tracks[i].Program = isDrum ? InstrumentCatalog.DrumIndex : Math.Max(0, Math.Min(127, tr.Instrument));
+                    tracks[i].Synth = s;
                 }
                 ApplyPrograms(project);
+                return true;
             }
-            catch { synth = null; }
+            catch
+            {
+                for (int i = 0; i < tracks.Length; i++) tracks[i].Synth = null;
+                return false;
+            }
         }
 
         // Fixed CC2 "single note dynamics" level for the Expr. (bank 17) instruments — the app has no
@@ -261,20 +286,27 @@ namespace MusicTracker.Engine.Timeline
         // lecture, et ApplyPrograms est rappelée à chaque Start().
         void ApplyPrograms(TimelineProject project)
         {
+            var settings = AppSettings.Instance;
             for (int i = 0; i < tracks.Length; i++)
             {
                 var tr = tracks[i].Src;
-                if (tr == null) continue;
+                var synth = tracks[i].Synth;
+                if (tr == null || synth == null) continue;
+                // MasterVolume individuel = le boost par instrument. Combiné à CC7 en gain LINÉAIRE (piloté
+                // par ApplyChannelAutomation), le net reste identique à l'ancien schéma partagé (net = gv²·boost),
+                // mais sans le facteur sqrt() qui plafonnait CC7 en fonction du max de boost global.
+                double boost = settings.BoostGain(tracks[i].Program);
+                synth.MasterVolume = (float)Math.Max(0.01, boost);
                 bool isDrum = tr.Type == TimelineTrackType.Drum || tr.Instrument == InstrumentCatalog.DrumIndex;
+                int ch = tracks[i].Channel;
                 if (isDrum)
                 {
-                    // Select the track's drum KIT on the percussion channel (bank stays 128; only the patch changes).
-                    // Multiple drum tracks share channel 9, so with different kits the last one applied wins.
-                    synth.ProcessMidiMessage(trackChannel[i], 0xC0, InstrumentCatalog.DrumKitProgram(tr.DrumKit), 0);
+                    // Select the track's drum KIT on THIS synth's percussion channel (bank stays 128; only the patch changes).
+                    // Puisque chaque piste batterie a son propre synth, deux kits différents cohabitent sans écrasement.
+                    synth.ProcessMidiMessage(ch, 0xC0, InstrumentCatalog.DrumKitProgram(tr.DrumKit), 0);
                     continue;
                 }
                 int program = Math.Max(0, Math.Min(127, tr.Instrument));
-                int ch = trackChannel[i];
                 bool expr = InstrumentCatalog.ExprPrograms != null && InstrumentCatalog.ExprPrograms.Contains(program);
                 synth.ProcessMidiMessage(ch, 0xB0, 0, expr ? InstrumentCatalog.ExprBank : 0); // bank select
                 synth.ProcessMidiMessage(ch, 0xC0, program, 0);                        // program change
@@ -454,12 +486,36 @@ namespace MusicTracker.Engine.Timeline
             SampleAtStart = sliceSampleStart[sliceIndex];
             RecomputeLoop();
             t = 0; endedRaised = false; UpdateInterval(); playing = true;
-            if (synth != null)
+            if (meltyReady)
             {
-                synth.Reset();                       // kill any ringing notes + restore controllers
+                for (int i = 0; i < tracks.Length; i++)
+                {
+                    var s = tracks[i].Synth;
+                    if (s != null) s.Reset();
+                }
                 ApplyPrograms(melodyProject);        // Reset() clears program changes -> re-send them
+                // Snapshot des inserts (par piste + master) au démarrage — comme les lanes d'automation :
+                // ajouter/retirer un effet en cours de lecture n'a d'effet qu'au prochain Start (raisonnable
+                // puisque le pré-buffer LookaheadBuffer contient déjà plusieurs secondes de son passé).
+                for (int i = 0; i < tracks.Length; i++) tracks[i].Effects = SnapshotInserts(tracks[i].Src?.Inserts);
+                masterFx = SnapshotInserts(srcProject?.MasterInserts);
                 mDispatched = sliceIndex - 1;        // dispatch from the start slice onward
+                for (int i = 0; i < tracks.Length; i++) { tracks[i].PeakL = 0; tracks[i].PeakR = 0; }
+                MasterPeakL = 0; MasterPeakR = 0;
             }
+        }
+
+        IAudioEffect[] SnapshotInserts(List<TrackEffectData> src)
+        {
+            if (src == null || src.Count == 0) return Array.Empty<IAudioEffect>();
+            var list = new List<IAudioEffect>(src.Count);
+            foreach (var d in src)
+            {
+                if (d == null || !d.Enabled) continue;
+                var fx = EffectFactory.Create(d, sampleRate);
+                if (fx != null) { fx.Reset(); list.Add(fx); }
+            }
+            return list.ToArray();
         }
 
         /// <summary>Beat at an absolute sample offset (from beat 0), via the tempo map. For a playback cursor.</summary>
@@ -489,7 +545,7 @@ namespace MusicTracker.Engine.Timeline
         public override int Read(short[] buffer, int offset, int sampleCount)
         {
             if (!playing) return 0;
-            if (synth != null) return ReadMelty(buffer, offset, sampleCount);
+            if (meltyReady) return ReadMelty(buffer, offset, sampleCount);
             return 0;
         }
 
@@ -497,14 +553,21 @@ namespace MusicTracker.Engine.Timeline
         //      to the shared synth, render the slice's samples, then write INTERLEAVED STEREO (L,R per frame).
         //      `sampleCount` is the number of shorts to fill (= 2 × frames); pan is baked into mL/mR by the synth
         //      (per-track CC10 in ApplyChannelAutomation), so we just emit L and R. ----
+        // ---- Rendu (1 synth par piste) : avance le curseur slice-by-slice, dispatche les note-on/off au
+        //      synth de chaque piste sur SON canal, rend chaque piste en PARALLÈLE dans son buffer float,
+        //      applique la chaîne d'inserts de la piste, somme dans le master, applique les inserts master,
+        //      soft-clip, sortie stéréo entrelacée L,R. Le pan est baké dans les buffers via CC10 sur chaque synth.
         int ReadMelty(short[] buffer, int offset, int sampleCount)
         {
-            int frames = sampleCount / 2;                                   // 2 shorts (L,R) per frame
-            if (mL == null || mL.Length < frames) { mL = new float[frames]; mR = new float[frames]; }
+            int frames = sampleCount / 2;
+            EnsureBuffers(frames);
 
-            ApplyChannelAutomation(CurrentBeat); // per-buffer: LIVE volume + mute/solo (CC7) + pan (CC10) + lanes additionnelles
+            ApplyChannelAutomation(CurrentBeat);
 
-            int end = loopEndSlice > 0 ? loopEndSlice : totalSlices;  // region end (B) or the whole piece
+            int end = loopEndSlice > 0 ? loopEndSlice : totalSlices;
+            Array.Clear(mL, 0, frames);
+            Array.Clear(mR, 0, frames);
+
             int done = 0;
             while (done < frames)
             {
@@ -513,20 +576,49 @@ namespace MusicTracker.Engine.Timeline
                     for (int sl = mDispatched + 1; sl <= sliceIndex; sl++) DispatchSlice(sl);
                     mDispatched = sliceIndex;
                 }
-                // Render at most to the end of the current slice so the next slice's events land on time.
                 int remain = sliceIndex < end ? (int)Math.Ceiling(interval - t) : (frames - done);
                 if (remain < 1) remain = 1;
                 int n = Math.Min(remain, frames - done);
-                synth.Render(mL.AsSpan(done, n), mR.AsSpan(done, n));
+                int startOff = done;
+                int nn = n;
+
+                // Rendu parallèle par piste : chaque tâche appelle SON synth (aucun conflit d'état). Seuil
+                // >= 2 pistes pour éviter l'overhead d'ordonnancement sur un morceau monopiste.
+                if (tracks.Length >= 2)
+                {
+                    for (int i = 0; i < tracks.Length; i++)
+                    {
+                        int ti = i;
+                        renderTasks[ti] = Task.Run(() => RenderTrackSlice(ti, startOff, nn));
+                    }
+                    Task.WaitAll(renderTasks);
+                }
+                else if (tracks.Length == 1)
+                {
+                    RenderTrackSlice(0, startOff, nn);
+                }
+
+                // Somme des pistes dans le master.
+                for (int i = 0; i < tracks.Length; i++)
+                {
+                    var tk = tracks[i];
+                    if (tk.BufL == null) continue;
+                    for (int k = 0; k < nn; k++)
+                    {
+                        mL[startOff + k] += tk.BufL[startOff + k];
+                        mR[startOff + k] += tk.BufR[startOff + k];
+                    }
+                }
+
                 for (int k = 0; k < n; k++)
                 {
                     t += 1;
                     if (t >= interval && sliceIndex < end)
                     {
                         t -= interval; sliceIndex++; UpdateInterval();
-                        if (sliceIndex >= end && Loop)          // reached B → wrap seamlessly to A
+                        if (sliceIndex >= end && Loop)
                         {
-                            synth.NoteOffAll(false);            // release notes still holding at B (natural loop tail)
+                            for (int ii = 0; ii < tracks.Length; ii++) { var ss = tracks[ii].Synth; if (ss != null) ss.NoteOffAll(false); }
                             sliceIndex = loopStartSlice; mDispatched = loopStartSlice - 1; UpdateInterval();
                         }
                     }
@@ -534,17 +626,80 @@ namespace MusicTracker.Engine.Timeline
                 done += n;
             }
 
+            // Inserts master appliqués sur toute la fenêtre déjà sommée.
+            if (masterFx != null)
+                for (int i = 0; i < masterFx.Length; i++) masterFx[i].Process(mL, mR, frames);
+
+            // Peaks master pour le vu-mètre (décay entre buffers pour rester lisible).
+            float mpL = MasterPeakL * 0.85f, mpR = MasterPeakR * 0.85f;
+            for (int f = 0; f < frames; f++)
+            {
+                float al = Math.Abs(mL[f]); if (al > mpL) mpL = al;
+                float ar = Math.Abs(mR[f]); if (ar > mpR) mpR = ar;
+            }
+            MasterPeakL = mpL; MasterPeakR = mpR;
+
             double g = AudioFormat.OutputGain;
             for (int f = 0; f < frames; f++)
             {
-                double l = AudioFormat.SoftClip(mL[f] * g);    // musical limiter per channel (no crackle on boost)
+                double l = AudioFormat.SoftClip(mL[f] * g);
                 double r = AudioFormat.SoftClip(mR[f] * g);
                 buffer[offset + 2 * f]     = (short)(l * short.MaxValue);
                 buffer[offset + 2 * f + 1] = (short)(r * short.MaxValue);
             }
 
-            if (!Loop && sliceIndex >= end && synth.ActiveVoiceCount == 0) RaiseEnded();
+            if (!Loop && sliceIndex >= end)
+            {
+                int active = 0;
+                for (int i = 0; i < tracks.Length; i++) { var ss = tracks[i].Synth; if (ss != null) active += ss.ActiveVoiceCount; }
+                if (active == 0) RaiseEnded();
+            }
             return sampleCount;
+        }
+
+        void EnsureBuffers(int frames)
+        {
+            if (mL == null || mL.Length < frames) { mL = new float[frames]; mR = new float[frames]; }
+            if (mIn == null || mIn.Length < frames) mIn = new float[frames];
+            for (int i = 0; i < tracks.Length; i++)
+            {
+                var tk = tracks[i];
+                if (tk.BufL == null || tk.BufL.Length < frames)
+                {
+                    tk.BufL = new float[frames];
+                    tk.BufR = new float[frames];
+                }
+            }
+        }
+
+        // Rend une piste dans son buffer sur la tranche [startOff, startOff+nn[, puis applique la chaîne
+        // d'inserts sur cette tranche et met à jour le peak. La coupure par tranche est indispensable pour
+        // que les events des slices suivantes tombent à la frame exacte.
+        void RenderTrackSlice(int ti, int startOff, int nn)
+        {
+            var tk = tracks[ti];
+            if (tk.Synth == null || tk.BufL == null) return;
+            tk.Synth.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
+            var fx = tk.Effects;
+            if (fx != null && fx.Length > 0)
+            {
+                // Les effets prennent (float[] l, float[] r, int frames) sans offset : copie tampon.
+                // nn est petit (<= 4096 samples typiquement), l'alloc reste négligeable devant le coût du synth.
+                var tmpL = new float[nn];
+                var tmpR = new float[nn];
+                Array.Copy(tk.BufL, startOff, tmpL, 0, nn);
+                Array.Copy(tk.BufR, startOff, tmpR, 0, nn);
+                for (int i = 0; i < fx.Length; i++) fx[i].Process(tmpL, tmpR, nn);
+                Array.Copy(tmpL, 0, tk.BufL, startOff, nn);
+                Array.Copy(tmpR, 0, tk.BufR, startOff, nn);
+            }
+            float pl = tk.PeakL * 0.85f, pr = tk.PeakR * 0.85f;
+            for (int k = 0; k < nn; k++)
+            {
+                float al = Math.Abs(tk.BufL[startOff + k]); if (al > pl) pl = al;
+                float ar = Math.Abs(tk.BufR[startOff + k]); if (ar > pr) pr = ar;
+            }
+            tk.PeakL = pl; tk.PeakR = pr;
         }
 
         void DispatchSlice(int sl)
@@ -552,9 +707,11 @@ namespace MusicTracker.Engine.Timeline
             if (sl < 0 || sl > totalSlices) return;
             for (int ti = 0; ti < tracks.Length; ti++)
             {
-                int ch = trackChannel[ti];
+                var synth = tracks[ti].Synth;
+                if (synth == null) continue;
+                int ch = tracks[ti].Channel;
                 var rel = tracks[ti].ReleaseAt[sl];
-                if (rel != null) foreach (int note in rel) synth.NoteOff(ch, note + 12); // note index -> MIDI key
+                if (rel != null) foreach (int note in rel) synth.NoteOff(ch, note + 12);
                 var att = tracks[ti].AttackAt[sl];
                 if (att != null)
                 {
@@ -567,29 +724,26 @@ namespace MusicTracker.Engine.Timeline
 
         void ApplyChannelAutomation(double beat)
         {
-            double maxBoost = AppSettings.MaxBoostFactor;
-            var settings = AppSettings.Instance;
-            // Read the mixer values LIVE from each voice's SOURCE TRACK (volume / pan / mute / solo) so the mixer
-            // takes effect mid-playback (this runs every buffer). Par la référence Track.Src et NON par un index
-            // dans melodyProject.Tracks : cette liste est mutée par le thread d'interface (dupliquer / monter /
-            // descendre / supprimer une piste), un index y appliquerait le mixage à la mauvaise voix et
-            // l'indexation elle-même pourrait lever sur le thread de pré-rendu.
+            // Lit les valeurs de mixage EN DIRECT sur la piste source (volume / pan / mute / solo / réverbe) —
+            // par référence Track.Src, JAMAIS via un index dans melodyProject.Tracks : la liste est mutée par
+            // l'UI (dupliquer / monter / descendre / supprimer une piste) et un index y désignerait la mauvaise
+            // voix (mauvais mixage) voire lèverait sur le thread de pré-rendu.
             bool anySolo = false;
             for (int i = 0; i < tracks.Length; i++) if (tracks[i].Src != null && tracks[i].Src.Solo) { anySolo = true; break; }
             for (int ti = 0; ti < tracks.Length; ti++)
             {
+                var synth = tracks[ti].Synth;
+                if (synth == null) continue;
                 var p = tracks[ti].Src;
-                int ch = trackChannel[ti];
+                int ch = tracks[ti].Channel;
                 var lanes = tracks[ti].LaneSnaps;
                 double baseVol = p != null ? p.Volume : tracks[ti].BaseVol;
                 double mix = p != null ? ((p.Mute || (anySolo && !p.Solo)) ? 0.0 : 1.0) : tracks[ti].Mix;
-                double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix; // mix == 0 -> muted / non-soloed
-                // Per-instrument boost: CC7 is scaled by sqrt(boost/MaxBoost); combined with MasterVolume=MaxBoost
-                // (and MeltySynth squaring CC7) the net gain becomes gv²·boost — un-boosted stays gv².
-                double boost = trackProgram != null ? settings.BoostGain(trackProgram[ti]) : 1.0;
-                double ccGain = gv * Math.Sqrt(boost / maxBoost);
-                int cc = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, ccGain)) * 127);
-                if (ChannelVolumeCC) synth.ProcessMidiMessage(ch, 0xB0, 7, cc); // CC7 = channel volume
+                double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix;
+                // CC7 direct : chaque synth a MasterVolume = BoostGain(program), donc net = boost * (CC7 modulateur au carré)
+                // = boost * gv², identique à l'ancien schéma partagé mais sans le facteur sqrt().
+                int cc = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, gv)) * 127);
+                if (ChannelVolumeCC) synth.ProcessMidiMessage(ch, 0xB0, 7, cc);
                 // Pan: −1..+1 → CC10 0..127 (64 = centre). Drums share ch 9, so multiple kits share one pan.
                 // Une lane Pan prend le dessus sur la valeur statique de la piste ; sinon on retombe sur p.Pan.
                 double pan;

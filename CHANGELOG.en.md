@@ -17,6 +17,7 @@ The most **recent** entries go **first**; the app only shows the first few.
 
 ## Entries
 
+- 🎚 Console-style mixer + per-track insert effects: open the mixer to get a vertical strip per track (fader, pan, mute/solo, level meter) plus a Master strip. Each track (and the master bus) has its own insert chain to fill in as needed: 3-band EQ, Compressor, Delay (with ping-pong) and Saturation. Under the hood, each track now has its own synth and is rendered in parallel — that's what makes per-track processing possible.
 - 🎛️ Per-track MIDI automation: right-click a track header → "Add automation" to draw a curve for Pan, Expression, Modulation, Sustain, Reverb, Chorus or Pitch bend alongside the volume lane — click the curve to add points, drag to move, right-click to delete.
 - 🎼 MusicXML export (Export menu): save your score in the interchange format every notation program reads — Finale, Sibelius, Dorico, MuseScore, online editors and tablet score readers. Notes crossing a barline are now written tied instead of being truncated.
 - 🎵 Swing: under "Bar", pick uneven eighths (light, medium, swing, triplet). Playback and audio export follow the groove; the score and MIDI export keep straight eighths.

@@ -15,6 +15,7 @@ Les entrées les plus **récentes** vont **en premier** ; l'application n'en aff
 
 ## Entrées
 
+- 🎚 Mixeur type console + effets d'insert par piste : ouvre le mixeur pour voir une strip verticale par piste (fader, panoramique, muet/solo, vu-mètre) et une strip Master. Chaque piste (et le master) reçoit sa chaîne d'effets à ajouter à volonté : Égaliseur 3 bandes, Compresseur, Delay (avec ping-pong) et Saturation. Sous le capot, chaque piste a désormais son propre synthé et est rendue en parallèle — c'est ce qui rend le traitement par piste possible.
 - 🎛️ Automation MIDI par piste : clic droit sur l'en-tête d'une piste → « Ajouter une automation » pour poser une courbe de Pan, Expression, Modulation, Sustain, Réverbe, Chorus ou Pitch bend en plus du volume — dessine les points à la souris comme la lane de volume.
 - 🎼 Export MusicXML (menu Export) : sors ta partition dans le format d'échange lu par tous les logiciels de notation — Finale, Sibelius, Dorico, MuseScore, les éditeurs en ligne et les liseuses sur tablette. Les notes qui traversent une barre de mesure sont désormais écrites liées, au lieu d'être tronquées.
 - 🎵 Swing : dans « Mesure », choisis des croches inégales (léger, moyen, swing, ternaire). La lecture et l'export audio suivent le groove ; la partition et l'export MIDI gardent des croches égales.

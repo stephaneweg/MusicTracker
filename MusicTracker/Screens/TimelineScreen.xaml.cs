@@ -69,6 +69,15 @@ namespace MusicTracker.Screens
         // ---- playback (Phase 2) ----
         NAudio.Wave.WaveOutEvent playWaveOut;
         Engine.Timeline.TimelinePlayer player;
+        /// <summary>Le player en cours de lecture — null si arrêté. Exposé pour que le mixeur puisse
+        /// interroger les peaks des vu-mètres. Lecture seule côté externe : la vie du player est gérée
+        /// exclusivement par Start/Pause/Stop de cet écran.</summary>
+        public Engine.Timeline.TimelinePlayer CurrentPlayer => player;
+
+        /// <summary>Capture un snapshot d'annulation — appelé par le mixeur après un ajout/retrait d'effet
+        /// d'insert. Édition des paramètres d'un effet non captée en v1 (cohérent avec le reste des
+        /// dialogues qui n'ajoutent pas de snapshot par changement de slider).</summary>
+        public void CaptureUndoFromMixer() { try { PushUndo("mixer:inserts"); } catch { } }
         Engine.Timeline.LookaheadBuffer playBuffer; // background pre-render between the player and the device
         System.Windows.Threading.DispatcherTimer playTimer;
         System.Windows.Shapes.Rectangle playCursor;
@@ -468,7 +477,7 @@ namespace MusicTracker.Screens
         private void btnMixer_Click(object sender, RoutedEventArgs e)
         {
             if (mixerWindow != null) { try { mixerWindow.Activate(); return; } catch { mixerWindow = null; } }
-            mixerWindow = new Dialogs.MixerDialog(project, Window.GetWindow(this));
+            mixerWindow = new Dialogs.MixerDialog(project, this);
             mixerWindow.Closed += (s, ev) => mixerWindow = null;
             mixerWindow.Show();
         }
