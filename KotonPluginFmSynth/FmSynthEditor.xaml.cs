@@ -82,68 +82,135 @@ namespace KotonPluginFmSynth
                 Grid.SetColumn(lbl, 0);
                 ParamsGrid.Children.Add(lbl);
 
-                // Colonne 1 : slider.
-                var sl = new Slider
-                {
-                    Minimum = p.Min,
-                    Maximum = p.Max,
-                    Value = p.Value,
-                    Style = (Style)FindResource("KotonSlider"),
-                    Margin = new Thickness(0, 6, 10, 6),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    // Petit pas pour les paramètres en temps (ms) sinon le slider "saute".
-                    SmallChange = Math.Max((p.Max - p.Min) / 200.0, 0.001),
-                    LargeChange = Math.Max((p.Max - p.Min) / 20.0, 0.01),
-                };
-                Grid.SetRow(sl, row);
-                Grid.SetColumn(sl, 1);
-                ParamsGrid.Children.Add(sl);
-
-                // Colonne 2 : valeur affichée (mise à jour à la volée).
-                var val = new TextBlock
-                {
-                    Text = FormatValue(p),
-                    Margin = new Thickness(0, 6, 0, 6),
-                    VerticalAlignment = VerticalAlignment.Center,
-                    FontFamily = new FontFamily("Consolas"),
-                    FontSize = 11,
-                    MinWidth = 65,
-                    TextAlignment = TextAlignment.Right,
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA0, 0xA6)),
-                };
-                Grid.SetRow(val, row);
-                Grid.SetColumn(val, 2);
-                ParamsGrid.Children.Add(val);
-
-                // Bidirectionnel : slider → paramètre + paramètre → slider (pour absorber les
-                // LoadPreset). Un flag interne évite la boucle infinie sur les cas où l'écriture
-                // change la valeur (KotonParameter clamp, un Value = même valeur n'émet pas Changed
-                // donc pas de vrai risque, mais on garde la garde par sécurité).
-                bool syncing = false;
-                sl.ValueChanged += (s, ev) =>
-                {
-                    if (syncing) return;
-                    syncing = true;
-                    p.Value = sl.Value;
-                    val.Text = FormatValue(p);
-                    syncing = false;
-                };
-                p.Changed += v =>
-                {
-                    // L'événement peut être levé depuis n'importe quel thread (l'audio thread peut
-                    // poser une valeur via automation). On marshalle sur le thread UI.
-                    Dispatcher.BeginInvoke((Action)(() =>
-                    {
-                        if (syncing) return;
-                        syncing = true;
-                        sl.Value = v;
-                        val.Text = FormatValue(p);
-                        syncing = false;
-                    }));
-                };
+                // Colonnes 1 + 2 : contrôle éditeur + valeur affichée. Le contrôle dépend du type de
+                // paramètre — un waveform (Id se termine par `_wave`) est un enum discret rendu en
+                // ComboBox ; un paramètre continu (float) reste un Slider + libellé numérique.
+                if (IsWaveformParam(p))
+                    BuildWaveformRow(p, row);
+                else
+                    BuildSliderRow(p, row);
 
                 row++;
             }
+        }
+
+        /// <summary>Convention interne : un KotonParameter dont l'Id se termine par <c>_wave</c> est un
+        /// sélecteur de forme d'onde (enum <see cref="FmWaveform"/>). L'éditeur le rend en ComboBox
+        /// avec les noms de <see cref="Osc.Names"/> plutôt qu'en slider (0-5 non-monotone à l'oreille).</summary>
+        static bool IsWaveformParam(KotonParameter p) => p.Id != null && p.Id.EndsWith("_wave", StringComparison.Ordinal);
+
+        void BuildSliderRow(KotonParameter p, int row)
+        {
+            // Colonne 1 : slider.
+            var sl = new Slider
+            {
+                Minimum = p.Min,
+                Maximum = p.Max,
+                Value = p.Value,
+                Style = (Style)FindResource("KotonSlider"),
+                Margin = new Thickness(0, 6, 10, 6),
+                VerticalAlignment = VerticalAlignment.Center,
+                // Petit pas pour les paramètres en temps (ms) sinon le slider "saute".
+                SmallChange = Math.Max((p.Max - p.Min) / 200.0, 0.001),
+                LargeChange = Math.Max((p.Max - p.Min) / 20.0, 0.01),
+            };
+            Grid.SetRow(sl, row);
+            Grid.SetColumn(sl, 1);
+            ParamsGrid.Children.Add(sl);
+
+            // Colonne 2 : valeur affichée (mise à jour à la volée).
+            var val = new TextBlock
+            {
+                Text = FormatValue(p),
+                Margin = new Thickness(0, 6, 0, 6),
+                VerticalAlignment = VerticalAlignment.Center,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 11,
+                MinWidth = 65,
+                TextAlignment = TextAlignment.Right,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x9A, 0xA0, 0xA6)),
+            };
+            Grid.SetRow(val, row);
+            Grid.SetColumn(val, 2);
+            ParamsGrid.Children.Add(val);
+
+            // Bidirectionnel : slider → paramètre + paramètre → slider (pour absorber les
+            // LoadPreset). Un flag interne évite la boucle infinie sur les cas où l'écriture
+            // change la valeur (KotonParameter clamp, un Value = même valeur n'émet pas Changed
+            // donc pas de vrai risque, mais on garde la garde par sécurité).
+            bool syncing = false;
+            sl.ValueChanged += (s, ev) =>
+            {
+                if (syncing) return;
+                syncing = true;
+                p.Value = sl.Value;
+                val.Text = FormatValue(p);
+                syncing = false;
+            };
+            p.Changed += v =>
+            {
+                // L'événement peut être levé depuis n'importe quel thread (l'audio thread peut
+                // poser une valeur via automation). On marshalle sur le thread UI.
+                Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    if (syncing) return;
+                    syncing = true;
+                    sl.Value = v;
+                    val.Text = FormatValue(p);
+                    syncing = false;
+                }));
+            };
+        }
+
+        void BuildWaveformRow(KotonParameter p, int row)
+        {
+            // Colonne 1 : ComboBox avec les 6 formes d'onde. SelectedIndex ↔ (int)p.Value.
+            var cb = new ComboBox
+            {
+                Background = (System.Windows.Media.Brush)FindResource("PanelBg"),
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE9, 0xEA, 0xED)),
+                Margin = new Thickness(0, 6, 10, 6),
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                MinWidth = 140,
+                FontSize = 12,
+            };
+            foreach (var n in Osc.Names) cb.Items.Add(n);
+            int cur = (int)Math.Round(p.Value);
+            if (cur < 0) cur = 0; else if (cur >= cb.Items.Count) cur = cb.Items.Count - 1;
+            cb.SelectedIndex = cur;
+            Grid.SetRow(cb, row);
+            Grid.SetColumn(cb, 1);
+            ParamsGrid.Children.Add(cb);
+
+            // Colonne 2 : vide (la ComboBox porte déjà le nom de la forme, pas besoin de dupliquer).
+            // On garde un placeholder pour que l'alignement des colonnes ne saute pas.
+            var spacer = new TextBlock { MinWidth = 65 };
+            Grid.SetRow(spacer, row);
+            Grid.SetColumn(spacer, 2);
+            ParamsGrid.Children.Add(spacer);
+
+            // Bidirectionnel comme pour le slider.
+            bool syncing = false;
+            cb.SelectionChanged += (s, ev) =>
+            {
+                if (syncing) return;
+                syncing = true;
+                p.Value = cb.SelectedIndex;
+                syncing = false;
+            };
+            p.Changed += v =>
+            {
+                Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    if (syncing) return;
+                    int idx = (int)Math.Round(v);
+                    if (idx < 0) idx = 0; else if (idx >= cb.Items.Count) idx = cb.Items.Count - 1;
+                    syncing = true;
+                    cb.SelectedIndex = idx;
+                    syncing = false;
+                }));
+            };
         }
 
         static string FormatValue(KotonParameter p)

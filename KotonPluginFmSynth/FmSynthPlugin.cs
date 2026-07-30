@@ -36,8 +36,15 @@ namespace KotonPluginFmSynth
         // Ordre = ordre d'affichage dans l'éditeur. Les Ids servent aussi de clés JSON dans SaveState.
         // Les temps ADSR sont exposés en MILLISECONDES (unité usuelle dans un DAW / synthé),
         // convertis en secondes pour la voix (formule DSP) via *0.001 au Render.
+        //
+        // Les 2 paramètres discrets `mod_wave` et `car_wave` sont des entiers 0..N-1 stockés en double
+        // (mapped à <see cref="FmWaveform"/>). L'éditeur les rend en ComboBox — la convention =
+        // Id se termine par `_wave`. Défaut = 0 (Sine) → tous les presets historiques (qui n'incluent
+        // pas de forme d'onde) restent bit-parfaits.
         readonly KotonParameter _ratio    = new KotonParameter("ratio",    "Ratio",       0.5, 8.0,  1.0);
         readonly KotonParameter _index    = new KotonParameter("index",    "Index",       0.0, 10.0, 3.0);
+        readonly KotonParameter _modWave  = new KotonParameter("mod_wave", "Mod Wave",    0.0, Osc.Count - 1, 0.0);
+        readonly KotonParameter _carWave  = new KotonParameter("car_wave", "Car Wave",    0.0, Osc.Count - 1, 0.0);
         readonly KotonParameter _attack   = new KotonParameter("attack",   "Attaque",     1.0, 2000.0,  10.0, "ms");
         readonly KotonParameter _decay    = new KotonParameter("decay",    "Decay",       1.0, 2000.0, 300.0, "ms");
         readonly KotonParameter _sustain  = new KotonParameter("sustain",  "Sustain",     0.0, 1.0,  0.6);
@@ -72,9 +79,11 @@ namespace KotonPluginFmSynth
 
         public FmSynthPlugin()
         {
+            // Ordre de déclaration = ordre d'affichage. Les 2 combos de waveform sont placés juste
+            // après Ratio/Index pour rester proches des params qu'ils influencent tonalement.
             _params = new List<KotonParameter>
             {
-                _ratio, _index, _attack, _decay, _sustain, _release, _volume, _lfoRate, _lfoDepth
+                _ratio, _index, _modWave, _carWave, _attack, _decay, _sustain, _release, _volume, _lfoRate, _lfoDepth
             };
         }
 
@@ -155,6 +164,8 @@ namespace KotonPluginFmSynth
             // qu'au prochain — c'est OK à 10-30 ms de buffer typique (largement < seuil de perception).
             float ratio    = (float)_ratio.Value;
             float index    = (float)_index.Value;
+            FmWaveform modWave = Osc.FromDouble(_modWave.Value);
+            FmWaveform carWave = Osc.FromDouble(_carWave.Value);
             // ms → s pour l'enveloppe DSP (les KotonParameter sont exposés en ms côté UI, plus lisible).
             float attack   = (float)(_attack.Value * 0.001);
             float decay    = (float)(_decay.Value * 0.001);
@@ -173,7 +184,8 @@ namespace KotonPluginFmSynth
                     var voice = _voices[v];
                     if (!voice.Active) continue;
                     sum += voice.RenderSample(ratio, index, lfoRate, lfoDepth,
-                                              attack, decay, sustain, release, bendMul);
+                                              attack, decay, sustain, release, bendMul,
+                                              modWave, carWave);
                 }
                 float s = sum * volume;
                 left[f] = s;
@@ -196,6 +208,8 @@ namespace KotonPluginFmSynth
             var p = FmPresets.All[index];
             _ratio.Value    = p.Ratio;
             _index.Value    = p.Index;
+            _modWave.Value  = (double)p.ModWave;
+            _carWave.Value  = (double)p.CarWave;
             _attack.Value   = p.Attack;
             _decay.Value    = p.Decay;
             _sustain.Value  = p.Sustain;
@@ -256,6 +270,8 @@ namespace KotonPluginFmSynth
                 {
                     [_ratio.Id]    = _ratio.Value,
                     [_index.Id]    = _index.Value,
+                    [_modWave.Id]  = _modWave.Value,
+                    [_carWave.Id]  = _carWave.Value,
                     [_attack.Id]   = _attack.Value,
                     [_decay.Id]    = _decay.Value,
                     [_sustain.Id]  = _sustain.Value,

@@ -82,10 +82,13 @@ namespace KotonPluginFmSynth
 
         /// <summary>Rend un sample mono. Le buffer stéréo est peuplé au niveau du plugin (les 2 canaux
         /// reçoivent le même signal — pas de spatialisation par voix v1). <paramref name="bendMul"/>
-        /// est un multiplicateur de fréquence (pitch bend global appliqué à la carrier).</summary>
+        /// est un multiplicateur de fréquence (pitch bend global appliqué à la carrier). Les
+        /// <paramref name="modWave"/> / <paramref name="carWave"/> définissent la forme d'onde de
+        /// chaque opérateur (voir <see cref="FmWaveform"/>) — deux formes différentes produisent
+        /// des timbres très variés (ex. mod=Square + car=Sine = "chip 8-bit").</summary>
         public float RenderSample(float ratio, float index, float lfoRate, float lfoDepth,
                                   float attackSec, float decaySec, float sustainLvl, float releaseSec,
-                                  float bendMul)
+                                  float bendMul, FmWaveform modWave, FmWaveform carWave)
         {
             if (!Active) return 0f;
 
@@ -137,8 +140,12 @@ namespace KotonPluginFmSynth
             if (_phaseM > 2 * Math.PI) _phaseM -= 2 * Math.PI;
             if (_phaseC > 2 * Math.PI) _phaseC -= 2 * Math.PI;
 
-            double mod = effIndex * Math.Sin(_phaseM);
-            double s = Math.Sin(_phaseC + mod);
+            // Modulator : forme d'onde libre (pas seulement sinus). Le "mod" produit un signal
+            // dans [-1, +1] indépendamment de la forme, puis effIndex l'échelonne comme depth de
+            // modulation de phase avant de le donner au carrier.
+            double modOut = Osc.Sample(modWave, _phaseM);
+            double mod = effIndex * modOut;
+            double s = Osc.Sample(carWave, _phaseC + mod);
 
             return (float)(s * _env * Velocity);
         }

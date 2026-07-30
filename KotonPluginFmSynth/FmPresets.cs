@@ -23,6 +23,12 @@ namespace KotonPluginFmSynth
             public double Attack, Decay, Sustain, Release;
             public double Volume;
             public double LfoRate, LfoDepth;
+
+            /// <summary>Forme d'onde du modulator (défaut Sine — preserve le son des presets historiques).</summary>
+            public FmWaveform ModWave = FmWaveform.Sine;
+
+            /// <summary>Forme d'onde du carrier (défaut Sine — preserve le son des presets historiques).</summary>
+            public FmWaveform CarWave = FmWaveform.Sine;
         }
 
         internal static readonly IReadOnlyList<Preset> All = new List<Preset>
