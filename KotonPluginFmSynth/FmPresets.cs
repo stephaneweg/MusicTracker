@@ -89,6 +89,71 @@ namespace KotonPluginFmSynth
                 Ratio = 7.0, Index = 8.0,
                 Attack = 1, Decay = 120, Sustain = 0.0, Release = 80,
                 Volume = 0.85, LfoRate = 3.0, LfoDepth = 0.0 },
+
+            // =============================================================================================
+            // Presets qui exploitent les 6 formes d'onde + feedback + algorithme (introduits v1.1)
+            // =============================================================================================
+
+            // Square Lead = carrier square + attack court + index élevé sur mod sinus → lead brillant
+            // agressif, façon synthé chip 80s. Volume un peu abaissé (le carré est très fort en RMS).
+            new Preset { Name = "Square Lead",
+                Ratio = 1.0, Index = 4.5,
+                Attack = 2, Decay = 200, Sustain = 0.8, Release = 180,
+                Volume = 0.55, LfoRate = 5.5, LfoDepth = 0.1,
+                ModWave = FmWaveform.Sine, CarWave = FmWaveform.Square },
+
+            // Triangle Pad = carrier triangle + mod sinus + attack long + release long → nappe douce,
+            // moins brillante qu'un pad sinus mais avec plus de corps grâce au triangle.
+            new Preset { Name = "Triangle Pad",
+                Ratio = 2.0, Index = 2.5,
+                Attack = 800, Decay = 800, Sustain = 0.75, Release = 2200,
+                Volume = 0.6, LfoRate = 0.7, LfoDepth = 0.25,
+                ModWave = FmWaveform.Sine, CarWave = FmWaveform.Triangle },
+
+            // Saw Bass = carrier sawtooth + mod sinus + ratio 1:1 → basse riche façon synthé analo.
+            // Feedback modéré ajoute du grain. Attack rapide, release moyen (basse "musclée").
+            new Preset { Name = "Saw Bass",
+                Ratio = 1.0, Index = 1.5,
+                Attack = 2, Decay = 400, Sustain = 0.55, Release = 250,
+                Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0,
+                ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sawtooth,
+                Feedback = 0.35 },
+
+            // Pulse Bell = carrier AbsSine (OPL waveform 2, doublement fréquentiel) + mod sinus,
+            // index modéré et release long → cloche métallique brillante, très OPL2/AdLib.
+            new Preset { Name = "Pulse Bell",
+                Ratio = 2.5, Index = 3.5,
+                Attack = 1, Decay = 900, Sustain = 0.15, Release = 2400,
+                Volume = 0.7, LfoRate = 0.6, LfoDepth = 0.08,
+                ModWave = FmWaveform.Sine, CarWave = FmWaveform.AbsSine,
+                Feedback = 0.15 },
+
+            // Retro Blip = carrier square + mod square + index faible → double-carré, harmoniques
+            // intermodulées → son 8-bit "jeu vidéo" typique. Envelope courte pour un "blip".
+            new Preset { Name = "Retro Blip",
+                Ratio = 2.0, Index = 1.8,
+                Attack = 1, Decay = 180, Sustain = 0.0, Release = 100,
+                Volume = 0.5, LfoRate = 3.0, LfoDepth = 0.0,
+                ModWave = FmWaveform.Square, CarWave = FmWaveform.Square },
+
+            // Chip Arp = carrier AbsSine + mod triangle + release très court → petites notes
+            // percussives idéales pour un arpège rapide. Feedback léger = grain "chip".
+            new Preset { Name = "Chip Arp",
+                Ratio = 3.0, Index = 2.2,
+                Attack = 1, Decay = 100, Sustain = 0.2, Release = 90,
+                Volume = 0.6, LfoRate = 4.0, LfoDepth = 0.0,
+                ModWave = FmWaveform.Triangle, CarWave = FmWaveform.AbsSine,
+                Feedback = 0.25 },
+
+            // Additive Organ = 2 opérateurs sinus en parallèle (mode additif) + ratio 2:1 → orgue
+            // simple à 2 harmoniques. Sustain plein, release moyen. Le mode additif fait apparaître
+            // le modulator comme un vrai 2e oscillateur audible.
+            new Preset { Name = "Additive Organ",
+                Ratio = 2.0, Index = 5.0,
+                Attack = 20, Decay = 100, Sustain = 0.9, Release = 300,
+                Volume = 0.7, LfoRate = 4.5, LfoDepth = 0.05,
+                ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine,
+                Additive = true },
         };
     }
 }
