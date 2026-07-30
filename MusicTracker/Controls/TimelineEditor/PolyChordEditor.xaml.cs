@@ -146,7 +146,24 @@ namespace MusicTracker.Controls.TimelineEditor
             if (cboVoiceLead.SelectedIndex != pc.VoiceLeadAnchor) cboVoiceLead.SelectedIndex = pc.VoiceLeadAnchor;
         }
 
+        // Garde de RÉ-ENTRANCE, et elle est indispensable : RedrawAll appelle Revoice, qui ÉCRIT Inversion et
+        // OctaveShift sur chaque PolyChordItem ; chaque écriture lève PropertyChanged, que cet éditeur écoute
+        // (Item_PropertyChanged) et qui rappelle RedrawAll. Le redessin se déclenchait donc lui-même par les
+        // mutations qu'il provoque, en relançant à chaque tour le rendu complet de la timeline (host.Render).
+        // Sur un module à peu d'accords ça convergeait ; sur les 64 accords d'un morceau généré par l'IA, non :
+        // l'application se figeait à l'ouverture de l'éditeur (mesuré — jamais ouvert au bout de 3 minutes).
+        // Un seul passage suffit : Revoice est appelée AVANT la lecture des valeurs par la roue et le rendu.
+        bool redrawing;
+
         void RedrawAll()
+        {
+            if (redrawing) return;
+            redrawing = true;
+            try { RedrawCore(); }
+            finally { redrawing = false; }
+        }
+
+        void RedrawCore()
         {
             pc.Touch();
             // La revoice se chaîne aussi avec les modules voisins de la piste — on la déclenche ici pour que

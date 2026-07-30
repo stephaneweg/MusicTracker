@@ -68,7 +68,29 @@
 
                 <!-- Une ligne par accord : degré/qualité/couleur/suspension + Beats + supprimer.
                      ItemsSource bindé côté code-behind (idem PolyDrumEditor / MelodicPolyEditor). -->
-                <ItemsControl x:Name="chordsList">
+                <!-- VIRTUALISÉ, et c'est nécessaire, pas une optimisation de confort : un morceau généré par l'IA
+                     porte un accord par mesure, soit 64 cartes de 4 listes déroulantes pour 64 mesures. Dans un
+                     ItemsControl ordinaire, placé dans le ScrollViewer extérieur (donc de hauteur non bornée), rien
+                     ne se virtualise et la mise en page devient quadratique : mesuré à 80 s d'ouverture. On borne
+                     donc la hauteur et on donne à la liste SON propre ScrollViewer, seule façon d'avoir un viewport
+                     fini — sans quoi VirtualizingStackPanel est inopérant. -->
+                <ItemsControl x:Name="chordsList" MaxHeight="420"
+                              ScrollViewer.CanContentScroll="True"
+                              VirtualizingStackPanel.IsVirtualizing="True"
+                              VirtualizingStackPanel.VirtualizationMode="Recycling">
+                    <ItemsControl.Template>
+                        <ControlTemplate TargetType="ItemsControl">
+                            <ScrollViewer CanContentScroll="True" VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <ItemsPresenter/>
+                            </ScrollViewer>
+                        </ControlTemplate>
+                    </ItemsControl.Template>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Style="{StaticResource ChordCardStyle}" Tag="{Binding}">
