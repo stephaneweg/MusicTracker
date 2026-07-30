@@ -269,14 +269,16 @@ namespace MusicTracker.Engine.Timeline
                     // silencieusement en bypass (piste muette) sans faire tomber toute la lecture.
                     if (!string.IsNullOrEmpty(tr.VstiPath))
                     {
-                        // Routage par extension : .vst3 → hoster P/Invoke Steinberg, sinon .dll VST2 via VST.NET.
-                        var ext = System.IO.Path.GetExtension(tr.VstiPath);
-                        MusicTracker.Engine.Timeline.Effects.IVstInstrumentHost vsti;
-                        if (string.Equals(ext, ".vst3", StringComparison.OrdinalIgnoreCase))
-                            vsti = new Vst3Instrument(tr.VstiPath, sampleRate);
-                        else
-                            vsti = new VstInstrument(tr.VstiPath, sampleRate);
-                        if (!string.IsNullOrEmpty(tr.VstiStateBlob)) vsti.LoadState(tr.VstiStateBlob);
+                        // CACHE STATIQUE : la 1re fois qu'on rencontre ce (track, path) dans la session, on
+                        // instancie (routage par extension .vst3 → hoster P/Invoke Steinberg, sinon .dll VST2
+                        // via VST.NET) ; les Play suivants réutilisent la MÊME instance — plus de LoadLibrary
+                        // ni de COM initialize à répétition, plus de state DLL sale entre deux instances
+                        // → plus de silence croissant au 2e/3e Play (bug historique). On applique le blob
+                        // d'état SEULEMENT à la création initiale ; en réutilisation le plugin garde son
+                        // état courant (patch chargé, notes en release), ce qui est cohérent pour Play/Stop.
+                        bool freshInstance = !MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.Contains(tr, tr.VstiPath);
+                        var vsti = MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.GetOrCreate(tr, tr.VstiPath, sampleRate);
+                        if (freshInstance && !string.IsNullOrEmpty(tr.VstiStateBlob)) vsti.LoadState(tr.VstiStateBlob);
 
                         tracks[i].Vsti = vsti;
                         tracks[i].Channel = 0;   // VSTi = canal 0 par convention (les instruments ne connaissent pas le "9=batterie" de GM)
@@ -322,7 +324,12 @@ namespace MusicTracker.Engine.Timeline
             }
             catch
             {
-                for (int i = 0; i < tracks.Length; i++) { tracks[i].Synth = null; if (tracks[i].Vsti != null) { try { tracks[i].Vsti.Dispose(); } catch { } tracks[i].Vsti = null; } }
+                // On drop la référence VSTi mais on NE dispose PAS : les instances sont partagées via
+                // VstInstrumentCache. Le Dispose serait ici prématuré (un autre TimelinePlayer, actuel ou
+                // futur, peut réutiliser la même instance). Le KotonInstrumentAdapter n'est pas caché
+                // mais dispose-le proprement serait aussi acceptable — on garde la symétrie (drop only)
+                // pour la simplicité, ces instances étant très légères (pas de LoadLibrary).
+                for (int i = 0; i < tracks.Length; i++) { tracks[i].Synth = null; tracks[i].Vsti = null; }
                 return false;
             }
         }
@@ -549,6 +556,13 @@ namespace MusicTracker.Engine.Timeline
                 {
                     var s = tracks[i].Synth;
                     if (s != null) s.Reset();
+                    // VSTi caches (VstInstrumentCache) : l'instance a survécu au précédent Stop ; elle
+                    // peut avoir des notes silencieusement tenues (ex : Stop en milieu de release, un
+                    // NoteOff jamais envoyé). CC123 = All Notes Off côté MIDI standard, respecté par
+                    // la plupart des VSTi ; le pipeline appelle déjà ce même CC quand on boucle A-B.
+                    // Sans ça, un 2e Play redéclencherait un plugin déjà occupé par une note zombie.
+                    var v = tracks[i].Vsti;
+                    if (v != null) { try { v.ProcessMidiCC(tracks[i].Channel, 123, 0); } catch { } }
                 }
                 ApplyPrograms(melodyProject);        // Reset() clears program changes -> re-send them
                 // Snapshot des inserts (par piste + master) au démarrage : instance IAudioEffect créée UNE fois,
@@ -833,15 +847,26 @@ namespace MusicTracker.Engine.Timeline
             }
         }
 
-        /// <summary>Libère les instruments VSTi (ressources natives). À appeler par l'écran hôte quand il jette
-        /// le player, en plus de <see cref="Stop"/>. Les synthés MeltySynth n'ont pas besoin de Dispose (GC-only)
-        /// mais un VstInstrument tient une DLL native ouverte + des buffers non-managed — la fuite est visible.</summary>
+        /// <summary>Rend les instruments VSTi au cache pour un futur Play. Les instances VstInstrument /
+        /// Vst3Instrument N'ONT PAS BESOIN d'être disposées ici — elles vivent dans
+        /// <see cref="MusicTracker.Engine.Timeline.Effects.VstInstrumentCache"/> et seront réutilisées
+        /// au prochain <c>TimelinePlayer</c> qui charge la même piste avec le même path. Historiquement,
+        /// disposer le plugin ici (LoadLibrary + COM initialize à chaque Play) produisait un « silence
+        /// croissant » de ~1 s par cycle Play/Stop : state DLL statique du plugin partiellement libéré,
+        /// samples lazy-loaded devant se recharger, etc. Le cache résout ça.
+        ///
+        /// La libération réelle est déclenchée EXPLICITEMENT côté UI :
+        /// - <c>TimelineScreen.RemoveVsti</c> / <c>SelectVsti</c> (nouveau path) : ReleaseTrack ciblé ;
+        /// - <c>TimelineScreen.DeleteTrack</c> : ReleaseTrack ciblé ;
+        /// - fermeture d'onglet timeline / de l'app : ClearAll global.
+        ///
+        /// Les synthés MeltySynth n'ont jamais eu besoin de Dispose (GC-only).</summary>
         public void Dispose()
         {
             for (int i = 0; i < tracks.Length; i++)
             {
-                var v = tracks[i].Vsti;
-                if (v != null) { try { v.Dispose(); } catch { } tracks[i].Vsti = null; }
+                // Drop la référence sans disposer — le cache garde l'instance vivante.
+                tracks[i].Vsti = null;
             }
         }
 
