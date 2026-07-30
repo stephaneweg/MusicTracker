@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using Jacobi.Vst.Core;
 using Jacobi.Vst.Host.Interop;
 using MusicTracker.Engine.Timeline.Vst3;
@@ -10,6 +11,70 @@ using MusicTracker.Engine.Timeline.Vst3.Interop;
 
 namespace MusicTracker.Engine.Timeline.Effects
 {
+    /// <summary>
+    /// Blacklist persistante des plugins qui font PLANTER le scanner. Motif : un plugin VST2 mal codé peut
+    /// crasher NATIVEMENT dans son handler <c>Close()</c> (ou même <c>Open()</c>) — AccessViolation / SEH
+    /// non-catchables en .NET 5+ (le processus meurt, catch { } est ignoré). Sans blacklist, l'app crasherait
+    /// à CHAQUE démarrage tant que le plugin foireux reste dans le dossier.
+    ///
+    /// Motif « canary » : avant d'attaquer un plugin, on écrit son chemin dans le champ <c>Pending</c>. Si le
+    /// process meurt pendant la classification, au prochain démarrage on trouve <c>Pending</c> non-null →
+    /// le plugin est promu blacklist permanente et plus jamais retouché. Après une classification qui
+    /// réussit, <c>Pending</c> est effacé.
+    ///
+    /// L'utilisateur peut réinitialiser via <see cref="Clear"/> ou en supprimant à la main
+    /// <c>%AppData%\MusicTracker\vst-scan-blacklist.json</c>.
+    /// </summary>
+    static class VstScanBlacklist
+    {
+        static readonly string _path = AppPaths.Roaming("vst-scan-blacklist.json");
+        static HashSet<string> _blacklist;
+        static readonly object _lock = new object();
+
+        class State { public List<string> Blacklist { get; set; } = new List<string>(); public string Pending { get; set; } }
+
+        static void Init()
+        {
+            lock (_lock)
+            {
+                if (_blacklist != null) return;
+                _blacklist = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    if (!File.Exists(_path)) return;
+                    var s = JsonSerializer.Deserialize<State>(File.ReadAllText(_path));
+                    if (s?.Blacklist != null) foreach (var p in s.Blacklist) _blacklist.Add(p);
+                    // Un Pending survivant = le process a crashé pendant le scan de ce plugin la fois d'avant.
+                    // Promu blacklist permanente + resauvé sans Pending.
+                    if (!string.IsNullOrEmpty(s?.Pending)) { _blacklist.Add(s.Pending); SaveUnlocked(null); }
+                }
+                catch { }
+            }
+        }
+
+        public static bool IsBlacklisted(string path) { Init(); lock (_lock) return _blacklist.Contains(path); }
+
+        /// <summary>À appeler AVANT toute tentative de chargement du plugin — persiste le chemin sur disque.</summary>
+        public static void BeginScan(string path) { Init(); lock (_lock) SaveUnlocked(path); }
+
+        /// <summary>À appeler APRÈS un chargement + classification réussis — efface le Pending sur disque.</summary>
+        public static void EndScan() { lock (_lock) SaveUnlocked(null); }
+
+        /// <summary>Vide toute la blacklist (menu utilisateur « Re-scanner tout »). Le fichier est supprimé.</summary>
+        public static void Clear() { lock (_lock) { _blacklist?.Clear(); try { File.Delete(_path); } catch { } } }
+
+        static void SaveUnlocked(string pending)
+        {
+            try
+            {
+                var s = new State { Blacklist = _blacklist.ToList(), Pending = pending };
+                File.WriteAllText(_path, JsonSerializer.Serialize(s, new JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch { /* best-effort ; si l'écriture échoue, tant pis, on retentera au boot suivant */ }
+        }
+    }
+
+
     /// <summary>
     /// Cherche des plugins VST2 (fichiers .dll) ET VST3 (fichiers/dossiers-bundles .vst3) dans les
     /// dossiers Steinberg standards. Résultat mis en cache pour la session (un premier accès scanne,
@@ -129,9 +194,21 @@ namespace MusicTracker.Engine.Timeline.Effects
 
             foreach (var e in todo)
             {
+                // Un plugin qui a déjà planté le scanner (crash natif dans Open/Close) reste blacklisté
+                // et n'est plus touché — sinon on crasherait à CHAQUE démarrage. Marqué "instrument = null"
+                // avec un préfixe ⚠️ pour signaler visuellement à l'utilisateur.
+                if (VstScanBlacklist.IsBlacklisted(e.Path))
+                {
+                    lock (_lock) { e.IsInstrument = null; if (!e.DisplayName.StartsWith("⚠")) e.DisplayName = "⚠ " + e.DisplayName; }
+                    continue;
+                }
+                // Motif canary : on écrit le chemin AVANT de tenter la charge. Si le process meurt ensuite,
+                // le prochain démarrage promeut ce chemin en blacklist permanente (cf. VstScanBlacklist.Init).
+                VstScanBlacklist.BeginScan(e.Path);
                 bool? isInst = e.Format == PluginFormat.Vst3
                     ? TryDetectSynthVst3(e.Path)
                     : TryDetectSynth(e.Path);
+                VstScanBlacklist.EndScan();
                 lock (_lock) { e.IsInstrument = isInst; }
             }
         }
@@ -155,7 +232,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             {
                 if (ctx != null)
                 {
-                    try { ctx.PluginCommandStub.Commands.Close(); } catch { }
+                    //try { ctx.PluginCommandStub.Commands.Close(); } catch { }
                     try { ctx.Dispose(); } catch { }
                 }
             }

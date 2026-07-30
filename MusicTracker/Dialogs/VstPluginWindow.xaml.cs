@@ -61,9 +61,13 @@ namespace MusicTracker.Dialogs
 
         void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            // Ordre STRICT :
+            //  1) Arrêter le timer Idle : plus d'appels au plugin après ce point.
+            //  2) Détacher le HwndHost → WPF déclenche DestroyWindowCore qui appelle _host.CloseEditor() UNE FOIS
+            //     puis DestroyWindow sur le HWND enfant. On NE double-appelle PAS CloseEditor ici — plein de
+            //     plugins natifs crashent sur un second EditorClose (release d'un HWND déjà libéré).
             if (_idleTimer != null) { _idleTimer.Stop(); _idleTimer = null; }
             if (_hwnd != null) { hostBorder.Child = null; _hwnd.Dispose(); _hwnd = null; }
-            _host.CloseEditor();
         }
 
         void Close_Click(object sender, RoutedEventArgs e) => Close();
@@ -88,22 +92,29 @@ namespace MusicTracker.Dialogs
 
         readonly IVstEditorHost _host;
         IntPtr _child;
+        bool _closed;    // garde d'idempotence : évite un double EditorClose (plein de plugins crashent dessus).
 
         public VstHwndHost(IVstEditorHost host) { _host = host; }
 
         protected override HandleRef BuildWindowCore(HandleRef hwndParent)
         {
             // HWND "STATIC" (contrôle Win32 built-in) — conteneur passif que le plugin peut repeupler.
-            // Style WS_CHILD+WS_VISIBLE, taille 1×1 initiale (redimensionnée automatiquement par HwndHost via WM_SIZE).
-            _child = CreateWindowEx(0, "STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, 1, 1, hwndParent.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            // CRÉÉ À LA TAILLE DE L'ÉDITEUR : sinon un plugin qui lit sa taille dans OpenEditor peint sur 1×1 pixel
+            // et l'utilisateur voit une zone noire. HwndHost redimensionnera ensuite via WM_SIZE mais beaucoup de
+            // plugins n'écoutent WM_SIZE qu'après leur premier paint interne.
+            var sz = _host.GetEditorSize();
+            int w = sz.Width > 0 ? sz.Width : 400;
+            int h = sz.Height > 0 ? sz.Height : 300;
+            _child = CreateWindowEx(0, "STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, w, h, hwndParent.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
             _host.OpenEditor(_child);
             return new HandleRef(this, _child);
         }
 
         protected override void DestroyWindowCore(HandleRef hwnd)
         {
-            _host.CloseEditor();
-            if (hwnd.Handle != IntPtr.Zero) DestroyWindow(hwnd.Handle);
+            // Idempotent : Dispose peut être appelé plusieurs fois selon le chemin de fermeture.
+            if (!_closed) { _closed = true; try { _host.CloseEditor(); } catch { } }
+            if (hwnd.Handle != IntPtr.Zero) { try { DestroyWindow(hwnd.Handle); } catch { } }
             _child = IntPtr.Zero;
         }
     }

@@ -22,7 +22,8 @@
                             Style="{StaticResource TinyButton}" Cursor="Hand" Click="Close_Click"/>
                 </Grid>
             </Border>
-            <Border DockPanel.Dock="Center" x:Name="hostBorder" Padding="0" Background="#111"/>
+            <!-- Dernier enfant du DockPanel : remplit l'espace restant automatiquement (LastChildFill=true par défaut). -->
+            <Border x:Name="hostBorder" Padding="0" Background="#111"/>
         </DockPanel>
     </Border>
 </Window>

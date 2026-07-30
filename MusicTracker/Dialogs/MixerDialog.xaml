@@ -36,29 +36,8 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- Small flat button (Fx list, effect actions). -->
-        <Style x:Key="TinyButton" TargetType="Button">
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Foreground" Value="#DDDDDD"/>
-            <Setter Property="FontSize" Value="10"/>
-            <Setter Property="Padding" Value="4,1"/>
-            <Setter Property="Margin" Value="0,1,0,1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" CornerRadius="3" Background="#33333F" BorderBrush="#555" BorderThickness="1" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#3E3E4C"/>
-                                <Setter TargetName="bd" Property="BorderBrush" Value="#1FB6C3"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <!-- TinyButton est maintenant global (App.xaml) : réutilisable par toutes les Windows. -->
+
         <!-- Vertical slider (fader). -->
         <Style x:Key="Fader" TargetType="Slider">
             <Setter Property="Orientation" Value="Vertical"/>

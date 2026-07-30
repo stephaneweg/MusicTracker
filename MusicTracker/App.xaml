@@ -223,6 +223,31 @@
                 </Setter>
             </Style>
 
+            <!-- Petit bouton plat (icônes X, +, ▲▼ dans le mixeur, la fenêtre VST, etc.). Défini globalement
+                 pour être accessible depuis n'importe quelle Window sans redéclaration locale. -->
+            <Style x:Key="TinyButton" TargetType="Button">
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Foreground" Value="#DDDDDD"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="Padding" Value="4,1"/>
+                <Setter Property="Margin" Value="0,1,0,1"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" CornerRadius="3" Background="#33333F" BorderBrush="#555" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="#3E3E4C"/>
+                                    <Setter TargetName="bd" Property="BorderBrush" Value="#1FB6C3"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <Style TargetType="Window" x:Key="windowStyle">
                 <Setter Property="WindowStyle" Value="None"/>
                 <Setter Property="AllowsTransparency" Value="True"/>
