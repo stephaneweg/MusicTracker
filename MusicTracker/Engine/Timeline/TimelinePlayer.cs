@@ -57,6 +57,11 @@ namespace MusicTracker.Engine.Timeline
             /// par le thread d'interface — on ne pourrait pas la parcourir sans risque).</summary>
             public TrackEffectData[] EffectsSrc;
             public float PeakL, PeakR;              // dernier peak par canal — lu en LIVE par le mixeur pour les vu-mètres
+
+            /// <summary>Instrument VSTi qui remplace <see cref="Synth"/> pour cette piste (mutuellement exclusif :
+            /// une piste en mode VSTi n'a pas de Synth alloué). Null = mode MeltySynth (voir <see cref="TimelineTrack.VstiPath"/>).
+            /// Instancié dans <see cref="TrySetupMeltySynth"/> et disposé par <see cref="TimelinePlayer.Dispose"/>.</summary>
+            public VstInstrument Vsti;
         }
 
         readonly int sampleRate;
@@ -256,6 +261,19 @@ namespace MusicTracker.Engine.Timeline
                 {
                     var tr = tracks[i].Src;
                     if (tr == null) continue;
+                    // Piste en mode VSTi : on instancie un VstInstrument à la place du synthé MeltySynth (le
+                    // pipeline est identique en aval — RenderTrackSlice dévie sur Vsti.Render). Aucun Synth
+                    // MeltySynth alloué → CPU/RAM économisés. Un plugin introuvable ou qui crash au load passe
+                    // silencieusement en bypass (piste muette) sans faire tomber toute la lecture.
+                    if (!string.IsNullOrEmpty(tr.VstiPath))
+                    {
+                        var vsti = new VstInstrument(tr.VstiPath, sampleRate);
+                        if (!string.IsNullOrEmpty(tr.VstiStateBlob)) vsti.LoadState(tr.VstiStateBlob);
+                        tracks[i].Vsti = vsti;
+                        tracks[i].Channel = 0;   // VSTi = canal 0 par convention (les instruments ne connaissent pas le "9=batterie" de GM)
+                        tracks[i].Program = 0;
+                        continue;
+                    }
                     var settings = new MeltySynth.SynthesizerSettings(sampleRate)
                     {
                         ChannelCount = 16,
@@ -273,7 +291,7 @@ namespace MusicTracker.Engine.Timeline
             }
             catch
             {
-                for (int i = 0; i < tracks.Length; i++) tracks[i].Synth = null;
+                for (int i = 0; i < tracks.Length; i++) { tracks[i].Synth = null; if (tracks[i].Vsti != null) { try { tracks[i].Vsti.Dispose(); } catch { } tracks[i].Vsti = null; } }
                 return false;
             }
         }
@@ -297,6 +315,8 @@ namespace MusicTracker.Engine.Timeline
             {
                 var tr = tracks[i].Src;
                 var synth = tracks[i].Synth;
+                // Une piste en mode VSTi n'a pas de synth MeltySynth (Vsti != null en substitution) : ni patch
+                // GM à envoyer, ni MasterVolume à régler — le programme est choisi dans la GUI du plugin.
                 if (tr == null || synth == null) continue;
                 // MasterVolume individuel = le boost par instrument. Combiné à CC7 en gain LINÉAIRE (piloté
                 // par ApplyChannelAutomation), le net reste identique à l'ancien schéma partagé (net = gv²·boost),
@@ -634,7 +654,11 @@ namespace MusicTracker.Engine.Timeline
                         t -= interval; sliceIndex++; UpdateInterval();
                         if (sliceIndex >= end && Loop)
                         {
-                            for (int ii = 0; ii < tracks.Length; ii++) { var ss = tracks[ii].Synth; if (ss != null) ss.NoteOffAll(false); }
+                            for (int ii = 0; ii < tracks.Length; ii++)
+                            {
+                                var ss = tracks[ii].Synth; if (ss != null) ss.NoteOffAll(false);
+                                var vv = tracks[ii].Vsti; if (vv != null) vv.ProcessMidiCC(tracks[ii].Channel, 123, 0); // CC123 = All Notes Off (VSTi panic)
+                            }
                             sliceIndex = loopStartSlice; mDispatched = loopStartSlice - 1; UpdateInterval();
                         }
                     }
@@ -672,11 +696,42 @@ namespace MusicTracker.Engine.Timeline
 
             if (!Loop && sliceIndex >= end)
             {
+                // On attend que TOUTES les voix MeltySynth soient éteintes avant de signaler la fin (queue de
+                // release). Pour les pistes VSTi on n'a pas d'équivalent ActiveVoiceCount fiable : on les
+                // considère finies dès la dernière slice — le plugin peut avoir un peu de queue, elle sera
+                // simplement coupée à Stop() (acceptable en bêta ; les pistes MeltySynth continuent de finir proprement).
                 int active = 0;
                 for (int i = 0; i < tracks.Length; i++) { var ss = tracks[i].Synth; if (ss != null) active += ss.ActiveVoiceCount; }
                 if (active == 0) RaiseEnded();
             }
             return sampleCount;
+        }
+
+        /// <summary>Capture l'état interne (chunk base64) de chaque VSTi vivant et le réécrit dans son
+        /// <see cref="TimelineTrack.VstiStateBlob"/> — pour que la prochaine sauvegarde du projet embarque
+        /// le patch courant du plugin. Appelée juste avant chaque <c>Save</c>. Un VSTi absent (mode MeltySynth)
+        /// ou en échec de chargement est ignoré.</summary>
+        public void CaptureVstiStates()
+        {
+            for (int i = 0; i < tracks.Length; i++)
+            {
+                var v = tracks[i].Vsti;
+                var tr = tracks[i].Src;
+                if (v == null || tr == null || v.IsFailed) continue;
+                try { tr.VstiStateBlob = v.SaveState(); } catch { }
+            }
+        }
+
+        /// <summary>Libère les instruments VSTi (ressources natives). À appeler par l'écran hôte quand il jette
+        /// le player, en plus de <see cref="Stop"/>. Les synthés MeltySynth n'ont pas besoin de Dispose (GC-only)
+        /// mais un VstInstrument tient une DLL native ouverte + des buffers non-managed — la fuite est visible.</summary>
+        public void Dispose()
+        {
+            for (int i = 0; i < tracks.Length; i++)
+            {
+                var v = tracks[i].Vsti;
+                if (v != null) { try { v.Dispose(); } catch { } tracks[i].Vsti = null; }
+            }
         }
 
         void EnsureBuffers(int frames)
@@ -700,8 +755,15 @@ namespace MusicTracker.Engine.Timeline
         void RenderTrackSlice(int ti, int startOff, int nn)
         {
             var tk = tracks[ti];
-            if (tk.Synth == null || tk.BufL == null) return;
-            tk.Synth.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
+            if (tk.BufL == null) return;
+            // Une piste en mode VSTi rend via le plugin, sinon via le synthé MeltySynth. En aval, la chaîne
+            // d'inserts, le peak-meter et la sommation dans le master sont IDENTIQUES — le pipeline audio ne
+            // sait pas d'où vient le buffer.
+            if (tk.Vsti != null)
+                tk.Vsti.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
+            else if (tk.Synth != null)
+                tk.Synth.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
+            else return;
             var fx = tk.Effects;
             var fxSrc = tk.EffectsSrc;
             if (fx != null && fx.Length > 0)
@@ -737,16 +799,28 @@ namespace MusicTracker.Engine.Timeline
             for (int ti = 0; ti < tracks.Length; ti++)
             {
                 var synth = tracks[ti].Synth;
-                if (synth == null) continue;
+                var vsti = tracks[ti].Vsti;
+                if (synth == null && vsti == null) continue;
                 int ch = tracks[ti].Channel;
                 var rel = tracks[ti].ReleaseAt[sl];
-                if (rel != null) foreach (int note in rel) synth.NoteOff(ch, note + 12);
+                if (rel != null)
+                {
+                    foreach (int note in rel)
+                    {
+                        if (vsti != null) vsti.NoteOff(ch, note + 12);
+                        else synth.NoteOff(ch, note + 12);
+                    }
+                }
                 var att = tracks[ti].AttackAt[sl];
                 if (att != null)
                 {
                     var vel = tracks[ti].AttackVel[sl];
                     for (int k = 0; k < att.Count; k++)
-                        synth.NoteOn(ch, att[k] + 12, vel != null && k < vel.Count ? vel[k] : MeltyVelocity);
+                    {
+                        int v = vel != null && k < vel.Count ? vel[k] : MeltyVelocity;
+                        if (vsti != null) vsti.NoteOn(ch, att[k] + 12, v);
+                        else synth.NoteOn(ch, att[k] + 12, v);
+                    }
                 }
             }
         }
@@ -762,7 +836,8 @@ namespace MusicTracker.Engine.Timeline
             for (int ti = 0; ti < tracks.Length; ti++)
             {
                 var synth = tracks[ti].Synth;
-                if (synth == null) continue;
+                var vsti = tracks[ti].Vsti;
+                if (synth == null && vsti == null) continue;
                 var p = tracks[ti].Src;
                 int ch = tracks[ti].Channel;
                 var lanes = tracks[ti].LaneSnaps;
@@ -770,9 +845,16 @@ namespace MusicTracker.Engine.Timeline
                 double mix = p != null ? ((p.Mute || (anySolo && !p.Solo)) ? 0.0 : 1.0) : tracks[ti].Mix;
                 double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix;
                 // CC7 direct : chaque synth a MasterVolume = BoostGain(program), donc net = boost * (CC7 modulateur au carré)
-                // = boost * gv², identique à l'ancien schéma partagé mais sans le facteur sqrt().
+                // = boost * gv², identique à l'ancien schéma partagé mais sans le facteur sqrt(). Le VSTi reçoit le
+                // même CC7 : la plupart des synthés modernes le mappent sur leur volume de canal, ceux qui l'ignorent
+                // laissent le mixeur externe (baseVol × mix appliqués plus loin ? non — pour un VSTi le seul volume
+                // MIDI-piloté est CC7 ; le mixeur mute/solo/vol du header agit par CC7, pas par gain analogique).
                 int cc = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, gv)) * 127);
-                if (ChannelVolumeCC) synth.ProcessMidiMessage(ch, 0xB0, 7, cc);
+                if (ChannelVolumeCC)
+                {
+                    if (vsti != null) vsti.ProcessMidiCC(ch, 7, cc);
+                    else synth.ProcessMidiMessage(ch, 0xB0, 7, cc);
+                }
                 // Pan: −1..+1 → CC10 0..127 (64 = centre). Drums share ch 9, so multiple kits share one pan.
                 // Une lane Pan prend le dessus sur la valeur statique de la piste ; sinon on retombe sur p.Pan.
                 double pan;
@@ -781,17 +863,22 @@ namespace MusicTracker.Engine.Timeline
                 else
                     pan = p != null ? p.Pan : 0.0;
                 if (pan < -1.0) pan = -1.0; else if (pan > 1.0) pan = 1.0;
-                synth.ProcessMidiMessage(ch, 0xB0, 10, (int)Math.Round((pan + 1.0) * 0.5 * 127)); // CC10 = pan
+                int panCc = (int)Math.Round((pan + 1.0) * 0.5 * 127);
+                if (vsti != null) vsti.ProcessMidiCC(ch, 10, panCc);
+                else synth.ProcessMidiMessage(ch, 0xB0, 10, panCc);
                 // CC91 = reverb send. MeltySynth adds it to the SoundFont's own per-instrument send
                 // (Voice: reverbSend = channel + instrument, clamped), so this places the track in the room
                 // without touching its level. Sending the default (40) is a no-op — a project that never
                 // touched the setting sounds exactly as before. Une lane Réverbe (0..1) prend le dessus.
+                // Sur un VSTi le CC91 est standard mais optionnel — la plupart des plugins l'ignorent (ils
+                // n'ont pas de bus de réverb). On envoie quand même : les effets se posent au niveau du mixeur.
                 int reverb;
                 if (lanes != null && lanes.TryGetValue(AutomationParam.ReverbSend, out var rvPts))
                     reverb = CcByte(SampleCurve(rvPts, (p != null ? p.ReverbSend : TimelineTrack.DefaultReverb) / 127.0, beat));
                 else
                     reverb = p != null ? p.ReverbSend : TimelineTrack.DefaultReverb;
-                synth.ProcessMidiMessage(ch, 0xB0, 91, reverb);
+                if (vsti != null) vsti.ProcessMidiCC(ch, 91, reverb);
+                else synth.ProcessMidiMessage(ch, 0xB0, 91, reverb);
 
                 if (lanes == null || lanes.Count == 0) continue;
 
@@ -799,20 +886,33 @@ namespace MusicTracker.Engine.Timeline
                 // (Expression 127, Modulation/Sustain/Chorus 0). Envoyer même valeur en boucle n'a pas d'effet
                 // notable (MeltySynth court-circuite les modulateurs constants) — la simplicité prime ici.
                 if (lanes.TryGetValue(AutomationParam.Expression, out var exPts))
-                    synth.ProcessMidiMessage(ch, 0xB0, 11, CcByte(SampleCurve(exPts, 1.0, beat))); // CC11 = expression, défaut 127
+                {
+                    int v = CcByte(SampleCurve(exPts, 1.0, beat));
+                    if (vsti != null) vsti.ProcessMidiCC(ch, 11, v); else synth.ProcessMidiMessage(ch, 0xB0, 11, v);
+                }
                 if (lanes.TryGetValue(AutomationParam.Modulation, out var modPts))
-                    synth.ProcessMidiMessage(ch, 0xB0, 1, CcByte(SampleCurve(modPts, 0.0, beat)));  // CC1 = modulation LFO
+                {
+                    int v = CcByte(SampleCurve(modPts, 0.0, beat));
+                    if (vsti != null) vsti.ProcessMidiCC(ch, 1, v); else synth.ProcessMidiMessage(ch, 0xB0, 1, v);
+                }
                 if (lanes.TryGetValue(AutomationParam.Sustain, out var suPts))
-                    synth.ProcessMidiMessage(ch, 0xB0, 64, CcByte(SampleCurve(suPts, 0.0, beat))); // CC64 = pédale de piano (>=64 = enfoncée)
+                {
+                    int v = CcByte(SampleCurve(suPts, 0.0, beat));
+                    if (vsti != null) vsti.ProcessMidiCC(ch, 64, v); else synth.ProcessMidiMessage(ch, 0xB0, 64, v);
+                }
                 if (lanes.TryGetValue(AutomationParam.ChorusSend, out var chPts))
-                    synth.ProcessMidiMessage(ch, 0xB0, 93, CcByte(SampleCurve(chPts, 0.0, beat))); // CC93 = chorus send
+                {
+                    int v = CcByte(SampleCurve(chPts, 0.0, beat));
+                    if (vsti != null) vsti.ProcessMidiCC(ch, 93, v); else synth.ProcessMidiMessage(ch, 0xB0, 93, v);
+                }
                 if (lanes.TryGetValue(AutomationParam.PitchBend, out var pbPts))
                 {
                     double v = SampleCurve(pbPts, 0.0, beat);
                     if (v < -1.0) v = -1.0; else if (v > 1.0) v = 1.0;
                     int b14 = 8192 + (int)Math.Round(v * 8191);          // -1..+1 -> 0..16383, 0 -> 8192 (centre)
                     if (b14 < 0) b14 = 0; else if (b14 > 16383) b14 = 16383;
-                    synth.ProcessMidiMessage(ch, 0xE0, b14 & 0x7F, (b14 >> 7) & 0x7F); // 0xE0 = pitch wheel (LSB, MSB)
+                    if (vsti != null) vsti.SetPitchBend(ch, b14);
+                    else synth.ProcessMidiMessage(ch, 0xE0, b14 & 0x7F, (b14 >> 7) & 0x7F); // 0xE0 = pitch wheel (LSB, MSB)
                 }
             }
         }
