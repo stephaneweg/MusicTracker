@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonStudio.Library</RootNamespace>
+    <AssemblyName>KotonStudioLibrary</AssemblyName>
+    <ProjectGuid>{D2E8F5A7-1B4C-4D3E-9F6A-8C7B2E5D9A0F}</ProjectGuid>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- Explicit x64 to align with the host (MusicTracker forces x64 because VST.NET refuses AnyCPU).
+         A .ksl assembly is loaded into the host process at runtime, so the bitness must match. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- No CopyLocal noise, no APIs targeting Windows-only surface — everything here is WPF (already
+         Windows-only by <UseWPF>). CA1416 would otherwise complain about System.Windows.Controls under
+         net10.0-windows analyses. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <!-- This is the PUBLIC contract every plugin references; keeping the version stamped helps a plugin
+         author fail-fast if they built against an incompatible interface set. Bump only on breaking changes. -->
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+</Project>

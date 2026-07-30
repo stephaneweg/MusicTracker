@@ -56,6 +56,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MeltySynth\MeltySynth.csproj" />
+    <!-- Koton native plugin framework: public interfaces + attributes + KotonParameter. The registry (in
+         Engine\Timeline\Effects\KotonPluginRegistry.cs) scans plugins\*.ksl at startup and hosts any type
+         marked [KotonInstrument]/[KotonEffect]. Plugins themselves reference ONLY this library, never
+         MusicTracker itself — the .ksl assemblies are third-party in intent. -->
+    <ProjectReference Include="..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
   </ItemGroup>
 
   <!-- ================= Non-code items =================
