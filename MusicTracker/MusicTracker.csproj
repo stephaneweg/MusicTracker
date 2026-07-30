@@ -1,749 +1,120 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{9B3F5D8F-6385-4132-8EEE-641BA8E68498}</ProjectGuid>
     <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <RootNamespace>MusicTracker</RootNamespace>
     <!-- Shipped binary is KotonStudio.exe (brand). RootNamespace stays MusicTracker (internal identity). -->
     <AssemblyName>KotonStudio</AssemblyName>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <WarningLevel>4</WarningLevel>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Deterministic>true</Deterministic>
-    <TargetFrameworkProfile />
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <ProjectGuid>{9B3F5D8F-6385-4132-8EEE-641BA8E68498}</ProjectGuid>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
+    <!-- Preserve legacy output layout (bin\Release\KotonStudio.exe, no TFM/RID subfolders) so
+         installer\MusicTracker.iss and installer\release.ps1 keep working unchanged. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <!-- Keep the hand-maintained Properties/AssemblyInfo.cs (title, version bumped by release.ps1). -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- The vendored WPF theme XAMLs + WinForms-style Resources.resx trigger a handful of harmless
+         warnings on the .NET 8 SDK compiler; silence them project-wide. -->
+    <!-- CA1416: the app targets net8.0-windows and is Windows-only by design; registry / WPF /
+         Win32 API sites are always reachable on Windows. -->
+    <NoWarn>$(NoWarn);CA1416;SYSLIB0011;SYSLIB0051</NoWarn>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
+
+  <!-- ================= NuGet packages =================
+       Trimmed vs. the legacy packages.config: all System.* utility packages (Buffers, Memory,
+       Numerics.Vectors, ValueTuple, IO.Pipelines, Runtime.CompilerServices.Unsafe,
+       Threading.Tasks.Extensions, Security.AccessControl, Security.Principal.Windows,
+       Bcl.AsyncInterfaces) are IN-BOX in net8.0-windows and removed. Microsoft.Win32.Registry is
+       in-box on the Windows target. Unnoficial.Microsoft.Expression.Drawing and WriteableBitmapEx
+       were referenced but nowhere used in code, dropped. NAudio.WinForms provides NAudio.Gui.*
+       (unused), dropped. -->
   <ItemGroup>
-    <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=9.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.9.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Expression.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Unnoficial.Microsoft.Expression.Drawing.1.0.0\lib\Microsoft.Expression.Drawing.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Win32.Registry, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Win32.Registry.4.7.0\lib\net461\Microsoft.Win32.Registry.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.2.2.1\lib\net472\NAudio.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.Asio, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.Asio.2.2.1\lib\netstandard2.0\NAudio.Asio.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.Core, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.Core.2.2.1\lib\netstandard2.0\NAudio.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.Lame, Version=2.0.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.Lame.2.1.0\lib\netstandard2.0\NAudio.Lame.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.Midi, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.Midi.2.2.1\lib\netstandard2.0\NAudio.Midi.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.Wasapi, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.Wasapi.2.2.1\lib\netstandard2.0\NAudio.Wasapi.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.WinForms, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.WinForms.2.2.1\lib\net472\NAudio.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="NAudio.WinMM, Version=2.2.1.0, Culture=neutral, PublicKeyToken=e279aa5131008a41, processorArchitecture=MSIL">
-      <HintPath>..\packages\NAudio.WinMM.2.2.1\lib\netstandard2.0\NAudio.WinMM.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Buffers.4.5.1\lib\net461\System.Buffers.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Data" />
-    <Reference Include="System.IO.Pipelines, Version=9.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.IO.Pipelines.9.0.0\lib\net462\System.IO.Pipelines.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Memory, Version=4.0.1.2, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Memory.4.5.5\lib\net461\System.Memory.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Numerics.Vectors, Version=4.1.4.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Numerics.Vectors.4.5.0\lib\net46\System.Numerics.Vectors.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Security.AccessControl, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Security.AccessControl.4.7.0\lib\net461\System.Security.AccessControl.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Security.Principal.Windows, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Security.Principal.Windows.4.7.0\lib\net461\System.Security.Principal.Windows.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Text.Encodings.Web, Version=9.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Text.Encodings.Web.9.0.0\lib\net462\System.Text.Encodings.Web.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Text.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Text.Json.9.0.0\lib\net462\System.Text.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Threading.Tasks.Extensions, Version=4.2.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Threading.Tasks.Extensions.4.5.4\lib\net461\System.Threading.Tasks.Extensions.dll</HintPath>
-    </Reference>
-    <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.ValueTuple.4.5.0\lib\net47\System.ValueTuple.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Xml" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.IO.Compression" />
-    <Reference Include="System.IO.Compression.FileSystem" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xaml">
-      <RequiredTargetFramework>4.0</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="WindowsBase" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="PresentationCore" />
-    <Reference Include="PresentationFramework" />
-    <Reference Include="ReachFramework" />
-    <Reference Include="System.Printing" />
-    <Reference Include="WriteableBitmapEx.Wpf, Version=1.6.8.0, Culture=neutral, PublicKeyToken=50375ca6144f1c69, processorArchitecture=MSIL">
-      <HintPath>..\packages\WriteableBitmapEx.1.6.8\lib\net40\WriteableBitmapEx.Wpf.dll</HintPath>
-    </Reference>
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NAudio.Lame" Version="2.1.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    <!-- App.config appSettings lookup (ChangelogUrl, GitHubRepo, GitHubReleasesRepo) via
+         System.Configuration.ConfigurationManager, which is a package on .NET Core+ instead of
+         being in the BCL like on .NET Framework. -->
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.0" />
   </ItemGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\MeltySynth\MeltySynth.csproj">
-      <Project>{6F3A1C2B-9D4E-4F8A-B1C7-2E5D9A0F3B41}</Project>
-      <Name>MeltySynth</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\MeltySynth\MeltySynth.csproj" />
   </ItemGroup>
+
+  <!-- ================= Non-code items =================
+       The SDK auto-globs *.cs and *.xaml. Everything else (data JSON, fonts, icons, images,
+       language tables) still needs an explicit entry so it's copied next to the exe. -->
   <ItemGroup>
-    <ApplicationDefinition Include="App.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </ApplicationDefinition>
-    <Compile Include="Converters.cs" />
-    <Compile Include="Engine\AI\AIClient.cs" />
-    <Compile Include="Engine\AI\RiffAiResult.cs" />
-    <Compile Include="Engine\ComposerV2\MusicMathV2.cs" />
-    <Compile Include="Engine\ComposerV2\CorpusModelV2.cs" />
-    <Compile Include="Engine\ComposerV2\CorpusAnalyzerV2.cs" />
-    <Compile Include="Engine\ComposerV2\MelodyResolverV2.cs" />
-    <Compile Include="Engine\ComposerV2\ComposerV2Runtime.cs" />
-    <Compile Include="Engine\ComposerV3\ComposerV3Types.cs" />
-    <Compile Include="Engine\Compose\MeterRhythm.cs" />
-    <Compile Include="Engine\Compose\ProceduralComposer.cs" />
-    <Compile Include="Engine\ComposerV3\ComposerV3Factory.cs" />
-    <Compile Include="Engine\ComposerV3\BaseComposerV3.cs" />
-    <Compile Include="Engine\ComposerV3\MathComposerV3.cs" />
-    <Compile Include="Engine\ComposerV3\GhibliComposerV3.cs" />
-    <Compile Include="Engine\ComposerV3\BachComposerV3.cs" />
-    <Compile Include="Engine\ComposerV3\BachClavierComposerV3.cs" />
-    <Compile Include="Engine\ComposerV3\VivaldiComposerV3.cs" />
-    <Compile Include="Engine\Timeline\Orchestrateur.cs" />
-    <Compile Include="Engine\MuseScoreImporter.cs" />
-    <Compile Include="Engine\MidiImporter.cs" />
-    <Compile Include="Engine\InstrumentCatalog.cs" />
-    <Compile Include="Engine\Riff.cs" />
-    <Compile Include="Engine\RiffNote.cs" />
-    <Compile Include="Engine\RiffRecorder.cs" />
-    <Compile Include="Engine\Flow\FlowModule.cs" />
-    <Compile Include="Engine\Flow\FlowPlayer.cs" />
-    <Compile Include="Engine\Flow\MeltyRiffPlayer.cs" />
-    <Compile Include="Engine\Flow\MusicTheory.cs" />
-    <Compile Include="Engine\Flow\HarmonySuggest.cs" />
-    <Compile Include="Engine\Flow\ChordDegrees.cs" />
-    <Compile Include="Engine\Flow\PatternGenerator.cs" />
-    <Compile Include="Engine\Flow\DrumPattern.cs" />
-    <Compile Include="Engine\Flow\EuclideanRhythm.cs" />
-    <Compile Include="Engine\Flow\BalancedRhythm.cs" />
-    <Compile Include="Engine\Flow\RhythmAnalysis.cs" />
-    <Compile Include="Engine\SafeFile.cs" />
-    <Compile Include="Engine\Flow\PolyDrum.cs" />
-    <Compile Include="Engine\Flow\MelodicEuclid.cs" />
-    <Compile Include="Engine\Flow\PolyChord.cs" />
-    <Compile Include="Controls\TimelineEditor\PolyDrumWheel.cs" />
-    <Compile Include="Controls\TimelineEditor\MarkerLaneControl.cs" />
-    <Compile Include="Engine\Flow\LoopingRiffProvider.cs" />
-    <Compile Include="Engine\Flow\LoopingMixProvider.cs" />
-    <Compile Include="Engine\Flow\ModuleDuration.cs" />
-    <Compile Include="Engine\Timeline\TimelineHelper.cs" />
-    <Compile Include="Engine\Timeline\UndoManager.cs" />
-    <Compile Include="Engine\Timeline\TimelineProject.cs" />
-    <Compile Include="Engine\Timeline\Effects\IAudioEffect.cs" />
-    <Compile Include="Engine\Timeline\Effects\TrackEffectData.cs" />
-    <Compile Include="Engine\Timeline\Effects\EffectFactory.cs" />
-    <Compile Include="Engine\Timeline\Effects\BiquadStereo.cs" />
-    <Compile Include="Engine\Timeline\Effects\EqEffect.cs" />
-    <Compile Include="Engine\Timeline\Effects\CompressorEffect.cs" />
-    <Compile Include="Engine\Timeline\Effects\DelayEffect.cs" />
-    <Compile Include="Engine\Timeline\Effects\SaturationEffect.cs" />
-    <Compile Include="Engine\Timeline\ChordModelOps.cs" />
-    <Compile Include="Engine\Timeline\TemplateProjectBuilder.cs" />
-    <Compile Include="Engine\Timeline\ScoreSlicing.cs" />
-    <Compile Include="Engine\Timeline\MidiTimelineExporter.cs" />
-    <Compile Include="Engine\Timeline\MuseScoreExporter.cs" />
-    <Compile Include="Engine\Timeline\MusicComposer.cs" />
-    <Compile Include="Engine\Timeline\MusicXmlExporter.cs" />
-    <Compile Include="Engine\Timeline\ComposedArrangement.cs" />
-    <Compile Include="Engine\Timeline\Harmony.cs" />
-    <Compile Include="Engine\Timeline\MelodicLineEngine.cs" />
-    <Compile Include="Engine\Timeline\MotifCopy.cs" />
-    <Compile Include="Engine\Timeline\MotifCatalogue.cs" />
-    <Compile Include="Engine\Timeline\OrchestrateurLines.cs" />
-    <Compile Include="Engine\Timeline\ThemeLibrary.cs" />
-    <Compile Include="Engine\Timeline\RecipeRenderer.cs" />
-    <Compile Include="Engine\Timeline\FormSpec.cs" />
-    <Compile Include="Engine\Timeline\ArrangementEngine.cs" />
-    <Compile Include="Engine\Timeline\HisaishiComposer.cs" />
-    <Compile Include="Engine\Timeline\TimelineImporter.cs" />
-    <Compile Include="Engine\Timeline\TimelinePlayer.cs" />
-    <Compile Include="Engine\Timeline\LookaheadBuffer.cs" />
-    <Compile Include="Engine\AudioFormat.cs" />
-    <Compile Include="AppPaths.cs" />
-    <Compile Include="SoundFontGuard.cs" />
-    <Compile Include="SoundFontDownloader.cs" />
-    <Compile Include="Controls\Score\ScorePdfExporter.cs" />
-    <Compile Include="Controls\Score\ScoreView.cs" />
-    <Compile Include="Engine\Score\MusicalMode.cs" />
-    <Compile Include="Engine\Score\ScoreModel.cs" />
+    <!-- Bravura music font: EMBEDDED into the assembly as a WPF Resource (loaded via pack URI). -->
     <Resource Include="Fonts\Bravura.otf" />
-    <Compile Include="FileAssociations.cs" />
-    <Compile Include="Localization\Loc.cs" />
-    <Compile Include="RecentFiles.cs" />
-    <Compile Include="Screens\IMusicEditor.cs" />
-    <Compile Include="Screens\HomeScreen.xaml.cs">
-      <DependentUpon>HomeScreen.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Engine\SequencerSlice.cs" />
-    <Compile Include="Engine\IWaveProvider.cs" />
-    <Compile Include="Engine\WaveExporter.cs" />
-    <Compile Include="Dialogs\NumberDialog.xaml.cs">
-      <DependentUpon>NumberDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\InstrumentBoostDialog.xaml.cs">
-      <DependentUpon>InstrumentBoostDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\MixerDialog.xaml.cs">
-      <DependentUpon>MixerDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\EffectConfigDialog.xaml.cs">
-      <DependentUpon>EffectConfigDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\RiffEditorWindow.xaml.cs">
-      <DependentUpon>RiffEditorWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\ImportGraphOptionsDialog.xaml.cs">
-      <DependentUpon>ImportGraphOptionsDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\KeySignatureDialog.xaml.cs">
-      <DependentUpon>KeySignatureDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\SettingsDialog.xaml.cs">
-      <DependentUpon>SettingsDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\AiComposeDialog.xaml.cs">
-      <DependentUpon>AiComposeDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\AiPolyDialog.xaml.cs">
-      <DependentUpon>AiPolyDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\AiElementDialog.xaml.cs">
-      <DependentUpon>AiElementDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\FileBrowserDialog.xaml.cs">
-      <DependentUpon>FileBrowserDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\TemplateMeasuresDialog.xaml.cs">
-      <DependentUpon>TemplateMeasuresDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\ApiKeysDialog.xaml.cs">
-      <DependentUpon>ApiKeysDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\ReportBugDialog.xaml.cs">
-      <DependentUpon>ReportBugDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\AboutDialog.xaml.cs">
-      <DependentUpon>AboutDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\UpdateDialog.xaml.cs">
-      <DependentUpon>UpdateDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Engine\AI\AiProviders.cs" />
-    <Compile Include="Engine\AI\MistralClient.cs" />
-    <Compile Include="Engine\AI\GeminiClient.cs" />
-    <Compile Include="Engine\AI\GroqClient.cs" />
-    <Compile Include="Engine\AI\DeepSeekClient.cs" />
-    <Compile Include="Engine\AI\ClaudeClient.cs" />
-    <Compile Include="Engine\AI\GrokClient.cs" />
-    <Compile Include="Engine\AI\QwenClient.cs" />
-    <Compile Include="Engine\AI\AiArrangement.cs" />
-    <Compile Include="Engine\AI\AiArrangementPlacer.cs" />
-    <Compile Include="Engine\AI\AiPolyrhythm.cs" />
-    <Compile Include="Engine\AI\AiPolyArrangement.cs" />
-    <Compile Include="Sources\IProjectSource.cs" />
-    <Compile Include="Sources\AiComposeSource.cs" />
-    <Compile Include="Sources\AiPolySource.cs" />
-    <Compile Include="Engine\BugReport\GitHubIssueClient.cs" />
-    <Compile Include="Engine\Update\UpdateChecker.cs" />
-    <Compile Include="Engine\BugReport\BugReportConfig.cs" />
-    <Compile Include="Engine\BugReport\BugReportContext.cs" />
-    <Compile Include="Engine\BugReport\CrashGuard.cs" />
-    <Compile Include="Dialogs\TransposeDialog.xaml.cs">
-      <DependentUpon>TransposeDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\CadenceDialog.xaml.cs">
-      <DependentUpon>CadenceDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\ConfirmDialog.cs" />
-    <Compile Include="Dialogs\CreateStructureDialog.xaml.cs">
-      <DependentUpon>CreateStructureDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\ImportTrackDialog.cs" />
-    <Compile Include="Dialogs\ChordSuggestionDialog.xaml.cs">
-      <DependentUpon>ChordSuggestionDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\GenerateThemeDialog.cs" />
-    <Compile Include="Dialogs\VariationDialog.cs" />
-    <Compile Include="AppSettings.cs" />
-    <Compile Include="Screens\TimelineScreen.xaml.cs">
-      <DependentUpon>TimelineScreen.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\RhythmGridControl.xaml.cs">
-      <DependentUpon>RhythmGridControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\RiffGridControl.xaml.cs">
-      <DependentUpon>RiffGridControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\ChordEditorControl.xaml.cs">
-      <DependentUpon>ChordEditorControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\RiffThumbnail.cs" />
-    <Compile Include="Controls\DrumColors.cs" />
-    <Compile Include="Controls\InstrumentColors.cs" />
-    <Compile Include="Controls\ResponsiveWrapPanel.cs" />
-    <Compile Include="Controls\WindowDrag.cs" />
-    <Compile Include="Controls\ReflowButtons.cs" />
-    <Compile Include="Controls\GuidedTour.cs" />
-    <Compile Include="Engine\Flow\DrumCatalog.cs" />
-    <Compile Include="Engine\Timeline\TemplateSpec.cs" />
-    <Compile Include="Engine\Timeline\TemplateComposer.cs" />
-    <Compile Include="Controls\NoteSourceProvider.cs" />
-    <Compile Include="Controls\TimelineEditor\VolumeLaneControl.xaml.cs">
-      <DependentUpon>VolumeLaneControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\AutomationLaneControl.xaml.cs">
-      <DependentUpon>AutomationLaneControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\ModuleBoxControl.xaml.cs">
-      <DependentUpon>ModuleBoxControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\RepeatItemControl.xaml.cs">
-      <DependentUpon>RepeatItemControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\PolyDrumEditor.xaml.cs">
-      <DependentUpon>PolyDrumEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\MelodicPolyEditor.xaml.cs">
-      <DependentUpon>MelodicPolyEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\PolyChordEditor.xaml.cs">
-      <DependentUpon>PolyChordEditor.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\TempoLaneControl.xaml.cs">
-      <DependentUpon>TempoLaneControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\ChordLaneControl.xaml.cs">
-      <DependentUpon>ChordLaneControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Controls\TimelineEditor\MeasureRulerControl.xaml.cs">
-      <DependentUpon>MeasureRulerControl.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\ExportProgressDialog.xaml.cs">
-      <DependentUpon>ExportProgressDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Dialogs\ImportProgressDialog.xaml.cs">
-      <DependentUpon>ImportProgressDialog.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="UIUtils.cs" />
-    <Compile Include="Utils.cs" />
-    <Compile Include="UserData.cs" />
-    <Compile Include="Extensions.cs" />
-    <Page Include="Dialogs\NumberDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\InstrumentBoostDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\RiffEditorWindow.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\ImportGraphOptionsDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\KeySignatureDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\TransposeDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\CadenceDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\MixerDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\EffectConfigDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\ChordSuggestionDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\CreateStructureDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\SettingsDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\AiPolyDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\AiComposeDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\AiElementDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\FileBrowserDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\TemplateMeasuresDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\ApiKeysDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\ReportBugDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\AboutDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\UpdateDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Screens\TimelineScreen.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\RhythmGridControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\RiffGridControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\ChordEditorControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\VolumeLaneControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\AutomationLaneControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\ModuleBoxControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\RepeatItemControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\PolyDrumEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\MelodicPolyEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\PolyChordEditor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\TempoLaneControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\ChordLaneControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Controls\TimelineEditor\MeasureRulerControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\ExportProgressDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Dialogs\ImportProgressDialog.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Screens\HomeScreen.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Theme\Button.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\Colors.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\ComboBox.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\CheckBox.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\DataGrid.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\Expander.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\GroupBox.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\Menu.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Compile Include="App.xaml.cs">
-      <DependentUpon>App.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Page Include="Theme\ScrollBar.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\ScrollBar2.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\Slider.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\TabControl.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\TabItem.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\ToolBar.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Theme\TreeView.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
+    <!-- Bravura companion metadata JSON: SHIPS next to the font under Fonts\ (loaded from disk). -->
+    <Content Include="Fonts\bravura_metadata.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- WPF resources embedded in the assembly. -->
+    <Resource Include="gridbg.png" />
+    <Resource Include="Images\logo-mark.png" />
+
+    <!-- app.ico is embedded via <ApplicationIcon>; document.ico ships next to the exe and is
+         referenced by the .sq file association (FileAssociations.cs). -->
+    <Content Include="document.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- All Data\**\*.json (drums catalog, templates, catalogue, themes, corpus models) are read
+         from disk relative to the exe. -->
+    <Content Include="Data\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- Language tables ship as loose files next to the exe (Localization\lang.<code>.json), NOT
+         embedded, so a new translation can be dropped in the install folder and picked up at next
+         launch with no rebuild. -->
+    <Content Include="Localization\lang.*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+
+    <!-- SoundFonts (SoundFont\*.sf2) are intentionally NOT referenced here and NOT
+         version-controlled: they are third-party binary assets of several hundred MB, over
+         GitHub's 100 MB per-file limit. Excluded by .gitignore, downloaded on first launch by
+         SoundFontDownloader (see AppPaths.Local). -->
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-    <Compile Include="Properties\Settings.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-    </Compile>
-    <EmbeddedResource Include="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-    <None Include="Data\drums\catalog.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\templates\ghibli_pastoral.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\catalogue\ghibli.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\catalogue\generic.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\catalogue\bach.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\catalogue\vivaldi.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\themes\bach.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\themes\generic.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\themes\ghibli.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\themes\index.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="Data\themes\vivaldi.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="packages.config" />
-    <!-- Language tables ship as loose files next to the exe (Localization\lang.<code>.json), NOT embedded, so
-         a new translation can be dropped in the install folder and picked up at next launch with no rebuild. -->
-    <Content Include="Localization\lang.fr.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Localization\lang.en.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Localization\lang.de.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Localization\lang.it.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Localization\lang.es.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Localization\lang.nl.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Localization\lang.pt.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <None Include="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <!-- SoundFonts (SoundFont\*.sf2) are intentionally NOT referenced here and NOT version-controlled:
-         they are third-party binary assets of several hundred MB (SGM 347 MB, MuseScore_General 206 MB,
-         FluidR3 142 MB), over GitHub's 100 MB per-file limit. They are excluded by .gitignore and must be
-         placed by hand in a "SoundFont" folder next to the executable (see AppPaths.Local). -->
-    <None Include="Data\models\*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+
+  <!-- App.config with appSettings; supported on .NET Core+ via
+       System.Configuration.ConfigurationManager. -->
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Resource Include="gridbg.png" />
-    <Resource Include="Images\logo-mark.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <!-- app.ico is embedded in the exe via <ApplicationIcon>; document.ico ships next to the
-         exe and is referenced by the .sq file association (see FileAssociations.cs). -->
-    <None Include="app.ico" />
-    <None Include="document.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Data\themes\_generated\" />
-    <Folder Include="Editor\" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <Import Project="..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets" Condition="Exists('..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NAudio.Lame.2.1.0\build\NAudio.Lame.targets'))" />
-  </Target>
+
   <!-- ================= GitHub token injection (build-time secret) =================
-       Reads the GitHub token, in priority order, from: the gitignored releases\releases.token file (in the
-       nested MusicTracker_Releases checkout — a fine-grained PAT with Issues:read/write on MusicTracker for the
-       bug reporter AND Contents:read on MusicTracker_Releases for the update check), then the
-       MUSICTRACKER_GH_TOKEN env var. Generates BuildSecrets.g.cs into obj\ holding it XOR-scrambled + base64.
-       The token is NEVER committed; a build without one yields an empty constant (bug reporter + update check
-       then report as "not configured").
-       The XOR key below MUST stay in sync with MusicTracker.Engine.BugReport.BugReportConfig.XorKey. -->
-  <UsingTask TaskName="GenerateBuildSecrets" TaskFactory="CodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+       Reads the GitHub token, in priority order, from: the gitignored releases\releases.token file
+       (in the nested MusicTracker_Releases checkout — a fine-grained PAT with Issues:read/write on
+       MusicTracker for the bug reporter AND Contents:read on MusicTracker_Releases for the update
+       check), then the MUSICTRACKER_GH_TOKEN env var. Generates BuildSecrets.g.cs into obj\
+       holding it XOR-scrambled + base64. The token is NEVER committed; a build without one yields
+       an empty constant (bug reporter + update check then report as "not configured").
+       The XOR key below MUST stay in sync with MusicTracker.Engine.BugReport.BugReportConfig.XorKey.
+       Modern MSBuild (SDK-style project) requires RoslynCodeTaskFactory instead of the legacy
+       CodeTaskFactory. -->
+  <UsingTask TaskName="GenerateBuildSecrets"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
     <ParameterGroup>
       <ReleaseTokenFile ParameterType="System.String" Required="false" />
       <EnvToken ParameterType="System.String" Required="false" />
       <OutputFile ParameterType="System.String" Required="true" />
     </ParameterGroup>
     <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Text" />
       <Code Type="Fragment" Language="cs"><![CDATA[
           string raw = "";
           // Priority: releases/releases.token (fine-grained PAT: Issues:r/w on MusicTracker + Contents:read on
@@ -774,9 +145,12 @@
   </UsingTask>
   <Target Name="GenerateBuildSecrets" BeforeTargets="CoreCompile">
     <MakeDir Directories="$(IntermediateOutputPath)" />
-    <GenerateBuildSecrets ReleaseTokenFile="$(ProjectDir)..\releases\releases.token" EnvToken="$(MUSICTRACKER_GH_TOKEN)" OutputFile="$(IntermediateOutputPath)BuildSecrets.g.cs" />
+    <GenerateBuildSecrets ReleaseTokenFile="$(ProjectDir)..\releases\releases.token"
+                          EnvToken="$(MUSICTRACKER_GH_TOKEN)"
+                          OutputFile="$(IntermediateOutputPath)BuildSecrets.g.cs" />
     <ItemGroup>
       <Compile Include="$(IntermediateOutputPath)BuildSecrets.g.cs" />
     </ItemGroup>
   </Target>
+
 </Project>
