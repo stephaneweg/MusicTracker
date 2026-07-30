@@ -2,21 +2,28 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Jacobi.Vst.Core;
 using Jacobi.Vst.Host.Interop;
+using MusicTracker.Engine.Timeline.Vst3;
+using MusicTracker.Engine.Timeline.Vst3.Interop;
 
 namespace MusicTracker.Engine.Timeline.Effects
 {
     /// <summary>
-    /// Cherche des plugins VST2 (fichiers .dll) dans les dossiers Steinberg standards. Résultat mis en
-    /// cache pour la session (un premier accès scanne, les suivants sont instantanés). L'utilisateur peut
-    /// re-scanner explicitement via <see cref="ForceRescan"/>.
+    /// Cherche des plugins VST2 (fichiers .dll) ET VST3 (fichiers/dossiers-bundles .vst3) dans les
+    /// dossiers Steinberg standards. Résultat mis en cache pour la session (un premier accès scanne,
+    /// les suivants sont instantanés). L'utilisateur peut re-scanner explicitement via <see cref="ForceRescan"/>.
     ///
-    /// Le scan lui-même ne CHARGE PAS les DLL (juste <see cref="Directory.EnumerateFiles"/>) — pas de risque
-    /// de charger un plugin buggé au démarrage. En revanche <see cref="ClassifyIfNeeded"/> charge chaque
-    /// plugin encore inconnu pour lire son flag <see cref="VstPluginFlags.IsSynth"/> (VSTi = instrument,
-    /// sinon = effet d'insert). Coût : ~50-500 ms par plugin. Résultat mis en cache session : appelé
-    /// UNE fois par l'UI avant de peupler un sous-menu (Effet ou VSTi), instantané ensuite.
+    /// Le scan lui-même ne CHARGE PAS les DLL (juste <see cref="Directory.EnumerateFileSystemEntries"/>)
+    /// — pas de risque de charger un plugin buggé au démarrage. En revanche <see cref="ClassifyIfNeeded"/>
+    /// charge chaque plugin encore inconnu pour lire son flag « est un instrument » :
+    /// <list type="bullet">
+    ///   <item>VST2 : flag <see cref="VstPluginFlags.IsSynth"/> ;</item>
+    ///   <item>VST3 : sous-catégorie <c>Instrument</c> dans <c>PClassInfo2.subCategories</c>.</item>
+    /// </list>
+    /// Coût : ~50-500 ms par plugin. Résultat mis en cache session : appelé UNE fois par l'UI avant
+    /// de peupler un sous-menu (Effet ou VSTi), instantané ensuite.
     /// </summary>
     public static class VstPluginScanner
     {
@@ -36,7 +43,15 @@ namespace MusicTracker.Engine.Timeline.Effects
             Environment.ExpandEnvironmentVariables(@"%ProgramFiles%\Steinberg\VstPlugins"),
             Environment.ExpandEnvironmentVariables(@"%CommonProgramFiles%\VST2"),
             Environment.ExpandEnvironmentVariables(@"%CommonProgramFiles%\Steinberg\VST2"),
+            // VST3 : dossier système canonique + dossier utilisateur (moins fréquent). Un même fichier
+            // repéré ici et dans vst\ local sera dédupliqué par le scanner (case-insensitive HashSet).
+            Environment.ExpandEnvironmentVariables(@"%CommonProgramFiles%\VST3"),
+            Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\Programs\Common\VST3"),
         };
+
+        /// <summary>Format d'un plugin scanné — sert au routage vers la bonne implémentation d'hôte
+        /// (VstEffect / Vst3Effect / VstInstrument / Vst3Instrument).</summary>
+        public enum PluginFormat { Vst2, Vst3 }
 
         /// <summary>Une entrée dans le catalogue — chemin + nom d'affichage + classification (instrument vs effet).
         /// <see cref="IsInstrument"/> reste <c>null</c> tant que <see cref="ClassifyIfNeeded"/> n'a pas été appelée
@@ -48,6 +63,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             /// <summary><c>true</c> = VSTi (source sonore, réagit au MIDI), <c>false</c> = effet d'insert,
             /// <c>null</c> = pas encore classifié ou échec de chargement.</summary>
             public bool? IsInstrument;
+            /// <summary>Format du plugin, déduit de l'extension au scan (Path .vst3 → Vst3, sinon Vst2).</summary>
+            public PluginFormat Format;
         }
 
         /// <summary>Récupère la liste courante (scanne si nécessaire). Filtre les doublons par chemin (case-insensitive).
@@ -112,12 +129,14 @@ namespace MusicTracker.Engine.Timeline.Effects
 
             foreach (var e in todo)
             {
-                bool? isInst = TryDetectSynth(e.Path);
+                bool? isInst = e.Format == PluginFormat.Vst3
+                    ? TryDetectSynthVst3(e.Path)
+                    : TryDetectSynth(e.Path);
                 lock (_lock) { e.IsInstrument = isInst; }
             }
         }
 
-        /// <summary>Charge un plugin, lit son flag <see cref="VstPluginFlags.IsSynth"/>, puis le décharge.
+        /// <summary>Charge un plugin VST2, lit son flag <see cref="VstPluginFlags.IsSynth"/>, puis le décharge.
         /// Renvoie <c>null</c> sur toute exception (plugin non VST2, corrompu, incompatible x64, etc.).</summary>
         static bool? TryDetectSynth(string path)
         {
@@ -142,6 +161,39 @@ namespace MusicTracker.Engine.Timeline.Effects
             }
         }
 
+        /// <summary>
+        /// Charge un module VST3, énumère les classes via <see cref="IPluginFactory2.getClassInfo2"/> et
+        /// renvoie <c>true</c> dès qu'une classe <c>kVstAudioEffectClass</c> déclare la sous-catégorie
+        /// <c>Instrument</c>. Sans v2 factory, on ne peut pas distinguer effet/instrument → renvoie <c>false</c>
+        /// (position conservatrice : sous-menu Effet). Le module est libéré en fin de méthode.
+        /// </summary>
+        static bool? TryDetectSynthVst3(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return null;
+            using (var loader = new Vst3ModuleLoader())
+            {
+                try
+                {
+                    loader.Load(path);
+                    var f2 = loader.Factory2;
+                    if (f2 == null) return false;
+                    int n = f2.countClasses();
+                    for (int i = 0; i < n; i++)
+                    {
+                        if (f2.getClassInfo2(i, out var info) != 0) continue;
+                        if (!string.Equals(info.Category, Vst3Uids.kVstAudioEffectClass, StringComparison.Ordinal))
+                            continue;
+                        var subs = info.SubCategories ?? "";
+                        // subCategories = liste sépa. par '|', e.g. "Fx|Distortion" ou "Instrument|Synth"
+                        if (subs.Contains(Vst3Uids.kInstrumentSubCategory, StringComparison.OrdinalIgnoreCase))
+                            return true;
+                    }
+                    return false;
+                }
+                catch { return null; }
+            }
+        }
+
         static List<PluginEntry> Scan(IEnumerable<string> extraFolders)
         {
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -153,21 +205,47 @@ namespace MusicTracker.Engine.Timeline.Effects
             foreach (var folder in folders)
             {
                 if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) continue;
-                IEnumerable<string> files;
-                try
-                {
-                    files = Directory.EnumerateFiles(folder, "*.dll", SearchOption.AllDirectories);
-                }
-                catch { continue; }
 
-                foreach (var f in files)
+                // ---- VST2 : *.dll (fichiers) --------------------------------------------------------
+                IEnumerable<string> dlls;
+                try { dlls = Directory.EnumerateFiles(folder, "*.dll", SearchOption.AllDirectories); }
+                catch { dlls = Array.Empty<string>(); }
+                foreach (var f in dlls)
                 {
                     if (!seen.Add(f)) continue;
                     results.Add(new PluginEntry
                     {
                         Path = f,
                         DisplayName = Path.GetFileNameWithoutExtension(f),
-                        IsInstrument = null,   // classifié à la demande par ClassifyIfNeeded()
+                        IsInstrument = null,
+                        Format = PluginFormat.Vst2,
+                    });
+                }
+
+                // ---- VST3 : *.vst3 (fichiers plats OU dossiers-bundles) -----------------------------
+                // Un bundle est un DOSSIER "Foo.vst3/Contents/x86_64-win/Foo.vst3". On enregistre le
+                // dossier lui-même comme "path" — Vst3ModuleLoader.ResolveBinaryPath se chargera de
+                // trouver le binaire à l'intérieur. Un fichier .vst3 plat (SDK 3.6+) est enregistré tel quel.
+                // On énumère TopDirectoryOnly pour ne pas re-descendre dans Contents (le fichier interne
+                // serait alors listé en double comme "fichier .vst3" en plus du bundle).
+                IEnumerable<string> vst3Entries;
+                try
+                {
+                    vst3Entries = Directory.EnumerateFileSystemEntries(folder, "*.vst3", SearchOption.AllDirectories)
+                        // Filtrer les fichiers INTERNES au bundle (Contents/.../Foo.vst3) — on garde uniquement
+                        // le bundle-dir ou un .vst3 plat au niveau du dossier de plugins.
+                        .Where(p => !p.Replace('\\', '/').Contains("/Contents/", StringComparison.OrdinalIgnoreCase));
+                }
+                catch { vst3Entries = Array.Empty<string>(); }
+                foreach (var f in vst3Entries)
+                {
+                    if (!seen.Add(f)) continue;
+                    results.Add(new PluginEntry
+                    {
+                        Path = f,
+                        DisplayName = Path.GetFileNameWithoutExtension(f),
+                        IsInstrument = null,
+                        Format = PluginFormat.Vst3,
                     });
                 }
             }
