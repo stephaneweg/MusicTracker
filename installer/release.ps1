@@ -136,6 +136,11 @@ New-Item -ItemType Directory -Path $stageTop -Force | Out-Null
   /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { throw "robocopy a échoué (code $LASTEXITCODE) pour la version portable." }
 
+# Marqueur .portable : PRÉSENT UNIQUEMENT DANS LE ZIP (jamais dans l'installeur Inno). Sa présence
+# à côté de l'exe fait basculer UpdateChecker sur le chemin portable (updater + zip) au lieu de
+# télécharger et lancer le setup silencieux.
+New-Item -ItemType File -Path (Join-Path $stageTop '.portable') -Force | Out-Null
+
 Add-Type -AssemblyName System.IO.Compression.FileSystem | Out-Null
 # includeBaseDirectory=$true => l'archive contient KotonStudio-<ver>/ à sa racine.
 [System.IO.Compression.ZipFile]::CreateFromDirectory($stageTop, $portablePath, 'Optimal', $true)

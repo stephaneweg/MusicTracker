@@ -219,6 +219,51 @@ namespace MusicTracker
                     dlg.SetBusy(Loc.T("DownloadingTheUpdate2") + got + Loc.T("MB"));
             });
 
+            // Deux chemins de MàJ selon le mode d'installation, choisis sur la présence du marqueur .portable :
+            //  - portable → télécharge le zip DANS le dossier de l'app, extrait, lance KotonStudioUpdater.exe (qui
+            //    attend qu'on quitte, écrase les fichiers, relance l'exe). Zip sur le même volume que la cible pour
+            //    éviter tout souci de droits ou de move cross-volume.
+            //  - installé (Inno) → comportement historique : télécharge l'installeur dans %TEMP% et le lance silencieux.
+            if (Engine.Update.UpdateChecker.IsPortableInstall)
+            {
+                if (string.IsNullOrWhiteSpace(info.PortableFileName))
+                {
+                    dlg.Close();
+                    MessageBox.Show(this, Loc.T("TheUpdateDownloadFailed") + "portable=?",
+                                    Loc.T("Update2"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                string stageDir = Engine.Update.UpdateChecker.PortableStagingDir;
+                try { System.IO.Directory.CreateDirectory(stageDir); } catch { }
+                string zipDest = System.IO.Path.Combine(stageDir, info.PortableFileName);
+                try { await Engine.Update.UpdateChecker.DownloadPortableZipAsync(info, zipDest, progress, System.Threading.CancellationToken.None); }
+                catch (Exception ex)
+                {
+                    dlg.Close();
+                    MessageBox.Show(this, Loc.T("TheUpdateDownloadFailed") + ex.Message,
+                                    Loc.T("Update2"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                dlg.Close();
+
+                try
+                {
+                    string sourceDir = Engine.Update.UpdateChecker.ExtractPortableZip(zipDest);
+                    string targetDir = AppPaths.BaseDir;
+                    string launchExe = System.Reflection.Assembly.GetEntryAssembly()?.Location
+                                       ?? System.IO.Path.Combine(targetDir, "KotonStudio.exe");
+                    Engine.Update.UpdateChecker.LaunchPortableUpdater(sourceDir, targetDir, launchExe);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, Loc.T("CouldNotLaunchTheInstaller") + ex.Message,
+                                    Loc.T("Update2"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                Application.Current.Shutdown(); // quit so the updater can replace the running app
+                return;
+            }
+
             string dest = System.IO.Path.Combine(System.IO.Path.GetTempPath(), info.InstallerFileName);
             try { await Engine.Update.UpdateChecker.DownloadInstallerAsync(info, dest, progress, System.Threading.CancellationToken.None); }
             catch (Exception ex)
