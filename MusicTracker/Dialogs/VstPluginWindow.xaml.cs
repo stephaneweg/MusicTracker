@@ -53,8 +53,6 @@ namespace MusicTracker.Dialogs
                 // Résultat : la fenêtre colle pile poil à la GUI du plugin, plus de zone noire.
                 hostBorder.Width = sz.Width;
                 hostBorder.Height = sz.Height;
-                this.Width = sz.Width;
-                this.Height = sz.Height;
             }
 
             _hwnd = new VstHwndHost(_host);
@@ -69,6 +67,28 @@ namespace MusicTracker.Dialogs
             _idleTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(33) };
             _idleTimer.Tick += (a, b) => _host.EditorIdle();
             _idleTimer.Start();
+
+            // Re-query getSize APRES un cycle du dispatcher : plein de plugins VST3 font une init asynchrone
+            // au createView / attached et retournent une taille par defaut au 1er appel de getSize (avant
+            // que leur GUI ne soit vraiment calculee). Attendre un tour de boucle permet aux WM_ messages
+            // et au layout WPF d'arriver au plugin, qui rapporte alors sa vraie taille. Idempotent : si la
+            // taille n'a pas change (plugin qui reponds correctement des le 1er coup), no-op.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    var sz2 = _host.GetEditorSize();
+                    if (sz2.Width > 100 && sz2.Height > 50 &&
+                        (Math.Abs(sz2.Width - hostBorder.ActualWidth) > 4 || Math.Abs(sz2.Height - hostBorder.ActualHeight) > 4))
+                    {
+                        hostBorder.Width = sz2.Width;
+                        hostBorder.Height = sz2.Height;
+                        this.Width = sz2.Width;
+                        this.Height = sz2.Height;
+                    }
+                }
+                catch { }
+            }), DispatcherPriority.Loaded);
         }
 
         void OnPluginResizeRequested(int width, int height)
