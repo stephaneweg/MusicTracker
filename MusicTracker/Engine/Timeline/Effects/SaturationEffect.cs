@@ -48,5 +48,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("Drive", out v)) Drive = v;
             if (d.TryGetValue("Mix", out v)) Mix = v;
         }
+
+        public string SaveState() { return null; }
+        public void LoadState(string state) { }
     }
 }

@@ -66,5 +66,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("HighGainDb", out v)) HighGainDb = v;
             Update();
         }
+
+        public string SaveState() { return null; }
+        public void LoadState(string state) { }
     }
 }

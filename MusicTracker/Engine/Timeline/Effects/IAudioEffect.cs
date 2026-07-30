@@ -26,5 +26,18 @@ namespace MusicTracker.Engine.Timeline.Effects
 
         /// <summary>Recharge les paramètres depuis une carte produite par <see cref="Save"/>. Les clés manquantes gardent la valeur par défaut (permet d'ajouter un paramètre sans casser les vieux .sq).</summary>
         void Load(Dictionary<string, double> data);
+
+        /// <summary>
+        /// Sérialise un état opaque supplémentaire (blob binaire encodé en base64) que le dictionnaire nom→double ne
+        /// peut pas représenter. Utilisé par les plugins VST pour transporter leur « chunk » d'état interne. Les effets
+        /// maison n'ont rien à sauver ici et renvoient <c>null</c> — ce qui ne fait rien apparaître dans le .sq.
+        /// </summary>
+        string SaveState();
+
+        /// <summary>
+        /// Recharge l'état opaque produit par <see cref="SaveState"/>. <c>null</c> = pas d'état, no-op. Appelée UNE fois
+        /// au démarrage de la lecture (par la factory), pas à chaque buffer — donc coûteux OK.
+        /// </summary>
+        void LoadState(string state);
     }
 }

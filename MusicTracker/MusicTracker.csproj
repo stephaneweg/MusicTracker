@@ -11,6 +11,8 @@
     <AssemblyName>KotonStudio</AssemblyName>
     <ApplicationIcon>app.ico</ApplicationIcon>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <!-- Suppression du MSB3270 pour Jacobi.Vst.* : projet AnyCPU + refs AMD64 est INTENTIONNEL (voir Reference plus bas). -->
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
@@ -22,6 +24,9 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <!-- Prefer32Bit=false : indispensable pour l'hôte VST (VST.NET Interop est un C++/CLI x64) et compatible
+         avec le reste du pipeline audio (MeltySynth pur managé). -->
+    <Prefer32Bit>false</Prefer32Bit>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -33,12 +38,14 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=9.0.0.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
@@ -131,6 +138,19 @@
     <Reference Include="WriteableBitmapEx.Wpf, Version=1.6.8.0, Culture=neutral, PublicKeyToken=50375ca6144f1c69, processorArchitecture=MSIL">
       <HintPath>..\packages\WriteableBitmapEx.1.6.8\lib\net40\WriteableBitmapEx.Wpf.dll</HintPath>
     </Reference>
+    <!-- VST.NET (TruDan-VST.NET 1.1.8, LGPL-2.1) : hébergement de plugins VST2. Prefer32Bit=false plus haut
+         force le processus en 64-bit — c'est le contrat, on charge donc les DLL x64. Les warnings MSB3270
+         « architecture mismatch » (le RAR annonce AMD64 vs projet AnyCPU) sont attendus et bénins tant que
+         Prefer32Bit reste false. -->
+    <Reference Include="Jacobi.Vst.Core">
+      <HintPath>..\packages\TruDan-VST.NET.1.1.8\lib\net40\x64\Jacobi.Vst.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Jacobi.Vst.Interop">
+      <HintPath>..\packages\TruDan-VST.NET.1.1.8\lib\net40\x64\Jacobi.Vst.Interop.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MeltySynth\MeltySynth.csproj">
@@ -199,6 +219,10 @@
     <Compile Include="Engine\Timeline\Effects\CompressorEffect.cs" />
     <Compile Include="Engine\Timeline\Effects\DelayEffect.cs" />
     <Compile Include="Engine\Timeline\Effects\SaturationEffect.cs" />
+    <Compile Include="Engine\Timeline\Effects\VstEffect.cs" />
+    <Compile Include="Engine\Timeline\Effects\VstHostCommandStub.cs" />
+    <Compile Include="Engine\Timeline\Effects\VstPluginScanner.cs" />
+    <Compile Include="Engine\Timeline\Effects\VstRuntimeCheck.cs" />
     <Compile Include="Engine\Timeline\ChordModelOps.cs" />
     <Compile Include="Engine\Timeline\TemplateProjectBuilder.cs" />
     <Compile Include="Engine\Timeline\ScoreSlicing.cs" />
@@ -250,6 +274,9 @@
     </Compile>
     <Compile Include="Dialogs\EffectConfigDialog.xaml.cs">
       <DependentUpon>EffectConfigDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dialogs\VstPluginWindow.xaml.cs">
+      <DependentUpon>VstPluginWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Dialogs\RiffEditorWindow.xaml.cs">
       <DependentUpon>RiffEditorWindow.xaml</DependentUpon>
@@ -423,6 +450,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Dialogs\EffectConfigDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Dialogs\VstPluginWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

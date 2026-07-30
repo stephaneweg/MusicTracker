@@ -85,5 +85,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("Mix", out v)) Mix = v;
             if (d.TryGetValue("PingPong", out v)) PingPong = v;
         }
+
+        public string SaveState() { return null; }
+        public void LoadState(string state) { }
     }
 }

@@ -8,8 +8,11 @@ namespace MusicTracker.Engine.Timeline.Effects
     /// </summary>
     public static class EffectFactory
     {
-        /// <summary>Ordre affiché dans le menu « Ajouter un effet ».</summary>
+        /// <summary>Ordre affiché dans le menu « Ajouter un effet » (effets natifs uniquement — les VST ont leur propre sous-menu géré par le browser).</summary>
         public static readonly string[] Kinds = new[] { "eq", "comp", "delay", "sat" };
+
+        /// <summary>Kind interne pour un plugin VST hébergé — non listé dans <see cref="Kinds"/> car ajouté via un browser dédié.</summary>
+        public const string VstKind = "vst";
 
         /// <summary>Clé de localisation associée à un type (le nom d'affichage).</summary>
         public static string LocKey(string kind)
@@ -20,6 +23,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "comp":  return "FxCompressor";
                 case "delay": return "FxDelay";
                 case "sat":   return "FxSaturation";
+                case "vst":   return "FxVst"; // libellé générique ; le VRAI nom (nom du plugin) est calculé côté UI.
                 default:      return kind ?? "";
             }
         }
@@ -32,6 +36,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "comp":  return new CompressorEffect(sampleRate);
                 case "delay": return new DelayEffect(sampleRate);
                 case "sat":   return new SaturationEffect(sampleRate);
+                case "vst":   return new VstEffect(sampleRate); // path/state posés ensuite via LoadState + PluginPath
                 default:      return null;
             }
         }
@@ -42,7 +47,13 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (data == null) return null;
             var fx = Create(data.Kind, sampleRate);
             if (fx == null) return null;
+            // Ordre important : PluginPath D'ABORD (le VstEffect s'en sert quand LoadState/EnsureLoaded s'exécute),
+            // puis Load des params (no-op côté VST), puis LoadState pour restaurer le chunk binaire.
+            if (fx is VstEffect vfx && !string.IsNullOrEmpty(data.PluginPath))
+                vfx.PluginPath = data.PluginPath;
             fx.Load(data.Params);
+            if (!string.IsNullOrEmpty(data.StateBlob))
+                fx.LoadState(data.StateBlob);
             return fx;
         }
     }

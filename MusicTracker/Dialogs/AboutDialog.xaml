@@ -23,8 +23,10 @@
                     <TextBlock Text="{loc:Tr 'Credits'}" FontWeight="SemiBold" Opacity="0.9" Margin="0,0,0,6"/>
                     <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,0,0,6"
                                Text="{loc:Tr 'SoundFontAudioSynthesisMeltySynthNobuaki'}"/>
-                    <TextBlock TextWrapping="Wrap" Opacity="0.85"
+                    <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,0,0,6"
                                Text="{loc:Tr 'AudioInOutNAudioMITLicence'}"/>
+                    <TextBlock TextWrapping="Wrap" Opacity="0.85"
+                               Text="{loc:Tr 'VstNetCreditLine'}"/>
                 </StackPanel>
             </Border>
 

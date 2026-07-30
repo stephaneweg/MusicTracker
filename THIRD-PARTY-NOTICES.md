@@ -67,5 +67,23 @@ SOFTWARE.
 
 ---
 
+## VST.NET (TruDan-VST.NET distribution)
+
+VST2 plugin hosting is provided by VST.NET, by Marc Jacobi and TruDan —
+https://github.com/obiwanjacobi/vst.net (distributed as the `TruDan-VST.NET` NuGet
+package). The runtime DLLs `Jacobi.Vst.Core.dll` and `Jacobi.Vst.Interop.dll` ship
+alongside the executable and are used dynamically at runtime.
+
+VST.NET is licensed under the GNU Lesser General Public License version 2.1 (LGPL-2.1).
+The full licence text is available at https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+and reproduced in `LICENSE-VST.NET.txt` next to this file. Koton Studio uses VST.NET
+via dynamic linking; users are free to substitute the shipped DLLs with a rebuilt
+version of the VST.NET libraries obtained from the upstream repository above.
+
+VST is a trademark of Steinberg Media Technologies GmbH. Koton Studio hosts VST2
+plugins strictly as a host — no VST SDK code is distributed with the application.
+
+---
+
 The default SoundFont offered for download at first launch, **MuseScore_General.sf2**, is
 distributed by MuseScore and is not bundled with this application.
