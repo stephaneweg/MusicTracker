@@ -61,7 +61,8 @@ namespace MusicTracker.Screens
             btn.FontStyle = FontStyles.Normal;
             btn.Opacity = 1.0;
             string name = System.IO.Path.GetFileNameWithoutExtension(track.VstiPath);
-            if (!File.Exists(track.VstiPath))
+            // File OU Directory : un vieux .sq d'avant le fix scanner peut avoir un chemin de bundle-dossier.
+            if (!File.Exists(track.VstiPath) && !Directory.Exists(track.VstiPath))
             {
                 btn.Content = "⚠ " + name;
                 btn.ToolTip = string.Format(Loc.T("VstiPluginMissing"), track.VstiPath);
@@ -171,7 +172,8 @@ namespace MusicTracker.Screens
                 }
                 return;
             }
-            if (!File.Exists(track.VstiPath))
+            // File OU Directory : un vieux .sq d'avant le fix scanner peut avoir un chemin de bundle-dossier.
+            if (!File.Exists(track.VstiPath) && !Directory.Exists(track.VstiPath))
             {
                 MessageBox.Show(Window.GetWindow(this), string.Format(Loc.T("VstiPluginMissing"), track.VstiPath), Loc.T("TrackInstrumentVsti"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;

@@ -61,6 +61,8 @@ namespace MusicTracker.Engine.Timeline.Effects
         IntPtr _componentPtr;    // FUnknown* du component (utile pour QI IEditController)
         IntPtr _controllerPtr;
         IPlugView _view;
+        Vst3PlugFrame _frame;   // callback host que le plugin appelle pour demander un resize
+        IntPtr _framePtr;        // COM pointer du CCW ; libéré au CloseEditor
         bool _failed;
         bool _processingStarted;
         bool _active;
@@ -146,9 +148,13 @@ namespace MusicTracker.Engine.Timeline.Effects
                 TryFetchController(factory);
 
                 // Initialize
-                int r = _component.initialize(IntPtr.Zero);
+                int r = _component.initialize(Vst3.Vst3HostApplication.GetPtr());
                 if (r != Vst3Enums.kResultOk && r != Vst3Enums.kResultTrue)
                     throw new InvalidOperationException($"IComponent.initialize failed (tresult=0x{r:X8})");
+
+                // Dual-component : connect + sync état initial. Sans ça, plein de plugins renvoient un
+                // IPlugView null à createView() (controller n'a jamais reçu l'état du component).
+                ConnectAndSyncControllerIfSeparate();
 
                 // BusArrangements : 1 stereo in / 1 stereo out
                 SetStereoBusArrangement();
@@ -226,6 +232,60 @@ namespace MusicTracker.Engine.Timeline.Effects
             Marshal.Release(rawPtr); // compensate AddRef done by GetObjectForIUnknown; RCW now owns the sole ref
         }
 
+        /// <summary>Sur un plugin dual-component (component + controller = classes séparées), connecte les
+        /// deux points de connexion et copie l'état du component vers le controller. Sans ça, beaucoup de
+        /// plugins refusent que <c>createView</c> retourne un IPlugView (le controller est dans un état
+        /// « vierge » et sa GUI ne peut pas s'initialiser). No-op si single-component ou pas d'IConnectionPoint.</summary>
+        void ConnectAndSyncControllerIfSeparate()
+        {
+            // Skip : single-component (même objet) ou pas de controller.
+            if (_controller == null) return;
+            if (ReferenceEquals(_controller, _component)) return;
+            if (_controllerPtr == IntPtr.Zero) return;
+
+            // QI IConnectionPoint sur les deux extrémités.
+            var cpIid = new Guid(Vst3Uids.IConnectionPoint);
+            IntPtr compCp = IntPtr.Zero, ctrlCp = IntPtr.Zero;
+            try
+            {
+                Marshal.QueryInterface(_componentPtr, ref cpIid, out compCp);
+                cpIid = new Guid(Vst3Uids.IConnectionPoint); // QueryInterface peut zapper le Guid, on le remet
+                Marshal.QueryInterface(_controllerPtr, ref cpIid, out ctrlCp);
+                if (compCp != IntPtr.Zero && ctrlCp != IntPtr.Zero)
+                {
+                    var compCpRcw = (IConnectionPoint)Marshal.GetObjectForIUnknown(compCp);
+                    var ctrlCpRcw = (IConnectionPoint)Marshal.GetObjectForIUnknown(ctrlCp);
+                    try { compCpRcw.connect(ctrlCp); } catch { }
+                    try { ctrlCpRcw.connect(compCp); } catch { }
+                }
+            }
+            catch { /* pas d'IConnectionPoint sur ce plugin — c'est OK, il ne l'implémente juste pas */ }
+            finally
+            {
+                if (compCp != IntPtr.Zero) Marshal.Release(compCp);
+                if (ctrlCp != IntPtr.Zero) Marshal.Release(ctrlCp);
+            }
+
+            // Sync component → controller : le controller a besoin de l'état pour initialiser sa GUI.
+            try
+            {
+                using (var bs = new Vst3BStream(new byte[0]))
+                {
+                    var bsPtr = Marshal.GetComInterfaceForObject(bs, typeof(IBStream));
+                    try
+                    {
+                        if (_component.getState(bsPtr) == Vst3Enums.kResultOk)
+                        {
+                            bs.Rewind();
+                            try { _controller.setComponentState(bsPtr); } catch { }
+                        }
+                    }
+                    finally { Marshal.Release(bsPtr); }
+                }
+            }
+            catch { }
+        }
+
         void TryFetchController(IPluginFactory factory)
         {
             // Cas 1 : le component IS le controller (single-component effect, très fréquent)
@@ -253,7 +313,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 finally { cidH.Free(); iidH.Free(); }
                 _controller = (IEditController)Marshal.GetObjectForIUnknown(_controllerPtr);
                 Marshal.Release(_controllerPtr);
-                try { _controller.initialize(IntPtr.Zero); } catch { }
+                try { _controller.initialize(Vst3.Vst3HostApplication.GetPtr()); } catch { }
             }
             catch { _controller = null; }
         }
@@ -514,8 +574,19 @@ namespace MusicTracker.Engine.Timeline.Effects
                 EnsureView();
                 if (_view == null) return false;
                 if (_view.isPlatformTypeSupported(Vst3Uids.kPlatformTypeHWND) != Vst3Enums.kResultOk) return false;
+                // Fournir un IPlugFrame AVANT attached() : beaucoup de plugins VST3 refusent de rendre leur GUI
+                // (fenêtre noire) si setFrame reçoit null. Le CCW ne fait rien de spécial pour l'instant (le
+                // resize plugin-vers-hôte n'est pas encore branché vers la fenêtre WPF hôte — TODO).
+                if (_frame == null) _frame = new Vst3PlugFrame();
+                if (_framePtr == IntPtr.Zero) _framePtr = Marshal.GetComInterfaceForObject(_frame, typeof(IPlugFrame));
+                try { _view.setFrame(_framePtr); } catch { }
+                // Négocier le scale DPI AVANT attached : plein de plugins modernes (Surge XT etc.) refusent
+                // de peindre leur GUI tant qu'on ne leur a pas dit à quelle échelle rendre.
+                Vst3EditorHelpers.TrySetContentScaleFactor(_view, parentHwnd);
                 int r = _view.attached(parentHwnd, Vst3Uids.kPlatformTypeHWND);
-                return r == Vst3Enums.kResultOk;
+                if (r != Vst3Enums.kResultOk) return false;
+                try { if (_view.getSize(out var rc0) == Vst3Enums.kResultOk) { _view.onSize(ref rc0); } } catch { }
+                return true;
             }
             catch { return false; }
         }
@@ -524,8 +595,11 @@ namespace MusicTracker.Engine.Timeline.Effects
         {
             if (_view == null) return;
             try { _view.removed(); } catch { }
+            try { _view.setFrame(IntPtr.Zero); } catch { } // décoller le frame côté plugin avant de libérer
             try { Marshal.ReleaseComObject(_view); } catch { }
             _view = null;
+            if (_framePtr != IntPtr.Zero) { try { Marshal.Release(_framePtr); } catch { } _framePtr = IntPtr.Zero; }
+            _frame = null;
         }
 
         public void EditorIdle() { /* VST3 : pas d'idle explicite — le plugin utilise WM_TIMER natif */ }

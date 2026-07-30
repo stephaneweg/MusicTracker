@@ -7,23 +7,11 @@
         xmlns:loc="clr-namespace:MusicTracker.Localization"
         mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
         Title="VST" Width="700" Height="500" SizeToContent="Manual"
-        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource CommonBackground}"
         ShowInTaskbar="False" Closing="Window_Closing">
-    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
-        <DockPanel>
-            <Border DockPanel.Dock="Top" Background="{StaticResource CommonBackground}" ctrl:WindowDrag.Enable="True" CornerRadius="6,6,0,0" Padding="20,12,20,8">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" x:Name="titleText" Foreground="{StaticResource CommonForeground}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" x:Name="btnClose" Content="✕" Width="26" Height="22" FontSize="12"
-                            Style="{StaticResource TinyButton}" Cursor="Hand" Click="Close_Click"/>
-                </Grid>
-            </Border>
-            <!-- Dernier enfant du DockPanel : remplit l'espace restant automatiquement (LastChildFill=true par défaut). -->
-            <Border x:Name="hostBorder" Padding="0" Background="#111"/>
-        </DockPanel>
-    </Border>
+    <!-- Chrome Windows standard (pas de AllowsTransparency=True → incompatible avec HwndHost et son
+         HWND natif : le plugin peindrait bien mais WPF afficherait du noir par-dessus, bug airspace).
+         La fenêtre = juste un conteneur pour le HWND du plugin, titre + bouton close = ceux de Windows. -->
+    <Border x:Name="hostBorder" Padding="0" Background="#111"/>
 </Window>

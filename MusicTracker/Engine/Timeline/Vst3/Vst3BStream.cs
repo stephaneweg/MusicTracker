@@ -33,6 +33,8 @@ namespace MusicTracker.Engine.Timeline.Vst3
 
         public byte[] ToArray() => _ms.ToArray();
         public long Length => _ms.Length;
+        /// <summary>Remet le curseur au début — utile entre un getState (écriture) et setComponentState (relecture).</summary>
+        public void Rewind() => _ms.Position = 0;
 
         public int read(IntPtr buffer, int numBytes, IntPtr numBytesRead)
         {

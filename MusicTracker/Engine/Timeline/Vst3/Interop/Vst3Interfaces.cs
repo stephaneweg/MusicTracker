@@ -189,9 +189,44 @@ namespace MusicTracker.Engine.Timeline.Vst3.Interop
         [PreserveSig] int getSize(out ViewRect size);
         [PreserveSig] int onSize(ref ViewRect newSize);
         [PreserveSig] int onFocus(byte state);
-        [PreserveSig] int setFrame(IntPtr frame);           // IPlugFrame* — we pass null (host resize not needed)
+        [PreserveSig] int setFrame(IntPtr frame);           // IPlugFrame* — passer un CCW non-null (voir Vst3PlugFrame)
         [PreserveSig] int canResize();
         [PreserveSig] int checkSizeConstraint(ref ViewRect rect);
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // IPlugViewContentScaleSupport (extends FUnknown) — négociation HiDPI. Host appelle
+    // setContentScaleFactor(scale) AVANT ou juste après attached() ; plein de plugins modernes refusent
+    // de peindre sans ça.
+    // ------------------------------------------------------------------------------------------------
+
+    [ComImport, Guid(Vst3Uids.IPlugViewContentScaleSupport), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IPlugViewContentScaleSupport
+    {
+        [PreserveSig] int setContentScaleFactor(float factor);
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // IPlugFrame (extends FUnknown) — callback host que le plugin appelle pour demander un resize.
+    // Doit être fourni via IPlugView.setFrame() AVANT attached() sinon plein de plugins refusent de rendre.
+    // ------------------------------------------------------------------------------------------------
+
+    [ComImport, Guid(Vst3Uids.IPlugFrame), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IPlugFrame
+    {
+        [PreserveSig] int resizeView(IntPtr view, ref ViewRect newSize);
+    }
+
+    // ------------------------------------------------------------------------------------------------
+    // IConnectionPoint (extends FUnknown) — messages bidirectionnels component ↔ controller (dual-comp)
+    // ------------------------------------------------------------------------------------------------
+
+    [ComImport, Guid(Vst3Uids.IConnectionPoint), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IConnectionPoint
+    {
+        [PreserveSig] int connect(IntPtr other);            // IConnectionPoint* — l'autre extrémité
+        [PreserveSig] int disconnect(IntPtr other);
+        [PreserveSig] int notify(IntPtr message);           // IMessage* — non implémenté côté host, on ignore
     }
 
     // ------------------------------------------------------------------------------------------------

@@ -45,6 +45,21 @@ namespace MusicTracker.Engine.Timeline.Vst3.Interop
 
         // INLINE_UID(0x5BC32507, 0xD06049EA, 0xA6151B52, 0x2B755B29)
         public const string IPlugView = "5BC32507-D060-49EA-A615-1B522B755B29";
+        /// <summary>Callback host donné au plugin via <c>IPlugView.setFrame()</c>. Le plugin l'appelle pour
+        /// demander un redimensionnement de sa fenêtre (<c>resizeView</c>). Beaucoup de plugins VST3 REFUSENT
+        /// de rendre leur GUI si setFrame reçoit null → on lui passe toujours un CCW, même s'il ne fait rien.</summary>
+        public const string IPlugFrame = "367FAF01-AFA9-4693-8D4D-A2A0ED0882A3";
+
+        /// <summary>Point de connexion pour messages bidirectionnels entre component et controller quand ils
+        /// sont des classes séparées (dual-component VST3, cas fréquent). Sans <c>connect()</c> bidirectionnel
+        /// entre les deux moitiés, plein de plugins refusent que <c>createView</c> retourne un IPlugView non-null
+        /// (le controller n'a pas reçu l'état initial du component, il refuse d'instancier son éditeur).</summary>
+        public const string IConnectionPoint = "70A4156F-6E6E-4026-9891-48BFAA60D8D1";
+
+        /// <summary>Interface HiDPI que le host doit appeler avec le facteur d'échelle (1.0 = 100%, 1.5 = 150%…)
+        /// AVANT ou juste après <c>attached()</c>. Surge XT et beaucoup de plugins VST3 modernes refusent de
+        /// peindre leur GUI (fenêtre reste noire/vide) tant qu'on ne leur a pas dit le scaling à utiliser.</summary>
+        public const string IPlugViewContentScaleSupport = "65ED9690-8AC4-4525-9122-87015C1E38D0";
 
         // INLINE_UID(0x58E595CC, 0xDB2D4969, 0x8B6AAF8C, 0x36A664E5)
         public const string IHostApplication = "58E595CC-DB2D-4969-8B6A-AF8C36A664E5";
@@ -64,8 +79,6 @@ namespace MusicTracker.Engine.Timeline.Vst3.Interop
         // DECLARE_CLASS_IID(IMidiMapping, 0xDF0FF9F7, 0x49B74669, 0xB63AB732, 0x7ADBF5E5) — CC to parameter routing
         public const string IMidiMapping = "DF0FF9F7-49B7-4669-B63A-B7327ADBF5E5";
 
-        // DECLARE_CLASS_IID(IConnectionPoint, 0x70A4156F, 0x6E6E4026, 0x989148BF, 0xAA60D8D1) — component <-> controller
-        public const string IConnectionPoint = "70A4156F-6E6E-4026-9891-48BFAA60D8D1";
 
         // Kind strings (Vst::PClassInfo.category) — VST3 uses these as string identifiers, not GUIDs.
         public const string kVstAudioEffectClass = "Audio Module Class";

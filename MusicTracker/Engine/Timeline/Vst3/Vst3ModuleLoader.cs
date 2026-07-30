@@ -75,15 +75,39 @@ namespace MusicTracker.Engine.Timeline.Vst3
         {
             if (string.IsNullOrEmpty(vst3Path)) return null;
             if (File.Exists(vst3Path)) return vst3Path;   // plain .vst3 file
-            if (Directory.Exists(vst3Path))
+            if (!Directory.Exists(vst3Path)) return null;
+
+            var name = System.IO.Path.GetFileName(vst3Path);   // "Foo.vst3"
+
+            // 1. Layout Steinberg strict : <bundle>/Contents/x86_64-win/<bundle>.vst3
+            var std = System.IO.Path.Combine(vst3Path, "Contents", "x86_64-win", name);
+            if (File.Exists(std)) return std;
+
+            // 2. Layout à plat : <bundle>/<bundle>.vst3 (fichier directement dans le dossier)
+            var flat = System.IO.Path.Combine(vst3Path, name);
+            if (File.Exists(flat)) return flat;
+
+            // 3. Fallback : n'importe quel .vst3 dans <bundle>/ (top-level uniquement)
+            try
             {
-                var name = System.IO.Path.GetFileName(vst3Path);   // "Foo.vst3"
-                // Le sous-dossier d'archi est x86_64-win sur Windows x64.
-                var candidate = System.IO.Path.Combine(vst3Path, "Contents", "x86_64-win", name);
-                if (File.Exists(candidate)) return candidate;
-                // Fallback : quelques plugins mal packagés utilisent "x86-win" pour 32-bit ; on ignore
-                // délibérément (l'app est x64-only). Un plugin sans le binaire attendu passe en NULL.
+                foreach (var f in Directory.EnumerateFiles(vst3Path, "*.vst3", SearchOption.TopDirectoryOnly))
+                    return f;
             }
+            catch { }
+
+            // 4. Fallback profond : n'importe quel .vst3 récursivement dans <bundle>/ (bundle exotique).
+            //    On skippe x86-win (32-bit) pour rester cohérent avec l'app x64-only.
+            try
+            {
+                foreach (var f in Directory.EnumerateFiles(vst3Path, "*.vst3", SearchOption.AllDirectories))
+                {
+                    var lower = f.Replace('\\', '/').ToLowerInvariant();
+                    if (lower.Contains("/x86-win/")) continue;   // 32-bit — ignorer
+                    return f;
+                }
+            }
+            catch { }
+
             return null;
         }
 

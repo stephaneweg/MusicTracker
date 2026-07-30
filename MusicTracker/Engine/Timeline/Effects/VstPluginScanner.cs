@@ -299,28 +299,40 @@ namespace MusicTracker.Engine.Timeline.Effects
                     });
                 }
 
-                // ---- VST3 : *.vst3 (fichiers plats OU dossiers-bundles) -----------------------------
-                // Un bundle est un DOSSIER "Foo.vst3/Contents/x86_64-win/Foo.vst3". On enregistre le
-                // dossier lui-même comme "path" — Vst3ModuleLoader.ResolveBinaryPath se chargera de
-                // trouver le binaire à l'intérieur. Un fichier .vst3 plat (SDK 3.6+) est enregistré tel quel.
-                // On énumère TopDirectoryOnly pour ne pas re-descendre dans Contents (le fichier interne
-                // serait alors listé en double comme "fichier .vst3" en plus du bundle).
-                IEnumerable<string> vst3Entries;
+                // ---- VST3 : on cherche les FICHIERS .vst3 récursivement (jamais les dossiers-bundles).
+                // Un bundle Steinberg contient exactement un fichier "Foo.vst3/Contents/x86_64-win/Foo.vst3",
+                // on l'enregistre directement — VstiPath = chemin fichier valide → File.Exists marche, et pas
+                // besoin de résoudre un layout complexe côté loader. Un plugin distribué en fichier .vst3
+                // plat (rare mais toléré depuis SDK 3.6) est capturé pareil. On skippe explicitement les
+                // fichiers 32-bit (x86-win, non chargeables dans notre process x64).
+                IEnumerable<string> vst3Files;
                 try
                 {
-                    vst3Entries = Directory.EnumerateFileSystemEntries(folder, "*.vst3", SearchOption.AllDirectories)
-                        // Filtrer les fichiers INTERNES au bundle (Contents/.../Foo.vst3) — on garde uniquement
-                        // le bundle-dir ou un .vst3 plat au niveau du dossier de plugins.
-                        .Where(p => !p.Replace('\\', '/').Contains("/Contents/", StringComparison.OrdinalIgnoreCase));
+                    vst3Files = Directory.EnumerateFiles(folder, "*.vst3", SearchOption.AllDirectories)
+                        .Where(p => !p.Replace('\\', '/').ToLowerInvariant().Contains("/x86-win/"));
                 }
-                catch { vst3Entries = Array.Empty<string>(); }
-                foreach (var f in vst3Entries)
+                catch { vst3Files = Array.Empty<string>(); }
+                foreach (var f in vst3Files)
                 {
                     if (!seen.Add(f)) continue;
+                    // DisplayName : préférer le nom du dossier BUNDLE (Foo.vst3 → "Foo") au nom du fichier
+                    // interne (qui est identique la plupart du temps, mais on garantit une remontée propre
+                    // pour les cas exotiques). On trouve le bundle en remontant jusqu'au premier parent en .vst3.
+                    string display = Path.GetFileNameWithoutExtension(f);
+                    var parent = Directory.GetParent(f);
+                    while (parent != null)
+                    {
+                        if (parent.Name.EndsWith(".vst3", StringComparison.OrdinalIgnoreCase))
+                        {
+                            display = Path.GetFileNameWithoutExtension(parent.Name);
+                            break;
+                        }
+                        parent = parent.Parent;
+                    }
                     results.Add(new PluginEntry
                     {
                         Path = f,
-                        DisplayName = Path.GetFileNameWithoutExtension(f),
+                        DisplayName = display,
                         IsInstrument = null,
                         Format = PluginFormat.Vst3,
                     });

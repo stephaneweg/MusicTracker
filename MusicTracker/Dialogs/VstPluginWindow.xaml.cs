@@ -29,7 +29,8 @@ namespace MusicTracker.Dialogs
             InitializeComponent();
             _host = host ?? throw new ArgumentNullException(nameof(host));
             Owner = owner;
-            titleText.Text = host.DisplayName;
+            // Le titre est celui de la fenêtre Windows standard (chrome native, plus de fausse barre de titre).
+            Title = host.DisplayName;
 
             Loaded += OnLoaded;
         }
@@ -40,7 +41,7 @@ namespace MusicTracker.Dialogs
             // lecture n'est pas en cours). 512 = block-size par défaut, sera renégocié quand le vrai renderer prend la main.
             if (!_host.EnsureOpenedSync(512))
             {
-                titleText.Text = _host.DisplayName + " — " + Localization.Loc.T("VstPluginFailedToLoad");
+                Title = _host.DisplayName + " — " + Localization.Loc.T("VstPluginFailedToLoad");
                 return;
             }
             var sz = _host.GetEditorSize();
@@ -70,25 +71,82 @@ namespace MusicTracker.Dialogs
             if (_hwnd != null) { hostBorder.Child = null; _hwnd.Dispose(); _hwnd = null; }
         }
 
-        void Close_Click(object sender, RoutedEventArgs e) => Close();
     }
 
     /// <summary>
-    /// Adaptateur <see cref="HwndHost"/> qui crée un HWND enfant Win32 vide (une "static" quasi-transparente)
-    /// et demande au plugin d'ouvrir son éditeur DANS ce HWND. Le plugin se re-parente comme il l'entend
-    /// (certains créent un HWND child, d'autres l'éditent en place).
+    /// Adaptateur <see cref="HwndHost"/> qui crée un HWND enfant Win32 (fenêtre custom simple, background noir,
+    /// WndProc = DefWindowProc) et demande au plugin d'ouvrir son éditeur DANS ce HWND. Historiquement on
+    /// utilisait "STATIC" (contrôle Win32 built-in), mais son comportement de paint mange le WM_ERASEBKGND de
+    /// certains plugins → GUI reste noire. Une classe custom règle ça (c'est le pattern utilisé par tous les DAW).
     /// </summary>
     internal class VstHwndHost : HwndHost
     {
         const uint WS_CHILD = 0x40000000;
         const uint WS_VISIBLE = 0x10000000;
+        const uint WS_CLIPCHILDREN = 0x02000000;  // ne redessine pas les zones des children (le plugin gère sa propre peinture)
+        const int  IDC_ARROW = 32512;
+        const int  COLOR_BLACK = 0x00000000;
 
-        [DllImport("user32.dll", SetLastError = true)]
-        static extern IntPtr CreateWindowEx(uint dwExStyle, string lpClassName, string lpWindowName,
+        // Classe Win32 enregistrée une seule fois (statique). Le nom doit être unique par process.
+        static readonly string _className = "KotonStudioVstHost_" + System.Diagnostics.Process.GetCurrentProcess().Id;
+        static readonly WndProc _wndProcDelegate = DefWindowProcW;  // ancre GC pour éviter la collecte du delegate
+        static bool _classRegistered;
+        static readonly object _classLock = new object();
+
+        delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct WNDCLASSEX
+        {
+            public uint cbSize;
+            public uint style;
+            [MarshalAs(UnmanagedType.FunctionPtr)] public WndProc lpfnWndProc;
+            public int cbClsExtra;
+            public int cbWndExtra;
+            public IntPtr hInstance;
+            public IntPtr hIcon;
+            public IntPtr hCursor;
+            public IntPtr hbrBackground;
+            [MarshalAs(UnmanagedType.LPWStr)] public string lpszMenuName;
+            [MarshalAs(UnmanagedType.LPWStr)] public string lpszClassName;
+            public IntPtr hIconSm;
+        }
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        static extern IntPtr CreateWindowExW(uint dwExStyle, string lpClassName, string lpWindowName,
             uint dwStyle, int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
-
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        static extern ushort RegisterClassExW(ref WNDCLASSEX lpwcx);
         [DllImport("user32.dll")]
         static extern bool DestroyWindow(IntPtr hWnd);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        static extern IntPtr DefWindowProcW(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll")]
+        static extern IntPtr LoadCursorW(IntPtr hInstance, int cursor);
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        static extern IntPtr GetModuleHandleW(string lpModuleName);
+        [DllImport("gdi32.dll")]
+        static extern IntPtr CreateSolidBrush(int color);
+
+        static void EnsureClassRegistered()
+        {
+            lock (_classLock)
+            {
+                if (_classRegistered) return;
+                var wc = new WNDCLASSEX
+                {
+                    cbSize = (uint)Marshal.SizeOf<WNDCLASSEX>(),
+                    style = 0,
+                    lpfnWndProc = _wndProcDelegate,
+                    hInstance = GetModuleHandleW(null),
+                    hCursor = LoadCursorW(IntPtr.Zero, IDC_ARROW),
+                    hbrBackground = CreateSolidBrush(COLOR_BLACK), // noir mat — la GUI du plugin recouvrira
+                    lpszClassName = _className,
+                };
+                RegisterClassExW(ref wc);
+                _classRegistered = true;
+            }
+        }
 
         readonly IVstEditorHost _host;
         IntPtr _child;
@@ -98,14 +156,13 @@ namespace MusicTracker.Dialogs
 
         protected override HandleRef BuildWindowCore(HandleRef hwndParent)
         {
-            // HWND "STATIC" (contrôle Win32 built-in) — conteneur passif que le plugin peut repeupler.
-            // CRÉÉ À LA TAILLE DE L'ÉDITEUR : sinon un plugin qui lit sa taille dans OpenEditor peint sur 1×1 pixel
-            // et l'utilisateur voit une zone noire. HwndHost redimensionnera ensuite via WM_SIZE mais beaucoup de
-            // plugins n'écoutent WM_SIZE qu'après leur premier paint interne.
+            EnsureClassRegistered();
             var sz = _host.GetEditorSize();
             int w = sz.Width > 0 ? sz.Width : 400;
             int h = sz.Height > 0 ? sz.Height : 300;
-            _child = CreateWindowEx(0, "STATIC", "", WS_CHILD | WS_VISIBLE, 0, 0, w, h, hwndParent.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            // Custom class + WS_CLIPCHILDREN : les child windows du plugin gèrent leur propre paint,
+            // notre parent ne repeint jamais par-dessus. Fond noir mat le temps que le plugin peigne.
+            _child = CreateWindowExW(0, _className, "", WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, 0, 0, w, h, hwndParent.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
             _host.OpenEditor(_child);
             return new HandleRef(this, _child);
         }

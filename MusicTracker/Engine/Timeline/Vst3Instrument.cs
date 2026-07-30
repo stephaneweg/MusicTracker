@@ -42,9 +42,13 @@ namespace MusicTracker.Engine.Timeline
         readonly int _sampleRate;
         Vst3ModuleLoader _loader;
         IComponent _component;
+        IntPtr _componentPtr;                // FUnknown* du component — gardé pour QI IConnectionPoint
+        IntPtr _controllerPtr;               // FUnknown* du controller (si séparé) — gardé pour connect() + QI
         IAudioProcessor _processor;
         IEditController _controller;
         IPlugView _view;
+        Vst3PlugFrame _frame;                // CCW IPlugFrame — beaucoup de VST3 refusent de rendre sans
+        IntPtr _framePtr;
         Vst3EventList _events;
         IntPtr _eventsPtr;
         bool _failed;
@@ -122,14 +126,19 @@ namespace MusicTracker.Engine.Timeline
                 }
                 if (chosenCid == Guid.Empty) throw new InvalidOperationException("No audio effect class in factory");
 
-                CreateComponent(factory, chosenCid, out _, out _component);
+                CreateComponent(factory, chosenCid, out _componentPtr, out _component);
                 _processor = (IAudioProcessor)_component;
 
                 TryFetchController(factory);
 
-                int r = _component.initialize(IntPtr.Zero);
+                int r = _component.initialize(Vst3.Vst3HostApplication.GetPtr());
                 if (r != Vst3Enums.kResultOk && r != Vst3Enums.kResultTrue)
                     throw new InvalidOperationException($"IComponent.initialize failed (tresult=0x{r:X8})");
+
+                // Dual-component : connect + sync état initial. Sans ça, plein de plugins renvoient un
+                // IPlugView null à createView() (le controller n'a jamais reçu l'état du component et
+                // refuse d'instancier son éditeur).
+                ConnectAndSyncControllerIfSeparate();
 
                 SetInstrumentBusArrangement();
 
@@ -200,7 +209,7 @@ namespace MusicTracker.Engine.Timeline
             try
             {
                 _controller = _component as IEditController;
-                if (_controller != null) return;
+                if (_controller != null) { _controllerPtr = IntPtr.Zero; return; }  // même objet → pas de ptr séparé, connect skip
             }
             catch { }
             try
@@ -212,18 +221,67 @@ namespace MusicTracker.Engine.Timeline
                 var iidBytes = new Guid(Vst3Uids.IEditController).ToByteArray();
                 var cidH = GCHandle.Alloc(cidBytes, GCHandleType.Pinned);
                 var iidH = GCHandle.Alloc(iidBytes, GCHandleType.Pinned);
-                IntPtr ctrlPtr;
                 try
                 {
-                    int r = factory.createInstance(cidH.AddrOfPinnedObject(), iidH.AddrOfPinnedObject(), out ctrlPtr);
-                    if (r != Vst3Enums.kResultOk || ctrlPtr == IntPtr.Zero) return;
+                    int r = factory.createInstance(cidH.AddrOfPinnedObject(), iidH.AddrOfPinnedObject(), out _controllerPtr);
+                    if (r != Vst3Enums.kResultOk || _controllerPtr == IntPtr.Zero) return;
                 }
                 finally { cidH.Free(); iidH.Free(); }
-                _controller = (IEditController)Marshal.GetObjectForIUnknown(ctrlPtr);
-                Marshal.Release(ctrlPtr);
-                try { _controller.initialize(IntPtr.Zero); } catch { }
+                _controller = (IEditController)Marshal.GetObjectForIUnknown(_controllerPtr);
+                // NB : on NE libère PAS _controllerPtr ici — on le garde pour QI IConnectionPoint (Vst3Effect fait pareil).
+                try { _controller.initialize(Vst3.Vst3HostApplication.GetPtr()); } catch { }
             }
             catch { _controller = null; }
+        }
+
+        /// <summary>Cf. <c>Vst3Effect.ConnectAndSyncControllerIfSeparate</c> — même problème sur les VSTi
+        /// dual-component : sans <c>connect()</c> bidirectionnel entre component et controller, <c>createView</c>
+        /// retourne souvent null. No-op si single-component ou pas d'IConnectionPoint.</summary>
+        void ConnectAndSyncControllerIfSeparate()
+        {
+            if (_controller == null) return;
+            if (ReferenceEquals(_controller, _component)) return;
+            if (_componentPtr == IntPtr.Zero || _controllerPtr == IntPtr.Zero) return;
+
+            var cpIid = new Guid(Vst3Uids.IConnectionPoint);
+            IntPtr compCp = IntPtr.Zero, ctrlCp = IntPtr.Zero;
+            try
+            {
+                Marshal.QueryInterface(_componentPtr, ref cpIid, out compCp);
+                cpIid = new Guid(Vst3Uids.IConnectionPoint);
+                Marshal.QueryInterface(_controllerPtr, ref cpIid, out ctrlCp);
+                if (compCp != IntPtr.Zero && ctrlCp != IntPtr.Zero)
+                {
+                    var compCpRcw = (IConnectionPoint)Marshal.GetObjectForIUnknown(compCp);
+                    var ctrlCpRcw = (IConnectionPoint)Marshal.GetObjectForIUnknown(ctrlCp);
+                    try { compCpRcw.connect(ctrlCp); } catch { }
+                    try { ctrlCpRcw.connect(compCp); } catch { }
+                }
+            }
+            catch { }
+            finally
+            {
+                if (compCp != IntPtr.Zero) Marshal.Release(compCp);
+                if (ctrlCp != IntPtr.Zero) Marshal.Release(ctrlCp);
+            }
+
+            try
+            {
+                using (var bs = new Vst3BStream(new byte[0]))
+                {
+                    var bsPtr = Marshal.GetComInterfaceForObject(bs, typeof(IBStream));
+                    try
+                    {
+                        if (_component.getState(bsPtr) == Vst3Enums.kResultOk)
+                        {
+                            bs.Rewind();
+                            try { _controller.setComponentState(bsPtr); } catch { }
+                        }
+                    }
+                    finally { Marshal.Release(bsPtr); }
+                }
+            }
+            catch { }
         }
 
         void SetInstrumentBusArrangement()
@@ -510,7 +568,15 @@ namespace MusicTracker.Engine.Timeline
                 EnsureView();
                 if (_view == null) return false;
                 if (_view.isPlatformTypeSupported(Vst3Uids.kPlatformTypeHWND) != Vst3Enums.kResultOk) return false;
-                return _view.attached(parentHwnd, Vst3Uids.kPlatformTypeHWND) == Vst3Enums.kResultOk;
+                // IPlugFrame non-null indispensable pour bon nombre de plugins VST3 (sinon GUI noire).
+                if (_frame == null) _frame = new Vst3PlugFrame();
+                if (_framePtr == IntPtr.Zero) _framePtr = Marshal.GetComInterfaceForObject(_frame, typeof(IPlugFrame));
+                try { _view.setFrame(_framePtr); } catch { }
+                Vst3.Vst3EditorHelpers.TrySetContentScaleFactor(_view, parentHwnd);
+                int r = _view.attached(parentHwnd, Vst3Uids.kPlatformTypeHWND);
+                if (r != Vst3Enums.kResultOk) return false;
+                try { if (_view.getSize(out var rc0) == Vst3Enums.kResultOk) { _view.onSize(ref rc0); } } catch { }
+                return true;
             }
             catch { return false; }
         }
@@ -519,8 +585,11 @@ namespace MusicTracker.Engine.Timeline
         {
             if (_view == null) return;
             try { _view.removed(); } catch { }
+            try { _view.setFrame(IntPtr.Zero); } catch { }
             try { Marshal.ReleaseComObject(_view); } catch { }
             _view = null;
+            if (_framePtr != IntPtr.Zero) { try { Marshal.Release(_framePtr); } catch { } _framePtr = IntPtr.Zero; }
+            _frame = null;
         }
 
         public void EditorIdle() { /* VST3 : pas d'idle explicite requis */ }
