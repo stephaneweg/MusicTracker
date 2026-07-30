@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>MeltySynth</RootNamespace>
     <AssemblyName>MeltySynth</AssemblyName>
     <ProjectGuid>{6F3A1C2B-9D4E-4F8A-B1C7-2E5D9A0F3B41}</ProjectGuid>

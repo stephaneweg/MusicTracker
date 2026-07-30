@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>MusicTracker</RootNamespace>
     <!-- Shipped binary is KotonStudio.exe (brand). RootNamespace stays MusicTracker (internal identity). -->
@@ -18,18 +18,21 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <!-- Keep the hand-maintained Properties/AssemblyInfo.cs (title, version bumped by release.ps1). -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <!-- The vendored WPF theme XAMLs + WinForms-style Resources.resx trigger a handful of harmless
-         warnings on the .NET 8 SDK compiler; silence them project-wide. -->
-    <!-- CA1416: the app targets net8.0-windows and is Windows-only by design; registry / WPF /
-         Win32 API sites are always reachable on Windows. -->
-    <NoWarn>$(NoWarn);CA1416;SYSLIB0011;SYSLIB0051</NoWarn>
+    <!-- CA1416: the app is Windows-only by design (net{8,10}.0-windows); registry / WPF / Win32
+         call sites are always reachable on Windows.
+         NU1510: on net10 a few of our explicit PackageReferences (System.Text.Json,
+         System.Configuration.ConfigurationManager) are in-box; kept referenced for symmetry with
+         a net8 downgrade branch.
+         SYSLIB0014: legacy ServicePointManager.SecurityProtocol nudge in SoundFontDownloader and
+         UpdateChecker enables TLS 1.2 on legacy targets and is a no-op on modern .NET. -->
+    <NoWarn>$(NoWarn);CA1416;NU1510;SYSLIB0011;SYSLIB0014;SYSLIB0051</NoWarn>
   </PropertyGroup>
 
   <!-- ================= NuGet packages =================
        Trimmed vs. the legacy packages.config: all System.* utility packages (Buffers, Memory,
        Numerics.Vectors, ValueTuple, IO.Pipelines, Runtime.CompilerServices.Unsafe,
        Threading.Tasks.Extensions, Security.AccessControl, Security.Principal.Windows,
-       Bcl.AsyncInterfaces) are IN-BOX in net8.0-windows and removed. Microsoft.Win32.Registry is
+       Bcl.AsyncInterfaces) are IN-BOX in net10.0-windows and removed. Microsoft.Win32.Registry is
        in-box on the Windows target. Unnoficial.Microsoft.Expression.Drawing and WriteableBitmapEx
        were referenced but nowhere used in code, dropped. NAudio.WinForms provides NAudio.Gui.*
        (unused), dropped. -->
