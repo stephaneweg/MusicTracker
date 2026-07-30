@@ -63,6 +63,7 @@ namespace MusicTracker.Engine.Timeline.Effects
         IPlugView _view;
         Vst3PlugFrame _frame;   // callback host que le plugin appelle pour demander un resize
         IntPtr _framePtr;        // COM pointer du CCW ; libéré au CloseEditor
+        public event Action<int, int> EditorResizeRequested;
         bool _failed;
         bool _processingStarted;
         bool _active;
@@ -535,6 +536,9 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (_controller == null || _failed) return System.Drawing.Size.Empty;
             EnsureView();
             if (_view == null) return _lastEditorSize;
+            // Negocier le scale DPI AVANT getSize : plein de plugins renvoient une taille dependante du
+            // scale HiDPI. Sans ce call, getSize renvoie la taille "1x" et la fenetre est trop petite.
+            MusicTracker.Engine.Timeline.Vst3.Vst3EditorHelpers.TrySetContentScaleFactor(_view, IntPtr.Zero);
             try
             {
                 if (_view.getSize(out var rc) == Vst3Enums.kResultOk)
@@ -571,13 +575,31 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (_controller == null || _failed) return false;
             try
             {
+                // Defense : si un ancien _view traine (2e ouverture apres Play/Stop), forcer un teardown
+                // propre avant de recreer un nouveau. Sinon plein de plugins gelent au 2e attached.
+                if (_view != null) CloseEditor();
                 EnsureView();
                 if (_view == null) return false;
                 if (_view.isPlatformTypeSupported(Vst3Uids.kPlatformTypeHWND) != Vst3Enums.kResultOk) return false;
                 // Fournir un IPlugFrame AVANT attached() : beaucoup de plugins VST3 refusent de rendre leur GUI
                 // (fenêtre noire) si setFrame reçoit null. Le CCW ne fait rien de spécial pour l'instant (le
                 // resize plugin-vers-hôte n'est pas encore branché vers la fenêtre WPF hôte — TODO).
-                if (_frame == null) _frame = new Vst3PlugFrame();
+                if (_frame == null)
+                {
+                    _frame = new Vst3PlugFrame();
+                    _frame.Resized += (w, h) =>
+                    {
+                        try { EditorResizeRequested?.Invoke(w, h); } catch { }
+                        // On confirme la nouvelle taille au plugin — indispensable pour que le plugin
+                        // sache que l'hôte a accepté et repeigne à la nouvelle dimension.
+                        try
+                        {
+                            var rc = new ViewRect { Left = 0, Top = 0, Right = w, Bottom = h };
+                            _view?.onSize(ref rc);
+                        }
+                        catch { }
+                    };
+                }
                 if (_framePtr == IntPtr.Zero) _framePtr = Marshal.GetComInterfaceForObject(_frame, typeof(IPlugFrame));
                 try { _view.setFrame(_framePtr); } catch { }
                 // Négocier le scale DPI AVANT attached : plein de plugins modernes (Surge XT etc.) refusent
@@ -594,8 +616,11 @@ namespace MusicTracker.Engine.Timeline.Effects
         public void CloseEditor()
         {
             if (_view == null) return;
+            // Ordre STRICT (VST3 lifecycle) : setFrame(null) AVANT removed() → le plugin drop sa reference
+            // au frame CCW en premier, ensuite on detache la vue, ensuite on libere. L'ordre inverse fait
+            // geler certains plugins qui tentent de rappeler le frame apres removed().
+            try { _view.setFrame(IntPtr.Zero); } catch { }
             try { _view.removed(); } catch { }
-            try { _view.setFrame(IntPtr.Zero); } catch { } // décoller le frame côté plugin avant de libérer
             try { Marshal.ReleaseComObject(_view); } catch { }
             _view = null;
             if (_framePtr != IntPtr.Zero) { try { Marshal.Release(_framePtr); } catch { } _framePtr = IntPtr.Zero; }

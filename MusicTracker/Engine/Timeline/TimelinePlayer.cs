@@ -277,6 +277,7 @@ namespace MusicTracker.Engine.Timeline
                         else
                             vsti = new VstInstrument(tr.VstiPath, sampleRate);
                         if (!string.IsNullOrEmpty(tr.VstiStateBlob)) vsti.LoadState(tr.VstiStateBlob);
+                       
                         tracks[i].Vsti = vsti;
                         tracks[i].Channel = 0;   // VSTi = canal 0 par convention (les instruments ne connaissent pas le "9=batterie" de GM)
                         tracks[i].Program = 0;
@@ -540,6 +541,73 @@ namespace MusicTracker.Engine.Timeline
                 mDispatched = sliceIndex - 1;        // dispatch from the start slice onward
                 for (int i = 0; i < tracks.Length; i++) { tracks[i].PeakL = 0; tracks[i].PeakR = 0; }
                 MasterPeakL = 0; MasterPeakR = 0;
+            }
+        }
+
+        /// <summary>Renvoie true si au moins une piste a un VSTi (aide TimelineScreen à savoir s'il faut prewarm).</summary>
+        public bool HasAnyVsti()
+        {
+            for (int i = 0; i < tracks.Length; i++) if (tracks[i].Vsti != null) return true;
+            return false;
+        }
+
+        /// <summary>Warm-up des VSTi : envoie de vraies note-on/off à velo=1 sur chaque VSTi puis rend
+        /// <paramref name="frames"/> samples SANS toucher au sliceIndex. Objectif : forcer les plugins
+        /// sample-based (Cozy Piano etc.) à CHARGER leurs samples — le chargement est déclenché par le
+        /// note-on, pas par le process() seul. Silence audible = zéro (velo=1 + rendu vers buffer jetable).
+        /// On sweep les octaves médianes (C2 → C6) pour couvrir la plage utile de la plupart des instruments ;
+        /// un plugin qui a des velocity layers profondes ne sera pas 100% chauffé mais assez pour supprimer
+        /// le silence initial audible.
+        ///
+        /// **DOIT être appelée sur le MÊME THREAD que celui qui appellera Render() ensuite** (le thread producer
+        /// du LookaheadBuffer) — sinon plusieurs plugins natifs détectent le changement de thread et cassent
+        /// leur état. C'est pour ça que ce n'est PAS appelé depuis Start() (thread UI) mais depuis le callback
+        /// prewarm de LookaheadBuffer qui s'exécute sur le producer thread.</summary>
+        public void PrewarmVstiSilently(int frames)
+        {
+            if (frames <= 0) return;
+            const int Block = 512;
+            var l = new float[Block];
+            var r = new float[Block];
+            // Accord de 5 notes tenu simultanément (5 octaves centrées) — envoyer tous les note-on
+            // d'un coup force le plugin à charger tous les samples nécessaires EN PARALLÈLE, plutôt
+            // que séquentiellement (ce qui laisse le sample-loader lazy avec des trous). Velo=1 pour
+            // être quasi-inaudible même si un plugin buggé leakait vers le buffer (jetable de toute
+            // façon). Note : sur les plugins qui gardent du state DLL statique entre instances,
+            // le 2e Play du même projet ré-instancie le plugin — les samples doivent se recharger,
+            // d'où le besoin de re-prewarmer à chaque Play.
+            var notes = new[] { 36, 48, 60, 72, 84 };  // C2, C3, C4, C5, C6
+            int holdFrames = frames * 2 / 3;   // ~2s tenues
+            int releaseFrames = frames - holdFrames;
+
+            for (int i = 0; i < tracks.Length; i++)
+            {
+                var v = tracks[i].Vsti;
+                if (v == null) continue;
+
+                // Tous les note-on d'un coup
+                foreach (var note in notes)
+                {
+                    try { v.NoteOn(0, note, 1); } catch { }
+                }
+                RenderSilent(v, l, r, holdFrames);
+                // Tous les note-off d'un coup
+                foreach (var note in notes)
+                {
+                    try { v.NoteOff(0, note); } catch { }
+                }
+                RenderSilent(v, l, r, releaseFrames);
+            }
+        }
+
+        static void RenderSilent(IVstInstrumentHost v, float[] l, float[] r, int frames)
+        {
+            int done = 0;
+            while (done < frames)
+            {
+                int n = Math.Min(l.Length, frames - done);
+                try { v.Render(l.AsSpan(0, n), r.AsSpan(0, n)); } catch { return; }
+                done += n;
             }
         }
 

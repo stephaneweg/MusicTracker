@@ -41,6 +41,14 @@ namespace MusicTracker.Engine.Timeline
         // perçue entre « je bouge le slider » et « je l'entends » est bornée par la taille du ring. Historique :
         // 5 s de ring / 3 s de prime rendaient les changements audibles ~5 s après. 1 s / 0.5 s = compromis
         // réactif (musicalement acceptable) sans sacrifier la robustesse sur les pièces lourdes (Ghibli, orchestral).
+        /// <summary>Callback optionnel appelé UNE FOIS sur le thread producer, AVANT le premier Read.
+        /// Idéal pour pré-chauffer les VSTi (rendu silencieux) sans changer de thread — plein de plugins
+        /// natifs cassent leur état DSP si activés sur un thread et rendus sur un autre.</summary>
+        Action prewarm;
+
+        /// <summary>Setter pour <see cref="prewarm"/>. Doit être appelé AVANT <see cref="Start"/>.</summary>
+        public void SetPrewarm(Action prewarm) { this.prewarm = prewarm; }
+
         public LookaheadBuffer(WaveProvider16 inner, Action start, Action stop, int sampleRate, double leadSeconds = 1.0, double primeSeconds = 0.5)
             : base(sampleRate, inner.WaveFormat.Channels)     // match the inner provider (mono OR stereo)
         {
@@ -75,6 +83,13 @@ namespace MusicTracker.Engine.Timeline
         // Background: render ahead until the ring is nearly full, then wait for the consumer to free space.
         void Produce()
         {
+            // Pré-chauffe VSTi ICI, sur le thread producer — le même thread qui va appeler Read → Render.
+            // Sans ça, plein de plugins natifs (Surge XT, Cozy Piano etc.) émettent des zéros les 1-2
+            // premières secondes le temps que leur DSP interne se réveille (samples lazy-loaded, oscillator
+            // LUTs, filter states). Coût : le prime buffer met qq secondes de plus à se remplir, donc clic
+            // ▶ → son est un peu plus lent, mais aucun silence audible sur les VSTi ensuite.
+            try { prewarm?.Invoke(); } catch { }
+
             var tmp = new short[8192];
             while (running)
             {

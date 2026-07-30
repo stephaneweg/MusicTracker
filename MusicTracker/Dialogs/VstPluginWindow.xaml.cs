@@ -47,17 +47,42 @@ namespace MusicTracker.Dialogs
             var sz = _host.GetEditorSize();
             if (sz.Width > 100 && sz.Height > 50)
             {
-                // 6 = bordures, 46 = hauteur en-tête + padding — ne pas être trop serré.
-                Width = sz.Width + 6;
-                Height = sz.Height + 46;
+                // On fixe la taille du HOST BORDER à la taille exacte demandée par le plugin, et WPF
+                // dimensionne la Window automatiquement (SizeToContent=WidthAndHeight) pour l'englober
+                // en ajoutant juste ce qu'il faut de chrome native (barre titre + bordures Windows).
+                // Résultat : la fenêtre colle pile poil à la GUI du plugin, plus de zone noire.
+                hostBorder.Width = sz.Width;
+                hostBorder.Height = sz.Height;
+                this.Width = sz.Width;
+                this.Height = sz.Height;
             }
 
             _hwnd = new VstHwndHost(_host);
             hostBorder.Child = _hwnd;
 
+            // Ecouter les demandes de resize du plugin (via IPlugFrame.resizeView). Plein de plugins VST3
+            // reportent une taille par defaut petite via getSize(), puis demandent leur vraie taille apres
+            // attached() via ce callback. Sans le brancher, la fenetre reste trop petite et la GUI est
+            // tronquee. Se marshalle sur le thread UI parce que le plugin peut appeler depuis n'importe ou.
+            _host.EditorResizeRequested += OnPluginResizeRequested;
+
             _idleTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(33) };
             _idleTimer.Tick += (a, b) => _host.EditorIdle();
             _idleTimer.Start();
+        }
+
+        void OnPluginResizeRequested(int width, int height)
+        {
+            if (width < 50 || height < 50) return;
+            Dispatcher.BeginInvoke((Action)(() =>
+            {
+                // Comme dans OnLoaded : SizeToContent=WidthAndHeight ne recalcule pas toujours quand seul
+                // le contenu change, on set explicitement Window.Width/Height en plus du hostBorder.
+                hostBorder.Width = width;
+                hostBorder.Height = height;
+                this.Width = width;
+                this.Height = height;
+            }));
         }
 
         void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
@@ -68,6 +93,7 @@ namespace MusicTracker.Dialogs
             //     puis DestroyWindow sur le HWND enfant. On NE double-appelle PAS CloseEditor ici — plein de
             //     plugins natifs crashent sur un second EditorClose (release d'un HWND déjà libéré).
             if (_idleTimer != null) { _idleTimer.Stop(); _idleTimer = null; }
+            try { if (_host != null) _host.EditorResizeRequested -= OnPluginResizeRequested; } catch { }
             if (_hwnd != null) { hostBorder.Child = null; _hwnd.Dispose(); _hwnd = null; }
         }
 

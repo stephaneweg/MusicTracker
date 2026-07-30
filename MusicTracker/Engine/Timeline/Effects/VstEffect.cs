@@ -35,6 +35,9 @@ namespace MusicTracker.Engine.Timeline.Effects
     /// </summary>
     public class VstEffect : IAudioEffect, IVstEditorHost, IDisposable
     {
+        // VST2 n'a pas d'equivalent au IPlugFrame.resizeView — event no-op pour satisfaire l'interface.
+        public event Action<int, int> EditorResizeRequested { add { } remove { } }
+
         public string Kind => "vst";
 
         /// <summary>Chemin absolu vers le fichier .dll du plugin. Doit être posé AVANT le premier Process (sinon l'effet reste no-op).</summary>

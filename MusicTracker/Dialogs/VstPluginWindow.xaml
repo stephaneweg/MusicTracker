@@ -6,7 +6,9 @@
         xmlns:ctrl="clr-namespace:MusicTracker.Controls"
         xmlns:loc="clr-namespace:MusicTracker.Localization"
         mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
-        Title="VST" Width="700" Height="500" SizeToContent="Manual"
+        Title="VST"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Background="{StaticResource CommonBackground}"
         ShowInTaskbar="False" Closing="Window_Closing">

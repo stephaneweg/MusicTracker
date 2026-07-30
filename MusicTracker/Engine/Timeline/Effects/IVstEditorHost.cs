@@ -21,5 +21,12 @@ namespace MusicTracker.Engine.Timeline.Effects
         bool OpenEditor(IntPtr parentHwnd);
         void CloseEditor();
         void EditorIdle();
+
+        /// <summary>Levé quand le plugin demande à l'hôte de redimensionner sa fenêtre via
+        /// <c>IPlugFrame.resizeView</c> (VST3) — utilisé par plein de plugins qui reportent une taille
+        /// par défaut petite, puis demandent leur vraie taille une fois attachés. La fenêtre hôte doit
+        /// mettre à jour le hostBorder et laisser WPF re-layouter, puis rappeler <c>view.onSize</c> pour
+        /// confirmer côté plugin. VST2 : no-op (le protocole VST2 n'a pas d'équivalent).</summary>
+        event Action<int, int> EditorResizeRequested;
     }
 }

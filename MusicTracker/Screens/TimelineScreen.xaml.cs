@@ -497,6 +497,12 @@ namespace MusicTracker.Screens
                 playBuffer = new Engine.Timeline.LookaheadBuffer(player, player.Start, player.Stop, AudioFormat.SampleRate);
                 playBuffer.Ended += () => Dispatcher.BeginInvoke((Action)OnPlaybackEnded);
                 playBuffer.Primed += () => Dispatcher.BeginInvoke((Action)BeginPlaybackDevice);
+                // Prewarm 3s de rendu silencieux sur chaque VSTi (fait sur le thread producer, PAS UI),
+                // pour eliminer le "silence initial" que beaucoup de plugins ont le temps de faire chauffer
+                // leur DSP interne. 3s couvre les plugins sample-based (Cozy Piano) et les synthes complexes
+                // (Surge XT). Skippe entierement si aucun VSTi (evite ~3s de delai inutile).
+                if (player.HasAnyVsti())
+                    playBuffer.SetPrewarm(() => player.PrewarmVstiSilently(AudioFormat.SampleRate * 3));
                 EnsureCursor();
                 MoveCursor(startBeat);
                 SetPlayGlyph("⏳"); // filling the buffer before playback
@@ -554,6 +560,11 @@ namespace MusicTracker.Screens
             if (playWaveOut != null) { try { playWaveOut.Stop(); playWaveOut.Dispose(); } catch { } playWaveOut = null; }
             if (playBuffer != null) { try { playBuffer.Stop(); } catch { } playBuffer = null; } // stops the producer + inner
             if (player != null) { try { player.Stop(); } catch { } try { player.Dispose(); } catch { } player = null; }
+            // Force la libération immédiate des objets COM du plugin VST3 disposé — sans ça les instances
+            // s'accumulent en mémoire native jusqu'à la prochaine GC, et la nouvelle instance du VSTi au
+            // prochain Play galère avec du state DLL partagé pas encore nettoyé (silence croissant à chaque
+            // cycle Play/Stop/Play).
+            try { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); } catch { }
             SetPlayGlyph("▶");
         }
 

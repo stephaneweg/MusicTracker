@@ -28,6 +28,8 @@ namespace MusicTracker.Engine.Timeline
         public string PluginPath { get; }
         public bool IsLoaded => _ctx != null && !_failed;
         public bool IsFailed => _failed;
+        // VST2 n'a pas d'equivalent au IPlugFrame.resizeView — event no-op pour satisfaire l'interface.
+        public event Action<int, int> EditorResizeRequested { add { } remove { } }
 
         /// <summary>Nom du plugin (renseigné après ouverture). Fallback = nom de fichier.</summary>
         public string DisplayName
