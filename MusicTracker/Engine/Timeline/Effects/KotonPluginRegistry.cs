@@ -39,6 +39,24 @@ namespace MusicTracker.Engine.Timeline.Effects
     }
 
     /// <summary>
+    /// Métadonnées d'un générateur Koton natif (<see cref="IKotonGenerator"/>). Retourné par
+    /// <see cref="KotonPluginRegistry.GetGenerators"/> pour peupler le sous-menu « Insérer ▸ Générateur
+    /// Koton » sans instancier le plugin. <see cref="Type"/> sert au filtrage par type de piste
+    /// (batterie → Drum/Percussion, mélodique → Melody/Bass/Chord, etc.).
+    /// </summary>
+    public sealed class KotonGeneratorInfo
+    {
+        public string Id { get; internal set; }
+        public string DisplayName { get; internal set; }
+        public KotonGeneratorType Type { get; internal set; }
+        public string Category { get; internal set; }
+        public string Version { get; internal set; }
+        public string Vendor { get; internal set; }
+        internal System.Type TypeToken { get; set; }
+        internal string SourceFile { get; set; }
+    }
+
+    /// <summary>
     /// Registre singleton des plugins Koton natifs (<c>.ksl</c>) trouvés dans <c>&lt;AppPaths.BaseDir&gt;/plugins/</c>.
     ///
     /// Un fichier <c>.ksl</c> = une DLL .NET renommée. Le loader utilise <see cref="Assembly.LoadFrom"/>
@@ -67,6 +85,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             new Dictionary<string, KotonInstrumentInfo>(StringComparer.Ordinal);
         static readonly Dictionary<string, KotonEffectInfo> _effects =
             new Dictionary<string, KotonEffectInfo>(StringComparer.Ordinal);
+        static readonly Dictionary<string, KotonGeneratorInfo> _generators =
+            new Dictionary<string, KotonGeneratorInfo>(StringComparer.Ordinal);
         static readonly HashSet<string> _loadedFiles =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         static bool _initialScanDone;
@@ -100,6 +120,16 @@ namespace MusicTracker.Engine.Timeline.Effects
             lock (_lock) return _effects.Values.OrderBy(e => e.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
 
+        /// <summary>Générateurs Koton natifs disponibles — chaque plugin marqué
+        /// <see cref="KotonGeneratorAttribute"/>. Utilisé par le menu « Insérer ▸ Générateur Koton »
+        /// de la timeline, groupé par <see cref="KotonGeneratorType"/> puis filtré selon le type de
+        /// piste sélectionnée.</summary>
+        public static IReadOnlyList<KotonGeneratorInfo> GetGenerators()
+        {
+            EnsureInitialScan();
+            lock (_lock) return _generators.Values.OrderBy(g => g.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
+        }
+
         /// <summary>Retrouve un instrument par <see cref="IKotonPlugin.Id"/> et retourne une instance
         /// fraîche. Null = id inconnu (plugin absent du dossier / non chargé). Un jet du constructeur du
         /// plugin est capturé (log silencieux, null renvoyé) — un plugin cassé ne doit pas empêcher la
@@ -122,6 +152,20 @@ namespace MusicTracker.Engine.Timeline.Effects
             KotonEffectInfo info;
             lock (_lock) { if (!_effects.TryGetValue(id, out info)) return null; }
             try { return (IKotonEffect)Activator.CreateInstance(info.Type); }
+            catch { return null; }
+        }
+
+        /// <summary>Instancie un générateur par son <see cref="IKotonPlugin.Id"/> — instance fraîche à
+        /// chaque appel (le player en crée UNE par bloc <c>KotonGeneratorModule</c>, l'éditeur du
+        /// bloc réutilise l'instance vivante du module). <c>null</c> = id inconnu (plugin absent /
+        /// supprimé du dossier) ou constructeur qui a jeté.</summary>
+        public static IKotonGenerator InstantiateGenerator(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            EnsureInitialScan();
+            KotonGeneratorInfo info;
+            lock (_lock) { if (!_generators.TryGetValue(id, out info)) return null; }
+            try { return (IKotonGenerator)Activator.CreateInstance(info.TypeToken); }
             catch { return null; }
         }
 
@@ -186,6 +230,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 if (t == null || t.IsAbstract || t.IsInterface) continue;
                 TryRegisterInstrument(t, file);
                 TryRegisterEffect(t, file);
+                TryRegisterGenerator(t, file);
             }
         }
 
@@ -263,6 +308,47 @@ namespace MusicTracker.Engine.Timeline.Effects
             lock (_lock)
             {
                 if (!_effects.ContainsKey(id)) _effects[id] = info;
+            }
+        }
+
+        static void TryRegisterGenerator(Type t, string sourceFile)
+        {
+            KotonGeneratorAttribute attr;
+            try { attr = t.GetCustomAttribute<KotonGeneratorAttribute>(); }
+            catch { return; }
+            if (attr == null) return;
+            if (!typeof(IKotonGenerator).IsAssignableFrom(t)) return;
+            // Contrat cohérent avec instrument/effet : constructeur public sans paramètre — le
+            // player instancie via Activator au flatten sans savoir de quoi il retourne.
+            var ctor = t.GetConstructor(Type.EmptyTypes);
+            if (ctor == null) return;
+
+            // Comme pour instrument/effet, on sonde l'Id en instanciant UNE FOIS (jetée aussitôt) —
+            // c'est le seul moyen de désambiguïser deux types de même DisplayName sans que le plugin
+            // ait à dupliquer l'Id dans l'attribut. Un ctor qui jette = plugin ignoré.
+            string id;
+            try
+            {
+                using (var probe = (IKotonGenerator)Activator.CreateInstance(t))
+                    id = probe?.Id;
+            }
+            catch { return; }
+            if (string.IsNullOrEmpty(id)) return;
+
+            var info = new KotonGeneratorInfo
+            {
+                Id = id,
+                DisplayName = attr.DisplayName,
+                Type = attr.Type,
+                Category = attr.Category ?? "",
+                Version = attr.Version ?? "",
+                Vendor = attr.Vendor ?? "",
+                TypeToken = t,
+                SourceFile = sourceFile,
+            };
+            lock (_lock)
+            {
+                if (!_generators.ContainsKey(id)) _generators[id] = info;
             }
         }
     }
