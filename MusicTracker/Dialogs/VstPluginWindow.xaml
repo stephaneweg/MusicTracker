@@ -1,0 +1,28 @@
+<Window x:Class="MusicTracker.Dialogs.VstPluginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ctrl="clr-namespace:MusicTracker.Controls"
+        xmlns:loc="clr-namespace:MusicTracker.Localization"
+        mc:Ignorable="d" Foreground="{StaticResource CommonForeground}"
+        Title="VST" Width="700" Height="500" SizeToContent="Manual"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Closing="Window_Closing">
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="{StaticResource CommonBackground}" ctrl:WindowDrag.Enable="True" CornerRadius="6,6,0,0" Padding="20,12,20,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" x:Name="titleText" Foreground="{StaticResource CommonForeground}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" x:Name="btnClose" Content="✕" Width="26" Height="22" FontSize="12"
+                            Style="{StaticResource TinyButton}" Cursor="Hand" Click="Close_Click"/>
+                </Grid>
+            </Border>
+            <Border DockPanel.Dock="Center" x:Name="hostBorder" Padding="0" Background="#111"/>
+        </DockPanel>
+    </Border>
+</Window>

@@ -173,10 +173,14 @@ namespace MusicTracker.Dialogs
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var edit = new Button { Content = Loc.T(EffectFactory.LocKey(d.Kind)), Style = (Style)FindResource("TinyButton"), HorizontalContentAlignment = HorizontalAlignment.Left };
+            // Le libellé d'un VST = nom du fichier (le vrai "nice name" n'est connu qu'après chargement du plugin).
+            string label = d.Kind == EffectFactory.VstKind && !string.IsNullOrEmpty(d.PluginPath)
+                ? System.IO.Path.GetFileNameWithoutExtension(d.PluginPath)
+                : Loc.T(EffectFactory.LocKey(d.Kind));
+            var edit = new Button { Content = label, Style = (Style)FindResource("TinyButton"), HorizontalContentAlignment = HorizontalAlignment.Left };
             edit.Opacity = d.Enabled ? 1.0 : 0.5;
             edit.ToolTip = Loc.T("EditEffect");
-            edit.Click += (s, e) => { new EffectConfigDialog(d, this).ShowDialog(); onChanged(); };
+            edit.Click += (s, e) => { OpenEffectEditor(d); onChanged(); };
             Grid.SetColumn(edit, 0);
             row.Children.Add(edit);
 
@@ -194,7 +198,8 @@ namespace MusicTracker.Dialogs
             return row;
         }
 
-        // Menu contextuel « Ajouter un effet » → un item par type déclaré dans EffectFactory.Kinds.
+        // Menu contextuel « Ajouter un effet » → un item par type déclaré dans EffectFactory.Kinds +
+        // un sous-menu VST peuplé dynamiquement par VstPluginScanner.
         void ShowAddFxMenu(FrameworkElement anchor, List<TrackEffectData> owner, Action onChanged)
         {
             var m = new ContextMenu { PlacementTarget = anchor, Placement = PlacementMode.Bottom };
@@ -205,7 +210,90 @@ namespace MusicTracker.Dialogs
                 it.Click += (s, e) => { owner.Add(new TrackEffectData { Kind = k, Enabled = true }); onChanged(); };
                 m.Items.Add(it);
             }
+            m.Items.Add(new Separator());
+            BuildVstSubmenu(m, owner, onChanged);
             m.IsOpen = true;
+        }
+
+        /// <summary>Sous-menu « VST ▸ ... » listant les plugins scannés, avec un item « Re-scanner ». Vide = message explicatif.</summary>
+        void BuildVstSubmenu(ContextMenu parent, List<TrackEffectData> owner, Action onChanged)
+        {
+            var vstMenu = new MenuItem { Header = Loc.T("FxVstMenu") };
+            var list = VstPluginScanner.GetPlugins();
+            if (list.Count == 0)
+            {
+                var empty = new MenuItem { Header = Loc.T("VstNoPluginsFound"), IsEnabled = false };
+                vstMenu.Items.Add(empty);
+            }
+            else
+            {
+                foreach (var p in list)
+                {
+                    var it = new MenuItem { Header = p.DisplayName };
+                    var path = p.Path;
+                    it.Click += (s, e) => TryAddVst(path, owner, onChanged);
+                    vstMenu.Items.Add(it);
+                }
+            }
+            vstMenu.Items.Add(new Separator());
+            var rescan = new MenuItem { Header = Loc.T("VstRescan") };
+            rescan.Click += (s, e) => { VstPluginScanner.ForceRescan(); };
+            vstMenu.Items.Add(rescan);
+            parent.Items.Add(vstMenu);
+        }
+
+        /// <summary>Ajoute un insert VST après avoir vérifié le runtime VC++ — sinon propose le lien de téléchargement.</summary>
+        void TryAddVst(string path, List<TrackEffectData> owner, Action onChanged)
+        {
+            if (!VstRuntimeCheck.IsVcRedistInstalled())
+            {
+                var msg = Loc.T("VstVcRedistRequired");
+                var res = MessageBox.Show(this, msg, Loc.T("FxVstMenu"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (res == MessageBoxResult.Yes)
+                {
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(VstRuntimeCheck.VcRedistDownloadUrl) { UseShellExecute = true }); }
+                    catch { }
+                }
+                return;
+            }
+            owner.Add(new TrackEffectData { Kind = EffectFactory.VstKind, Enabled = true, PluginPath = path });
+            onChanged();
+        }
+
+        /// <summary>Ouvre l'éditeur adapté à l'effet : GUI native pour un VST, dialogue de sliders génériques sinon.</summary>
+        void OpenEffectEditor(TrackEffectData d)
+        {
+            if (d.Kind == EffectFactory.VstKind)
+            {
+                if (!VstRuntimeCheck.IsVcRedistInstalled())
+                {
+                    MessageBox.Show(this, Loc.T("VstVcRedistRequired"), Loc.T("FxVstMenu"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                // Instance VstEffect dédiée à l'UI (indépendante de celle du renderer, qui vit dans un thread audio).
+                // L'UI ouvre sa propre copie pour afficher/éditer les paramètres via la GUI native, et on récupère
+                // le nouveau chunk d'état à la fermeture pour le pousser dans le TrackEffectData → au prochain Start
+                // de lecture, le renderer relit ce chunk.
+                var fx = new VstEffect(44100) { PluginPath = d.PluginPath };
+                if (!string.IsNullOrEmpty(d.StateBlob)) fx.LoadState(d.StateBlob);
+                if (!fx.EnsureOpenedSync(512))
+                {
+                    MessageBox.Show(this, Loc.T("VstPluginFailedToLoad"), fx.DisplayName, MessageBoxButton.OK, MessageBoxImage.Error);
+                    try { fx.Dispose(); } catch { }
+                    return;
+                }
+                var w = new VstPluginWindow(fx, this);
+                w.Closed += (s, e) =>
+                {
+                    // Récupérer l'état du plugin AVANT de le disposer, puis le pousser dans le TrackEffectData.
+                    try { d.StateBlob = fx.SaveState(); } catch { }
+                    try { fx.Dispose(); } catch { }
+                    CaptureUndo();
+                };
+                w.Show();
+                return;
+            }
+            new EffectConfigDialog(d, this).ShowDialog();
         }
 
         void MasterAddFx_Click(object sender, RoutedEventArgs e)
