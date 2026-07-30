@@ -407,24 +407,16 @@ namespace MusicTracker.Engine.Timeline
             {
                 try
                 {
-                    EnsureLoaded(frames);
+                    // On charge le plugin avec un max block size GÉNÉREUX (8192 = ~186ms @ 44.1kHz) une
+                    // fois pour toutes. Les tailles réelles varient beaucoup slice par slice (~100-2000
+                    // samples) et TOGGLE setProcessing/setActive à chaque changement crashe plein de
+                    // plugins natifs (état DSP interne fragile). Solution : préparer une seule fois pour
+                    // un max, puis rendre TEL QUEL à chaque call — le plugin gère le "je reçois moins que
+                    // le max" sans souci (c'est la sémantique VST standard).
+                    const int MaxBlock = 8192;
+                    EnsureLoaded(MaxBlock);
                     if (_processor == null || _failed) { left.Clear(); right.Clear(); return; }
-                    if (_allocFrames != frames)
-                    {
-                        try { _processor.setProcessing(0); } catch { }
-                        try { _component.setActive(0); } catch { }
-                        var setup = new ProcessSetup
-                        {
-                            ProcessMode = Vst3Enums.kRealtime,
-                            SymbolicSampleSize = Vst3Enums.kSample32,
-                            MaxSamplesPerBlock = frames,
-                            SampleRate = _sampleRate,
-                        };
-                        try { _processor.setupProcessing(ref setup); } catch { }
-                        try { _component.setActive(1); } catch { }
-                        try { _processor.setProcessing(1); } catch { }
-                        AllocBuffers(frames);
-                    }
+                    if (_allocFrames < frames) AllocBuffers(Math.Max(frames, MaxBlock));
 
                     // Entrée silence (VSTi n'utilise pas l'input audio).
                     for (int i = 0; i < frames; i++) { Marshal.WriteInt32(_inLPtr, i * 4, 0); Marshal.WriteInt32(_inRPtr, i * 4, 0); }

@@ -192,20 +192,15 @@ namespace MusicTracker.Engine.Timeline
             {
                 try
                 {
-                    EnsureLoaded(frames);
+                    // On charge avec un max block size GÉNÉREUX (8192 = ~186ms @ 44.1kHz) une fois pour
+                    // toutes. Toggler MainsChanged/SetBlockSize à chaque changement de taille (les slices
+                    // varient beaucoup) crashe plein de VST2 natifs (état DSP fragile). Sémantique VST
+                    // standard : le plugin peut recevoir moins que le max sans souci.
+                    const int MaxBlock = 8192;
+                    EnsureLoaded(MaxBlock);
                     if (_ctx == null || _failed) { left.Clear(); right.Clear(); return; }
                     var cmd = _ctx.PluginCommandStub.Commands;
-                    if (_currentBlockSize != frames)
-                    {
-                        try
-                        {
-                            cmd.MainsChanged(false);
-                            cmd.SetBlockSize(frames);
-                            cmd.MainsChanged(true);
-                        }
-                        catch { }
-                        AllocBuffers(frames);
-                    }
+                    if (_currentBlockSize < frames) AllocBuffers(Math.Max(frames, MaxBlock));
 
                     // Flush des events MIDI accumulés : le plugin reçoit ProcessEvents AVANT ProcessReplacing.
                     // On copie sous _pendingEvents lock pour libérer rapidement l'accumulateur au cas où un
