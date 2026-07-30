@@ -292,7 +292,7 @@ namespace MusicTracker.Engine.Flow
             var outNotes = new List<RiffNote>();
             int spq = SpqFor(m);
             if (m?.Chords == null || m.Chords.Count == 0)
-                return new Riff { Name = "PolyChords", Notes = outNotes, SlicesPerQuarter = spq };
+                return new Riff { Name = "PolyChords", Notes = outNotes, SlicesPerQuarter = spq, LengthSlices = 1 };
 
             // Voicing par accord (calculé une fois — Revoice écrit Inversion/OctaveShift).
             var voicedPerChord = new int[m.Chords.Count][];
@@ -408,15 +408,27 @@ namespace MusicTracker.Engine.Flow
                             len = Math.Max(1, Math.Min(nextS, boundary) - s);
                         }
                         int row = midi - 12;
-                        if (row >= 0 && row < 96) outNotes.Add(new RiffNote(row, s, len));
+                        // Aucune note ne doit franchir la fin du module : une note tenue du DERNIER cycle
+                        // depassait, donc elle etait coupee au rebouclage de l'ecoute et empietait sur le temps
+                        // du module suivant sur la timeline. On la borne a la fin du module.
+                        int end = TotalSlices(m, spq);
+                        if (s < end && len > end - s) len = end - s;
+                        if (row >= 0 && row < 96 && s < end && len >= 1) outNotes.Add(new RiffNote(row, s, len));
                         lastMidi[li] = midi; lastIdx[li] = idx;
                     }
                 }
             }
 
             outNotes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
-            return new Riff { Name = "PolyChords", Notes = outNotes, SlicesPerQuarter = spq };
+            return new Riff { Name = "PolyChords", Notes = outNotes, SlicesPerQuarter = spq, LengthSlices = TotalSlices(m, spq) };
         }
+
+        /// <summary>Longueur du riff produit, en slices : la durée RÉELLE du module. Sans elle, <see cref="Riff.LengthSlices"/>
+        /// garde son défaut de 96, et la boucle d'écoute de l'éditeur — qui reboucle sur la fin du riff — se referme à
+        /// 96 slices, soit une durée qui DÉPEND de <see cref="SpqFor"/> et donc des anneaux : « parfois un temps, parfois
+        /// deux mesures » (symptôme rapporté par l'utilisateur). On veut boucler sur la durée du module.</summary>
+        static int TotalSlices(PolyChordModule m, int spq)
+            => Math.Max(1, (int)Math.Round(TotalBeats(m) * spq));
 
         // Choix de l'index de départ dans un nouveau voicing (règle Restart appliquée au changement d'accord).
         static int ResolveStart(ChordRestartMode restart, int[] voiced, EuclidChordLayer lay, int lastPlayedMidi, int lastIdx)
