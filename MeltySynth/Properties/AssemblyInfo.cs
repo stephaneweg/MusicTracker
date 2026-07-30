@@ -1,9 +1,6 @@
-using System.Reflection;
 using System.Runtime.CompilerServices;
 
-[assembly: AssemblyTitle("MeltySynth")]
-[assembly: AssemblyDescription("Vendored SoundFont (SF2) parser.")]
-[assembly: AssemblyProduct("MeltySynth")]
+// AssemblyTitle/Product/Description come from the SDK auto-generated AssemblyInfo (see the csproj).
 
 // MusicTracker reads internal members of the SoundFont model (regions, samples) for its instrument catalogue.
 [assembly: InternalsVisibleTo("MusicTracker")]
