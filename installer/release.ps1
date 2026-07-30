@@ -15,14 +15,28 @@
     5. Copy both artifacts into releases\ and write releases\latest.json { version, installer,
        portable, notes }. The in-app updater only reads 'installer' — 'portable' is for the website.
     6. Unless -NoPush: commit the version bump on the main repo and commit+push the releases repo.
+    7. Unless -NoWebsite: bump WebSite/includes/config.php (version + URLs + date), préposer une entrée
+       dans WebSite/includes/changelog.php, puis déployer WebSite/ chez OVH via installer\deploy-website.ps1.
+       WebSite/ est gitignoré : ces edits ne partent pas sur git, uniquement via FTP.
 
-.PARAMETER Bump      patch | minor | major   (ignored when -Version is given)
-.PARAMETER Version   explicit 4-part version, e.g. 1.2.0.0
-.PARAMETER Notes     release notes shown in the update popup (and stored in latest.json)
-.PARAMETER NoPush    build + stage everything locally but do not commit/push
+.PARAMETER Bump         patch | minor | major   (ignored when -Version is given)
+.PARAMETER Version      explicit 4-part version, e.g. 1.2.0.0
+.PARAMETER Notes        release notes shown in the update popup (and stored in latest.json) — un paragraphe
+.PARAMETER NotesEn      idem en anglais ; si vide -> $Notes en repli
+.PARAMETER SiteNotesFr  liste (tableau) de bullets FR pour le changelog du site vitrine ; défaut = un bullet = $Notes
+.PARAMETER SiteNotesEn  idem EN ; défaut = un bullet = $NotesEn / $Notes
+.PARAMETER NoPush       build + stage everything locally but do not commit/push
+.PARAMETER NoWebsite    saute la mise à jour + déploiement du site vitrine (utile pour un hotfix "repo only")
 
 .EXAMPLE
   installer\release.ps1 -Bump patch -Notes "Correctifs divers + pistes repliables."
+
+.EXAMPLE
+  installer\release.ps1 -Version 1.7.0.0 `
+    -Notes    "Mixeur console + effets d'insert."   `
+    -NotesEn  "Console mixer + insert effects."     `
+    -SiteNotesFr @("Mixeur type console.", "Effets d'insert par piste.", "Automation MIDI étendue.") `
+    -SiteNotesEn @("Console-style mixer.",  "Per-track insert effects.",  "Extended MIDI automation.")
 #>
 [CmdletBinding()]
 param(
@@ -30,7 +44,10 @@ param(
   [string]$Version,
   [string]$Notes = '',
   [string]$NotesEn = '',
-  [switch]$NoPush
+  [string[]]$SiteNotesFr,
+  [string[]]$SiteNotesEn,
+  [switch]$NoPush,
+  [switch]$NoWebsite
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,6 +60,8 @@ $releaseBin   = Join-Path $repo 'MusicTracker\bin\Release'
 $iss          = Join-Path $installerDir 'MusicTracker.iss'
 $issOut       = Join-Path $installerDir 'Output'
 $releasesDir  = Join-Path $repo 'releases'
+$siteDir      = Join-Path $repo 'WebSite'
+$deploySite   = Join-Path $installerDir 'deploy-website.ps1'
 
 function Find-Tool {
   param([string[]]$Candidates, [string]$InPath)
@@ -174,5 +193,64 @@ if ($NoPush) { Write-Host "-NoPush : rien n'est commité/poussé." -ForegroundCo
 & git -C $releasesDir commit -m "Release v$newVer"
 & git -C $releasesDir push
 if ($LASTEXITCODE -ne 0) { throw "Le push du dépôt releases a échoué (vérifie l'auth git sur MusicTracker_Releases)." }
+
+# --- 6. site vitrine : bump config + prépend changelog + déploiement FTP -------
+# WebSite/ est GITIGNORÉ (déployé chez OVH), donc les edits ci-dessous ne partent JAMAIS sur git — ils
+# ne servent qu'à la synchro FTP. Skippé par -NoWebsite (hotfix repo-only) ou si le dossier est absent.
+if (-not $NoWebsite -and (Test-Path $siteDir)) {
+  Write-Host "Site vitrine : mise à jour + déploiement…" -ForegroundColor Cyan
+  $today = Get-Date -Format 'yyyy-MM'
+
+  # includes/config.php : version + release_date + URLs de téléchargement (bruts du repo releases public).
+  $cfgPath = Join-Path $siteDir 'includes\config.php'
+  if (Test-Path $cfgPath) {
+    $cfg = Get-Content $cfgPath -Raw -Encoding UTF8
+    $cfg = [regex]::Replace($cfg, "'version'(\s*)=>(\s*)'\d+\.\d+\.\d+\.\d+'",   "'version'`$1=>`$2'$newVer'")
+    $cfg = [regex]::Replace($cfg, "'release_date'(\s*)=>(\s*)'[^']*'",           "'release_date'`$1=>`$2'$today'")
+    $cfg = [regex]::Replace($cfg, "'download_url'(\s*)=>(\s*)'[^']*'",           "'download_url'`$1=>`$2'https://github.com/stephaneweg/MusicTracker_Releases/raw/main/$setupName'")
+    $cfg = [regex]::Replace($cfg, "'portable_url'(\s*)=>(\s*)'[^']*'",           "'portable_url'`$1=>`$2'https://github.com/stephaneweg/MusicTracker_Releases/raw/main/$portableName'")
+    [System.IO.File]::WriteAllText($cfgPath, $cfg, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "  config.php ($newVer, $today) mis à jour." -ForegroundColor Green
+  } else { Write-Host "  config.php absent - saut." -ForegroundColor Yellow }
+
+  # includes/changelog.php : prépend une nouvelle entrée. Bullets = -SiteNotesFr/-SiteNotesEn ;
+  # sinon repli sur -Notes/-NotesEn en un seul bullet.
+  $chPath = Join-Path $siteDir 'includes\changelog.php'
+  if (Test-Path $chPath) {
+    $frBullets = if ($SiteNotesFr -and $SiteNotesFr.Count -gt 0) { $SiteNotesFr } else { @($Notes) }
+    $enBullets = if ($SiteNotesEn -and $SiteNotesEn.Count -gt 0) { $SiteNotesEn } else { @($notesEnFinal) }
+    # PHP single-quoted : seuls ' et \ doivent être échappés (\' et \\).
+    $escFr = $frBullets | ForEach-Object { "                '" + ($_ -replace '\\','\\' -replace "'","\'") + "'," }
+    $escEn = $enBullets | ForEach-Object { "                '" + ($_ -replace '\\','\\' -replace "'","\'") + "'," }
+    $entryLines = @(
+      "    [",
+      "        'version' => '$newVer',",
+      "        'date'    => '$today',",
+      "        'notes'   => [",
+      "            'fr' => ["
+    ) + $escFr + @(
+      "            ],",
+      "            'en' => ["
+    ) + $escEn + @(
+      "            ],",
+      "        ],",
+      "    ],"
+    )
+    $entry = ($entryLines -join "`r`n")
+    $ch = Get-Content $chPath -Raw -Encoding UTF8
+    # Insertion juste après la ligne "return [" (unique dans ce fichier).
+    $ch = [regex]::Replace($ch, "return \[\r?\n", "return [`r`n$entry`r`n", 1)
+    [System.IO.File]::WriteAllText($chPath, $ch, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "  changelog.php : entrée v$newVer préposée." -ForegroundColor Green
+  } else { Write-Host "  changelog.php absent - saut." -ForegroundColor Yellow }
+
+  # Déploiement FTP (bloque le script en cas d'échec — pas de release "à moitié annoncée").
+  if (Test-Path $deploySite) {
+    & $deploySite
+    if ($LASTEXITCODE -ne 0) { throw "Le déploiement du site vitrine a échoué (voir deploy-website.ps1)." }
+  } else { Write-Host "  deploy-website.ps1 absent - déploiement ignoré." -ForegroundColor Yellow }
+}
+elseif ($NoWebsite) { Write-Host "-NoWebsite : site vitrine non touché." -ForegroundColor Yellow }
+else { Write-Host "WebSite/ absent - site vitrine non touché." -ForegroundColor Yellow }
 
 Write-Host "Release v$newVer publiée." -ForegroundColor Green
