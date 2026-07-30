@@ -173,8 +173,9 @@ namespace MusicTracker.Dialogs
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // Le libellé d'un VST = nom du fichier (le vrai "nice name" n'est connu qu'après chargement du plugin).
-            string label = d.Kind == EffectFactory.VstKind && !string.IsNullOrEmpty(d.PluginPath)
+            // Le libellé d'un VST (VST2 ou VST3) = nom du fichier (le vrai "nice name" n'est connu qu'après chargement du plugin).
+            bool isVstAny = d.Kind == EffectFactory.VstKind || d.Kind == EffectFactory.Vst3Kind;
+            string label = isVstAny && !string.IsNullOrEmpty(d.PluginPath)
                 ? System.IO.Path.GetFileNameWithoutExtension(d.PluginPath)
                 : Loc.T(EffectFactory.LocKey(d.Kind));
             var edit = new Button { Content = label, Style = (Style)FindResource("TinyButton"), HorizontalContentAlignment = HorizontalAlignment.Left };
@@ -256,38 +257,47 @@ namespace MusicTracker.Dialogs
                 }
                 return;
             }
-            owner.Add(new TrackEffectData { Kind = EffectFactory.VstKind, Enabled = true, PluginPath = path });
+            // Routage sur l'extension : .vst3 → Vst3Kind (nouvel hôte P/Invoke), sinon VstKind (VST.NET).
+            owner.Add(new TrackEffectData { Kind = EffectFactory.KindForPluginPath(path), Enabled = true, PluginPath = path });
             onChanged();
         }
 
-        /// <summary>Ouvre l'éditeur adapté à l'effet : GUI native pour un VST, dialogue de sliders génériques sinon.</summary>
+        /// <summary>Ouvre l'éditeur adapté à l'effet : GUI native pour un VST2/VST3, dialogue de sliders génériques sinon.</summary>
         void OpenEffectEditor(TrackEffectData d)
         {
-            if (d.Kind == EffectFactory.VstKind)
+            if (d.Kind == EffectFactory.VstKind || d.Kind == EffectFactory.Vst3Kind)
             {
                 if (!VstRuntimeCheck.IsVcRedistInstalled())
                 {
                     MessageBox.Show(this, Loc.T("VstVcRedistRequired"), Loc.T("FxVstMenu"), MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
-                // Instance VstEffect dédiée à l'UI (indépendante de celle du renderer, qui vit dans un thread audio).
-                // L'UI ouvre sa propre copie pour afficher/éditer les paramètres via la GUI native, et on récupère
-                // le nouveau chunk d'état à la fermeture pour le pousser dans le TrackEffectData → au prochain Start
-                // de lecture, le renderer relit ce chunk.
-                var fx = new VstEffect(44100) { PluginPath = d.PluginPath };
-                if (!string.IsNullOrEmpty(d.StateBlob)) fx.LoadState(d.StateBlob);
+                // Instance UI dédiée (indépendante de celle du renderer). Format-agnostique via IVstEditorHost.
+                IVstEditorHost fx;
+                IAudioEffect fxAudio;
+                if (d.Kind == EffectFactory.Vst3Kind)
+                {
+                    var v3 = new Vst3Effect(44100) { PluginPath = d.PluginPath };
+                    if (!string.IsNullOrEmpty(d.StateBlob)) v3.LoadState(d.StateBlob);
+                    fx = v3; fxAudio = v3;
+                }
+                else
+                {
+                    var v2 = new VstEffect(44100) { PluginPath = d.PluginPath };
+                    if (!string.IsNullOrEmpty(d.StateBlob)) v2.LoadState(d.StateBlob);
+                    fx = v2; fxAudio = v2;
+                }
                 if (!fx.EnsureOpenedSync(512))
                 {
                     MessageBox.Show(this, Loc.T("VstPluginFailedToLoad"), fx.DisplayName, MessageBoxButton.OK, MessageBoxImage.Error);
-                    try { fx.Dispose(); } catch { }
+                    try { (fxAudio as IDisposable)?.Dispose(); } catch { }
                     return;
                 }
                 var w = new VstPluginWindow(fx, this);
                 w.Closed += (s, e) =>
                 {
-                    // Récupérer l'état du plugin AVANT de le disposer, puis le pousser dans le TrackEffectData.
-                    try { d.StateBlob = fx.SaveState(); } catch { }
-                    try { fx.Dispose(); } catch { }
+                    try { d.StateBlob = fxAudio.SaveState(); } catch { }
+                    try { (fxAudio as IDisposable)?.Dispose(); } catch { }
                     CaptureUndo();
                 };
                 w.Show();
