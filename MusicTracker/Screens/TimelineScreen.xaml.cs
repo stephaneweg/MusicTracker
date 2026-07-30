@@ -141,7 +141,11 @@ namespace MusicTracker.Screens
             if (chordScroll != null) chordScroll.PreviewMouseWheel += Timeline_PreviewMouseWheel;
             UpdateZoomUi();
 
-            Loaded += (s, e) => { Render(); EnsureCursor(); };
+            Loaded += (s, e) => { Render(); EnsureCursor(); HookKotonHost(); };
+            // Unhook au démontage : KotonHost est statique, un onglet fermé ne doit plus répondre.
+            // (Une navigation d'un onglet à l'autre : le nouvel onglet ré-hookera au Loaded et écrasera,
+            // pas de collision.)
+            Unloaded += (s, e) => { try { UnhookKotonHost(); } catch { } };
 
             undoMgr.Changed += UpdateUndoButtons;
             undoMgr.Changed += RaiseDirtyChanged;
@@ -485,6 +489,9 @@ namespace MusicTracker.Screens
         void StartPlayback()
         {
             CommitRiffEditor(); // stop any riff preview first
+            // Une lecture réelle qui démarre coupe la preview d'un générateur Koton (deux sources
+            // audio parallèles = confusion à l'oreille + éventuel bug d'ordre sur le device audio).
+            try { KotonHost_StopPreview(); } catch { }
             if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Playback")) return;
             try
             {
@@ -1118,6 +1125,11 @@ namespace MusicTracker.Screens
             // Le SaveState() par piste coûte l'appel getChunk du plugin (rapide en général) ; on ne le fait
             // pas dans DocumentJson (appelé aussi par IsDirty) — uniquement à la vraie sauvegarde.
             if (player != null) { try { player.CaptureVstiStates(); } catch { } }
+            // Capture des états des générateurs Koton vivants : on parcourt les modules et on
+            // rafraîchit GeneratorState depuis l'instance vivante avant sérialisation. Sinon un
+            // changement de slider dans l'éditeur (qui mute UNIQUEMENT l'instance vivante) serait
+            // perdu au save. Fait ici et pas dans DocumentJson (appelé aussi par IsDirty).
+            try { CaptureKotonGeneratorStates(); } catch { }
             string json = DocumentJson();
             Engine.SafeFile.WriteAllText(path, json);   // atomique : ne détruit jamais le .sq existant
             CurrentPath = path;
@@ -1708,6 +1720,10 @@ namespace MusicTracker.Screens
             if (miAddPolyChord != null) miAddPolyChord.Visibility = Visibility.Visible;
             if (miAddDrum != null) miAddDrum.Visibility = drum ? Visibility.Visible : Visibility.Collapsed;
             if (miAddPolyDrum != null) miAddPolyDrum.Visibility = drum ? Visibility.Visible : Visibility.Collapsed;
+            // Le sous-menu « Générateur Koton » est toujours visible — filtrage à l'ouverture (SubmenuOpened
+            // rebuild dynamiquement selon selectedTrack). Une piste sans type approprié n'affiche que
+            // « aucun générateur trouvé », ce qui est plus informatif que masquer l'entrée entière.
+            if (miKotonGenerator != null) miKotonGenerator.Visibility = Visibility.Visible;
             UpdateZoomUi();   // the "+" bound depends on the piece's length, which a render may have changed
         }
 
@@ -2078,6 +2094,23 @@ namespace MusicTracker.Screens
             if (item.Module is PatternGeneratorModule cpg) return ChordFill(ChordFunction(cpg));
             if (item.Module is CadenceModule) return ChordBlueBase;
             if (item.Module is Engine.Flow.PolyChordModule) return PolyChordFill;
+            if (item.Module is KotonGeneratorModule kgm)
+            {
+                // Couleur fournie par le plugin via GetTimelineDisplay(). Si le plugin est absent ou
+                // GetTimelineDisplay jette, on tombe sur la couleur d'instrument standard — bloc lisible
+                // même en cas de plugin cassé.
+                var inst = Engine.Flow.KotonGeneratorRuntime.EnsureInstance(kgm);
+                if (inst != null)
+                {
+                    try
+                    {
+                        var disp = inst.GetTimelineDisplay();
+                        return new SolidColorBrush(disp.Background);
+                    }
+                    catch { }
+                }
+                return new SolidColorBrush(Controls.InstrumentColors.BoxFill(track.Instrument));
+            }
             return new SolidColorBrush(Controls.InstrumentColors.BoxFill(track.Instrument));
         }
 
@@ -2253,6 +2286,34 @@ namespace MusicTracker.Screens
             }
             else if (item.Module is CadenceModule) { border = ChordBorder; }
             else if (item.Module is Engine.Flow.PolyChordModule) { border = PolyChordBorder; title = Loc.T("AccordsPolyrythmiques"); info = ""; }
+            else if (item.Module is KotonGeneratorModule kg)
+            {
+                // Titre + border = ce que le plugin publie via GetTimelineDisplay(). Le texte affiché
+                // dans la vignette EST celui du plugin ; on garde info = "" (le plugin est libre de
+                // mettre la durée dans son texte s'il veut). Bord = variante légèrement claire du
+                // background pour rester cohérent avec le thème pro sombre.
+                var inst = Engine.Flow.KotonGeneratorRuntime.EnsureInstance(kg);
+                if (inst != null)
+                {
+                    try
+                    {
+                        var disp = inst.GetTimelineDisplay();
+                        title = disp.Text ?? inst.DisplayName ?? "?";
+                        // Bord ~25% plus clair que le fond, pour distinguer sans clash de couleurs.
+                        var bg = disp.Background;
+                        byte lighten(byte v) => (byte)Math.Min(255, v + 40);
+                        border = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(bg.A, lighten(bg.R), lighten(bg.G), lighten(bg.B)));
+                    }
+                    catch { border = new System.Windows.Media.SolidColorBrush(Controls.InstrumentColors.BoxBorder(track.Instrument)); }
+                }
+                else
+                {
+                    // Plugin absent : bord de piste + titre grisé pour l'attention.
+                    border = new System.Windows.Media.SolidColorBrush(Controls.InstrumentColors.BoxBorder(track.Instrument));
+                    title = "⚠ " + (kg.GeneratorId ?? "?");
+                }
+                info = "";
+            }
             else   // riff / drum / melodic-line boxes: background + border tinted by the track's INSTRUMENT FAMILY
             {
                 border = new System.Windows.Media.SolidColorBrush(Controls.InstrumentColors.BoxBorder(track.Instrument));
@@ -2289,6 +2350,16 @@ namespace MusicTracker.Screens
                     // Reflète le vrai découpage temporel du module — on ne peut pas exprimer ça avec la mini-thumbnail.
                     box.SetContentPanel(BuildPolyChordPanel(pcm));
                     break;
+                case KotonGeneratorModule kgm2:
+                {
+                    // Aperçu mini : le riff produit par le générateur — même chemin que le player,
+                    // donc ce qu'on voit est exactement ce qui va sonner. Nul possible = plugin
+                    // absent ou RenderNotes qui jette (le fond du bloc reste la couleur du plugin).
+                    var previewRiff = Engine.Flow.KotonGeneratorRuntime.RenderRiff(kgm2, project);
+                    if (previewRiff != null)
+                        box.SetThumbnail(Controls.RiffThumbnail.Get(previewRiff, Controls.RiffThumbnail.Melodic));
+                    break;
+                }
             }
             // Thumbnails are bitmaps rendered ONCE at the reference scale (60 px/beat): scale them for DISPLAY
             // instead of re-rendering (and re-caching) one image per zoom level. Horizontal only.
@@ -2511,6 +2582,11 @@ namespace MusicTracker.Screens
             else if (item.Module is Engine.Flow.MelodicPolyModule mpm) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodiquePolyrythmique"); editorHost.Content = BuildMelodicPolyEditor(track, item, mpm); selfScroll = true; }
             else if (item.Module is Engine.Flow.PolyChordModule pcmm) { txtEditorTitle.Text = Loc.T("EditeurAccordsPolyrythmiques"); editorHost.Content = BuildPolyChordEditor(track, item, pcmm); selfScroll = true; }
             else if (item.Module is MelodicLineModule ml) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodique"); editorHost.Content = BuildMelodicLineEditor(track, item, ml); selfScroll = true; }
+            // Un module générateur Koton natif : le plugin fournit son UserControl WPF, on l'affiche
+            // dans le panneau du bas avec une barre Preview/Stop (voir TimelineScreen.KotonGenerator.cs).
+            // Le UserControl vit tant que ce panneau reste actif — bouger un slider dedans affecte le
+            // prochain flatten audio via l'instance vivante partagée (KotonGeneratorRuntime.EnsureInstance).
+            else if (item.Module is KotonGeneratorModule kgm) { txtEditorTitle.Text = Loc.T("KotonEditorTitle"); editorHost.Content = BuildKotonGeneratorEditor(track, item, kgm); selfScroll = true; }
             else editorHost.Content = null;
 
             // The riff / chord / drum editors scroll internally (options panel + grid each have their own

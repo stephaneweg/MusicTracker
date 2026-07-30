@@ -396,6 +396,8 @@
                         <MenuItem x:Name="miAddDrum" Header="{loc:Tr 'Drums'}" Click="btnAddDrum_Click"/>
                         <MenuItem x:Name="miAddPolyDrum" Header="{loc:Tr 'BatteriePolyrythmique'}" Click="btnAddPolyDrum_Click" ToolTip="{loc:Tr 'PlusieursCalquesChacunSurSonMotif'}"/>
                         <Separator/>
+                        <MenuItem x:Name="miKotonGenerator" Header="{loc:Tr 'KotonGenerator'}" SubmenuOpened="miKotonGenerator_SubmenuOpened" ToolTip="{loc:Tr 'GenerateurKotonTooltip'}"/>
+                        <Separator/>
                         <MenuItem x:Name="miGenTheme" Header="{loc:Tr 'Theme'}" Click="btnGenerateTheme_Click" ToolTip="{loc:Tr 'GeneratesA100ProceduralThemeSerial'}"/>
                         <MenuItem x:Name="miVariation" Header="{loc:Tr 'Variation'}" Click="btnVariation_Click" ToolTip="{loc:Tr 'AppliesAVariationTechniqueToThe'}"/>
                     </MenuItem>
