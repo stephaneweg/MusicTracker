@@ -901,5 +901,12 @@
   "DupliquerLaPiste": "Duplicate the track",
   "MonterLaPiste": "Move up",
   "DescendreLaPiste": "Move down",
-  "TrackCopySuffix": "copy"
+  "TrackCopySuffix": "copy",
+  "Exception": "Exception",
+  "TheApplicationEncounteredAnError": "The application encountered an error",
+  "AnUnexpectedErrorOccurredYouCan": "An unexpected error occurred. You can send it as a report: the technical detail below will be attached.",
+  "TechnicalDetail": "Technical detail",
+  "TheApplicationWillClose": "The application will close.",
+  "DoNotSend": "Do not send",
+  "ThankYouTheErrorHasBeen": "Thank you, the error has been sent."
 }

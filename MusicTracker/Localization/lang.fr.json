@@ -891,5 +891,12 @@
   "DupliquerLaPiste": "Dupliquer la piste",
   "MonterLaPiste": "Monter",
   "DescendreLaPiste": "Descendre",
-  "TrackCopySuffix": "copie"
+  "TrackCopySuffix": "copie",
+  "Exception": "Exception",
+  "TheApplicationEncounteredAnError": "L'application a rencontré une erreur",
+  "AnUnexpectedErrorOccurredYouCan": "Une erreur inattendue s'est produite. Vous pouvez l'envoyer comme rapport : le détail technique ci-dessous y sera joint.",
+  "TechnicalDetail": "Détail technique",
+  "TheApplicationWillClose": "L'application va se fermer.",
+  "DoNotSend": "Ne pas envoyer",
+  "ThankYouTheErrorHasBeen": "Merci, l'erreur a bien été transmise."
 }

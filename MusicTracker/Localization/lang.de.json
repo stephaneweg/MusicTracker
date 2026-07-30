@@ -889,5 +889,12 @@
   "DupliquerLaPiste": "Spur duplizieren",
   "MonterLaPiste": "Nach oben",
   "DescendreLaPiste": "Nach unten",
-  "TrackCopySuffix": "Kopie"
+  "TrackCopySuffix": "Kopie",
+  "Exception": "Ausnahme",
+  "TheApplicationEncounteredAnError": "Die Anwendung hat einen Fehler festgestellt",
+  "AnUnexpectedErrorOccurredYouCan": "Ein unerwarteter Fehler ist aufgetreten. Sie können ihn als Bericht senden: die technischen Details unten werden beigefügt.",
+  "TechnicalDetail": "Technische Details",
+  "TheApplicationWillClose": "Die Anwendung wird geschlossen.",
+  "DoNotSend": "Nicht senden",
+  "ThankYouTheErrorHasBeen": "Danke, der Fehler wurde übermittelt."
 }

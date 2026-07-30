@@ -299,6 +299,7 @@
     <Compile Include="Engine\Update\UpdateChecker.cs" />
     <Compile Include="Engine\BugReport\BugReportConfig.cs" />
     <Compile Include="Engine\BugReport\BugReportContext.cs" />
+    <Compile Include="Engine\BugReport\CrashGuard.cs" />
     <Compile Include="Dialogs\TransposeDialog.xaml.cs">
       <DependentUpon>TransposeDialog.xaml</DependentUpon>
     </Compile>

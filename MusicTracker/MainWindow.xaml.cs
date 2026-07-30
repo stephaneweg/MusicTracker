@@ -23,6 +23,10 @@ namespace MusicTracker
         readonly List<(IMusicEditor editor, Button btn)> editorTabs = new List<(IMusicEditor, Button)>();
         object current; // the content shown in `host` (homeScreen or an editor)
 
+        /// <summary>The piece currently shown, or null on the home screen. Exposed for the crash guard, which
+        /// needs the active project to attach it to an exception report (see <see cref="Engine.BugReport.CrashGuard"/>).</summary>
+        public Screens.TimelineScreen CurrentEditor => current as Screens.TimelineScreen;
+
         public MainWindow()
         {
             InitializeComponent();

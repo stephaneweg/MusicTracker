@@ -889,5 +889,12 @@
   "DupliquerLaPiste": "Duplicar a faixa",
   "MonterLaPiste": "Subir",
   "DescendreLaPiste": "Descer",
-  "TrackCopySuffix": "cópia"
+  "TrackCopySuffix": "cópia",
+  "Exception": "Exceção",
+  "TheApplicationEncounteredAnError": "A aplicação encontrou um erro",
+  "AnUnexpectedErrorOccurredYouCan": "Ocorreu um erro inesperado. Pode enviá-lo como relatório: o detalhe técnico abaixo será anexado.",
+  "TechnicalDetail": "Detalhe técnico",
+  "TheApplicationWillClose": "A aplicação vai fechar.",
+  "DoNotSend": "Não enviar",
+  "ThankYouTheErrorHasBeen": "Obrigado, o erro foi enviado."
 }

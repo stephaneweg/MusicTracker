@@ -12,13 +12,14 @@
         <StackPanel Margin="24,18">
             <TextBlock x:Name="titleBar" Text="{loc:Tr 'ReportABugOrASuggestion'}" Foreground="{StaticResource CommonForeground}"
                        FontSize="16" FontWeight="Bold" Margin="0,0,0,4"/>
-            <TextBlock Text="{loc:Tr 'DescribeWhatYouWereDoingWhat'}"
+            <TextBlock x:Name="txtIntro" Text="{loc:Tr 'DescribeWhatYouWereDoingWhat'}"
                        Foreground="{StaticResource CommonForeground}" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,14"/>
 
             <TextBlock Text="{loc:Tr 'Type'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
             <ComboBox x:Name="cboType" HorizontalAlignment="Left" Width="220" SelectedIndex="0" Margin="0,0,0,12">
                 <ComboBoxItem Content="{loc:Tr 'Bug'}"/>
                 <ComboBoxItem Content="{loc:Tr 'Suggestion'}"/>
+                <ComboBoxItem Content="{loc:Tr 'Exception'}"/>
             </ComboBox>
 
             <TextBlock Text="{loc:Tr 'Title'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
@@ -28,6 +29,17 @@
             <TextBox x:Name="txtDescription" Style="{StaticResource labelTextBox}" HorizontalAlignment="Stretch"
                      Height="120" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
                      VerticalContentAlignment="Top" Margin="0,0,0,12"/>
+
+            <!-- Mode « plantage » uniquement : ce qui sera joint au rapport, montré tel quel pour que
+                 l'utilisateur sache exactement ce qu'il envoie. NoWrap : une pile d'appels tronquée à droite
+                 reste lisible, repliée elle ne l'est plus. -->
+            <StackPanel x:Name="panException" Visibility="Collapsed">
+                <TextBlock Text="{loc:Tr 'TechnicalDetail'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <TextBox x:Name="txtException" Style="{StaticResource labelTextBox}" HorizontalAlignment="Stretch"
+                         Height="150" IsReadOnly="True" FontFamily="Consolas" FontSize="11" Opacity="0.85"
+                         TextWrapping="NoWrap" VerticalContentAlignment="Top" Margin="0,0,0,12"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+            </StackPanel>
 
             <CheckBox x:Name="chkAttachProject" Content="{loc:Tr 'AttachTheCurrentProjectJSONFolded'}"
                       IsChecked="True" Margin="0,0,0,4"/>

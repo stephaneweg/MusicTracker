@@ -889,5 +889,12 @@
   "DupliquerLaPiste": "Duplica la traccia",
   "MonterLaPiste": "Sposta su",
   "DescendreLaPiste": "Sposta giù",
-  "TrackCopySuffix": "copia"
+  "TrackCopySuffix": "copia",
+  "Exception": "Eccezione",
+  "TheApplicationEncounteredAnError": "L'applicazione ha riscontrato un errore",
+  "AnUnexpectedErrorOccurredYouCan": "Si è verificato un errore inatteso. Puoi inviarlo come segnalazione: il dettaglio tecnico qui sotto sarà allegato.",
+  "TechnicalDetail": "Dettaglio tecnico",
+  "TheApplicationWillClose": "L'applicazione verrà chiusa.",
+  "DoNotSend": "Non inviare",
+  "ThankYouTheErrorHasBeen": "Grazie, l'errore è stato inviato."
 }

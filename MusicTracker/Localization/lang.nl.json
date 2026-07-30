@@ -889,5 +889,12 @@
   "DupliquerLaPiste": "De track dupliceren",
   "MonterLaPiste": "Omhoog",
   "DescendreLaPiste": "Omlaag",
-  "TrackCopySuffix": "kopie"
+  "TrackCopySuffix": "kopie",
+  "Exception": "Uitzondering",
+  "TheApplicationEncounteredAnError": "De toepassing heeft een fout aangetroffen",
+  "AnUnexpectedErrorOccurredYouCan": "Er is een onverwachte fout opgetreden. Je kunt deze als rapport versturen: de technische details hieronder worden bijgevoegd.",
+  "TechnicalDetail": "Technische details",
+  "TheApplicationWillClose": "De toepassing wordt gesloten.",
+  "DoNotSend": "Niet verzenden",
+  "ThankYouTheErrorHasBeen": "Bedankt, de fout is verzonden."
 }
