@@ -176,7 +176,19 @@
                           ToolTip="{loc:Tr 'AlsoRequestADrumTrackThe'}"/>
                 <CheckBox x:Name="chkChordVoice" Content="{loc:Tr 'ChordsInADedicatedVoiceEmpty'}" Foreground="{StaticResource CommonForeground}"
                           VerticalAlignment="Center" Cursor="Hand" Margin="0,0,0,8"
+                          Checked="chkChordVoice_Checked"
                           ToolTip="{loc:Tr 'TheChordsTrackStaysSILENTEmpty'}"/>
+                <!-- Deux options polyrythmiques : la piste d'accords / la batterie rendues par un module d'anneaux
+                     euclidiens au lieu du rendu habituel. « Accords en polyrythme » exclut « voix dédiée » (les deux
+                     décident du même rendu) ; « Batterie en polyrythme » n'a de sens qu'avec la piste batterie. -->
+                <CheckBox x:Name="chkPolyChords" Content="{loc:Tr 'PolyChordsOption'}" Foreground="{StaticResource CommonForeground}"
+                          VerticalAlignment="Center" Cursor="Hand" Margin="0,0,22,8"
+                          Checked="chkPolyChords_Checked"
+                          ToolTip="{loc:Tr 'PolyChordsOptionTip'}"/>
+                <CheckBox x:Name="chkPolyDrums" Content="{loc:Tr 'PolyDrumsOption'}" Foreground="{StaticResource CommonForeground}"
+                          VerticalAlignment="Center" Cursor="Hand" Margin="0,0,0,8"
+                          IsEnabled="{Binding IsChecked, ElementName=chkDrums}"
+                          ToolTip="{loc:Tr 'PolyDrumsOptionTip'}"/>
             </WrapPanel>
 
             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">

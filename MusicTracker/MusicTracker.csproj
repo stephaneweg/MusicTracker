@@ -291,6 +291,7 @@
     <Compile Include="Engine\AI\AiArrangement.cs" />
     <Compile Include="Engine\AI\AiArrangementPlacer.cs" />
     <Compile Include="Engine\AI\AiPolyrhythm.cs" />
+    <Compile Include="Engine\AI\AiPolyArrangement.cs" />
     <Compile Include="Sources\IProjectSource.cs" />
     <Compile Include="Sources\AiComposeSource.cs" />
     <Compile Include="Sources\AiPolySource.cs" />

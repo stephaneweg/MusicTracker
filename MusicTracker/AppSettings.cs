@@ -157,6 +157,10 @@ namespace MusicTracker
         // Chords silent on the Accords track (empty custom motif, kept only as a harmonic marker) + the AI voices the
         // chord content freely in a dedicated "Accords" voice/track.
         public bool AiChordVoice { get; set; } = false;
+        // Options polyrythmiques du dialogue « Composer avec l'IA » : la piste d'accords jouée par un
+        // PolyChordModule (roue d'anneaux) et/ou la batterie par un PolyDrumModule, au lieu du rendu habituel.
+        public bool AiPolyChords { get; set; } = false;
+        public bool AiPolyDrums { get; set; } = false;
         public string AiIntention { get; set; } = "";
         // Compo polyrythmique par IA — durée EN TEMPS (bien plus flexible qu'un nombre de mesures ; ne partage donc
         // pas AiMeasures).

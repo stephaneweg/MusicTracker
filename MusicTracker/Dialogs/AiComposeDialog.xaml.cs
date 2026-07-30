@@ -23,7 +23,15 @@ namespace MusicTracker.Dialogs
 
         /// <summary>Chords silent on the Accords track (empty custom motif — harmonic marker only); the AI voices the
         /// chord content freely in a dedicated "Accords" voice.</summary>
-        public bool ChordVoice => chkChordVoice.IsChecked == true;
+        public bool ChordVoice => chkChordVoice.IsChecked == true && !PolyChords;
+
+        /// <summary>Option : la piste d'accords est rendue par UN module d'accords polyrythmique (roue d'anneaux
+        /// euclidiens) au lieu d'un module d'accords par mesure. Exclusive de <see cref="ChordVoice"/>.</summary>
+        public bool PolyChords => chkPolyChords.IsChecked == true;
+
+        /// <summary>Option : la batterie est rendue par UN module de batterie polyrythmique au lieu des phrases de
+        /// percussion. N'a de sens qu'avec la piste batterie demandée (la case est désactivée sinon).</summary>
+        public bool PolyDrums => chkDrums.IsChecked == true && chkPolyDrums.IsChecked == true;
 
         /// <summary>When set, "develop this theme" mode: the theme (notes + chords) is prepended to the prompt and the
         /// caller applies the result in APPEND mode (after the existing content).</summary>
@@ -46,6 +54,9 @@ namespace MusicTracker.Dialogs
             tglRiffMode.IsChecked = s.AiRiffMode;
             chkDrums.IsChecked = s.AiDrums;
             chkChordVoice.IsChecked = s.AiChordVoice;
+            chkPolyChords.IsChecked = s.AiPolyChords;
+            chkPolyDrums.IsChecked = s.AiPolyDrums;
+            if (chkPolyChords.IsChecked == true) chkChordVoice.IsChecked = false;   // mutuellement exclusives
             sldThinking.Value = Math.Max(-1, Math.Min(24576, s.AiThinkingBudget));
             UpdateThinkingLabel();
             UpdateModelSummary();
@@ -104,6 +115,11 @@ namespace MusicTracker.Dialogs
             else s.MistralModel = model;
         }
 
+        // « Accords en polyrythme » et « accords en voix dédiée » décident tous deux du rendu de la piste d'accords :
+        // cocher l'un décoche l'autre (plutôt qu'un état ambigu qu'il faudrait arbitrer silencieusement).
+        void chkPolyChords_Checked(object sender, RoutedEventArgs e) { if (chkChordVoice != null) chkChordVoice.IsChecked = false; }
+        void chkChordVoice_Checked(object sender, RoutedEventArgs e) { if (chkPolyChords != null) chkPolyChords.IsChecked = false; }
+
         void btnManageKeys_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new ApiKeysDialog { Owner = this };
@@ -148,6 +164,8 @@ namespace MusicTracker.Dialogs
             s.AiRiffMode = tglRiffMode.IsChecked == true;
             s.AiDrums = chkDrums.IsChecked == true;
             s.AiChordVoice = chkChordVoice.IsChecked == true;
+            s.AiPolyChords = chkPolyChords.IsChecked == true;
+            s.AiPolyDrums = chkPolyDrums.IsChecked == true;
             s.AiThinkingBudget = ThinkingBudget;
             s.Save();
 
@@ -157,7 +175,7 @@ namespace MusicTracker.Dialogs
             try
             {
                 bool riffMode = tglRiffMode.IsChecked == true;
-                string sys = AiArrangementPrompt.SystemPrompt(riffMode, chkDrums.IsChecked == true, chkChordVoice.IsChecked == true), usr = AiArrangementPrompt.UserPrompt(style, measures, txtIntention.Text, ThemeContext);
+                string sys = AiArrangementPrompt.SystemPrompt(riffMode, chkDrums.IsChecked == true, ChordVoice, PolyChords, PolyDrums), usr = AiArrangementPrompt.UserPrompt(style, measures, txtIntention.Text, ThemeContext);
                 string json =
                     provider == "gemini" ? await GeminiClient.CompleteJsonAsync(apiKey, model, sys, usr, ThinkingBudget)
                     : provider == "groq" ? await GroqClient.CompleteJsonAsync(apiKey, model, sys, usr)
@@ -186,7 +204,7 @@ namespace MusicTracker.Dialogs
             string style = txtStyle.Text ?? "";
             if (!int.TryParse(txtMeasures.Text?.Trim(), out int measures) || measures < 1) measures = 32;
             bool riffMode = tglRiffMode.IsChecked == true;
-            string sys = AiArrangementPrompt.SystemPrompt(riffMode, chkDrums.IsChecked == true, chkChordVoice.IsChecked == true);
+            string sys = AiArrangementPrompt.SystemPrompt(riffMode, chkDrums.IsChecked == true, ChordVoice, PolyChords, PolyDrums);
             string usr = AiArrangementPrompt.UserPrompt(style, measures, txtIntention.Text, ThemeContext);
             return sys + "\n\n" + usr;
         }
@@ -203,6 +221,7 @@ namespace MusicTracker.Dialogs
                 s.AiStyle = txtStyle.Text ?? ""; s.AiIntention = txtIntention.Text ?? "";
                 s.AiRiffMode = tglRiffMode.IsChecked == true; s.AiDrums = chkDrums.IsChecked == true;
                 s.AiChordVoice = chkChordVoice.IsChecked == true;
+                s.AiPolyChords = chkPolyChords.IsChecked == true; s.AiPolyDrums = chkPolyDrums.IsChecked == true;
                 s.Save();
 
                 Clipboard.SetText(BuildFullPrompt());
@@ -259,8 +278,17 @@ namespace MusicTracker.Dialogs
         static string Summary(AiArrangement a)
         {
             int chords = a.chords?.Count ?? 0, secs = a.sections?.Count ?? 0, lines = a.melodicLines?.Count ?? 0;
-            return $"OK — {secs} section(s), {chords} accord(s), {lines} ligne(s) mélodique(s).";
+            string poly = "";
+            if (a.polyChords != null) poly += $" Accords en polyrythme : {a.polyChords.Count} bloc(s), {Rings(a.polyChords)} anneau(x).";
+            if (a.polyDrums != null) poly += $" Batterie en polyrythme : {a.polyDrums.Count} bloc(s), {Rings(a.polyDrums)} anneau(x).";
+            return $"OK — {secs} section(s), {chords} accord(s), {lines} ligne(s) mélodique(s)." + poly;
         }
+
+        // Nombre TOTAL d'anneaux décrits par un tableau d'entrées polyrythmiques (blocs de 1 à 4 mesures).
+        static int Rings(System.Collections.Generic.IEnumerable<AiPolyChordSpec> specs)
+        { int n = 0; foreach (var s in specs) n += s?.layers?.Count ?? 0; return n; }
+        static int Rings(System.Collections.Generic.IEnumerable<AiPolyDrumSpec> specs)
+        { int n = 0; foreach (var s in specs) n += s?.layers?.Count ?? 0; return n; }
 
         static string Pretty(string json)
         {

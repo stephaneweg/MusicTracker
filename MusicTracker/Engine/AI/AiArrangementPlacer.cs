@@ -146,8 +146,28 @@ namespace MusicTracker.Engine.AI
             int totalMeasures = Math.Max(lastMeasure, secOfMeasure.Count > 0 ? Max(secOfMeasure.Keys) : 0);
             PatternGeneratorModule prevPg = null; AiChord lastSingle = null;
             var chordAtMeasure = new AiChord[totalMeasures + 1]; // effective chord per bar (for riff harmony fix)
+            // OPTION « accords en polyrythme » : au lieu d'un module par mesure, une SUITE de PolyChordModule, un par
+            // entrée de 'polyChords' (1 à 4 mesures chacune → plusieurs polyrythmes dans le morceau). Chaque module
+            // reprend EXACTEMENT les accords de SA plage (même degré, même durée) — seule la façon de les jouer
+            // change. L'articulation/cellule mélodique n'y a pas de place : le prompt demande donc 'articulation'
+            // vide quand l'option est active. Un plan VIDE (tableau vide, entrées toutes hors bornes) ⇒ on retombe
+            // sur le chemin classique plutôt que d'inventer une roue que le modèle n'a pas décrite.
+            var chordPlan = a.polyChords != null ? AiPolyModules.Plan(a.polyChords, totalMeasures, fillGaps: true) : null;
+            if (chordPlan != null && chordPlan.Count == 0) chordPlan = null;
+            // Module par plage + table mesure → module, pour dispatcher chaque accord dans le bon bloc.
+            var polyModules = new List<PolyChordModule>();
+            var polyOfMeasure = new PolyChordModule[totalMeasures + 2];
+            if (chordPlan != null)
+                foreach (var span in chordPlan)
+                {
+                    var mod = AiPolyModules.BuildChords(span.Spec);
+                    polyModules.Add(mod);
+                    for (int mm = span.FromMeasure; mm < span.FromMeasure + span.Measures && mm < polyOfMeasure.Length; mm++)
+                        polyOfMeasure[mm] = mod;
+                }
             for (int meas = 1; meas <= totalMeasures; meas++)
             {
+                var polyChord = chordPlan != null ? polyOfMeasure[meas] : null;
                 byMeasure.TryGetValue(meas, out var list);
                 chordAtMeasure[meas] = (list != null && list.Count > 0) ? list[0] : lastSingle;
                 string sec = secOfMeasure.TryGetValue(meas, out var sn) ? sn : null;
@@ -161,12 +181,39 @@ namespace MusicTracker.Engine.AI
                     for (int ci = 0; ci < k; ci++)
                     {
                         int part = Math.Max(1, barTemps / k + (ci < barTemps % k ? 1 : 0));
-                        prevPg = ChordModelOps.AddAiChord(project, barTemps, chordTrack, list[ci], part, style, motif, artSpq, prevPg, silentChords, artName, cell);
+                        if (polyChord != null) polyChord.Chords.Add(AiPolyModules.ChordItem(project, list[ci], part));
+                        else prevPg = ChordModelOps.AddAiChord(project, barTemps, chordTrack, list[ci], part, style, motif, artSpq, prevPg, silentChords, artName, cell);
                         lastSingle = list[ci];
                     }
                 }
                 else if (lastSingle != null)
-                    prevPg = ChordModelOps.AddAiChord(project, barTemps, chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords, artName, cell);
+                {
+                    if (polyChord != null) polyChord.Chords.Add(AiPolyModules.ChordItem(project, lastSingle, barTemps));
+                    else prevPg = ChordModelOps.AddAiChord(project, barTemps, chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords, artName, cell);
+                }
+            }
+            if (chordPlan != null)
+            {
+                // Les blocs sont posés à leur mesure exacte : chaque module est CALÉ sur la longueur de sa plage
+                // (FitChordSpan) et son SilenceBefore rattrape le curseur, de sorte qu'un bloc vide (mesures situées
+                // avant le premier accord) ou une plage sans accord ne décale pas les suivants. Les starts sont
+                // RELATIFS (comme le chemin classique, qui pose tout à SilenceBefore = 0) : le décalage de baseBeats
+                // du mode « développer » est appliqué juste après, sur le premier item ajouté.
+                double cur = 0;
+                for (int i = 0; i < chordPlan.Count; i++)
+                {
+                    var mod = polyModules[i];
+                    int targetBeats = chordPlan[i].Measures * barTemps;
+                    if (!AiPolyModules.FitChordSpan(mod, targetBeats)) continue;   // aucun accord sur cette plage
+                    double start = (chordPlan[i].FromMeasure - 1) * barTemps;
+                    chordTrack.Items.Add(new TimelineItem { Module = mod, SilenceBefore = Math.Max(0, start - cur) });
+                    cur = Math.Max(start, cur) + PolyChord.TotalBeats(mod);
+                }
+                // PIÈGE : Inversion/OctaveShift de chaque PolyChordItem sont CALCULÉS, pas saisis. Sans cette passe
+                // le voicing reste non résolu (tous les accords en position fondamentale, conduite des voix nulle).
+                // ChordDegrees.Revoice chaîne le voice-leading sur TOUTE la piste Accords — donc aussi d'un bloc
+                // polyrythmique au suivant, ce qui est exactement ce qu'on veut maintenant qu'il y en a plusieurs.
+                Flow.ChordDegrees.Revoice(chordTrack);
             }
             // Develop mode: shift the newly-appended chords so they start at baseBeats (a gap on the first new chord).
             if (append && chordTrack.Items.Count > chordPreCount)
@@ -274,9 +321,30 @@ namespace MusicTracker.Engine.AI
                 }
             }
 
+            // OPTION « batterie en polyrythme » : une suite de PolyDrumModule (anneaux euclidiens, paramètres vivants),
+            // un par entrée de 'polyDrums' (1 à 4 mesures), à la place des phrases de percussion. Le champ 'drums'
+            // n'est alors pas demandé au modèle ; s'il en renvoie quand même on l'ignore, pour ne pas empiler deux
+            // batteries — SAUF si le tableau polyrythmique est inexploitable (vide), auquel cas on retombe dessus.
+            // Une plage sans entrée reste SILENCIEUSE (pas de comblage) : la batterie qui se tait sur un pont est un
+            // choix d'arrangement légitime, et aucune autre piste ne lit celle-ci.
+            var drumPlan = a.polyDrums != null
+                ? AiPolyModules.Plan(a.polyDrums, Math.Max(1, totalMeasures), fillGaps: false) : null;
+            if (drumPlan != null && drumPlan.Count > 0)
+            {
+                var dtrack = GetOrCreateDrumTrack(project, reuseTracks);
+                double cursor = TrackEndBeats(dtrack, riffById);
+                foreach (var span in drumPlan)
+                {
+                    var pdm = AiPolyModules.BuildDrums(span.Spec, span.Measures * barTemps);
+                    if (pdm.Kit > 0) dtrack.DrumKit = pdm.Kit;
+                    double start = baseBeats + (span.FromMeasure - 1) * barTemps;
+                    dtrack.Items.Add(new TimelineItem { Module = pdm, SilenceBefore = Math.Max(0, start - cursor) });
+                    cursor = Math.Max(start, cursor) + PolyDrum.TotalBeats(pdm);
+                }
+            }
             // drums → one dedicated drum-kit track, each section a DRUM MODULE holding an explicit percussion
             // phrase (Note = drum lane; edited later in the riff-like rhythm editor). 16th-note grid keeps it light.
-            if (a.drums != null && a.drums.Count > 0)
+            else if (a.drums != null && a.drums.Count > 0)
             {
                 const int dspq = 4;
                 var dtrack = GetOrCreateDrumTrack(project, reuseTracks);

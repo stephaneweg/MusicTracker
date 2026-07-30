@@ -24,6 +24,16 @@ namespace MusicTracker.Engine.AI
         public List<AiRiff> riffs { get; set; }
         public List<AiRiff> drums { get; set; }   // percussion phrases (pitch = GM drum key 35..81); one drum kit track
 
+        // ---- OPTIONS polyrythmiques (facultatives — cf. AiPolyArrangement.cs) --------------------------------
+        // Absentes du JSON = option décochée : le prompt n'en parle pas et le placement est INCHANGÉ. Présentes,
+        // elles ne changent QUE la façon de jouer une piste (la matière — chords/sections — reste la même).
+        // Une ENTRÉE = un module de 1 à 4 mesures, pour avoir PLUSIEURS polyrythmes dans un morceau. Le converter
+        // accepte aussi un OBJET unique (forme historique) = une entrée couvrant tout le morceau.
+        [JsonConverter(typeof(SingleOrListConverter<AiPolyChordSpec>))]
+        public List<AiPolyChordSpec> polyChords { get; set; }   // piste d'accords jouée par des PolyChordModule
+        [JsonConverter(typeof(SingleOrListConverter<AiPolyDrumSpec>))]
+        public List<AiPolyDrumSpec> polyDrums { get; set; }     // batterie jouée par des PolyDrumModule (remplace 'drums')
+
         static readonly JsonSerializerOptions Opts = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -543,8 +553,17 @@ namespace MusicTracker.Engine.AI
     /// <summary>Prompt building + name→index/key/rhythm translation for the Mistral arrangement flow.</summary>
     public static class AiArrangementPrompt
     {
-        public static string SystemPrompt(bool riffMode, bool wantDrums, bool chordsAsVoice = false)
+        /// <summary>Le prompt system. <paramref name="polyChords"/>/<paramref name="polyDrums"/> = les deux OPTIONS
+        /// polyrythmiques : leurs fragments de schéma et de règles ne sont ajoutés QUE si l'option est cochée (le
+        /// prompt reste sinon rigoureusement celui d'avant, à l'octet près). 'polyDrums' REMPLACE le bloc 'drums' ;
+        /// 'polyChords' est exclusif de « accords en voix dédiée » (il gagne).</summary>
+        public static string SystemPrompt(bool riffMode, bool wantDrums, bool chordsAsVoice = false,
+            bool polyChords = false, bool polyDrums = false)
         {
+            if (polyChords) chordsAsVoice = false;          // les deux options se contredisent ; la roue gagne
+            bool drumsBlock = wantDrums && !polyDrums;      // la batterie polyrythmique remplace les phrases 'drums'
+            bool tailBlock = drumsBlock || polyDrums;       // y a-t-il un bloc APRÈS 'polyChords' ?
+
             var contours = string.Join(", ", MelodicLineEngine.ContourNames.Select((n, i) => $"{i}={First(n)}"));
             var anchors = string.Join(", ", MelodicLineEngine.AnchorNames.Select((n, i) => $"{i}={First(n)}"));
             var qualities = string.Join(", ", PatternGenerator.QualityNames);
@@ -577,11 +596,13 @@ namespace MusicTracker.Engine.AI
             sb.AppendLine(@"  ""articulation"": [ { ""section"": string, ""name"": string,
       ""motif"": [ [voix, début, durée], ... ],   (chaque événement = TABLEAU [voix 0..10, début en temps, durée en temps])
       ""melodicCell"": [ [degré, début, durée], ... ] } ],   (chaque note = TABLEAU [degré 1..14, début en temps, durée en temps])");
-            sb.AppendLine(melodyKey + (wantDrums ? "," : ""));
-            if (wantDrums)
+            sb.AppendLine(melodyKey + ((polyChords || tailBlock) ? "," : ""));
+            if (polyChords) sb.AppendLine(AiPolyModules.ChordSchema + (tailBlock ? "," : ""));
+            if (drumsBlock)
                 sb.AppendLine(@"  ""drums"": [ { ""section"": string, ""fromMeasure"": int, ""measures"": int,
       ""motifBars"": int, ""repeats"": int,
       ""notes"": [ [note GM, début, durée], ... ] } ]   (note batterie = TABLEAU [note GM 35..81, début en temps RELATIF au début du MOTIF, durée en temps])");
+            if (polyDrums) sb.AppendLine(AiPolyModules.DrumSchema);
             sb.AppendLine("}");
             sb.AppendLine();
             sb.AppendLine("Règles :");
@@ -593,7 +614,13 @@ namespace MusicTracker.Engine.AI
             sb.AppendLine("- Les accords sont donnés par DEGRÉ (chiffre 1..7 relatif à la tonalité), pas par nom absolu. Un accord par mesure (ou par changement).");
             sb.AppendLine("- COULEUR des accords : dans la qualité (3e élément du tableau accord), précise la couleur quand le style s'y prête (7e, Maj7, m7, 9, add9, 6, m6, sus2, sus4, 7sus4…), pas seulement des triades. Selon l'ambiance (Maj7/add9 = doux/rêveur, 7 dom = tension, sus = suspension).");
             sb.AppendLine("- La somme des 'measures' des sections = la longueur demandée.");
-            if (chordsAsVoice)
+            // Le modèle des anneaux est le même pour les accords et la batterie : on ne l'explique QU'UNE FOIS.
+            if (polyChords || polyDrums) sb.AppendLine(AiPolyModules.CycleRules());
+            if (polyChords)
+            {
+                sb.AppendLine(AiPolyModules.ChordRules());
+            }
+            else if (chordsAsVoice)
             {
                 sb.AppendLine("- ACCORDS EN VOIX DÉDIÉE : laisse 'articulation' VIDE ([]). Les 'chords' (degrés) servent UNIQUEMENT de repère harmonique — la piste d'accords reste silencieuse ; NE lui donne AUCUN motif.");
                 sb.AppendLine("- À la place, écris toi-même le CONTENU des accords, mis en forme À TA GUISE, dans UNE entrée 'riffs' de rôle « Accords » (track=\"Accords\") : les vraies NOTES MIDI (renversements, espacement, arpèges ou rythme d'accompagnement de ton choix), couvrant TOUT le morceau et cohérentes avec les degrés de 'chords'. Donne-lui un 'instrument' adapté (souvent piano 0 ou harpe 46).");
@@ -624,7 +651,8 @@ namespace MusicTracker.Engine.AI
             sb.AppendLine("- CONTRECHANT : ajoute une piste 'contrechant' rythmiquement COMPLÉMENTAIRE du 'lead' — elle joue plutôt dans les silences/tenues du lead (question-réponse), parfois en même temps.");
             sb.AppendLine("- Regroupe par 'track' (rôle) : une piste par rôle. Chaque piste a son 'instrument' (GM 0..127). Ajoute AUTANT de pistes que l'orchestration le demande selon le style (ex. lead, contrechant, harmonies/nappe, arpèges, basse, doublures…) — vise une texture riche et vivante, pas seulement 2-3 voix.");
             sb.AppendLine("- INSTRUMENTS (GM 0..127) selon le style : piano 0, cordes 48/49, violoncelle 42, contrebasse 43, flûte 73, hautbois 68, clarinette 71, harpe 46, guitare 24/25, cor 60, chœur 52.");
-            if (wantDrums)
+            if (polyDrums) sb.AppendLine(AiPolyModules.DrumRules());
+            if (drumsBlock)
             {
                 sb.AppendLine("- BATTERIE ('drums') : un GROOVE = UN MOTIF COURT qui se RÉPÈTE, PAS des notes remplissant toute la section. Écris les 'notes' d'UN SEUL motif ('motifBars' mesures, souvent 1 ou 2), 'start' RELATIF au début du motif (0 à motifBars mesures). Renseigne 'motifBars' (longueur du motif) et 'repeats' (nombre de répétitions pour couvrir la section : motifBars × repeats = 'measures'). Ex. motif d'1 mesure sur une section de 4 → motifBars=1, repeats=4. Un FILL/variation en fin de section : mets-le dans le motif si motifBars couvre la section, sinon garde le motif régulier.");
                 sb.AppendLine("  pitch = note batterie GM. KIT : 36 grosse caisse, 38 caisse claire, 42 charley fermé, 46 charley ouvert, 44 charley pied, 49 crash, 51 ride, 39 clap, 37 rimshot, 41/43/45/47/48/50 toms.");
