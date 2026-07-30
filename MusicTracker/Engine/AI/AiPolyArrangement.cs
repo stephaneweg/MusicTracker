@@ -232,9 +232,12 @@ namespace MusicTracker.Engine.AI
              + "- UN TABLEAU D'ENTRÉES, PAS UNE SEULE ROUE : chaque entrée de 'polyChords'/'polyDrums' est UN module posé sur la timeline, couvrant 'measures' mesures (1 à "
              + MaxSpanMeasures + " MAXIMUM, jamais plus) à partir de 'fromMeasure' (1-based). Enchaîne les entrées sans trou ni recouvrement pour couvrir le morceau : "
              + "un morceau de 64 mesures = 16 entrées de 4 mesures.\n"
-             + "  FAIS VARIER D'UNE ENTRÉE À L'AUTRE — c'est TOUT l'intérêt du découpage : change les 'hits'/'steps'/'rotation', le NOMBRE d'anneaux, les 'toneIndex'/'lane', le 'cycleBeats'. "
-             + "Au minimum un polyrythme DIFFÉRENT par section ('sections'), et de préférence une variation à chaque bloc de " + MaxSpanMeasures + " mesures : "
-             + "trame qui se densifie vers un refrain, se creuse sur un pont, anneau qui disparaît puis revient déphasé. Deux entrées consécutives identiques = travail non fait.";
+             + "  COHÉRENCE PAR SECTION, VARIATION ENTRE SECTIONS — c'est la règle d'or du découpage :\n"
+             + "    • À L'INTÉRIEUR d'une même section ('sections'), toutes les entrées gardent la MÊME IDENTITÉ de trame : mêmes 'steps' sur chaque anneau, MÊME nombre d'anneaux, mêmes 'toneIndex'/'lane', même 'cycleBeats'. "
+             + "Un thème de 16 mesures = 4 entrées de 4 mesures qui se RESSEMBLENT ; on ne réinvente pas le motif au milieu du thème. Ce sont bien 4 entrées (jamais plus de " + MaxSpanMeasures + " mesures par module), pas une seule roue étalée.\n"
+             + "    • À l'intérieur d'une section, la SEULE variation permise est FINE et progressive : décaler d'un cran une 'rotation', ajouter/retirer UN 'hits' sur un anneau, faire disparaître un anneau au dernier bloc pour respirer. Aucun changement de 'steps', ni du nombre d'anneaux, ni du 'cycleBeats'.\n"
+             + "    • AU CHANGEMENT DE SECTION en revanche, change VRAIMENT : autres 'steps', autre nombre d'anneaux, autres 'toneIndex'/'lane', éventuellement autre 'cycleBeats' — trame qui se densifie vers un refrain, se creuse sur un pont, anneau qui disparaît puis revient déphasé au retour du thème. C'est là que l'auditeur doit entendre la coupure.\n"
+             + "  Deux sections consécutives à la trame identique = travail non fait ; deux entrées consécutives de la MÊME section à la trame radicalement différente = section incohérente.";
 
         public static string ChordRules()
             => "- ACCORDS EN POLYRYTHME : la piste d'accords n'est PLUS jouée mesure par mesure — elle est jouée par des ROUES d'anneaux euclidiens ('polyChords'). "
