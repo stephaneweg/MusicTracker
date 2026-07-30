@@ -76,5 +76,9 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("ReleaseMs", out v)) ReleaseMs = v;
             if (d.TryGetValue("MakeupDb", out v)) MakeupDb = v;
         }
+
+        // Aucun état interne à sérialiser en plus des 5 paramètres de Save().
+        public string SaveState() => null;
+        public void LoadState(string state) { }
     }
 }

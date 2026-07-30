@@ -66,5 +66,9 @@ namespace MusicTracker.Engine.Timeline.Effects
             if (d.TryGetValue("HighGainDb", out v)) HighGainDb = v;
             Update();
         }
+
+        // L'état d'un EQ tient dans Save() (7 doubles) : pas de blob à sérialiser en plus.
+        public string SaveState() => null;
+        public void LoadState(string state) { }
     }
 }

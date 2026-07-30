@@ -26,5 +26,19 @@ namespace MusicTracker.Engine.Timeline.Effects
 
         /// <summary>Recharge les paramètres depuis une carte produite par <see cref="Save"/>. Les clés manquantes gardent la valeur par défaut (permet d'ajouter un paramètre sans casser les vieux .sq).</summary>
         void Load(Dictionary<string, double> data);
+
+        /// <summary>
+        /// Sérialise un état interne opaque (blob binaire → base64) qui ne rentre pas dans le format
+        /// plat de <see cref="Save"/>. Utilisé par <see cref="VstEffect"/> pour transporter le chunk
+        /// natif du plugin (banque de presets, courbes IR, etc.) dans <see cref="TrackEffectData.StateBlob"/>.
+        /// Les 4 effets maison retournent <c>null</c> — leur état tient entièrement dans <see cref="Save"/>.
+        /// </summary>
+        string SaveState();
+
+        /// <summary>
+        /// Symétrique de <see cref="SaveState"/> : reçoit le blob relu depuis <see cref="TrackEffectData.StateBlob"/>
+        /// (ou <c>null</c> si le .sq est antérieur au champ). Les 4 effets maison ignorent l'appel.
+        /// </summary>
+        void LoadState(string state);
     }
 }
