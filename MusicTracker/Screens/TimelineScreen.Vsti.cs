@@ -6,6 +6,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using MusicTracker.Dialogs;
+using MusicTracker.Engine;
 using MusicTracker.Engine.Timeline;
 using MusicTracker.Engine.Timeline.Effects;
 using MusicTracker.Localization;
@@ -51,6 +52,29 @@ namespace MusicTracker.Screens
 
         static void UpdateVstiButtonLabel(Button btn, TimelineTrack track)
         {
+            // Priorité d'affichage : Koton natif d'abord (le routage TimelinePlayer donne priorité au VSTi
+            // si les deux sont posés, mais l'UI de sélection empêche cette situation — un choix nouveau
+            // clear l'autre. L'ordre ici juste pour la robustesse en cas d'un .sq bidon).
+            if (!string.IsNullOrEmpty(track.KotonInstrumentId))
+            {
+                var info = System.Linq.Enumerable.FirstOrDefault(
+                    Engine.Timeline.Effects.KotonPluginRegistry.GetInstruments(),
+                    p => string.Equals(p.Id, track.KotonInstrumentId, StringComparison.Ordinal));
+                btn.FontStyle = FontStyles.Normal;
+                btn.Opacity = 1.0;
+                if (info == null)
+                {
+                    // Plugin id référencé mais absent du dossier plugins/ (fichier supprimé / non installé).
+                    btn.Content = "⚠ " + track.KotonInstrumentId;
+                    btn.ToolTip = string.Format(Loc.T("KotonPluginMissing"), track.KotonInstrumentId);
+                }
+                else
+                {
+                    btn.Content = "\U0001F3AB " + info.DisplayName;   // 🎫 (icône distincte du VSTi 🎹)
+                    btn.ToolTip = info.DisplayName + " (" + info.Id + ")";
+                }
+                return;
+            }
             if (string.IsNullOrEmpty(track.VstiPath))
             {
                 btn.Content = Loc.T("TrackInstrumentVsti");
@@ -119,6 +143,37 @@ namespace MusicTracker.Screens
             browse.Items.Add(rescan);
             menu.Items.Add(browse);
 
+            // Sous-menu des instruments KOTON NATIFS (framework KotonStudio.Library, scannés depuis
+            // plugins/*.ksl). Alternative sûre au hosting VST natif : plugins C# purs, chargés par
+            // reflexion, sans HWND ni runtime C++ à installer. Séparé du sous-menu VSTi (pas la même
+            // techno derrière) mais dans le même menu de choix pour rester découvrable.
+            menu.Items.Add(new Separator());
+            var kotonBrowse = new MenuItem { Header = Loc.T("TrackInstrumentKoton") };
+            var kotons = Engine.Timeline.Effects.KotonPluginRegistry.GetInstruments();
+            if (kotons.Count == 0)
+            {
+                var empty = new MenuItem { Header = Loc.T("KotonNoInstrumentsFound"), IsEnabled = false };
+                kotonBrowse.Items.Add(empty);
+            }
+            else
+            {
+                foreach (var p in kotons)
+                {
+                    var it = new MenuItem { Header = p.DisplayName, IsCheckable = false };
+                    if (!string.IsNullOrEmpty(track.KotonInstrumentId) &&
+                        string.Equals(track.KotonInstrumentId, p.Id, StringComparison.Ordinal))
+                        it.Icon = new TextBlock { Text = "✓", FontWeight = FontWeights.Bold };
+                    string id = p.Id;
+                    it.Click += (s, e) => SelectKoton(track, id);
+                    kotonBrowse.Items.Add(it);
+                }
+            }
+            kotonBrowse.Items.Add(new Separator());
+            var kotonRescan = new MenuItem { Header = Loc.T("KotonRescan") };
+            kotonRescan.Click += (s, e) => { Engine.Timeline.Effects.KotonPluginRegistry.Rescan(); };
+            kotonBrowse.Items.Add(kotonRescan);
+            menu.Items.Add(kotonBrowse);
+
             // Actions sur le VSTi actif.
             if (!string.IsNullOrEmpty(track.VstiPath))
             {
@@ -128,6 +183,18 @@ namespace MusicTracker.Screens
                 menu.Items.Add(edit);
                 var remove = new MenuItem { Header = Loc.T("VstiRemove") };
                 remove.Click += (s, e) => RemoveVsti(track);
+                menu.Items.Add(remove);
+            }
+            // Actions sur le plugin Koton actif (indépendantes du VSTi — on ne peut pas avoir les deux
+            // à la fois, la sélection efface l'autre, mais on affiche selon ce qui est posé).
+            if (!string.IsNullOrEmpty(track.KotonInstrumentId))
+            {
+                menu.Items.Add(new Separator());
+                var edit = new MenuItem { Header = Loc.T("KotonEditor") };
+                edit.Click += (s, e) => OpenKotonEditor(track);
+                menu.Items.Add(edit);
+                var remove = new MenuItem { Header = Loc.T("KotonRemove") };
+                remove.Click += (s, e) => RemoveKoton(track);
                 menu.Items.Add(remove);
             }
 
@@ -199,6 +266,78 @@ namespace MusicTracker.Screens
             {
                 try { track.VstiStateBlob = vsti.SaveState(); } catch { }
                 try { vsti.Dispose(); } catch { }
+            };
+            w.Show();
+        }
+
+        // ---- Plugins Koton natifs -------------------------------------------------------------------
+        //
+        // Même parcours que VSTi mais sans HWND ni runtime C++ à installer : le plugin est du C# pur, son
+        // éditeur est un UserControl WPF. On garde la même règle d'exclusion : sélectionner un Koton
+        // efface le VSTi actif (une piste = un instrument tiers) et inversement.
+
+        void SelectKoton(TimelineTrack track, string id)
+        {
+            PushUndo("track:koton:" + Id(track));
+            track.KotonInstrumentId = id;
+            track.KotonInstrumentStateBlob = null;   // nouveau plugin = état par défaut
+            // Exclusion mutuelle : sélectionner un plugin Koton natif clear un éventuel VSTi précédent.
+            // Le renderer donnerait la précédence au VSTi si les deux étaient posés — l'UI empêche ce cas.
+            track.VstiPath = null;
+            track.VstiStateBlob = null;
+            Render();
+        }
+
+        void RemoveKoton(TimelineTrack track)
+        {
+            if (string.IsNullOrEmpty(track.KotonInstrumentId)) return;
+            PushUndo("track:koton:remove:" + Id(track));
+            track.KotonInstrumentId = null;
+            track.KotonInstrumentStateBlob = null;
+            Render();
+        }
+
+        void OpenKotonEditor(TimelineTrack track)
+        {
+            if (string.IsNullOrEmpty(track.KotonInstrumentId))
+            {
+                MessageBox.Show(Window.GetWindow(this), Loc.T("KotonNoInstrumentsFound"),
+                    Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            // Instance dédiée à l'UI (indépendante du renderer). État actuel injecté ; à la fermeture on
+            // capture SaveState et on l'écrit dans track.KotonInstrumentStateBlob. Le plugin est disposé
+            // à la fermeture — ses UserControl sont libérés en cascade par WPF.
+            var plugin = Engine.Timeline.Effects.KotonPluginRegistry.InstantiateInstrument(track.KotonInstrumentId);
+            if (plugin == null)
+            {
+                MessageBox.Show(Window.GetWindow(this),
+                    string.Format(Loc.T("KotonPluginMissing"), track.KotonInstrumentId),
+                    Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            // Prepare est nécessaire pour les plugins qui allouent des buffers audio à Prepare (le FM
+            // synth de référence par ex.). Sample rate de la carte son ; block size raisonnable.
+            try { plugin.Prepare(AudioFormat.SampleRate, 8192); } catch { /* un plugin qui jette au Prepare aura un éditeur inutilisable, mais on ouvre quand même pour que l'utilisateur puisse voir le nom */ }
+            if (!string.IsNullOrEmpty(track.KotonInstrumentStateBlob))
+            {
+                try
+                {
+                    var bytes = Convert.FromBase64String(track.KotonInstrumentStateBlob);
+                    plugin.LoadState(bytes);
+                }
+                catch { }
+            }
+            var w = new MusicTracker.Dialogs.KotonPluginEditorDialog(plugin, Window.GetWindow(this));
+            w.Closed += (s, e) =>
+            {
+                try
+                {
+                    var bytes = plugin.SaveState();
+                    track.KotonInstrumentStateBlob = (bytes == null || bytes.Length == 0) ? null : Convert.ToBase64String(bytes);
+                }
+                catch { }
+                try { plugin.Dispose(); } catch { }
             };
             w.Show();
         }

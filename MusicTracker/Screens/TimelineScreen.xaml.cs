@@ -1842,8 +1842,10 @@ namespace MusicTracker.Screens
                     // If this track's score is shown, the clef/transposition may have changed -> rebuild it.
                     if (activeScore != null && scoreTracks.Contains(track)) RefreshScore();
                 };
-                // Le combo GM est grisé quand un VSTi est actif : le patch GM n'est plus rendu (le plugin le remplace).
-                if (!string.IsNullOrEmpty(track.VstiPath)) inst.IsEnabled = false;
+                // Le combo GM est grisé quand un VSTi OU un plugin Koton natif est actif : le patch GM n'est
+                // plus rendu (le plugin le remplace, exclusion mutuelle appliquée à la sélection).
+                if (!string.IsNullOrEmpty(track.VstiPath) || !string.IsNullOrEmpty(track.KotonInstrumentId))
+                    inst.IsEnabled = false;
                 panel.Children.Add(inst);
             }
             else
@@ -1859,7 +1861,8 @@ namespace MusicTracker.Screens
                     if (riffEditTrack == track && selectedItem?.Module is DrumPatternModule dpm)
                         editorHost.Content = BuildDrumEditor(track, selectedItem, dpm);
                 };
-                if (!string.IsNullOrEmpty(track.VstiPath)) kit.IsEnabled = false;
+                if (!string.IsNullOrEmpty(track.VstiPath) || !string.IsNullOrEmpty(track.KotonInstrumentId))
+                    kit.IsEnabled = false;
                 panel.Children.Add(kit);
             }
 
