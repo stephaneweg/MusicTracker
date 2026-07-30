@@ -110,16 +110,25 @@ namespace MusicTracker.Engine.Flow
                          ? m.CustomSlices.Length
                          : Math.Max(1, MusicTracker.Engine.RiffNotes.LengthOf(m.CustomNotes));
                 int reps = Math.Max(1, m.Repeats);
-                var outN = new SequencerSlice[unit * reps];
+                int totalN = unit * reps;
+                // Emit the NOTE LIST straight, never a slice grid: the Riff.Slices setter would run it back
+                // through RiffNotes.FromSlices, which welds a run of contiguous same-lane slices into ONE note.
+                // A phrase whose hits sit on ADJACENT slices (a frozen polyrhythm — PolyDrum picks the minimal
+                // resolution, so a full ring has one hit per slice) would then lose every hit but the first.
+                var outN = new System.Collections.Generic.List<RiffNote>();
+                var seen = new System.Collections.Generic.HashSet<long>();
                 for (int r = 0; r < reps; r++)
                     foreach (var n in m.CustomNotes)
                     {
                         if (n.Note < 0 || n.Note >= LaneKeys.Length || n.Start < 0 || n.Start >= unit) continue;
                         int row = LaneKeys[n.Note] - 12;                 // GM key -> Riff row (Note 0 == MIDI 12)
                         int at = r * unit + n.Start;
-                        if (row >= 0 && row < 96 && at < outN.Length) outN[at].On(row, true); // single trigger at the start
+                        if (row < 0 || row >= 96) continue;
+                        // single trigger at the start; two lanes mapping to the same key must not double the hit
+                        if (seen.Add((long)row * totalN + at)) outN.Add(new RiffNote(row, at, 1));
                     }
-                return new Riff { Name = "Drums", Slices = outN, SlicesPerQuarter = spqN };
+                outN.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+                return new Riff { Name = "Drums", Notes = outN, SlicesPerQuarter = spqN, LengthSlices = totalN };
             }
 
             int repeats = Math.Max(1, m.Repeats);

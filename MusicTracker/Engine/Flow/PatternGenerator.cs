@@ -185,7 +185,9 @@ namespace MusicTracker.Engine.Flow
                             if (row >= 0 && row < 96) outNotes.Add(new RiffNote(row, off + mn.Start, mn.Length));
                         }
                     }
-                    return new Riff { Name = name, Notes = outNotes, SlicesPerQuarter = barSpq };
+                    // LengthSlices explicite : sans elle le riff garde le défaut de 96 slices (le setter Slices,
+                    // lui, la posait) et l'écoute en boucle tourne sur une durée étrangère au module.
+                    return new Riff { Name = name, Notes = outNotes, SlicesPerQuarter = barSpq, LengthSlices = barSlices * repeats };
                 }
 
                 var barGrid = m.CustomSlices;

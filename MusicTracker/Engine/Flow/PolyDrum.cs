@@ -157,7 +157,18 @@ namespace MusicTracker.Engine.Flow
         /// <summary>Déroule tous les calques en un riff de batterie. NOUVEAU MODÈLE : tous les anneaux partagent
         /// le même cycle (<see cref="PolyDrumModule.Beats"/> temps), découpé en Steps parts par calque. La cellule
         /// k de l'anneau est déclenchée au slice <c>k × Beats × spq / Steps</c>.
-        /// L'ACCENT (<see cref="EuclidLayer.AccentLane"/>) est envoyé sur le PREMIER coup de chaque tour de cycle.</summary>
+        /// L'ACCENT (<see cref="EuclidLayer.AccentLane"/>) est envoyé sur le PREMIER coup de chaque tour de cycle.
+        ///
+        /// ⚠️ On produit la LISTE DE NOTES, jamais une grille de bits. Passer par <see cref="Riff.Slices"/> — ce
+        /// que faisait cette méthode — PERDAIT des coups : le setter reconvertit la grille via
+        /// <see cref="Engine.RiffNotes.FromSlices"/>, qui SOUDE en une seule note tout run de slices contigus de
+        /// la même lane. Or <see cref="SpqFor"/> choisit la résolution MINIMALE : un anneau à Steps = Beats × spq
+        /// a des cellules d'UN slice, donc ses coups consécutifs sont adjacents et fusionnaient. Sur 4 temps à
+        /// spq=2, E(8,8) ne rendait qu'UN coup au lieu de huit et E(6,8) trois au lieu de six (un par run) —
+        /// silencieusement, car l'export MIDI relit la grille (un coup par slice allumé) et sortait juste, alors
+        /// que la lecture (TimelinePlayer/MeltyRiffPlayer) et la partition lisent les notes.
+        /// Chaque coup fait UN slice : c'est un one-shot de percussion (même convention que
+        /// <see cref="DrumPattern"/>), et la grille dérivée reste fidèle — un slice allumé = un coup.</summary>
         public static Riff Generate(PolyDrumModule m)
         {
             int spq = SpqFor(m);
@@ -165,7 +176,10 @@ namespace MusicTracker.Engine.Flow
             int cycleSlices = beats * spq;
             int repeats = Math.Max(1, m?.Repeats ?? 1);
             int total = cycleSlices * repeats;
-            var slices = new SequencerSlice[total];
+            var notes = new List<Engine.RiffNote>();
+            // Deux calques sur la même lane au même slice : la grille de bits les fusionnait gratuitement ; une
+            // liste de notes doublerait le coup (double vélocité, deux voix de synthèse). On dédoublonne.
+            var seen = new HashSet<long>();
             if (m?.Layers != null)
                 foreach (var l in m.Layers)
                 {
@@ -191,11 +205,15 @@ namespace MusicTracker.Engine.Flow
                             int s = cycleStart + CellStart(i, steps, beats, spq);
                             if (s < 0 || s >= total) continue;
                             int useRow = (accentRow >= 0 && i == firstOn) ? accentRow : row;
-                            slices[s].On(useRow, true);
+                            if (seen.Add((long)useRow * total + s)) notes.Add(new Engine.RiffNote(useRow, s, 1));
                         }
                     }
                 }
-            return new Riff { Name = "PolyDrums", Slices = slices, SlicesPerQuarter = spq };
+            notes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+            // LengthSlices explicite : le setter Slices la posait, la liste de notes non — sans elle le riff
+            // garderait son défaut de 96 slices et l'écoute en boucle de l'éditeur tournerait sur une durée
+            // étrangère au module (même oubli que PolyChord.Generate, corrigé en da14f56).
+            return new Riff { Name = "PolyDrums", Notes = notes, SlicesPerQuarter = spq, LengthSlices = total };
         }
 
         /// <summary>Convertit les calques en liste de coups (ligne = rangée), pour figer le polyrythme en motif
