@@ -154,6 +154,19 @@ namespace MusicTracker.Engine.Timeline
         /// vide, donc rétro-compatibilité totale.</summary>
         public List<Effects.TrackEffectData> Inserts = new List<Effects.TrackEffectData>();
 
+        /// <summary>Chemin absolu du plugin VSTi qui rend cette piste au lieu du synthé MeltySynth GM.
+        /// <c>null</c> (défaut) = mode MeltySynth (l'ancien pipeline, <see cref="Instrument"/> pilote le patch GM).
+        /// Non-null = mode VSTi : le player instancie un <c>VstInstrument</c> et lui envoie les notes de la piste,
+        /// <see cref="Instrument"/> est ignoré côté rendu. Un .sq antérieur à cette fonctionnalité n'a pas ce
+        /// champ (System.Text.Json ignore les absents proprement) → mode MeltySynth comme avant.</summary>
+        public string VstiPath { get; set; }
+
+        /// <summary>Chunk d'état interne du VSTi (base64 du blob binaire retourné par <c>getChunk</c>), pour
+        /// restaurer le patch chargé, les paramètres et la banque de presets à la réouverture du projet.
+        /// Écrit à chaque sauvegarde par <c>TimelineScreen</c> qui interroge le VstInstrument vivant, si présent.
+        /// <c>null</c> = pas d'état sauvé (nouveau VSTi ou plugin qui ne supporte pas <c>getChunk</c>).</summary>
+        public string VstiStateBlob { get; set; }
+
         public List<TimelineItem> Items = new List<TimelineItem>();
     }
 
