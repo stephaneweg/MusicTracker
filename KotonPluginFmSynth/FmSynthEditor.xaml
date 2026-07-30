@@ -1,0 +1,68 @@
+<UserControl x:Class="KotonPluginFmSynth.FmSynthEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#232429"
+             Foreground="#E9EAED"
+             FontFamily="Segoe UI"
+             MinWidth="440" MinHeight="360">
+    <!--
+    Editeur du FM synth. Couleurs hardcodees (pas d'acces aux resources du host — un plugin Koton
+    natif est un assembly independant). Palette Koton : #232429 fond, #E9EAED texte, #1FB6C3 teal
+    d'accent.
+    -->
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="AccentTeal" Color="#1FB6C3"/>
+        <SolidColorBrush x:Key="AccentTealDim" Color="#0F5B62"/>
+        <SolidColorBrush x:Key="PanelBg" Color="#2A2C33"/>
+        <SolidColorBrush x:Key="DimText" Color="#9AA0A6"/>
+
+        <!-- Slider theme cheveu-fin : rail teal, thumb rond -->
+        <Style x:Key="KotonSlider" TargetType="Slider">
+            <Setter Property="Foreground" Value="{StaticResource AccentTeal}"/>
+            <Setter Property="Background" Value="#3A3D45"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="MinWidth" Value="140"/>
+            <Setter Property="IsMoveToPointEnabled" Value="True"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Ligne du haut : combo de presets + titre. -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
+            <TextBlock Text="Preset :" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"/>
+            <ComboBox x:Name="PresetCombo" Width="180" FontSize="12" Background="{StaticResource PanelBg}" Foreground="#E9EAED"
+                      SelectionChanged="PresetCombo_SelectionChanged"/>
+            <TextBlock x:Name="TitleText" Text="FM Synth 2-op" Margin="20,0,0,0" VerticalAlignment="Center"
+                       FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource AccentTeal}"/>
+        </StackPanel>
+
+        <!-- Grille de sliders : 2 colonnes, une ligne par parametre. -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Grid x:Name="ParamsGrid" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <!-- Les Row et les controles sont crees dynamiquement en code-behind (une ligne par
+                     KotonParameter) : label + slider + valeur affichee. -->
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Zone oscilloscope en bas. Canvas de 400x80 avec un Polyline mis a jour via DispatcherTimer 30 Hz. -->
+        <Border Grid.Row="2" BorderBrush="{StaticResource AccentTealDim}" BorderThickness="1"
+                Background="#111318" CornerRadius="3" Padding="4" Height="90">
+            <Grid>
+                <Canvas x:Name="ScopeCanvas" ClipToBounds="True" Background="Transparent"/>
+                <TextBlock Text="OSCILLOSCOPE" Foreground="{StaticResource DimText}" FontSize="9"
+                           HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,4,0"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonPluginFmSynth</RootNamespace>
+    <AssemblyName>KotonPluginFmSynth</AssemblyName>
+    <ProjectGuid>{A3F7C912-4D8B-4E5A-9C6F-1D2E3B4A5F60}</ProjectGuid>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- Must match host bitness — Koton Studio forces x64 (VST.NET requirement); an AnyCPU / x86 build
+         would fail to load in-process. -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Emit `.ksl` instead of `.dll` so the KotonPluginRegistry scanner picks it up (extension is
+         cosmetic — the file is a normal .NET PE, Assembly.LoadFrom doesn't care about the extension —
+         but the scanner filters on *.ksl to avoid loading unrelated DLLs). -->
+    <TargetExt>.ksl</TargetExt>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The ONLY reference: the public Koton plugin contract. Deliberately NO ProjectReference to
+         MusicTracker itself — a plugin must be able to compile from just this library, exactly as a
+         third-party plugin author would. -->
+    <ProjectReference Include="..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+  </ItemGroup>
+
+  <!-- ================= Post-build copy to the host's plugins folder =================
+       During development, copy the freshly built .ksl into MusicTracker\bin\<Config>\plugins\ so a
+       simple F5 in Visual Studio (or dotnet build MusicTracker) yields an app that already sees the
+       plugin. Doesn't run in a stand-alone plugin build (no host bin to write to → the copy target
+       silently skips missing dirs). Installer builds pick the .ksl up separately via the `.iss`
+       recursive glob on plugins/. -->
+  <Target Name="CopyKslToHostBinPluginsDir" AfterTargets="Build">
+    <PropertyGroup>
+      <KslArtifact>$(TargetPath)</KslArtifact>
+      <HostBinPluginsDir>$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)\plugins\</HostBinPluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')" />
+    <Copy SourceFiles="$(KslArtifact)"
+          DestinationFolder="$(HostBinPluginsDir)"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
