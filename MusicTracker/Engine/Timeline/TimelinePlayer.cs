@@ -60,8 +60,10 @@ namespace MusicTracker.Engine.Timeline
 
             /// <summary>Instrument VSTi qui remplace <see cref="Synth"/> pour cette piste (mutuellement exclusif :
             /// une piste en mode VSTi n'a pas de Synth alloué). Null = mode MeltySynth (voir <see cref="TimelineTrack.VstiPath"/>).
-            /// Instancié dans <see cref="TrySetupMeltySynth"/> et disposé par <see cref="TimelinePlayer.Dispose"/>.</summary>
-            public VstInstrument Vsti;
+            /// Instancié dans <see cref="TrySetupMeltySynth"/> et disposé par <see cref="TimelinePlayer.Dispose"/>.
+            /// Format-agnostique via <see cref="IVstInstrumentHost"/> — <c>VstInstrument</c> (.dll) et
+            /// <c>Vst3Instrument</c> (.vst3) partagent la même surface d'appel.</summary>
+            public MusicTracker.Engine.Timeline.Effects.IVstInstrumentHost Vsti;
         }
 
         readonly int sampleRate;
@@ -267,7 +269,13 @@ namespace MusicTracker.Engine.Timeline
                     // silencieusement en bypass (piste muette) sans faire tomber toute la lecture.
                     if (!string.IsNullOrEmpty(tr.VstiPath))
                     {
-                        var vsti = new VstInstrument(tr.VstiPath, sampleRate);
+                        // Routage par extension : .vst3 → hoster P/Invoke Steinberg, sinon .dll VST2 via VST.NET.
+                        var ext = System.IO.Path.GetExtension(tr.VstiPath);
+                        MusicTracker.Engine.Timeline.Effects.IVstInstrumentHost vsti;
+                        if (string.Equals(ext, ".vst3", StringComparison.OrdinalIgnoreCase))
+                            vsti = new Vst3Instrument(tr.VstiPath, sampleRate);
+                        else
+                            vsti = new VstInstrument(tr.VstiPath, sampleRate);
                         if (!string.IsNullOrEmpty(tr.VstiStateBlob)) vsti.LoadState(tr.VstiStateBlob);
                         tracks[i].Vsti = vsti;
                         tracks[i].Channel = 0;   // VSTi = canal 0 par convention (les instruments ne connaissent pas le "9=batterie" de GM)

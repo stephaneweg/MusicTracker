@@ -176,11 +176,15 @@ namespace MusicTracker.Screens
                 MessageBox.Show(Window.GetWindow(this), string.Format(Loc.T("VstiPluginMissing"), track.VstiPath), Loc.T("TrackInstrumentVsti"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            // Instance VstInstrument dédiée à l'UI, indépendante du renderer (qui vit dans le thread audio).
+            // Instance VSTi dédiée à l'UI, indépendante du renderer (qui vit dans le thread audio).
             // Le state actuel du projet est injecté ; à la fermeture on récupère le nouveau state et on l'écrit
             // dans track.VstiStateBlob — au prochain Start, le renderer relit ce blob. Même pattern que les
-            // inserts VST du mixeur (voir MixerDialog.OpenEffectEditor).
-            var vsti = new VstInstrument(track.VstiPath, 44100);
+            // inserts VST du mixeur (voir MixerDialog.OpenEffectEditor). Format-agnostique via IVstInstrumentHost :
+            // routage par extension .vst3 → Vst3Instrument, sinon VstInstrument (.dll).
+            var ext = System.IO.Path.GetExtension(track.VstiPath);
+            IVstInstrumentHost vsti = string.Equals(ext, ".vst3", StringComparison.OrdinalIgnoreCase)
+                ? new Vst3Instrument(track.VstiPath, 44100)
+                : (IVstInstrumentHost)new VstInstrument(track.VstiPath, 44100);
             if (!string.IsNullOrEmpty(track.VstiStateBlob)) vsti.LoadState(track.VstiStateBlob);
             if (!vsti.EnsureOpenedSync(512))
             {

@@ -23,7 +23,7 @@ namespace MusicTracker.Engine.Timeline
     /// est ajouté. Le buffer d'events à flusher est protégé par un lock ; le Render entier est aussi sous ce
     /// lock — pas de contention en pratique (audio thread = seul locker chaud).
     /// </summary>
-    public sealed class VstInstrument : IVstEditorHost, IDisposable
+    public sealed class VstInstrument : IVstInstrumentHost
     {
         public string PluginPath { get; }
         public bool IsLoaded => _ctx != null && !_failed;
