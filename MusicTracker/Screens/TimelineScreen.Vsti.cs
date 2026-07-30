@@ -33,6 +33,17 @@ namespace MusicTracker.Screens
     /// </summary>
     public partial class TimelineScreen
     {
+        /// <summary>Libère toutes les instances VSTi cachées (<see cref="VstInstrumentCache"/>) pour les pistes
+        /// de ce projet. À appeler quand l'onglet timeline se ferme et que ce <c>TimelineScreen</c> ne sera plus
+        /// utilisé — les autres onglets gardent leurs instances intactes (release track-par-track, pas
+        /// ClearAll global). Appelé par <c>MainWindow.CloseEditor</c>.</summary>
+        public void ReleaseCachedVstiForClose()
+        {
+            if (project?.Tracks == null) return;
+            foreach (var track in project.Tracks)
+                MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.ReleaseTrack(track);
+        }
+
         Button BuildVstiButton(TimelineTrack track)
         {
             var btn = new Button
@@ -205,6 +216,13 @@ namespace MusicTracker.Screens
         {
             // Snapshot d'annulation AVANT la mutation — comme add/remove d'un insert dans le mixeur.
             PushUndo("track:vsti:" + Id(track));
+            // Libère l'ancienne instance VSTi cachée (VstInstrumentCache) : sans ça, un swap A → B laisse
+            // A vivant en RAM jusqu'à ClearAll (fermeture d'onglet). Ne fait rien si aucun VSTi n'était
+            // posé, ou si le player en cours utilise encore l'instance (l'UI empêche pratiquement de
+            // switcher pendant la lecture — mais dans le doute, ReleaseTrack ne touche pas au Vsti field
+            // du player actif, il déréférence juste l'entrée du cache : le player rendra du silence sur
+            // sa piste jusqu'au prochain Start).
+            MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.ReleaseTrack(track);
             track.VstiPath = path;
             track.VstiStateBlob = null;   // nouveau plugin = état frais (pas de patch chargé)
             // Le player en cours de lecture continue de rendre avec le synth MeltySynth de cette piste
@@ -217,6 +235,10 @@ namespace MusicTracker.Screens
         {
             if (string.IsNullOrEmpty(track.VstiPath)) return;
             PushUndo("track:vsti:remove:" + Id(track));
+            // Libère l'instance cachée : le retour au son MeltySynth ne nécessite plus le plugin, et
+            // le garder chargé serait un leak à ce moment-là (l'utilisateur a explicitement demandé
+            // à s'en débarrasser).
+            MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.ReleaseTrack(track);
             track.VstiPath = null;
             track.VstiStateBlob = null;
             Render();
@@ -283,6 +305,8 @@ namespace MusicTracker.Screens
             track.KotonInstrumentStateBlob = null;   // nouveau plugin = état par défaut
             // Exclusion mutuelle : sélectionner un plugin Koton natif clear un éventuel VSTi précédent.
             // Le renderer donnerait la précédence au VSTi si les deux étaient posés — l'UI empêche ce cas.
+            // Libère aussi l'instance VSTi cachée : plus jamais utilisée par cette piste.
+            MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.ReleaseTrack(track);
             track.VstiPath = null;
             track.VstiStateBlob = null;
             Render();

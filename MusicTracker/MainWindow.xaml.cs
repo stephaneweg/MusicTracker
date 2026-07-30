@@ -76,6 +76,11 @@ namespace MusicTracker
             {
                 if (!ConfirmDiscard(t.editor)) { e.Cancel = true; return; }
             }
+            // Toutes les confirmations passees : on quitte pour de bon. Libere toutes les instances VSTi
+            // cachees (VstInstrumentCache) — LoadLibrary + buffers non-manages qui traineraient jusqu'a
+            // la fin du process. Le CLR nettoyerait a l'exit mais un plugin natif buggue peut avoir des
+            // ressources qui refusent le teardown implicite (fichiers ouverts, thread pool proprietaires).
+            try { MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.ClearAll(); } catch { }
         }
 
         /// <summary>Demande quoi faire d'un éditeur modifié. Renvoie false si l'utilisateur annule — auquel cas
@@ -398,6 +403,12 @@ namespace MusicTracker
             int i = editorTabs.FindIndex(t => ReferenceEquals(t.editor, editor));
             if (i < 0) return;
             editor.StopAudio();
+            // Libère les instances VSTi cachées pour toutes les pistes de ce projet — elles ne seront
+            // plus jamais rejouées dans cet onglet, et le TimelineScreen est fini. Sans ça, un
+            // parcours d'ouverture/fermeture d'onglets ferait grimper la RAM native (chaque plugin
+            // tient LoadLibrary + buffers non-managés). Les autres onglets gardent leurs instances
+            // intactes puisqu'on cible track-par-track (pas ClearAll global).
+            if (editor is TimelineScreen ts) ts.ReleaseCachedVstiForClose();
             tabStrip.Children.Remove(editorTabs[i].btn);
             editorTabs.RemoveAt(i);
             if (ReferenceEquals(current, editor))

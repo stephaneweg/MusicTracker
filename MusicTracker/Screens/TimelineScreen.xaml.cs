@@ -497,12 +497,11 @@ namespace MusicTracker.Screens
                 playBuffer = new Engine.Timeline.LookaheadBuffer(player, player.Start, player.Stop, AudioFormat.SampleRate);
                 playBuffer.Ended += () => Dispatcher.BeginInvoke((Action)OnPlaybackEnded);
                 playBuffer.Primed += () => Dispatcher.BeginInvoke((Action)BeginPlaybackDevice);
-                // Prewarm 3s de rendu silencieux sur chaque VSTi (fait sur le thread producer, PAS UI),
-                // pour eliminer le "silence initial" que beaucoup de plugins ont le temps de faire chauffer
-                // leur DSP interne. 3s couvre les plugins sample-based (Cozy Piano) et les synthes complexes
-                // (Surge XT). Skippe entierement si aucun VSTi (evite ~3s de delai inutile).
-                if (player.HasAnyVsti())
-                    playBuffer.SetPrewarm(() => player.PrewarmVstiSilently(AudioFormat.SampleRate * 3));
+                // Note : le prewarm de 3s (rendu silencieux pour reveiller les VSTi) a ete retire — desormais
+                // les instances VSTi sont partagees via VstInstrumentCache et gardent leurs samples charges
+                // + leur DSP chaud entre deux Play. La 1re creation du plugin coute toujours (LoadLibrary +
+                // COM init + samples), mais elle est absorbee par le prime buffer du LookaheadBuffer.
+                // PrewarmVstiSilently reste dans TimelinePlayer au cas ou un futur cas d'usage le rappelle.
                 EnsureCursor();
                 MoveCursor(startBeat);
                 SetPlayGlyph("⏳"); // filling the buffer before playback
@@ -560,11 +559,10 @@ namespace MusicTracker.Screens
             if (playWaveOut != null) { try { playWaveOut.Stop(); playWaveOut.Dispose(); } catch { } playWaveOut = null; }
             if (playBuffer != null) { try { playBuffer.Stop(); } catch { } playBuffer = null; } // stops the producer + inner
             if (player != null) { try { player.Stop(); } catch { } try { player.Dispose(); } catch { } player = null; }
-            // Force la libération immédiate des objets COM du plugin VST3 disposé — sans ça les instances
-            // s'accumulent en mémoire native jusqu'à la prochaine GC, et la nouvelle instance du VSTi au
-            // prochain Play galère avec du state DLL partagé pas encore nettoyé (silence croissant à chaque
-            // cycle Play/Stop/Play).
-            try { GC.Collect(); GC.WaitForPendingFinalizers(); GC.Collect(); } catch { }
+            // Note : le GC.Collect() force qui existait ici visait a liberer les objets COM des VSTi
+            // disposes entre deux Play (ancien schema : nouveau plugin instancie a chaque Play). Depuis
+            // VstInstrumentCache, les instances SURVIVENT au Stop — plus rien a collecter en urgence, le
+            // GC habituel suffit. Le vrai Dispose des VSTi est declenche par ReleaseTrack / ClearAll.
             SetPlayGlyph("▶");
         }
 
@@ -4241,6 +4239,11 @@ namespace MusicTracker.Screens
             if (track == null || track.Type == TimelineTrackType.Chord) return;
             CommitRiffEditor();
             PushUndo("track:del");          // capture AVANT le retrait ; clé non préfixée « delete: » → aucune neutralisation
+            // Libère l'éventuelle instance VSTi cachée pour cette piste — sans ça, l'instance survivrait
+            // dans VstInstrumentCache jusqu'à la fermeture de l'onglet, même si la piste n'existe plus
+            // et ne sera jamais rejouée. Undo restaure la piste avec le même identifiant (référence) mais
+            // le cache aura été vidé — le prochain Play recréera proprement une nouvelle instance.
+            MusicTracker.Engine.Timeline.Effects.VstInstrumentCache.ReleaseTrack(track);
             project.Tracks.Remove(track);
             scoreTracks.Remove(track);
             if (selectedTrack == track) selectedTrack = null;
