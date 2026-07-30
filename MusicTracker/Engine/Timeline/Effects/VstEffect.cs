@@ -33,7 +33,7 @@ namespace MusicTracker.Engine.Timeline.Effects
     /// appelle Load à CHAQUE buffer pour relire les sliders des effets maison, mais un plugin VST a sa propre GUI
     /// native qui mute l'état à l'intérieur du plugin — le dictionnaire de l'hôte n'a aucune vérité à raconter.
     /// </summary>
-    public class VstEffect : IAudioEffect, IDisposable
+    public class VstEffect : IAudioEffect, IVstEditorHost, IDisposable
     {
         public string Kind => "vst";
 
