@@ -34,6 +34,11 @@ namespace MusicTracker.Engine.Flow
                     return MelodicEuclid.TotalBeats(mp);
                 case PolyChordModule pc:
                     return PolyChord.TotalBeats(pc);
+                case KotonGeneratorModule kg:
+                    // La durée est PORTÉE par le module (pas par le plugin) — les redimensionnements
+                    // depuis la timeline et l'éditeur passent tous par KotonGeneratorModule.DurationBeats.
+                    // Un floor à 0.25 est déjà appliqué côté setter.
+                    return kg.DurationBeats;
                 default:
                     return 4;
             }

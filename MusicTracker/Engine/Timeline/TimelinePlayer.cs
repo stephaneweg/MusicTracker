@@ -421,7 +421,7 @@ namespace MusicTracker.Engine.Timeline
             }
         }
 
-        static Riff RiffForModule(FlowModule m, Func<Guid, Riff> resolve)
+        Riff RiffForModule(FlowModule m, Func<Guid, Riff> resolve)
         {
             switch (m)
             {
@@ -431,6 +431,10 @@ namespace MusicTracker.Engine.Timeline
                 case PolyDrumModule pd: return PolyDrum.Generate(pd);
                 case CadenceModule cm: return PatternGenerator.GenerateCadence(cm);
                 case PolyChordModule pc: return PolyChord.Generate(pc);
+                // Générateur Koton natif : instance vivante + RenderNotes → Riff canonique via le
+                // helper partagé (même chemin que ScoreModel et l'export MIDI, pour éviter la
+                // divergence audio/partition/export — cf. « New module → 3 resolvers »).
+                case KotonGeneratorModule kg: return KotonGeneratorRuntime.RenderRiff(kg, melodyProject);
                 default: return null;
             }
         }

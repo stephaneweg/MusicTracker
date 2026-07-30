@@ -17,6 +17,7 @@ namespace MusicTracker.Engine.Flow
     [JsonDerivedType(typeof(PolyDrumModule), "PolyDrum")]
     [JsonDerivedType(typeof(MelodicPolyModule), "MelodicPoly")]
     [JsonDerivedType(typeof(PolyChordModule), "PolyChord")]
+    [JsonDerivedType(typeof(KotonGeneratorModule), "KotonGenerator")]
     public abstract class FlowModule : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
