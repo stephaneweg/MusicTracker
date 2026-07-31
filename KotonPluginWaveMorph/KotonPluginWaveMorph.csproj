@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonPluginWaveMorph</RootNamespace>
+    <AssemblyName>KotonPluginWaveMorph</AssemblyName>
+    <ProjectGuid>{C5B0D234-6E8F-4A3B-8D2C-3F9E4A6D5C82}</ProjectGuid>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <!-- Match host bitness (x64, same reasoning as KotonPluginFmSynth : VST.NET forces x64 sur l'hote). -->
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Emettre .ksl (Koton Studio Library) au lieu de .dll pour que KotonPluginRegistry.ScanFolder le trouve. -->
+    <TargetExt>.ksl</TargetExt>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Seule reference : le contrat public. Volontairement PAS de reference sur MusicTracker
+         lui-meme, un plugin doit compiler avec juste cette librairie comme le ferait un tiers. -->
+    <ProjectReference Include="..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+  </ItemGroup>
+
+  <!-- Post-build copy : le .ksl est depose dans le dossier plugins/ de l'exe MusicTracker (Debug et
+       Release ont chacun leur bin/, l'installer le recupere separement via un glob recursif dans .iss).
+       Copie silencieusement ignoree si le bin/ hote n'existe pas (plugin builde en standalone). -->
+  <Target Name="CopyKslToHostBinPluginsDir" AfterTargets="Build">
+    <PropertyGroup>
+      <KslArtifact>$(TargetPath)</KslArtifact>
+      <HostBinPluginsDir>$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)\plugins\</HostBinPluginsDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')" />
+    <Copy SourceFiles="$(KslArtifact)"
+          DestinationFolder="$(HostBinPluginsDir)"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
