@@ -156,59 +156,203 @@ namespace KotonPluginFmSynth
                 Additive = true },
 
             // =============================================================================================
-            // Banque OPL2 importée (v1.2) — 44 presets convertis depuis les fichiers .FMI publics du
-            // programme "fm-song" (Asher256, 1998, github.com/Asher256/asher256-legacy/fmsong/INS).
-            // Mapping : voir FmiImporter.cs. Sons "OPL-like" reconnaissables, pas fidèles (notre synthé
-            // 2-op sinus + 4 formes ne capte pas toute la subtilité de la puce YM3812). Servent de
-            // banque de matière brute — l'utilisateur peut affiner en modifiant les paramètres après
-            // avoir chargé le preset. Percussions (BDRUM/SNARE/HIHAT/…) et SFX (LASER/NOISE/DRILL/…)
-            // volontairement écartés à l'import (non exploitables comme presets tonaux).
+            // Banque instruments acoustiques (v1.3) — 44 presets recréés from scratch à partir des
+            // recettes FM 2-op classiques (DX7/TX81Z-style), remplacent l'import brut .FMI qui
+            // produisait du bruit blanc (mapping OPL2 → notre synth trop lossy : feedback OPL 7 mappé
+            // à 1.0 auto-oscillait, index 8 aliaisait). Les noms sont conservés pour la compatibilité
+            // des projets sauvegardés. Recettes appliquées :
+            //   - Feedback max 0.2 (plus, ça part en distortion/bruit sur notre implémentation).
+            //   - Index max 5.0 (au-delà, partiels au-dessus de Nyquist → bruit haut du spectre).
+            //   - Ratios entiers (1, 2, 3, 5) pour timbres harmoniques ; inharmoniques (3.5, 7) pour
+            //     percussions métalliques (cloches, marimba, xylo, gamelan).
+            //   - ADSR par famille : attack court pour pincés (~2ms) / long pour archets (~150ms) /
+            //     moyen pour cuivres (~80ms), sustain plein pour tenus / bas pour percussifs.
+            //   - LFO léger (rate 5Hz, depth 0.06-0.12) pour instruments qui "vibrent" (vents, archets).
             // =============================================================================================
 
-            new Preset { Name = "Accordion", Ratio = 4.0, Index = 6.095, Attack = 707.107, Decay = 2000.0, Sustain = 1.0, Release = 88.388, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "Alto Viola", Ratio = 0.5, Index = 5.968, Attack = 1414.214, Decay = 2828.427, Sustain = 0.0, Release = 31.25, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.0 },
-            new Preset { Name = "Bagpipes", Ratio = 0.5, Index = 7.619, Attack = 250.0, Decay = 88.388, Sustain = 1.0, Release = 62.5, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.143 },
-            new Preset { Name = "Banjo", Ratio = 0.5, Index = 7.111, Attack = 353.553, Decay = 44.194, Sustain = 0.22, Release = 1414.214, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.571 },
-            new Preset { Name = "Bass Harp", Ratio = 0.5, Index = 2.286, Attack = 22.097, Decay = 2000.0, Sustain = 0.16, Release = 1414.214, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "Bassoon", Ratio = 0.5, Index = 6.349, Attack = 500.0, Decay = 2828.427, Sustain = 0.933, Release = 88.388, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
-            new Preset { Name = "Bells", Ratio = 3.5, Index = 6.095, Attack = 22.097, Decay = 2000.0, Sustain = 0.16, Release = 2000.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.571 },
-            new Preset { Name = "Bell Piano", Ratio = 1.0, Index = 6.095, Attack = 22.097, Decay = 2000.0, Sustain = 0.22, Release = 353.553, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.429 },
-            new Preset { Name = "OPL Brass", Ratio = 1.0, Index = 5.206, Attack = 250.0, Decay = 2828.427, Sustain = 0.4, Release = 31.25, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "Celesta", Ratio = 1.0, Index = 7.111, Attack = 88.388, Decay = 500.0, Sustain = 0.18, Release = 2000.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.286, Additive = true },
-            new Preset { Name = "Cello", Ratio = 0.5, Index = 7.365, Attack = 1414.214, Decay = 2828.427, Sustain = 0.0, Release = 31.25, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.0 },
-            new Preset { Name = "Clarinet", Ratio = 2.0, Index = 4.444, Attack = 250.0, Decay = 2000.0, Sustain = 0.733, Release = 707.107, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
-            new Preset { Name = "Contrabass", Ratio = 2.0, Index = 8.0, Attack = 250.0, Decay = 1414.214, Sustain = 0.26, Release = 500.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.0 },
-            new Preset { Name = "Electric Guitar", Ratio = 0.5, Index = 7.111, Attack = 353.553, Decay = 44.194, Sustain = 0.24, Release = 1414.214, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.571 },
-            new Preset { Name = "OPL Electric Piano", Ratio = 1.0, Index = 3.683, Attack = 22.097, Decay = 707.107, Sustain = 0.22, Release = 1414.214, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "English Horn", Ratio = 0.5, Index = 3.556, Attack = 250.0, Decay = 2000.0, Sustain = 0.4, Release = 31.25, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.714 },
-            new Preset { Name = "Flute", Ratio = 1.0, Index = 3.048, Attack = 707.107, Decay = 1414.214, Sustain = 0.667, Release = 353.553, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.286 },
-            new Preset { Name = "French Horn", Ratio = 1.0, Index = 4.063, Attack = 125.0, Decay = 125.0, Sustain = 0.933, Release = 125.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
-            new Preset { Name = "Guitar", Ratio = 1.0, Index = 5.841, Attack = 22.097, Decay = 707.107, Sustain = 0.14, Release = 250.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.714 },
-            new Preset { Name = "Harmonica", Ratio = 1.0, Index = 6.095, Attack = 500.0, Decay = 2828.427, Sustain = 1.0, Release = 707.107, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.AbsSine, CarWave = FmWaveform.HalfSine, Feedback = 0.143 },
-            new Preset { Name = "Harp", Ratio = 1.0, Index = 5.841, Attack = 62.5, Decay = 1000.0, Sustain = 0.26, Release = 2000.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.AbsSine, CarWave = FmWaveform.Sine, Feedback = 0.857, Additive = true },
-            new Preset { Name = "Harpsichord", Ratio = 0.5, Index = 7.111, Attack = 353.553, Decay = 44.194, Sustain = 0.24, Release = 1414.214, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.571 },
-            new Preset { Name = "Javanese Gamelan", Ratio = 1.667, Index = 6.349, Attack = 250.0, Decay = 707.107, Sustain = 0.2, Release = 1000.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.714 },
-            new Preset { Name = "Marimba", Ratio = 5.0, Index = 6.222, Attack = 22.097, Decay = 176.777, Sustain = 0.28, Release = 707.107, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.714 },
-            new Preset { Name = "Oboe", Ratio = 0.5, Index = 7.365, Attack = 250.0, Decay = 88.388, Sustain = 1.0, Release = 31.25, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.143 },
-            new Preset { Name = "OPL Organ", Ratio = 5.0, Index = 5.714, Attack = 22.097, Decay = 2828.427, Sustain = 1.0, Release = 707.107, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.143 },
-            new Preset { Name = "OPL Piano", Ratio = 1.0, Index = 6.476, Attack = 22.097, Decay = 2000.0, Sustain = 0.16, Release = 2000.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.286 },
-            new Preset { Name = "Piccolo", Ratio = 1.0, Index = 5.968, Attack = 353.553, Decay = 4000.0, Sustain = 1.0, Release = 22.097, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.714 },
-            new Preset { Name = "Pipes", Ratio = 5.0, Index = 5.714, Attack = 22.097, Decay = 2828.427, Sustain = 1.0, Release = 707.107, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.143 },
-            new Preset { Name = "Pop Bass", Ratio = 0.5, Index = 8.0, Attack = 22.097, Decay = 707.107, Sustain = 0.14, Release = 2000.0, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.0 },
-            new Preset { Name = "Saxophone", Ratio = 0.5, Index = 6.349, Attack = 707.107, Decay = 2000.0, Sustain = 0.16, Release = 62.5, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.HalfSine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
-            new Preset { Name = "Soft Brass", Ratio = 1.0, Index = 5.206, Attack = 250.0, Decay = 2828.427, Sustain = 0.4, Release = 31.25, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.714 },
-            new Preset { Name = "Sitar", Ratio = 0.5, Index = 8.0, Attack = 22.097, Decay = 2000.0, Sustain = 0.22, Release = 707.107, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.0 },
-            new Preset { Name = "Slap Bass", Ratio = 0.5, Index = 4.317, Attack = 62.5, Decay = 1414.214, Sustain = 0.16, Release = 1414.214, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "Strings", Ratio = 1.0, Index = 6.603, Attack = 1000.0, Decay = 2000.0, Sustain = 0.933, Release = 707.107, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.429 },
-            new Preset { Name = "Synth 1", Ratio = 0.5, Index = 5.968, Attack = 22.097, Decay = 1000.0, Sustain = 0.2, Release = 88.388, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
-            new Preset { Name = "Synth 2", Ratio = 7.0, Index = 7.111, Attack = 22.097, Decay = 4000.0, Sustain = 0.3, Release = 707.107, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.286 },
-            new Preset { Name = "Tenor Sax", Ratio = 0.5, Index = 6.603, Attack = 707.107, Decay = 2000.0, Sustain = 0.16, Release = 62.5, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
-            new Preset { Name = "Trombone", Ratio = 1.0, Index = 4.952, Attack = 707.107, Decay = 2000.0, Sustain = 0.8, Release = 88.388, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
-            new Preset { Name = "Trumpet", Ratio = 1.0, Index = 4.444, Attack = 176.777, Decay = 2000.0, Sustain = 0.8, Release = 88.388, Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "Tuba", Ratio = 0.5, Index = 4.317, Attack = 353.553, Decay = 1414.214, Sustain = 0.16, Release = 707.107, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "Vibraphone", Ratio = 6.0, Index = 1.524, Attack = 22.097, Decay = 2000.0, Sustain = 0.08, Release = 1414.214, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.0 },
-            new Preset { Name = "Violin", Ratio = 1.0, Index = 4.444, Attack = 707.107, Decay = 2000.0, Sustain = 0.933, Release = 1414.214, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 1.0 },
-            new Preset { Name = "Xylophone", Ratio = 1.0, Index = 2.286, Attack = 22.097, Decay = 707.107, Sustain = 0.0, Release = 707.107, Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, ModWave = FmWaveform.Sine, CarWave = FmWaveform.Sine, Feedback = 0.857 },
+            // --- Bois (sustained, attack rapide, harmoniques impaires ou nasillard) ---
+            new Preset { Name = "Flute",
+                Ratio = 1.0, Index = 1.5, Attack = 80, Decay = 100, Sustain = 0.85, Release = 200,
+                Volume = 0.7, LfoRate = 5.5, LfoDepth = 0.06 },
+
+            new Preset { Name = "Piccolo",
+                Ratio = 1.0, Index = 2.0, Attack = 60, Decay = 100, Sustain = 0.85, Release = 200,
+                Volume = 0.65, LfoRate = 5.5, LfoDepth = 0.06 },
+
+            new Preset { Name = "Clarinet",
+                Ratio = 3.0, Index = 3.5, Attack = 40, Decay = 100, Sustain = 0.85, Release = 200,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.05 },
+
+            new Preset { Name = "Oboe",
+                Ratio = 3.0, Index = 4.5, Attack = 40, Decay = 100, Sustain = 0.85, Release = 200,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.05, Feedback = 0.1 },
+
+            new Preset { Name = "English Horn",
+                Ratio = 3.0, Index = 4.0, Attack = 60, Decay = 150, Sustain = 0.8, Release = 250,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.08, Feedback = 0.1 },
+
+            new Preset { Name = "Bassoon",
+                Ratio = 1.0, Index = 4.0, Attack = 60, Decay = 200, Sustain = 0.8, Release = 250,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.08, Feedback = 0.15 },
+
+            new Preset { Name = "Saxophone",
+                Ratio = 2.0, Index = 4.0, Attack = 30, Decay = 150, Sustain = 0.85, Release = 250,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.08, Feedback = 0.15 },
+
+            new Preset { Name = "Tenor Sax",
+                Ratio = 2.0, Index = 4.0, Attack = 40, Decay = 150, Sustain = 0.85, Release = 250,
+                Volume = 0.75, LfoRate = 5.0, LfoDepth = 0.08, Feedback = 0.15 },
+
+            new Preset { Name = "Harmonica",
+                Ratio = 1.0, Index = 3.0, Attack = 60, Decay = 150, Sustain = 0.85, Release = 250,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.1, Feedback = 0.1 },
+
+            // --- Cuivres (attack modéré, index élevé, sustain plein) ---
+            new Preset { Name = "Trumpet",
+                Ratio = 1.0, Index = 5.0, Attack = 60, Decay = 150, Sustain = 0.75, Release = 200,
+                Volume = 0.7, LfoRate = 5.5, LfoDepth = 0.06, Feedback = 0.15 },
+
+            new Preset { Name = "Trombone",
+                Ratio = 1.0, Index = 4.0, Attack = 100, Decay = 200, Sustain = 0.8, Release = 250,
+                Volume = 0.75, LfoRate = 5.0, LfoDepth = 0.06, Feedback = 0.1 },
+
+            new Preset { Name = "French Horn",
+                Ratio = 1.0, Index = 3.5, Attack = 100, Decay = 200, Sustain = 0.85, Release = 300,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.06, Feedback = 0.05 },
+
+            new Preset { Name = "Tuba",
+                Ratio = 0.5, Index = 3.0, Attack = 100, Decay = 200, Sustain = 0.85, Release = 300,
+                Volume = 0.8, LfoRate = 4.5, LfoDepth = 0.05, Feedback = 0.1 },
+
+            new Preset { Name = "OPL Brass",
+                Ratio = 1.0, Index = 4.0, Attack = 80, Decay = 200, Sustain = 0.75, Release = 250,
+                Volume = 0.7, LfoRate = 5.5, LfoDepth = 0.08, Feedback = 0.15 },
+
+            new Preset { Name = "Soft Brass",
+                Ratio = 1.0, Index = 3.0, Attack = 120, Decay = 200, Sustain = 0.8, Release = 300,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.06, Feedback = 0.1 },
+
+            // --- Cordes frottées (attack lente pour swell, sustain plein, LFO = vibrato) ---
+            new Preset { Name = "Violin",
+                Ratio = 1.0, Index = 3.5, Attack = 200, Decay = 200, Sustain = 0.9, Release = 300,
+                Volume = 0.75, LfoRate = 5.5, LfoDepth = 0.12, Feedback = 0.1 },
+
+            new Preset { Name = "Alto Viola",
+                Ratio = 1.0, Index = 3.0, Attack = 150, Decay = 200, Sustain = 0.85, Release = 350,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.12, Feedback = 0.1 },
+
+            new Preset { Name = "Cello",
+                Ratio = 1.0, Index = 3.0, Attack = 120, Decay = 200, Sustain = 0.85, Release = 400,
+                Volume = 0.75, LfoRate = 5.0, LfoDepth = 0.1, Feedback = 0.1 },
+
+            new Preset { Name = "Contrabass",
+                Ratio = 0.5, Index = 3.0, Attack = 80, Decay = 200, Sustain = 0.85, Release = 350,
+                Volume = 0.8, LfoRate = 4.5, LfoDepth = 0.08, Feedback = 0.1 },
+
+            new Preset { Name = "Strings",
+                Ratio = 1.0, Index = 3.0, Attack = 400, Decay = 500, Sustain = 0.85, Release = 600,
+                Volume = 0.7, LfoRate = 4.5, LfoDepth = 0.08, Feedback = 0.05 },
+
+            // --- Cordes pincées/frappées (attack immédiate, decay long, sustain bas) ---
+            new Preset { Name = "OPL Piano",
+                Ratio = 1.0, Index = 3.5, Attack = 3, Decay = 900, Sustain = 0.25, Release = 500,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.05 },
+
+            new Preset { Name = "OPL Electric Piano",
+                Ratio = 1.0, Index = 3.0, Attack = 3, Decay = 800, Sustain = 0.3, Release = 600,
+                Volume = 0.75, LfoRate = 4.5, LfoDepth = 0.08, Feedback = 0.1 },
+
+            new Preset { Name = "Harpsichord",
+                Ratio = 2.0, Index = 4.0, Attack = 2, Decay = 400, Sustain = 0.15, Release = 300,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.15 },
+
+            new Preset { Name = "Guitar",
+                Ratio = 1.0, Index = 3.0, Attack = 2, Decay = 500, Sustain = 0.2, Release = 400,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.1 },
+
+            new Preset { Name = "Electric Guitar",
+                Ratio = 1.0, Index = 4.0, Attack = 2, Decay = 400, Sustain = 0.3, Release = 400,
+                Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.2 },
+
+            new Preset { Name = "Banjo",
+                Ratio = 2.0, Index = 4.0, Attack = 1, Decay = 250, Sustain = 0.05, Release = 300,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.2 },
+
+            new Preset { Name = "Sitar",
+                Ratio = 1.5, Index = 4.5, Attack = 3, Decay = 800, Sustain = 0.15, Release = 1000,
+                Volume = 0.7, LfoRate = 5.0, LfoDepth = 0.15, Feedback = 0.15 },
+
+            new Preset { Name = "Harp",
+                Ratio = 1.0, Index = 2.5, Attack = 3, Decay = 1200, Sustain = 0.1, Release = 1500,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0 },
+
+            new Preset { Name = "Bass Harp",
+                Ratio = 0.5, Index = 2.5, Attack = 3, Decay = 800, Sustain = 0.15, Release = 1200,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0 },
+
+            // --- Basses (ratio 0.5-1, attack rapide, punch) ---
+            new Preset { Name = "Pop Bass",
+                Ratio = 0.5, Index = 3.0, Attack = 3, Decay = 500, Sustain = 0.4, Release = 200,
+                Volume = 0.8, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.15 },
+
+            new Preset { Name = "Slap Bass",
+                Ratio = 1.0, Index = 5.0, Attack = 2, Decay = 200, Sustain = 0.4, Release = 200,
+                Volume = 0.8, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.2 },
+
+            // --- Percussion mélodique (ratio inharmonique, attack immédiat, sustain bas) ---
+            new Preset { Name = "Bells",
+                Ratio = 3.5, Index = 4.0, Attack = 1, Decay = 1500, Sustain = 0.05, Release = 3000,
+                Volume = 0.7, LfoRate = 0.5, LfoDepth = 0.05 },
+
+            new Preset { Name = "Bell Piano",
+                Ratio = 2.0, Index = 3.5, Attack = 2, Decay = 1000, Sustain = 0.1, Release = 1500,
+                Volume = 0.75, LfoRate = 1.0, LfoDepth = 0.05, Feedback = 0.05 },
+
+            new Preset { Name = "Celesta",
+                Ratio = 3.0, Index = 3.0, Attack = 1, Decay = 500, Sustain = 0.1, Release = 800,
+                Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, Additive = true },
+
+            new Preset { Name = "Marimba",
+                Ratio = 5.0, Index = 4.0, Attack = 1, Decay = 300, Sustain = 0.1, Release = 500,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0 },
+
+            new Preset { Name = "Xylophone",
+                Ratio = 7.0, Index = 4.0, Attack = 1, Decay = 150, Sustain = 0.0, Release = 200,
+                Volume = 0.75, LfoRate = 3.0, LfoDepth = 0.0 },
+
+            new Preset { Name = "Vibraphone",
+                Ratio = 3.0, Index = 3.0, Attack = 1, Decay = 1500, Sustain = 0.15, Release = 1500,
+                Volume = 0.7, LfoRate = 6.0, LfoDepth = 0.15 },
+
+            new Preset { Name = "Javanese Gamelan",
+                Ratio = 3.5, Index = 4.5, Attack = 1, Decay = 800, Sustain = 0.1, Release = 1200,
+                Volume = 0.7, LfoRate = 3.0, LfoDepth = 0.0, Feedback = 0.1 },
+
+            // --- Orgues (attack immédiat, sustain plein) ---
+            new Preset { Name = "OPL Organ",
+                Ratio = 2.0, Index = 3.0, Attack = 5, Decay = 100, Sustain = 0.9, Release = 150,
+                Volume = 0.7, LfoRate = 4.5, LfoDepth = 0.03, Additive = true },
+
+            new Preset { Name = "Pipes",
+                Ratio = 3.0, Index = 3.0, Attack = 80, Decay = 200, Sustain = 0.85, Release = 300,
+                Volume = 0.7, LfoRate = 4.5, LfoDepth = 0.05 },
+
+            new Preset { Name = "Accordion",
+                Ratio = 1.0, Index = 3.5, Attack = 30, Decay = 150, Sustain = 0.85, Release = 150,
+                Volume = 0.7, LfoRate = 5.5, LfoDepth = 0.1, Feedback = 0.1 },
+
+            new Preset { Name = "Bagpipes",
+                Ratio = 3.0, Index = 4.5, Attack = 80, Decay = 100, Sustain = 0.9, Release = 100,
+                Volume = 0.6, LfoRate = 6.0, LfoDepth = 0.08, Feedback = 0.15 },
+
+            // --- Synthés polyvalents ---
+            new Preset { Name = "Synth 1",
+                Ratio = 1.0, Index = 4.0, Attack = 5, Decay = 400, Sustain = 0.7, Release = 300,
+                Volume = 0.65, LfoRate = 4.0, LfoDepth = 0.1, Feedback = 0.15 },
+
+            new Preset { Name = "Synth 2",
+                Ratio = 2.0, Index = 4.5, Attack = 5, Decay = 300, Sustain = 0.6, Release = 400,
+                Volume = 0.65, LfoRate = 5.0, LfoDepth = 0.15, Feedback = 0.2 },
         };
     }
 }

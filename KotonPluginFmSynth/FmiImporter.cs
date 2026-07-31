@@ -38,6 +38,28 @@ namespace KotonPluginFmSynth
     /// **Le mapping est lossy** : notre synthé est 2-op sinus + 4 formes d'onde supplémentaires, la
     /// puce OPL vraie a beaucoup plus de subtilités (KSL / KSR / tremolo à taux fixe...). Un preset
     /// converti donne un son "OPL-like" reconnaissable mais pas identique.
+    ///
+    /// **Décodage des registres OPL2** (vérifié dans SUB setinstrument de fmlib.bas) — chaque
+    /// paramètre écrit sur les registres 0x20..0xE0 :
+    /// <list type="bullet">
+    /// <item>Reg 0x20+op (par opérateur) : bit 7=VIB, bit 6=AM, bit 5=EGT (nommé `sustaininglevel`
+    /// dans le code fmlib, TROMPEUR — c'est le flag Envelope Generation Type 0/1), bit 4=KSR,
+    /// bits 0-3=MULT (0→×0.5).</item>
+    /// <item>Reg 0x40+op : bits 6-7=KSL, bits 0-5=TL (atténuation 0-63, 0=max, 63=silence).</item>
+    /// <item>Reg 0x60+op : bits 4-7=AR (attack rate 0-15, 15=quasi instantané), bits 0-3=DR.</item>
+    /// <item>Reg 0x80+op : bits 4-7=SL (sustain LEVEL 0-15, 0=max, 15=silence — c'est le vrai
+    /// sustain, nommé `sustain` dans fmlib), bits 0-3=RR.</item>
+    /// <item>Reg 0xE0+op : bits 0-1=WS (0=Sine, 1=HalfSine, 2=AbsSine, 3=QuarterPulse).</item>
+    /// <item>Reg 0xC0+ch (par CHANNEL, pas par op) : bits 1-3=FB (feedback, écrit *2 par fmlib →
+    /// FB*2 dans le registre), bit 0=CNT (0=FM, 1=Additif).</item>
+    /// </list>
+    ///
+    /// **Feedback OPL2 = bit-shift, pas scalaire** — critique pour éviter le bruit blanc à
+    /// l'import. Yamaha implémente FB comme un shift : `mod_out >> (8 - FB)` avec FB=7 max = ×0.5.
+    /// Notre synthé fait `phaseM + feedback * PI * modOut` linéaire — un feedback naïf à 1.0
+    /// (mappé depuis FB=7) fait ±π de déphasage = auto-oscillation chaotique = bruit blanc. D'où
+    /// le facteur *0.3 (max 0.35) appliqué en sortie du mapping ci-dessous, qui reste proche du
+    /// facteur effectif OPL réel.
     /// </summary>
     internal static class FmiImporter
     {
@@ -99,13 +121,20 @@ namespace KotonPluginFmSynth
             double mCar = (multCar == 0) ? 0.5 : (double)multCar;
             double ratio = Clamp(mMod / mCar, 0.5, 8.0);
 
-            // === Index de modulation : (63 - outp_mod) / 63 * 8 (formule du brief, plage 0..8)
-            double index = Clamp((63 - outLevelMod) / 63.0 * 8.0, 0.0, 10.0);
+            // === Index de modulation : (63 - outp_mod) / 63 * MAX_INDEX
+            // Plafond à 5.0 (au lieu de 8.0 théorique) : notre synth 2-op aliase dès qu'un partiel
+            // dépasse Nyquist. Un index > 5 combiné à ratio > 3 + note aiguë produit un bruit haut du
+            // spectre superposé à la fondamentale — d'où le "bruit blanc mélangé à des fréquences
+            // identifiables" observé sur les presets OPL2 importés bruts. Perte de fidélité minime,
+            // suppression totale du bruit d'aliasing.
+            double index = Clamp((63 - outLevelMod) / 63.0 * 5.0, 0.0, 5.0);
 
             // === ADSR times : OPL rate 0-15 → ms empirique 4000 * 0.5^(rate/2)
             // Rate 0 → 4000ms (très lent), rate 8 → 62ms, rate 15 → 22ms (quasi instantané pour l'oreille).
             // On prend le carrier pour attack/decay/release (c'est lui qui module l'amplitude perçue).
-            double attackMs  = Clamp(OplRateToMs(attackCar),  1.0, 4000.0);
+            // Attack plancher à 5ms : en-dessous, notre enveloppe linéaire produit un click audible
+            // (la vraie OPL a un ramp expo qui masque ça).
+            double attackMs  = Clamp(OplRateToMs(attackCar),  5.0, 4000.0);
             double decayMs   = Clamp(OplRateToMs(decayCar),   1.0, 4000.0);
             double releaseMs = Clamp(OplRateToMs(releaseCar), 1.0, 4000.0);
 
@@ -114,13 +143,28 @@ namespace KotonPluginFmSynth
             // EGT flag : si le carrier n'est PAS "sustained", le son décroit après decay → sustain bas.
             if (egtCar == 0) sustain *= 0.3;
             sustain = Clamp(sustain, 0.0, 1.0);
+            // Plancher sustain pour les instruments à attaque longue (> 100 ms) : sans ça, un preset
+            // Cello/AltoViola avec SL_OPL=15 tombe à sustain=0 avec un ramp trop court → note quasi
+            // inaudible dès la fin du decay. Heuristique : si le preset "swell" (attack > 100ms), on
+            // suppose que l'utilisateur veut tenir la note → sustain minimum 0.2.
+            if (attackMs > 100.0 && sustain < 0.15) sustain = 0.2;
 
             // === Waveforms : 0→Sine, 1→HalfSine, 2→AbsSine, 3→Sawtooth (approx pour pulse-quarter)
             var modWave = MapOplWave(waveMod);
             var carWave = MapOplWave(waveCar);
 
-            // === Feedback : OPL 0-7 → 0..1
-            double fb = Clamp(feedback / 7.0, 0.0, 1.0);
+            // === Feedback : OPL 0-7 → 0..0.3 (BEAUCOUP moins que /7=1.0)
+            // Notre implémentation : `fbPhase = phaseM + fb * PI * lastModOut` — avec fb=1.0 on
+            // atteint ±π de déphasage instantané → auto-oscillation chaotique = bruit blanc.
+            // La vraie OPL utilise un bit-shift (op_out >> (7-FB)) qui plafonne le feedback effectif
+            // à environ 0.25-0.35 du signal. On calque cette plage : fb * 0.3, max 0.35.
+            double fb = Clamp(feedback / 7.0 * 0.3, 0.0, 0.35);
+
+            // === Volume dérivé du TL du carrier : 0=max (63 unités × 0.75 dB) = -47dB (silence).
+            // On mappe TL_car [0..63] → volume [0.9..0.2] pour préserver l'info d'amplitude relative
+            // (perdue si on met tout à 0.7 par défaut). Un preset "loud" (TL_car=0) sortira à 0.9,
+            // un preset "soft" (TL_car=40) à ~0.3.
+            double vol = Clamp((63 - outLevelCar) / 63.0 * 0.7 + 0.2, 0.2, 0.9);
 
             // === Additive : connection = 1
             bool additive = (connection == 1);
@@ -142,7 +186,7 @@ namespace KotonPluginFmSynth
                 Decay = decayMs,
                 Sustain = sustain,
                 Release = releaseMs,
-                Volume = 0.7,
+                Volume = vol,
                 LfoRate = lfoRate,
                 LfoDepth = lfoDepth,
                 ModWave = modWave,
