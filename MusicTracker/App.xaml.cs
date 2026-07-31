@@ -30,6 +30,29 @@ namespace MusicTracker
             // already in the right language (the {loc:Tr} bindings read LocalizationManager at load time).
             try { Localization.LocalizationManager.Instance.SetLanguageCode(AppSettings.Instance.Language); }
             catch { /* localization is best-effort; never block startup */ }
+
+            // Câble le callback ReportException du SDK vers CrashGuard — les plugins peuvent
+            // signaler une exception attrapée défensivement (thread propriétaire, callback qui
+            // n'atteint pas les gestionnaires globaux). Journal + dialogue de report, l'app continue.
+            KotonStudio.Library.KotonHost.ReportException = (ex, source) =>
+            {
+                try { Engine.BugReport.CrashGuard.Report(ex, source); } catch { }
+            };
+
+            // Scanne TOUS les plugins Koton (.ksl) au démarrage → listes statiques prêtes AVANT
+            // que la 1re fenêtre s'affiche. Le menu Insérer > Générateur Koton (et les sélecteurs
+            // d'instrument) lisent ces listes directement, sans scan lazy. Un plugin ajouté après
+            // le démarrage nécessite un Rescan explicite (bouton dans le menu) — c'est le compromis
+            // pour éviter les effets de bord d'une instanciation-au-scan.
+            try
+            {
+                // TODO : quand le settings dialog exposera KotonPluginFolders (3 listes par type),
+                // passer AppSettings.Instance.KotonPluginFolders ici. Pour l'instant, dossiers défaut
+                // uniquement (bundle + %LocalAppData%\MusicTracker\plugins).
+                Engine.Timeline.Effects.KotonPluginRegistry.Initialize(null);
+            }
+            catch { /* le scan est protégé en interne ; ce catch = filet ultime */ }
+
             base.OnStartup(e);
         }
     }

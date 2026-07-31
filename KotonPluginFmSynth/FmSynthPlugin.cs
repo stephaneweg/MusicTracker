@@ -26,7 +26,7 @@ namespace KotonPluginFmSynth
     /// **Sauvegarde** : JSON UTF-8 contenant l'index de preset + les valeurs de chaque paramètre par
     /// Id. LoadState ignore les champs inconnus et garde les défauts pour les manquants.
     /// </summary>
-    [KotonInstrument("FM Synth", Category = "Synth", Version = "1.0", Vendor = "Koton Studio")]
+    [KotonInstrument("FM Synth", Id = "koton.fm", Category = "Synth", Version = "1.0", Vendor = "Koton Studio")]
     public sealed class FmSynthPlugin : IKotonInstrument
     {
         public string Id => "koton.fm";

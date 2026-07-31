@@ -9,7 +9,7 @@ namespace MusicTracker.Engine.Timeline.Effects
 {
     /// <summary>
     /// Métadonnées d'un instrument Koton natif découvert dans <c>plugins/*.ksl</c>. Retourné par
-    /// <see cref="KotonPluginRegistry.GetInstruments"/> pour peupler le menu de sélection sans instancier
+    /// <see cref="KotonPluginRegistry.Instruments"/> pour peupler le menu de sélection sans instancier
     /// le plugin (l'instanciation vient au moment où l'utilisateur choisit l'item).
     /// </summary>
     public sealed class KotonInstrumentInfo
@@ -40,7 +40,7 @@ namespace MusicTracker.Engine.Timeline.Effects
 
     /// <summary>
     /// Métadonnées d'un générateur Koton natif (<see cref="IKotonGenerator"/>). Retourné par
-    /// <see cref="KotonPluginRegistry.GetGenerators"/> pour peupler le sous-menu « Insérer ▸ Générateur
+    /// <see cref="KotonPluginRegistry.Generators"/> pour peupler le sous-menu « Insérer ▸ Générateur
     /// Koton » sans instancier le plugin. <see cref="Type"/> sert au filtrage par type de piste
     /// (batterie → Drum/Percussion, mélodique → Melody/Bass/Chord, etc.).
     /// </summary>
@@ -57,26 +57,32 @@ namespace MusicTracker.Engine.Timeline.Effects
     }
 
     /// <summary>
-    /// Registre singleton des plugins Koton natifs (<c>.ksl</c>) trouvés dans <c>&lt;AppPaths.BaseDir&gt;/plugins/</c>.
+    /// Registre singleton des plugins Koton natifs (<c>.ksl</c>) trouvés dans les dossiers configurés
+    /// (<c>&lt;AppPaths.BaseDir&gt;/plugins/</c> bundle + <c>%LocalAppData%/MusicTracker/plugins/</c>
+    /// utilisateur + dossiers utilisateur configurés dans <see cref="AppSettings"/>).
+    ///
+    /// **Architecture** — scan EXPLICITE au démarrage de l'app (<see cref="Initialize"/> appelé
+    /// depuis <c>App.OnStartup</c>), pas de lazy-load. Le scan extrait les MÉTADONNÉES depuis les
+    /// attributs UNIQUEMENT (aucun probe.Id qui instancie) — l'instanciation est différée au moment
+    /// où l'utilisateur clique sur l'entrée du menu ou où un fichier .sq référence l'Id.
     ///
     /// Un fichier <c>.ksl</c> = une DLL .NET renommée. Le loader utilise <see cref="Assembly.LoadFrom"/>
-    /// — l'extension n'est pas contrôlée par le loader, seul le contenu compte. Chaque assembly est
-    /// scanné à la recherche de types marqués <see cref="KotonInstrumentAttribute"/> /
-    /// <see cref="KotonEffectAttribute"/> implémentant la bonne interface, avec un constructeur public
-    /// sans paramètre. Les erreurs de chargement (fichier corrompu, dépendance manquante, réflexion qui
-    /// jette) sont capturées silencieusement et le fichier est ignoré — le reste des plugins continue à
-    /// se charger. Un plugin qui jette au constructeur n'est pas listé (l'instanciation de sondage se
-    /// fait sur demande via <see cref="InstantiateInstrument"/>).
+    /// — l'extension n'est pas contrôlée, seul le contenu compte. Chaque assembly est scanné à la
+    /// recherche de types marqués <see cref="KotonInstrumentAttribute"/> / <see cref="KotonEffectAttribute"/> /
+    /// <see cref="KotonGeneratorAttribute"/> implémentant la bonne interface, avec un constructeur
+    /// public sans paramètre. Les erreurs de chargement (fichier corrompu, dépendance manquante) sont
+    /// capturées silencieusement et le fichier est ignoré — les autres plugins continuent à se charger.
     ///
-    /// **Scan** : paresseux au premier appel de <see cref="GetInstruments"/> / <see cref="GetEffects"/>.
-    /// <see cref="Rescan"/> ré-analyse le dossier ; les assemblies DÉJÀ chargés ne peuvent pas être
-    /// libérés dans un AppDomain standard (une future v2 pourra passer par un <c>AssemblyLoadContext</c>
-    /// unloadable), donc "Rescan" ne fait qu'ajouter les nouveaux fichiers. Un utilisateur qui met à
-    /// jour un plugin déjà chargé doit redémarrer l'app (comportement acceptable en bêta ; on affiche
-    /// un tooltip explicatif dans l'UI).
+    /// **Id du plugin** — pris de l'attribut (nouveau champ `Id` optionnel) ; à défaut, fallback sur
+    /// <c>Type.FullName</c>. Aucune instanciation n'est nécessaire au scan.
     ///
-    /// **Thread-safety** : le registre est verrouillé par un lock simple. Les scans sont rares (menu
-    /// ouvert, redémarrage) — pas de contention.
+    /// **Rescan** — <see cref="Rescan"/> ré-analyse les dossiers et ajoute les NOUVEAUX .ksl.
+    /// Les assemblies déjà chargés ne peuvent pas être libérés dans un AppDomain standard (une v2
+    /// pourra passer par un <c>AssemblyLoadContext</c> unloadable). Un utilisateur qui met à jour un
+    /// plugin déjà chargé doit redémarrer l'app.
+    ///
+    /// **Thread-safety** — le registre est verrouillé par un lock simple. Les scans sont rares —
+    /// pas de contention.
     /// </summary>
     public static class KotonPluginRegistry
     {
@@ -89,129 +95,177 @@ namespace MusicTracker.Engine.Timeline.Effects
             new Dictionary<string, KotonGeneratorInfo>(StringComparer.Ordinal);
         static readonly HashSet<string> _loadedFiles =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        static bool _initialScanDone;
+        static readonly List<string> _scanDirs = new List<string>();
 
-        /// <summary>Chemin absolu du dossier de plugins (à côté de l'exe). Créé si absent — dépose un
-        /// <c>.ksl</c> dedans et le prochain <see cref="Rescan"/> le trouve.</summary>
-        public static string PluginsDir
+        /// <summary>Chemin par défaut du dossier de plugins bundlés avec l'exe. Toujours scanné en
+        /// premier — permet à un plugin livré avec l'app d'être immédiatement dispo.</summary>
+        public static string BundledDir
         {
             get
             {
                 string dir = AppPaths.Local("plugins");
-                try { if (!Directory.Exists(dir)) Directory.CreateDirectory(dir); }
-                catch { /* best-effort — un dossier inaccessible = registre vide, l'UI le montre. */ }
+                try { if (!Directory.Exists(dir)) Directory.CreateDirectory(dir); } catch { }
                 return dir;
             }
         }
 
-        /// <summary>Instruments Koton natifs disponibles. Déclenche un scan initial la première fois ;
-        /// les appels suivants renvoient le cache jusqu'à <see cref="Rescan"/>.</summary>
-        public static IReadOnlyList<KotonInstrumentInfo> GetInstruments()
+        /// <summary>Chemin par défaut du dossier de plugins utilisateur (<c>%LocalAppData%\MusicTracker\plugins</c>).
+        /// L'utilisateur peut y déposer ses propres .ksl sans avoir accès en écriture au dossier de l'exe
+        /// (Program Files est read-only).</summary>
+        public static string UserDir
         {
-            EnsureInitialScan();
-            lock (_lock) return _instruments.Values.OrderBy(i => i.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
+            get
+            {
+                string dir = AppPaths.LocalData("plugins");
+                try { if (!Directory.Exists(dir)) Directory.CreateDirectory(dir); } catch { }
+                return dir;
+            }
         }
 
-        /// <summary>Effets Koton natifs disponibles (non exposé par l'UI v1 — les 4 effets internes
-        /// suffisent).</summary>
-        public static IReadOnlyList<KotonEffectInfo> GetEffects()
+        /// <summary>Alias historique — le dossier de scan primaire (bundle) ; conservé pour un code
+        /// externe qui référencerait ce nom. Utiliser <see cref="BundledDir"/> pour le nouveau code.</summary>
+        public static string PluginsDir => BundledDir;
+
+        /// <summary>Liste des dossiers scannés (bundle + user + dossiers config, dans cet ordre).
+        /// Recomposée à chaque <see cref="Initialize"/> / <see cref="Rescan"/> depuis
+        /// <see cref="AppSettings"/> — expose pour affichage debug/UI.</summary>
+        public static IReadOnlyList<string> ScanDirs
         {
-            EnsureInitialScan();
-            lock (_lock) return _effects.Values.OrderBy(e => e.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
+            get { lock (_lock) return _scanDirs.ToList(); }
         }
 
-        /// <summary>Générateurs Koton natifs disponibles — chaque plugin marqué
-        /// <see cref="KotonGeneratorAttribute"/>. Utilisé par le menu « Insérer ▸ Générateur Koton »
-        /// de la timeline, groupé par <see cref="KotonGeneratorType"/> puis filtré selon le type de
+        /// <summary>Métadonnées de tous les instruments Koton natifs découverts. Liste triée par
+        /// <see cref="KotonInstrumentInfo.DisplayName"/>. Utilisée comme datasource par le menu de
+        /// sélection d'instrument par piste.</summary>
+        public static IReadOnlyList<KotonInstrumentInfo> Instruments
+        {
+            get { lock (_lock) return _instruments.Values.OrderBy(i => i.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(); }
+        }
+
+        /// <summary>Métadonnées de tous les effets Koton natifs découverts (non exposé par l'UI v1).</summary>
+        public static IReadOnlyList<KotonEffectInfo> Effects
+        {
+            get { lock (_lock) return _effects.Values.OrderBy(e => e.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(); }
+        }
+
+        /// <summary>Métadonnées de tous les générateurs Koton natifs découverts, triés par nom.
+        /// Datasource du sous-menu « Insérer ▸ Générateur Koton », filtré côté UI selon le type de
         /// piste sélectionnée.</summary>
-        public static IReadOnlyList<KotonGeneratorInfo> GetGenerators()
+        public static IReadOnlyList<KotonGeneratorInfo> Generators
         {
-            EnsureInitialScan();
-            lock (_lock) return _generators.Values.OrderBy(g => g.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList();
+            get { lock (_lock) return _generators.Values.OrderBy(g => g.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(); }
         }
 
-        /// <summary>Retrouve un instrument par <see cref="IKotonPlugin.Id"/> et retourne une instance
-        /// fraîche. Null = id inconnu (plugin absent du dossier / non chargé). Un jet du constructeur du
-        /// plugin est capturé (log silencieux, null renvoyé) — un plugin cassé ne doit pas empêcher la
-        /// lecture du projet.</summary>
+        // ------ Alias historiques (compat) ------
+
+        /// <summary>Alias historique de <see cref="Instruments"/> — code existant qui appelait
+        /// <c>GetInstruments()</c>. Conservé pour ne pas casser les callers.</summary>
+        public static IReadOnlyList<KotonInstrumentInfo> GetInstruments() => Instruments;
+
+        /// <summary>Alias historique de <see cref="Effects"/>.</summary>
+        public static IReadOnlyList<KotonEffectInfo> GetEffects() => Effects;
+
+        /// <summary>Alias historique de <see cref="Generators"/>.</summary>
+        public static IReadOnlyList<KotonGeneratorInfo> GetGenerators() => Generators;
+
+        /// <summary>Scan initial — appelé UNE FOIS au démarrage de l'app (<c>App.OnStartup</c>).
+        /// Scanne le dossier bundle + le dossier user + les dossiers additionnels fournis
+        /// (typiquement <c>AppSettings.KotonPluginFolders</c>). Sans-effet si déjà appelé.</summary>
+        /// <param name="extraDirs">Dossiers additionnels à scanner (utilisateur), ou <c>null</c>
+        /// pour se limiter aux dossiers par défaut (bundle + user).</param>
+        public static void Initialize(IEnumerable<string> extraDirs = null)
+        {
+            lock (_lock)
+            {
+                _scanDirs.Clear();
+                _scanDirs.Add(BundledDir);
+                if (!string.Equals(UserDir, BundledDir, StringComparison.OrdinalIgnoreCase))
+                    _scanDirs.Add(UserDir);
+                if (extraDirs != null)
+                    foreach (var d in extraDirs)
+                        if (!string.IsNullOrEmpty(d) && !_scanDirs.Contains(d, StringComparer.OrdinalIgnoreCase))
+                            _scanDirs.Add(d);
+            }
+            ScanAllFolders();
+        }
+
+        /// <summary>Re-scanne les dossiers configurés et charge les NOUVEAUX assemblies. Les
+        /// assemblies déjà chargés restent tels quels (limite AppDomain standard). Peut être appelé
+        /// depuis un item de menu "Re-scan" ou après avoir déposé un nouveau .ksl.</summary>
+        public static void Rescan()
+        {
+            ScanAllFolders();
+        }
+
+        /// <summary>Instancie un instrument par <see cref="KotonInstrumentInfo.Id"/> — instance fraîche
+        /// à chaque appel. <c>null</c> si l'id est inconnu ou si le constructeur du plugin jette.</summary>
         public static IKotonInstrument InstantiateInstrument(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
-            EnsureInitialScan();
             KotonInstrumentInfo info;
             lock (_lock) { if (!_instruments.TryGetValue(id, out info)) return null; }
             try { return (IKotonInstrument)Activator.CreateInstance(info.Type); }
             catch { return null; }
         }
 
-        /// <summary>Idem pour un effet.</summary>
+        /// <summary>Instancie un effet par id.</summary>
         public static IKotonEffect InstantiateEffect(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
-            EnsureInitialScan();
             KotonEffectInfo info;
             lock (_lock) { if (!_effects.TryGetValue(id, out info)) return null; }
             try { return (IKotonEffect)Activator.CreateInstance(info.Type); }
             catch { return null; }
         }
 
-        /// <summary>Instancie un générateur par son <see cref="IKotonPlugin.Id"/> — instance fraîche à
-        /// chaque appel (le player en crée UNE par bloc <c>KotonGeneratorModule</c>, l'éditeur du
-        /// bloc réutilise l'instance vivante du module). <c>null</c> = id inconnu (plugin absent /
-        /// supprimé du dossier) ou constructeur qui a jeté.</summary>
+        /// <summary>Instancie un générateur par <see cref="KotonGeneratorInfo.Id"/> — instance fraîche
+        /// (le player en crée une par bloc, l'éditeur du bloc réutilise l'instance vivante du module).
+        /// <c>null</c> = id inconnu ou constructeur qui jette.</summary>
         public static IKotonGenerator InstantiateGenerator(string id)
         {
             if (string.IsNullOrEmpty(id)) return null;
-            EnsureInitialScan();
             KotonGeneratorInfo info;
             lock (_lock) { if (!_generators.TryGetValue(id, out info)) return null; }
             try { return (IKotonGenerator)Activator.CreateInstance(info.TypeToken); }
             catch { return null; }
         }
 
-        /// <summary>Re-scanne le dossier plugins et charge les NOUVEAUX assemblies (les déjà-chargés
-        /// restent tels quels — on ne peut pas les libérer sans AssemblyLoadContext unloadable, non
-        /// utilisé v1). Utilisé par le menu "Re-scanner" du header de piste.</summary>
-        public static void Rescan()
-        {
-            ScanFolder();
-        }
+        // --------------- interne ---------------
 
-        static void EnsureInitialScan()
+        static void ScanAllFolders()
         {
+            List<string> dirs;
             lock (_lock)
             {
-                if (_initialScanDone) return;
-                _initialScanDone = true;
+                if (_scanDirs.Count == 0)
+                {
+                    // Initialize n'a pas encore été appelé (chemin dégradé — un code qui accède
+                    // au registry avant App.OnStartup). Reprend les défauts au vol.
+                    _scanDirs.Add(BundledDir);
+                    if (!string.Equals(UserDir, BundledDir, StringComparison.OrdinalIgnoreCase))
+                        _scanDirs.Add(UserDir);
+                }
+                dirs = _scanDirs.ToList();
             }
-            ScanFolder();
-        }
-
-        static void ScanFolder()
-        {
-            string dir;
-            try { dir = PluginsDir; }
-            catch { return; }
-            string[] files;
-            try { files = Directory.GetFiles(dir, "*.ksl", SearchOption.AllDirectories); }
-            catch { return; }
-            foreach (var f in files) TryLoadFile(f);
+            foreach (var dir in dirs)
+            {
+                string[] files;
+                try { files = Directory.GetFiles(dir, "*.ksl", SearchOption.AllDirectories); }
+                catch { continue; }
+                foreach (var f in files) TryLoadFile(f);
+            }
         }
 
         static void TryLoadFile(string file)
         {
             // Chaque fichier n'est chargé qu'une fois par process. Un rescan qui retrouve le même
-            // fichier ne re-tente pas (Assembly.LoadFrom sur le même chemin renvoie l'instance en
-            // cache mais on économise la reflexion). Un fichier renommé serait vu comme nouveau — OK.
+            // fichier ne re-tente pas.
             lock (_lock) { if (_loadedFiles.Contains(file)) return; }
             Assembly asm;
-            try
-            {
-                asm = Assembly.LoadFrom(file);
-            }
+            try { asm = Assembly.LoadFrom(file); }
             catch
             {
-                lock (_lock) { _loadedFiles.Add(file); }  // marquer comme "vu et échoué" pour ne pas re-tenter
+                lock (_lock) { _loadedFiles.Add(file); }
                 return;
             }
             lock (_lock) { _loadedFiles.Add(file); }
@@ -220,7 +274,6 @@ namespace MusicTracker.Engine.Timeline.Effects
             try { types = asm.GetTypes(); }
             catch (ReflectionTypeLoadException rtle)
             {
-                // Certains types peuvent référencer un assembly manquant. On garde ceux qu'on a pu charger.
                 types = rtle.Types.Where(t => t != null).ToArray();
             }
             catch { return; }
@@ -241,22 +294,13 @@ namespace MusicTracker.Engine.Timeline.Effects
             catch { return; }
             if (attr == null) return;
             if (!typeof(IKotonInstrument).IsAssignableFrom(t)) return;
-            // Le ctor sans paramètre est requis — un ctor privé ou paramétré rend le type inutilisable
-            // par Activator.CreateInstance (contrat du framework).
             var ctor = t.GetConstructor(Type.EmptyTypes);
             if (ctor == null) return;
 
-            // On sonde l'Id en instanciant UNE FOIS (jetée aussitôt). Sinon on n'aurait aucun moyen de
-            // désambiguïser deux types de même DisplayName. Un ctor qui jette = plugin ignoré (l'audio
-            // sera protégé par le try/catch de InstantiateInstrument aussi).
-            string id;
-            try
-            {
-                using (var probe = (IKotonInstrument)Activator.CreateInstance(t))
-                    id = probe?.Id;
-            }
-            catch { return; }
-            if (string.IsNullOrEmpty(id)) return;
+            // Id : attribut si renseigné, fallback FullName. Pas d'instanciation au scan (rapide, sûr,
+            // et le ctor du plugin peut avoir des effets de bord qu'on ne veut pas déclencher juste
+            // pour peupler un menu).
+            string id = string.IsNullOrEmpty(attr.Id) ? t.FullName : attr.Id;
 
             var info = new KotonInstrumentInfo
             {
@@ -271,8 +315,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             lock (_lock)
             {
                 if (!_instruments.ContainsKey(id)) _instruments[id] = info;
-                // Doublon d'Id (deux plugins avec le même Id) : premier gagne, silencieux — l'utilisateur
-                // ne saurait pas quoi faire d'un message, retirer un fichier manuellement suffit.
+                // Doublon d'Id (2 plugins avec le même Id) : premier gagne, silencieux.
             }
         }
 
@@ -286,14 +329,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             var ctor = t.GetConstructor(Type.EmptyTypes);
             if (ctor == null) return;
 
-            string id;
-            try
-            {
-                using (var probe = (IKotonEffect)Activator.CreateInstance(t))
-                    id = probe?.Id;
-            }
-            catch { return; }
-            if (string.IsNullOrEmpty(id)) return;
+            string id = string.IsNullOrEmpty(attr.Id) ? t.FullName : attr.Id;
 
             var info = new KotonEffectInfo
             {
@@ -318,22 +354,10 @@ namespace MusicTracker.Engine.Timeline.Effects
             catch { return; }
             if (attr == null) return;
             if (!typeof(IKotonGenerator).IsAssignableFrom(t)) return;
-            // Contrat cohérent avec instrument/effet : constructeur public sans paramètre — le
-            // player instancie via Activator au flatten sans savoir de quoi il retourne.
             var ctor = t.GetConstructor(Type.EmptyTypes);
             if (ctor == null) return;
 
-            // Comme pour instrument/effet, on sonde l'Id en instanciant UNE FOIS (jetée aussitôt) —
-            // c'est le seul moyen de désambiguïser deux types de même DisplayName sans que le plugin
-            // ait à dupliquer l'Id dans l'attribut. Un ctor qui jette = plugin ignoré.
-            string id;
-            try
-            {
-                using (var probe = (IKotonGenerator)Activator.CreateInstance(t))
-                    id = probe?.Id;
-            }
-            catch { return; }
-            if (string.IsNullOrEmpty(id)) return;
+            string id = string.IsNullOrEmpty(attr.Id) ? t.FullName : attr.Id;
 
             var info = new KotonGeneratorInfo
             {

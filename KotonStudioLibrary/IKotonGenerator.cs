@@ -30,6 +30,9 @@ namespace KotonStudio.Library
     public sealed class KotonGeneratorAttribute : Attribute
     {
         public string DisplayName { get; }
+        /// <summary>Id stable optionnel — si absent, le registre fallback sur le FullName du type.
+        /// Recommandé de le renseigner pour découpler l'Id du chemin C# de la classe.</summary>
+        public string Id { get; set; }
         public KotonGeneratorType Type { get; set; } = KotonGeneratorType.Melody;
         public string Category { get; set; } = "";
         public string Version { get; set; } = "1.0";
@@ -129,9 +132,17 @@ namespace KotonStudio.Library
         /// <summary>Position de départ en beats, RELATIVE au début du bloc générateur.</summary>
         public double StartBeat;
 
-        /// <summary>Durée en beats (note-on jusqu'à note-off). Une valeur ≤ 0 est traitée comme une
-        /// note ultra-courte (staccato) — pas de silence.</summary>
+        /// <summary>Durée AUDIO en beats (note-on jusqu'à note-off) — reflète l'articulation choisie
+        /// (legato / staccato). Une valeur ≤ 0 est traitée comme une note ultra-courte — pas de silence.</summary>
         public double DurationBeats;
+
+        /// <summary>Durée LOGIQUE pour la partition, en beats (valeur rythmique écrite : noire, croche,
+        /// double, triolet…). Si &gt; 0, la partition utilise CETTE valeur au lieu de
+        /// <see cref="DurationBeats"/> — permet à un arpégiateur staccato d'écrire des croches
+        /// (durée = 1/2 temps) tout en jouant des notes très courtes (durée audio = 0.075 temps).
+        /// Si &lt;= 0 (défaut), la partition utilise <see cref="DurationBeats"/> tel quel — comportement
+        /// historique, cohérent avec un plugin qui ne fait pas la distinction.</summary>
+        public double NotationDurationBeats;
 
         /// <summary>Note MIDI 0..127 (60 = C4). Hors plage = ignorée silencieusement par l'hôte.</summary>
         public int MidiNote;
@@ -164,5 +175,13 @@ namespace KotonStudio.Library
 
         /// <summary>Dénominateur de la signature temporelle (4 ou 8 dans la pratique).</summary>
         public int TimeSigDen;
+
+        /// <summary>Position ABSOLUE du bloc générateur dans le projet, en beats (temps).
+        /// Un générateur harmonique-conscient qui interroge <see cref="KotonHost.GetChordAt"/>
+        /// doit PASSER <c>BlockStartBeat + t</c> (où t = beat relatif au bloc dans sa boucle
+        /// RenderNotes), sinon le résolveur cherchera l'accord au beat 0 du projet au lieu de
+        /// celui sous le bloc. Vaut 0 pour la preview (bloc pas encore posé) — c'est un fallback
+        /// acceptable, le plugin peut détecter et jouer sur la tonique par défaut.</summary>
+        public double BlockStartBeat;
     }
 }

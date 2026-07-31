@@ -32,6 +32,14 @@ namespace MusicTracker.Engine.Timeline
             public int Applied = -1;                // last slice whose events were applied (persists across Read calls)
             public double BaseVol = 1.0;
             public double Mix = 1.0;                 // mute/solo factor (0 = silent), applied on top of the gain
+            /// <summary>Gain effectif calculé au dernier <see cref="ApplyChannelAutomation"/> (Vol × Mute/Solo).
+            /// Utilisé pour appliquer un mixage ANALOGIQUE aux Koton natifs qui n'implémentent pas CC7 — sinon
+            /// le mixer serait sans effet sur eux (les vrais VSTi/MeltySynth respectent CC7 et n'ont pas besoin
+            /// de ce gain post-render).</summary>
+            public double LastMixGain = 1.0;
+            /// <summary>Pan effectif calculé au dernier <see cref="ApplyChannelAutomation"/> (-1..+1). Idem :
+            /// utilisé pour un pan analogique post-render sur les Koton natifs.</summary>
+            public double LastPan = 0.0;
             public List<VolumePoint> Autom;
             /// <summary>Snapshots triés des lanes d'automation additionnelles (pan/expression/modulation/sustain/reverb/chorus/pitchbend),
             /// prises au démarrage. Ajouter/retirer une lane en cours de lecture n'a pas d'effet audible jusqu'au prochain Start —
@@ -387,7 +395,7 @@ namespace MusicTracker.Engine.Timeline
 
         void PlaceLeaf(Track tr, FlowModule m, double startBeat, Func<Guid, Riff> resolve, int[] carry)
         {
-            PlaceRiffNotes(tr, RiffForModule(m, resolve), startBeat);
+            PlaceRiffNotes(tr, RiffForModule(m, resolve, startBeat), startBeat);
             // A chord that carries a MELODIC CELL plays it as a 2nd voice on the same track (same instrument, same time).
             if (m is PatternGeneratorModule pgm && pgm.HasMelodic)
                 PlaceRiffNotes(tr, PatternGenerator.GenerateMelodic(pgm, melodyKey), startBeat);
@@ -421,7 +429,7 @@ namespace MusicTracker.Engine.Timeline
             }
         }
 
-        Riff RiffForModule(FlowModule m, Func<Guid, Riff> resolve)
+        Riff RiffForModule(FlowModule m, Func<Guid, Riff> resolve, double absoluteStartBeat = 0)
         {
             switch (m)
             {
@@ -433,8 +441,10 @@ namespace MusicTracker.Engine.Timeline
                 case PolyChordModule pc: return PolyChord.Generate(pc);
                 // Générateur Koton natif : instance vivante + RenderNotes → Riff canonique via le
                 // helper partagé (même chemin que ScoreModel et l'export MIDI, pour éviter la
-                // divergence audio/partition/export — cf. « New module → 3 resolvers »).
-                case KotonGeneratorModule kg: return KotonGeneratorRuntime.RenderRiff(kg, melodyProject);
+                // divergence audio/partition/export — cf. « New module → 3 resolvers »). L'offset
+                // absolu est essentiel pour que le plugin puisse résoudre l'accord courant via
+                // KotonHost.GetChordAt(ctx.BlockStartBeat + t).
+                case KotonGeneratorModule kg: return KotonGeneratorRuntime.RenderRiff(kg, melodyProject, absoluteStartBeat);
                 default: return null;
             }
         }
@@ -900,7 +910,29 @@ namespace MusicTracker.Engine.Timeline
             // d'inserts, le peak-meter et la sommation dans le master sont IDENTIQUES — le pipeline audio ne
             // sait pas d'où vient le buffer.
             if (tk.Vsti != null)
+            {
                 tk.Vsti.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
+                // Plugins Koton natifs : leur MidiCC(cc, value) est libre de tout comportement — le FM
+                // synth par ex. ignore explicitement CC7/CC10 (le mixer serait sans effet sur son
+                // output). On applique donc un mix ANALOGIQUE (volume + pan linéaire) post-render pour
+                // ces plugins uniquement. Les vrais VSTi respectent CC7/CC10 → gain déjà appliqué en
+                // amont par le plugin, pas de double effet.
+                if (tk.Vsti is MusicTracker.Engine.Timeline.Effects.KotonInstrumentAdapter)
+                {
+                    double g = tk.LastMixGain;
+                    double pan = tk.LastPan;
+                    // Pan linéaire simple : -1 = full left (right = 0), +1 = full right (left = 0).
+                    // Equal-power (cos/sin) serait plus précis mais différence à peine audible et coût
+                    // trigonométrique inutile ici.
+                    double gL = g * (pan <= 0 ? 1.0 : (1.0 - pan));
+                    double gR = g * (pan >= 0 ? 1.0 : (1.0 + pan));
+                    for (int k = 0; k < nn; k++)
+                    {
+                        tk.BufL[startOff + k] = (float)(tk.BufL[startOff + k] * gL);
+                        tk.BufR[startOff + k] = (float)(tk.BufR[startOff + k] * gR);
+                    }
+                }
+            }
             else if (tk.Synth != null)
                 tk.Synth.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
             else return;
@@ -984,6 +1016,9 @@ namespace MusicTracker.Engine.Timeline
                 double baseVol = p != null ? p.Volume : tracks[ti].BaseVol;
                 double mix = p != null ? ((p.Mute || (anySolo && !p.Solo)) ? 0.0 : 1.0) : tracks[ti].Mix;
                 double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix;
+                // Mémorise le gain effectif pour un mix analogique post-render (Koton natifs qui
+                // n'implémentent pas CC7 — sinon le fader et le mute sont sans effet).
+                tracks[ti].LastMixGain = gv;
                 // CC7 direct : chaque synth a MasterVolume = BoostGain(program), donc net = boost * (CC7 modulateur au carré)
                 // = boost * gv², identique à l'ancien schéma partagé mais sans le facteur sqrt(). Le VSTi reçoit le
                 // même CC7 : la plupart des synthés modernes le mappent sur leur volume de canal, ceux qui l'ignorent
@@ -1003,6 +1038,7 @@ namespace MusicTracker.Engine.Timeline
                 else
                     pan = p != null ? p.Pan : 0.0;
                 if (pan < -1.0) pan = -1.0; else if (pan > 1.0) pan = 1.0;
+                tracks[ti].LastPan = pan;   // pour le pan analogique post-render (Koton natifs)
                 int panCc = (int)Math.Round((pan + 1.0) * 0.5 * 127);
                 if (vsti != null) vsti.ProcessMidiCC(ch, 10, panCc);
                 else synth.ProcessMidiMessage(ch, 0xB0, 10, panCc);

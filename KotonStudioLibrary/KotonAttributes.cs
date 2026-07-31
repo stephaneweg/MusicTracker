@@ -16,6 +16,9 @@ namespace KotonStudio.Library
     public sealed class KotonInstrumentAttribute : Attribute
     {
         public string DisplayName { get; }
+        /// <summary>Id stable optionnel — si absent, le registre fallback sur le FullName du type. Permet
+        /// à un plugin de renommer sa classe sans casser les projets sauvegardés qui référencent l'Id.</summary>
+        public string Id { get; set; }
         public string Category { get; set; } = "";
         public string Version { get; set; } = "1.0";
         public string Vendor { get; set; } = "";
@@ -36,6 +39,8 @@ namespace KotonStudio.Library
     public sealed class KotonEffectAttribute : Attribute
     {
         public string DisplayName { get; }
+        /// <summary>Id stable optionnel — cf. <see cref="KotonInstrumentAttribute.Id"/>.</summary>
+        public string Id { get; set; }
         public string Category { get; set; } = "";
         public string Version { get; set; } = "1.0";
         public string Vendor { get; set; } = "";

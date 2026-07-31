@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -70,6 +71,10 @@ namespace MusicTracker.Screens
                 : (KotonChord?)null;
             KotonHost.PreviewNotes = notes => { if (s_activeKotonHost == this) this.KotonHost_PreviewNotes(notes); };
             KotonHost.StopPreview = () => { if (s_activeKotonHost == this) this.KotonHost_StopPreview(); };
+            KotonHost.NotifyDurationChanged = dur => { if (s_activeKotonHost == this) this.KotonHost_DurationChanged(dur); };
+            KotonHost.CurrentContext = () => (s_activeKotonHost == this)
+                ? KotonGeneratorRuntime.ContextFor(this.project, 0)
+                : null;
         }
 
         /// <summary>Décâble <see cref="KotonHost"/> — appelé à la fermeture de l'onglet.</summary>
@@ -82,52 +87,140 @@ namespace MusicTracker.Screens
                 KotonHost.GetChordAt = null;
                 KotonHost.PreviewNotes = null;
                 KotonHost.StopPreview = null;
+                KotonHost.NotifyDurationChanged = null;
+                KotonHost.CurrentContext = null;
             }
         }
 
+        /// <summary>Handler du callback <see cref="KotonHost.NotifyDurationChanged"/> : propage la
+        /// nouvelle durée du plugin vers le module timeline (source de vérité pour la longueur du
+        /// bloc — sinon EnsureInstance re-écrase la durée à chaque instanciation). Le Render()
+        /// re-calcule la vignette immédiatement.</summary>
+        void KotonHost_DurationChanged(double newDuration)
+        {
+            if (selectedItem?.Module is KotonGeneratorModule kg)
+            {
+                double clamped = newDuration < 0.25 ? 0.25 : newDuration;
+                if (Math.Abs(kg.DurationBeats - clamped) > 1e-6)
+                {
+                    kg.DurationBeats = clamped;
+                    Render();
+                }
+            }
+        }
+
+        /// <summary>Notifie l'éditeur Koton actuellement ouvert (s'il implémente <see cref="IKotonEditor"/>)
+        /// qu'un aspect du contexte projet a changé (métrique, tonalité, tempo). L'éditeur peut alors
+        /// adapter son UI — typiquement un arpégiateur qui repeuple son combo "notes par temps" quand
+        /// on bascule binaire ↔ ternaire. Sans-effet si aucun éditeur Koton n'est ouvert.</summary>
+        internal void NotifyKotonEditorContextChanged()
+        {
+            try
+            {
+                if (editorHost?.Content is FrameworkElement fe)
+                {
+                    // L'éditeur d'un plugin Koton peut être imbriqué (BuildKotonGeneratorEditor met un
+                    // DockPanel qui contient le UserControl du plugin) — on cherche récursivement.
+                    var koton = FindKotonEditor(fe);
+                    if (koton != null)
+                    {
+                        var ctx = KotonGeneratorRuntime.ContextFor(project, 0);
+                        koton.OnContextUpdated(ctx);
+                    }
+                }
+            }
+            catch { /* best-effort */ }
+        }
+
+        static IKotonEditor FindKotonEditor(DependencyObject root)
+        {
+            if (root is IKotonEditor e) return e;
+            int n = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+            for (int i = 0; i < n; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+                var found = FindKotonEditor(child);
+                if (found != null) return found;
+            }
+            return null;
+        }
+
         // ------------------------------- Menu Insérer ▸ Générateur Koton --------------------------------
+        //
+        // Le sous-menu est peuplé via ItemsSource. WPF affiche la flèche de sous-menu tant que la
+        // source contient au moins un item (l'entrée Rescan garantit ça, donc le submenu s'ouvre
+        // toujours et SubmenuOpened se déclenche). On rafraîchit à 2 moments :
+        //  - Au Loaded initial (piste par défaut).
+        //  - À chaque OUVERTURE du sous-menu (SubmenuOpened) — attrape tous les changements de piste
+        //    sélectionnée, y compris ceux passés par des chemins qui n'appellent pas SelectTrack
+        //    (ajout de piste, chargement de projet, etc.). Coût = négligeable, à l'ouverture user.
 
         void miKotonGenerator_SubmenuOpened(object sender, RoutedEventArgs e)
         {
-            var mi = sender as MenuItem;
-            if (mi == null) return;
-            // Rebuild dynamique : le sous-menu se remplit à l'ouverture, filtré selon la piste
-            // sélectionnée. Ré-ouvrir = re-scan = capte un nouveau plugin déposé pendant la session.
-            mi.Items.Clear();
-            var gens = KotonPluginRegistry.GetGenerators();
+            RefreshKotonGeneratorMenu();
+        }
+
+        /// <summary>Reconstruit la liste des items du sous-menu « Générateur Koton » selon la piste
+        /// sélectionnée (filtrage par type). Appelée au chargement de la TimelineScreen et à chaque
+        /// changement de <c>selectedTrack</c>. Sans-effet si le contrôle XAML n'est pas encore chargé.
+        ///
+        /// **UX** : un seul niveau de sous-menu (pas de sous-groupes par type), avec les générateurs
+        /// À PLAT triés par nom. Le filtrage garantit la consistance : sur une piste instrument, on
+        /// n'affiche QUE les générateurs mélodiques (Melody + Bass) et d'accords ; sur une piste
+        /// batterie, QUE les générateurs de drum (Drum + Percussion) et d'accords.</summary>
+        internal void RefreshKotonGeneratorMenu()
+        {
+            if (miKotonGenerator == null) return;
+
+            var items = new List<object>();
+            var gens = KotonPluginRegistry.Generators;
             var allowed = AllowedGeneratorTypes(selectedTrack);
-            bool anyAdded = false;
 
-            // Un sous-menu par KotonGeneratorType (Melody / Drum / Chord / Bass / Percussion / Other),
-            // dans l'ordre d'utilisation courante. Un type sans plugin dans la catégorie n'apparaît pas.
-            foreach (var type in new[] {
-                KotonGeneratorType.Melody, KotonGeneratorType.Bass, KotonGeneratorType.Chord,
-                KotonGeneratorType.Drum, KotonGeneratorType.Percussion, KotonGeneratorType.Other })
+            // Un seul niveau : les générateurs autorisés directement, triés par nom.
+            var visible = gens.Where(g => allowed.Contains(g.Type))
+                              .OrderBy(g => g.DisplayName, StringComparer.CurrentCultureIgnoreCase)
+                              .ToList();
+
+            foreach (var g in visible)
             {
-                if (!allowed.Contains(type)) continue;
-                var inGroup = gens.Where(g => g.Type == type).ToList();
-                if (inGroup.Count == 0) continue;
-                var typeItem = new MenuItem { Header = LocForGenType(type) };
-                foreach (var g in inGroup)
+                // Tag = Id + handler nommé plutôt que closure — évite l'exception HotReload
+                // "Attempted to invoke a deleted lambda" quand VS patche le code pendant que le
+                // MenuItem vit encore dans ItemsSource. Un handler d'instance est ré-résolu à chaque
+                // clic, pas gelé au moment de la construction.
+                var it = new MenuItem
                 {
-                    var it = new MenuItem { Header = g.DisplayName, ToolTip = g.Vendor + (string.IsNullOrEmpty(g.Version) ? "" : " · " + g.Version) };
-                    string id = g.Id;
-                    it.Click += (s2, e2) => InsertKotonGenerator(id);
-                    typeItem.Items.Add(it);
-                }
-                mi.Items.Add(typeItem);
-                anyAdded = true;
+                    Header = g.DisplayName,
+                    ToolTip = g.Vendor + (string.IsNullOrEmpty(g.Version) ? "" : " · " + g.Version),
+                    Tag = g.Id,
+                };
+                it.Click += KotonGenMenuItem_Click;
+                items.Add(it);
             }
 
-            if (!anyAdded)
+            if (visible.Count == 0)
             {
-                var empty = new MenuItem { Header = Loc.T("KotonNoGeneratorsFound"), IsEnabled = false };
-                mi.Items.Add(empty);
+                items.Add(new MenuItem { Header = Loc.T("KotonNoGeneratorsFound"), IsEnabled = false });
             }
-            mi.Items.Add(new Separator());
+            items.Add(new Separator());
             var rescan = new MenuItem { Header = Loc.T("KotonRescan") };
-            rescan.Click += (s2, e2) => { KotonPluginRegistry.Rescan(); };
-            mi.Items.Add(rescan);
+            rescan.Click += KotonGenRescan_Click;
+            items.Add(rescan);
+
+            // ItemsSource plutôt que Items.Add — garantit que WPF traite le MenuItem comme un submenu
+            // dès qu'il y a au moins un item.
+            miKotonGenerator.ItemsSource = items;
+        }
+
+        void KotonGenMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem mi && mi.Tag is string id)
+                InsertKotonGenerator(id);
+        }
+
+        void KotonGenRescan_Click(object sender, RoutedEventArgs e)
+        {
+            KotonPluginRegistry.Rescan();
+            RefreshKotonGeneratorMenu();
         }
 
         static string LocForGenType(KotonGeneratorType t)
@@ -143,36 +236,35 @@ namespace MusicTracker.Screens
             }
         }
 
-        // Filtrage par type de piste, comme spécifié :
-        //  - Instrument mélodique  → Melody, Bass, Chord, Other
-        //  - Batterie              → Drum, Percussion, Other
-        //  - Piste d'accords       → Chord, Other
+        // Filtrage par type de piste — cohérence stricte :
+        //  - Instrument mélodique  → Melody (+ Bass, mélodique par nature) + Chord
+        //  - Batterie              → Drum (+ Percussion, drum par nature) + Chord
+        //  - Piste d'accords       → Chord uniquement
+        //  - Sélection vide        → aucun (menu vide → invite à sélectionner une piste)
+        //
+        // Note : les générateurs de type Chord apparaissent dans TOUS les cas (sauf sélection vide) —
+        // l'insertion route automatiquement vers la piste Accords permanente du projet, quelle que soit
+        // la piste sélectionnée. Cf. <see cref="InsertKotonGenerator"/>.
+        //
+        // La catégorie "Other" est volontairement écartée pour garder la cohérence.
         static HashSet<KotonGeneratorType> AllowedGeneratorTypes(TimelineTrack track)
         {
             var result = new HashSet<KotonGeneratorType>();
-            if (track == null)
-            {
-                // Rien de sélectionné : on montre tout — l'utilisateur choisit, l'insertion enverra
-                // vers la bonne piste ou l'obligera à sélectionner (cas Bass/Melody sans piste).
-                foreach (var v in Enum.GetValues(typeof(KotonGeneratorType))) result.Add((KotonGeneratorType)v);
-                return result;
-            }
+            if (track == null) return result;
             switch (track.Type)
             {
                 case TimelineTrackType.Instrument:
                     result.Add(KotonGeneratorType.Melody);
                     result.Add(KotonGeneratorType.Bass);
                     result.Add(KotonGeneratorType.Chord);
-                    result.Add(KotonGeneratorType.Other);
                     break;
                 case TimelineTrackType.Drum:
                     result.Add(KotonGeneratorType.Drum);
                     result.Add(KotonGeneratorType.Percussion);
-                    result.Add(KotonGeneratorType.Other);
+                    result.Add(KotonGeneratorType.Chord);
                     break;
                 case TimelineTrackType.Chord:
                     result.Add(KotonGeneratorType.Chord);
-                    result.Add(KotonGeneratorType.Other);
                     break;
             }
             return result;
@@ -181,6 +273,7 @@ namespace MusicTracker.Screens
         void InsertKotonGenerator(string generatorId)
         {
             if (selectedTrack == null) { MessageBox.Show(Loc.T("SelectionneDAbordUnePiste")); return; }
+
             // Instancie une fois pour sonder l'affichage et la durée par défaut du plugin — puis pousse
             // le module. Le player ré-instanciera pour le rendu audio (chaque module a SA propre instance)
             // via KotonGeneratorRuntime.EnsureInstance. Une exception au ctor = message + abandon.
@@ -196,7 +289,19 @@ namespace MusicTracker.Screens
             try { defaultDuration = Math.Max(0.25, probe.DurationBeats); } catch { }
             byte[] initialState = null;
             try { initialState = probe.SaveState(); } catch { }
+            var genType = probe.GeneratorType;
             try { probe.Dispose(); } catch { }
+
+            // Routing par type : un générateur de type Chord va systématiquement sur la piste Accords
+            // permanente (peu importe la piste sélectionnée) — l'utilisateur peut ainsi lancer une
+            // génération d'accords sans avoir à cliquer d'abord sur la piste Accords. Les autres
+            // types (Melody/Bass/Drum/Percussion) restent sur la piste sélectionnée.
+            var targetTrack = selectedTrack;
+            if (genType == KotonGeneratorType.Chord)
+            {
+                var chordTrack = project?.Tracks?.FirstOrDefault(t => t != null && t.Type == TimelineTrackType.Chord);
+                if (chordTrack != null) targetTrack = chordTrack;
+            }
 
             string pre = BeginUndo();
             var module = new KotonGeneratorModule
@@ -206,8 +311,8 @@ namespace MusicTracker.Screens
                 GeneratorState = initialState,
             };
             var item = new TimelineItem { Module = module };
-            TimelineHelper.PlaceAtCursor(selectedTrack, item, defaultDuration, startBeat, project.RiffById);
-            SelectItem(selectedTrack, item);
+            TimelineHelper.PlaceAtCursor(targetTrack, item, defaultDuration, startBeat, project.RiffById);
+            SelectItem(targetTrack, item);
             CommitUndo(pre, "insert:" + Id(item));
             Render();
         }

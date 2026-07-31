@@ -45,6 +45,16 @@ namespace MusicTracker.Engine.BugReport
         /// <summary>Chemin du journal des plantages (créé à la demande).</summary>
         public static string LogPath => AppPaths.Roaming("crash.log");
 
+        /// <summary>Point d'entrée manuel pour reporter une exception rencontrée dans un plugin ou
+        /// dans un chemin qui ne remonte pas jusqu'aux gestionnaires globaux (thread propriétaire du
+        /// plugin qui swallow, code défensif qui capture avant re-throw...). Journal + dialogue de
+        /// rapport, comme un vrai crash — mais l'app continue. La <paramref name="source"/> apparaît
+        /// dans le journal (typiquement le nom du plugin).</summary>
+        public static void Report(Exception ex, string source)
+        {
+            Handle(ex, string.IsNullOrEmpty(source) ? "Plugin" : source, fatal: false);
+        }
+
         /// <summary>Branche les trois gestionnaires. À appeler une seule fois, au démarrage.</summary>
         public static void Install()
         {

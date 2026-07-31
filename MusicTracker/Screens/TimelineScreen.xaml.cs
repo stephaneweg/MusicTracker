@@ -141,7 +141,7 @@ namespace MusicTracker.Screens
             if (chordScroll != null) chordScroll.PreviewMouseWheel += Timeline_PreviewMouseWheel;
             UpdateZoomUi();
 
-            Loaded += (s, e) => { Render(); EnsureCursor(); HookKotonHost(); };
+            Loaded += (s, e) => { Render(); EnsureCursor(); HookKotonHost(); RefreshKotonGeneratorMenu(); };
             // Unhook au démontage : KotonHost est statique, un onglet fermé ne doit plus répondre.
             // (Une navigation d'un onglet à l'autre : le nouvel onglet ré-hookera au Loaded et écrasera,
             // pas de collision.)
@@ -340,6 +340,7 @@ namespace MusicTracker.Screens
             Render();
             RefreshScore();
             UpdateMeterSummary();
+            NotifyKotonEditorContextChanged();  // arpégiateurs, etc. peuvent adapter leur UI (binaire ↔ ternaire)
         }
 
         // Switch the piece binary ⇄ ternary WITHOUT touching the riffs or their size: x/4 ⇄ x/8 (2/4⇄6/8, 3/4⇄9/8,
@@ -360,6 +361,7 @@ namespace MusicTracker.Screens
             SyncKeyToolbar();
             Render();        // timeline ruler reflects the meter (riffs/sizes unchanged)
             RefreshScore();  // score re-renders: 3 croches ⇄ triolets
+            NotifyKotonEditorContextChanged();  // arpégiateurs, etc. peuvent adapter leur UI (binaire ↔ ternaire)
         }
 
         void ApplyKeyFromToolbar()
@@ -2039,6 +2041,9 @@ namespace MusicTracker.Screens
             txtEditorTitle.Text = Loc.T("Editeur");
             editorHost.Content = null;
             UpdateToolbar();
+            // Le sous-menu Générateur Koton filtre selon le type de la piste sélectionnée — refresh
+            // ItemsSource pour refléter le nouveau contexte (batterie n'affiche pas Melody, etc.).
+            RefreshKotonGeneratorMenu();
         }
 
         // Delete an item (leaf or repeat). Whatever follows it stays in place: the freed time (the

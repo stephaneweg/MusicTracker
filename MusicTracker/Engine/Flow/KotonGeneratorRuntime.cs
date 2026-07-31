@@ -58,10 +58,14 @@ namespace MusicTracker.Engine.Flow
 
         /// <summary>Construit un <see cref="KotonRenderContext"/> depuis un projet Koton — passer aux
         /// générateurs qui en ont besoin (tonalité, tempo, signature).</summary>
-        public static KotonRenderContext ContextFor(TimelineProject project)
+        /// <param name="absoluteStartBeat">Position absolue du bloc dans le projet (beats). Vaut 0 pour
+        /// la preview (bloc pas encore posé) — les résolveurs de KotonHost.GetChordAt retourneront
+        /// alors ce qui existe au tout début du projet, ou null. Un générateur harmonique-conscient
+        /// utilisera <c>ctx.BlockStartBeat + t</c> pour interroger l'accord courant.</param>
+        public static KotonRenderContext ContextFor(TimelineProject project, double absoluteStartBeat = 0)
         {
             if (project == null)
-                return new KotonRenderContext { Tonic = 0, IsMajor = true, Tempo = 120, TimeSigNum = 4, TimeSigDen = 4 };
+                return new KotonRenderContext { Tonic = 0, IsMajor = true, Tempo = 120, TimeSigNum = 4, TimeSigDen = 4, BlockStartBeat = absoluteStartBeat };
             var key = project.Key ?? new Engine.Score.KeySignature();
             int tonicPc = ((LetterPcs[Math.Max(0, Math.Min(6, key.TonicLetter))] + key.Accidental) % 12 + 12) % 12;
             return new KotonRenderContext
@@ -71,6 +75,7 @@ namespace MusicTracker.Engine.Flow
                 Tempo = project.MainBpm,
                 TimeSigNum = Math.Max(1, project.TimeSigNum),
                 TimeSigDen = Math.Max(1, project.TimeSigDen),
+                BlockStartBeat = absoluteStartBeat,
             };
         }
 
@@ -79,14 +84,14 @@ namespace MusicTracker.Engine.Flow
         /// TimelineImporter.FlattenLeaf qui fait le décalage +12 aussi). Les notes hors [0..127]
         /// sont ignorées ; les vélocités hors [1..127] sont clampées. Un module dont l'id est inconnu
         /// ou dont RenderNotes jette renvoie <c>null</c>.</summary>
-        public static Riff RenderRiff(KotonGeneratorModule module, TimelineProject project)
+        public static Riff RenderRiff(KotonGeneratorModule module, TimelineProject project, double absoluteStartBeat = 0, bool forNotation = false)
         {
             var inst = EnsureInstance(module);
             if (inst == null) return null;
 
             double duration = Math.Max(0.25, module.DurationBeats);
             IEnumerable<KotonGeneratedNote> notes;
-            try { notes = inst.RenderNotes(0, duration, ContextFor(project)); }
+            try { notes = inst.RenderNotes(0, duration, ContextFor(project, absoluteStartBeat)); }
             catch { return null; }
             if (notes == null) return null;
 
@@ -107,7 +112,13 @@ namespace MusicTracker.Engine.Flow
                 if (noteIdx < 0 || noteIdx > 95) continue;
 
                 double startBeat = Math.Max(0, n.StartBeat);
-                double lenBeats = Math.Max(0, n.DurationBeats);
+                // Choix de la durée selon le contexte : audio → DurationBeats (avec articulation) ;
+                // partition → NotationDurationBeats si le plugin l'a renseignée (durée logique
+                // sans gate, ex. une croche entière au lieu d'un staccato de 15%). Un plugin qui ne
+                // fait pas la distinction laisse NotationDurationBeats = 0 → fallback sur DurationBeats.
+                double lenBeats = forNotation && n.NotationDurationBeats > 0
+                    ? n.NotationDurationBeats
+                    : Math.Max(0, n.DurationBeats);
                 int startSlice = (int)Math.Round(startBeat * SlicesPerQuarter);
                 int lenSlices = Math.Max(1, (int)Math.Round(lenBeats * SlicesPerQuarter));
                 // Filtrage : on garde uniquement les notes qui commencent dans la fenêtre du module.

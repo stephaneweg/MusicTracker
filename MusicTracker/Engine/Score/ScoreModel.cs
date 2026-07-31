@@ -478,7 +478,7 @@ namespace MusicTracker.Engine.Score
                 case PolyChordModule pc: return PolyChord.Generate(pc);
                 // Générateur Koton natif : même chemin que TimelinePlayer et TimelineImporter — le
                 // helper partagé garantit que la partition suit exactement ce qui sera joué et exporté.
-                case KotonGeneratorModule kg: return KotonGeneratorRuntime.RenderRiff(kg, project);
+                case KotonGeneratorModule kg: return KotonGeneratorRuntime.RenderRiff(kg, project, startBeat, forNotation: true);
                 default: return null;
             }
         }

@@ -32,7 +32,7 @@ namespace KotonPluginArpeggiator
     /// est le plus prévisible — un utilisateur qui pose un arpège dans un trou d'accords entend un
     /// vide, ce qui l'incite à combler côté harmonie.
     /// </summary>
-    [KotonGenerator("Arpégiateur", Type = KotonGeneratorType.Melody, Version = "1.0", Vendor = "Koton Studio")]
+    [KotonGenerator("Arpégiateur", Id = "koton.arpeggiator", Type = KotonGeneratorType.Melody, Version = "1.0", Vendor = "Koton Studio")]
     public sealed class Arpeggiator : IKotonGenerator
     {
         public string Id => "koton.arpeggiator";
@@ -42,12 +42,47 @@ namespace KotonPluginArpeggiator
         // Pattern est un enum discrétisé en double 0..5. Rate idem 0..4 (division rythmique). Les
         // combos de l'éditeur les posent à des valeurs entières exactes ; une automation qui
         // écraserait à 1.7 arrondit à 2 côté rendu (Math.Floor / cast int).
-        readonly KotonParameter _pattern  = new KotonParameter("pattern",  "Motif",     0, 5, 0);
-        readonly KotonParameter _rate     = new KotonParameter("rate",     "Vitesse",   0, 4, 1);
-        readonly KotonParameter _octaves  = new KotonParameter("octaves",  "Octaves",   1, 3, 1);
-        readonly KotonParameter _gate     = new KotonParameter("gate",     "Gate",      0.05, 1.0, 0.5, "%");
-        readonly KotonParameter _velocity = new KotonParameter("velocity", "Vélocité",  1, 127, 100);
-        readonly KotonParameter _baseMidi = new KotonParameter("base_midi","Note base", 12, 108, 60);
+        readonly KotonParameter _pattern      = new KotonParameter("pattern",       "Motif",        0, 5, 0);
+        // Notes par temps. En BINAIRE (4/4, 3/4, 2/4) : 1=noire, 2=croches, 3=triolets, 4=doubles.
+        // En TERNAIRE (6/8, 9/8, 12/8) : 1=noire pointée, 3=croches, 6=doubles. Le tick effectif est
+        // dérivé de cette valeur ET de la métrique (voir TickBeats). Défaut 2 = croches en binaire.
+        readonly KotonParameter _notesPerBeat = new KotonParameter("notes_per_beat","Notes/temps",  1, 8, 2);
+        // Prolongation : combien de fois on répète le voicing sur les octaves suivantes.
+        //   0 = do mi sol           (juste l'octave de base)
+        //   1 = do mi sol do2 mi2 sol2                  (2 octaves)
+        //   2 = do mi sol do2 mi2 sol2 do3 mi3 sol3     (3 octaves) — l'exemple du brief
+        //   3 = 4 octaves ; 4 = 5 octaves (arpège très large)
+        readonly KotonParameter _extend       = new KotonParameter("extend",        "Prolonger",    0, 4, 0);
+        // Articulation : 0=Légato (notes tenues, gate 100%), 1=Normal (gate 75%), 2=Détaché (gate 40%),
+        // 3=Staccato (gate 15%). Remplace l'ancien slider Gate en % — choix musical direct.
+        readonly KotonParameter _articulation = new KotonParameter("articulation",  "Articulation", 0, 3, 1);
+        readonly KotonParameter _velocity     = new KotonParameter("velocity",      "Vélocité",     1, 127, 100);
+        // Octave 0..8 (0 = grave, 4 = do central C4 = MIDI 60, 8 = très aigu C8). La note MIDI de
+        // base est dérivée : 12 + octave*12. Plus lisible qu'un MIDI brut pour un utilisateur musical.
+        readonly KotonParameter _octave       = new KotonParameter("octave",        "Octave",       0, 8, 4);
+        // Voice leading : 0 = off (chaque tick repart de la position dans le pool selon le motif),
+        // 1 = on (quand l'accord change, la 1re note du nouvel accord choisit celle du pool la plus
+        // proche de la note précédente en semitons — évite les sauts brusques quand la progression
+        // d'accords change).
+        readonly KotonParameter _voiceLeading = new KotonParameter("voice_leading", "Voice leading",0, 1, 0);
+        // Ouverture (spread) 0..3 : espacement des notes du voicing.
+        //  0 = close (root, 3, 5 dans une octave)
+        //  1 = drop-2 (la 2e note depuis le haut monte d'une octave)
+        //  2 = spread modéré (2 notes montées d'une octave)
+        //  3 = wide (chaque note écartée d'une octave — root, 3+12, 5+24)
+        readonly KotonParameter _spread       = new KotonParameter("spread",        "Ouverture",    0, 3, 0);
+        // Mode rythme : 0 = régulier (subdivision uniforme selon _notesPerBeat), 1 = personnalisé
+        // (motif défini par l'utilisateur via RhythmGridEditor, stocké dans _customRhythm).
+        readonly KotonParameter _rhythmMode   = new KotonParameter("rhythm_mode",   "Mode rythme",  0, 1, 0);
+
+        // Motif rythmique personnalisé — utilisé UNIQUEMENT quand _rhythmMode.Value >= 0.5. Le motif
+        // se loop dans la durée du bloc si sa longueur (Beats × SlicesPerBeat) est < DurationBeats.
+        KotonRhythm _customRhythm = new KotonRhythm { Beats = 2, SlicesPerBeat = 4 };
+        internal KotonRhythm CustomRhythm
+        {
+            get => _customRhythm;
+            set { _customRhythm = value ?? new KotonRhythm { Beats = 2, SlicesPerBeat = 4 }; }
+        }
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -71,7 +106,7 @@ namespace KotonPluginArpeggiator
         {
             _params = new List<KotonParameter>
             {
-                _pattern, _rate, _octaves, _gate, _velocity, _baseMidi,
+                _pattern, _notesPerBeat, _extend, _articulation, _velocity, _octave, _voiceLeading, _spread, _rhythmMode,
             };
         }
 
@@ -81,7 +116,8 @@ namespace KotonPluginArpeggiator
         {
             // Vert Koton (accent teal légèrement décalé pour distinguer des blocs riff standards).
             var bg = Color.FromRgb(0x2A, 0x7C, 0x4E);
-            string txt = "Arp " + PatternGlyph((int)_pattern.Value) + " " + RateName((int)_rate.Value);
+            int nb = (int)_notesPerBeat.Value;
+            string txt = "Arp " + PatternGlyph((int)_pattern.Value) + " " + nb + "/tps";
             return new KotonGeneratorDisplay { Background = bg, Text = txt };
         }
 
@@ -100,22 +136,74 @@ namespace KotonPluginArpeggiator
         }
 
         internal static readonly string[] PatternNames = { "Up ↑", "Down ↓", "Up-Down ↕", "Down-Up ↕", "Aléatoire", "Accord plaqué" };
-        internal static readonly string[] RateNames    = { "1/4", "1/8", "1/16", "1/8T", "1/16T" };
+        internal static readonly string[] ArticulationNames = { "Legato", "Normal", "Détaché", "Staccato" };
 
-        static string RateName(int r) => RateNames[Math.Max(0, Math.Min(RateNames.Length - 1, r))];
+        // Options "notes par temps" affichées dans l'éditeur — dépendent de la métrique du projet.
+        // Binaire (4/4, 3/4, 2/4) : 1 (noire), 2 (croches), 3 (triolets), 4 (doubles).
+        // Ternaire (6/8, 9/8, 12/8) : 1 (noire pointée), 3 (croches), 6 (doubles).
+        internal static readonly int[] BinaryNotesPerBeat  = { 1, 2, 3, 4 };
+        internal static readonly int[] TernaryNotesPerBeat = { 1, 3, 6 };
 
-        // Une "tick" = combien de beats sépare deux notes consécutives ? 1/4 = 1 beat ; 1/8 = 0.5 ;
-        // 1/16 = 0.25 ; 1/8T (triolet de croches) = 1/3 ; 1/16T = 1/6.
-        static double TickBeats(int rate)
+        /// <summary>Vrai si la signature temporelle est ternaire (compound) : 6/8, 9/8, 12/8...
+        /// Détection = dénominateur 8 avec un numérateur multiple de 3.</summary>
+        internal static bool IsTernary(int timeSigNum, int timeSigDen)
         {
-            switch (rate)
+            return timeSigDen == 8 && timeSigNum > 0 && timeSigNum % 3 == 0;
+        }
+
+        // Gate ratio par articulation.
+        static double GateFor(int articulation)
+        {
+            switch (articulation)
             {
-                case 0: return 1.0;
-                case 1: return 0.5;
-                case 2: return 0.25;
-                case 3: return 1.0 / 3.0;
-                case 4: return 1.0 / 6.0;
-                default: return 0.5;
+                case 0: return 1.0;   // Legato
+                case 1: return 0.75;  // Normal
+                case 2: return 0.40;  // Détaché
+                case 3: return 0.15;  // Staccato
+                default: return 0.75;
+            }
+        }
+
+        // Une "tick" = combien de beats sépare deux notes consécutives ?
+        // Binaire : tick = 1 / notesPerBeat (temps = noire, 1 beat).
+        // Ternaire : tick = 1.5 / notesPerBeat (temps = noire pointée, 1.5 beats).
+        static double TickBeats(int notesPerBeat, int timeSigNum, int timeSigDen)
+        {
+            if (notesPerBeat < 1) notesPerBeat = 1;
+            double beatsPerBeat = IsTernary(timeSigNum, timeSigDen) ? 1.5 : 1.0;
+            return beatsPerBeat / notesPerBeat;
+        }
+
+        /// <summary>Génère la séquence de ticks (position en beats + durée logique en beats) selon le
+        /// mode courant. Mode régulier : subdivision uniforme (position 0, tick, 2·tick, ...). Mode
+        /// personnalisé : itère sur les notes du <see cref="KotonRhythm"/> en le loopant dans la durée
+        /// du bloc si son motif est plus court. Yield break si les params sont dégénérés.</summary>
+        static IEnumerable<(double onset, double tickLen)> EnumerateTicks(bool customMode, double regularTick, double duration, KotonRhythm custom)
+        {
+            if (customMode && custom != null && custom.TotalSlices > 0 && custom.SlicesPerBeat > 0
+                && custom.StartSlices != null && custom.LenSlices != null && custom.StartSlices.Length > 0)
+            {
+                double motifBeats = (double)custom.TotalSlices / custom.SlicesPerBeat;
+                if (motifBeats <= 0) yield break;
+                double motifStart = 0;
+                while (motifStart < duration - 1e-9)
+                {
+                    for (int i = 0; i < custom.StartSlices.Length; i++)
+                    {
+                        double onset = motifStart + (double)custom.StartSlices[i] / custom.SlicesPerBeat;
+                        if (onset >= duration - 1e-9) break;
+                        double len = Math.Max(0.01, (double)custom.LenSlices[i] / custom.SlicesPerBeat);
+                        // Tronque à la fin du bloc — évite une note qui déborde.
+                        if (onset + len > duration) len = duration - onset;
+                        if (len > 0) yield return (onset, len);
+                    }
+                    motifStart += motifBeats;
+                }
+            }
+            else
+            {
+                for (double t = 0; t < duration - 1e-9; t += regularTick)
+                    yield return (t, regularTick);
             }
         }
 
@@ -126,45 +214,75 @@ namespace KotonPluginArpeggiator
             // Snapshot des paramètres au début du rendu — cohérent avec la politique du FM synth :
             // un slider bougé pendant que RenderNotes s'exécute prend effet au prochain re-flatten.
             int pattern = (int)_pattern.Value;
-            int rate = (int)_rate.Value;
-            int octaves = Math.Max(1, (int)_octaves.Value);
-            double gate = Math.Max(0.05, Math.Min(1.0, _gate.Value));
+            int notesPerBeat = Math.Max(1, (int)_notesPerBeat.Value);
+            // extend 0..4 → octaves rendues = 1 + extend (1..5). BuildPool réplique le voicing.
+            int octaves = 1 + Math.Max(0, Math.Min(4, (int)_extend.Value));
+            int articulation = Math.Max(0, Math.Min(3, (int)_articulation.Value));
+            double gate = GateFor(articulation);
             int velocity = Math.Max(1, Math.Min(127, (int)_velocity.Value));
-            int baseMidi = Math.Max(0, Math.Min(127, (int)_baseMidi.Value));
+            int octave = Math.Max(0, Math.Min(8, (int)_octave.Value));
+            int baseMidi = 12 + octave * 12;  // C0=12, C4=60, C8=108 (convention MIDI standard)
+            bool voiceLeading = _voiceLeading.Value >= 0.5;
+            int spread = Math.Max(0, Math.Min(3, (int)_spread.Value));
 
-            double tick = TickBeats(rate);
+            int tsNum = ctx?.TimeSigNum > 0 ? ctx.TimeSigNum : 4;
+            int tsDen = ctx?.TimeSigDen > 0 ? ctx.TimeSigDen : 4;
+            double tick = TickBeats(notesPerBeat, tsNum, tsDen);
             if (tick <= 0) yield break;
             double duration = Math.Max(0.25, DurationBeats);
+            bool customMode = _rhythmMode.Value >= 0.5;
+            // Position ABSOLUE du bloc dans le projet — indispensable pour interroger l'accord courant
+            // via KotonHost.GetChordAt (le résolveur cherche dans la piste Accords à un beat absolu,
+            // pas relatif). ctx.BlockStartBeat = 0 en preview (pas encore posé) : fallback tonique.
+            double blockStart = ctx?.BlockStartBeat ?? 0.0;
             // Reseed pour reproductibilité (voir commentaire sur _rng).
-            _rng = new Random(pattern * 1315423911 ^ rate * 2654435761u.GetHashCode() ^ octaves * 40503);
+            _rng = new Random(pattern * 1315423911 ^ notesPerBeat * 2654435761u.GetHashCode() ^ octaves * 40503);
 
             // Compteur d'index de note pour Up/Down/UpDown/DownUp : on incrémente à chaque tick, on
             // enveloppe modulo la taille du pool à chaque itération selon le mode.
             int step = 0;
+            // Voice leading : mémorise la dernière note jouée + l'accord précédent pour détecter le
+            // changement et re-caler `step` sur la note du nouveau pool la plus proche.
+            int? lastPlayedMidi = null;
+            KotonChord? lastChord = null;
 
-            for (double t = 0; t < duration - 1e-9; t += tick)
+            foreach (var (t, tickLen) in EnumerateTicks(customMode, tick, duration, _customRhythm))
             {
-                // Cet arpège n'utilise PAS startBeat/endBeat pour filtrer (yield toutes ses notes dans
-                // [0, DurationBeats[) — l'hôte se charge du bornage. Simple et testé.
-                // Pas de note s'il n'y a pas d'accord à ce beat (silence).
-                KotonChord? chOpt = KotonHost.GetChordAt?.Invoke(t);
-                // On peut aussi être appelé HORS lecture (Preview) — dans ce cas GetChordAt peut être
-                // null si aucun accord n'est posé sur la timeline. On dégrade en accord de tonique
-                // majeur/mineur selon le mode, pour que l'utilisateur entende quelque chose de
-                // MUSICAL même sur une piste vide.
+                // Interrogation harmonique au beat ABSOLU (position du bloc + offset relatif). Sans le
+                // décalage BlockStartBeat, on cherche toujours au début du projet → l'arp jouerait la
+                // même chose (tonique) quel que soit l'accord réel sous le bloc.
+                KotonChord? chOpt = KotonHost.GetChordAt?.Invoke(blockStart + t);
+                // Fallback : preview (bloc non posé) OU trou dans la piste d'accords. On dégrade en
+                // accord de tonique majeur/mineur selon le mode du projet, pour que l'utilisateur
+                // entende quelque chose de MUSICAL même sans harmonie posée.
                 KotonChord ch;
                 if (chOpt.HasValue) ch = chOpt.Value;
                 else ch = new KotonChord { Root = ctx?.Tonic ?? 0, Quality = (ctx?.IsMajor ?? true) ? KotonChordQuality.Major : KotonChordQuality.Minor };
 
                 // Voicing : root position, base sur baseMidi + décalage pour placer la fondamentale
-                // sur la classe de hauteur de l'accord (baseMidi porte l'octave choisie).
+                // sur la classe de hauteur de l'accord (baseMidi porte l'octave choisie). L'ouverture
+                // (spread) est appliquée avant la réplication d'octaves — les notes du voicing sont
+                // déjà réparties sur plusieurs octaves selon le mode.
                 int rootMidi = SnapToOctave(baseMidi, ch.Root);
-                var chordNotes = ch.GetMidiNotes(rootMidi);
+                var chordNotes = ch.ApplyVoicing(rootMidi, spread);
 
                 // Réplique sur `octaves` — Up ajoute +12, +24 ; Down ne change pas la table (on
                 // parcourt à l'envers), UpDown / DownUp aussi utilisent la table étendue.
                 var pool = BuildPool(chordNotes, octaves);
                 if (pool.Length == 0) continue;
+
+                // Voice leading : si l'accord change et qu'on a une note précédente, on ré-aligne
+                // `step` pour que la prochaine note choisie soit celle du nouveau pool la plus proche.
+                // Marche pour Up/Down/UpDown/DownUp et pour le mode Random (qui re-tire quand même,
+                // mais depuis un point de départ plus musical). Pas pour "Accord plaqué" (toutes les
+                // notes sortent en parallèle, pas de séquence).
+                bool chordChanged = lastChord.HasValue &&
+                                    (lastChord.Value.Root != ch.Root || lastChord.Value.Quality != ch.Quality);
+                if (voiceLeading && lastPlayedMidi.HasValue && chordChanged && pattern != 5)
+                {
+                    step = KotonChordExtensions.NearestNoteIndex(pool, lastPlayedMidi.Value);
+                }
+                lastChord = ch;
 
                 double noteBeat;
                 int noteMidi;
@@ -195,15 +313,21 @@ namespace KotonPluginArpeggiator
                         break;
                     case 5: // Chord — sortir toutes les notes en même temps et passer au prochain tick
                     {
-                        double lenBeats = tick * gate;
+                        double lenBeats = tickLen * gate;
                         foreach (var mn in pool)
                             yield return new KotonGeneratedNote
                             {
                                 StartBeat = t,
                                 DurationBeats = lenBeats,
+                                // Notation : la valeur rythmique logique = tickLen complet, indépendante
+                                // de l'articulation (le staccato joue court mais s'écrit "croche").
+                                NotationDurationBeats = tickLen,
                                 MidiNote = mn,
                                 Velocity = velocity,
                             };
+                        // On note la 1re note pour le voice leading du prochain tick (peu importe
+                        // laquelle, l'important est d'avoir un point de référence).
+                        lastPlayedMidi = pool.Length > 0 ? (int?)pool[0] : null;
                         continue;
                     }
                     default:
@@ -211,12 +335,16 @@ namespace KotonPluginArpeggiator
                         break;
                 }
 
+                lastPlayedMidi = noteMidi;
                 noteBeat = t;
-                double dur = tick * gate;
+                double dur = tickLen * gate;
                 yield return new KotonGeneratedNote
                 {
                     StartBeat = noteBeat,
                     DurationBeats = dur,
+                    // Notation : la valeur rythmique logique = tickLen complet, indépendante de
+                    // l'articulation (le staccato joue court mais s'écrit "croche").
+                    NotationDurationBeats = tickLen,
                     MidiNote = noteMidi,
                     Velocity = velocity,
                 };
@@ -273,12 +401,24 @@ namespace KotonPluginArpeggiator
                 ["duration"] = _durationBeats,
                 ["params"] = new Dictionary<string, double>
                 {
-                    [_pattern.Id]  = _pattern.Value,
-                    [_rate.Id]     = _rate.Value,
-                    [_octaves.Id]  = _octaves.Value,
-                    [_gate.Id]     = _gate.Value,
-                    [_velocity.Id] = _velocity.Value,
-                    [_baseMidi.Id] = _baseMidi.Value,
+                    [_pattern.Id]       = _pattern.Value,
+                    [_notesPerBeat.Id]  = _notesPerBeat.Value,
+                    [_extend.Id]        = _extend.Value,
+                    [_articulation.Id]  = _articulation.Value,
+                    [_velocity.Id]      = _velocity.Value,
+                    [_octave.Id]        = _octave.Value,
+                    [_voiceLeading.Id]  = _voiceLeading.Value,
+                    [_spread.Id]        = _spread.Value,
+                    [_rhythmMode.Id]    = _rhythmMode.Value,
+                },
+                // Motif rythmique personnalisé — sérialisé en tableaux d'entiers plutôt que d'imbriquer
+                // l'objet, pour rester lisible dans le JSON du projet.
+                ["rhythm"] = new Dictionary<string, object>
+                {
+                    ["beats"] = _customRhythm.Beats,
+                    ["spb"]   = _customRhythm.SlicesPerBeat,
+                    ["starts"] = _customRhythm.StartSlices ?? Array.Empty<int>(),
+                    ["lens"]   = _customRhythm.LenSlices ?? Array.Empty<int>(),
                 },
             };
             return System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(doc));
@@ -305,6 +445,27 @@ namespace KotonPluginArpeggiator
                                 break;
                             }
                     }
+                }
+                // Motif personnalisé : ignoré silencieusement s'il est absent (projet écrit par une
+                // version antérieure à la feature rythme perso) → le rhythmMode reste à 0 (régulier).
+                if (root.TryGetProperty("rhythm", out var rEl) && rEl.ValueKind == JsonValueKind.Object)
+                {
+                    var nr = new KotonRhythm();
+                    if (rEl.TryGetProperty("beats", out var beatsEl) && beatsEl.TryGetInt32(out int b)) nr.Beats = Math.Max(1, b);
+                    if (rEl.TryGetProperty("spb", out var spbEl) && spbEl.TryGetInt32(out int sp)) nr.SlicesPerBeat = Math.Max(1, sp);
+                    if (rEl.TryGetProperty("starts", out var stEl) && stEl.ValueKind == JsonValueKind.Array)
+                    {
+                        var starts = new List<int>();
+                        foreach (var el in stEl.EnumerateArray()) if (el.TryGetInt32(out int x)) starts.Add(x);
+                        nr.StartSlices = starts.ToArray();
+                    }
+                    if (rEl.TryGetProperty("lens", out var lnEl) && lnEl.ValueKind == JsonValueKind.Array)
+                    {
+                        var lens = new List<int>();
+                        foreach (var el in lnEl.EnumerateArray()) if (el.TryGetInt32(out int x)) lens.Add(Math.Max(1, x));
+                        nr.LenSlices = lens.ToArray();
+                    }
+                    _customRhythm = nr;
                 }
             }
             catch { /* blob corrompu = garder les défauts */ }

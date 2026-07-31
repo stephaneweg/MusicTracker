@@ -71,6 +71,66 @@ namespace KotonStudio.Library
             return notes;
         }
 
+        /// <summary>Applique une ouverture (spread) au voicing serré de base pour distribuer les notes
+        /// sur plusieurs octaves. Utile aux arpégiateurs et pads qui veulent un son plus ample.
+        /// <list type="bullet">
+        /// <item><b>spread=0</b> : voicing serré (root position) — retourne l'équivalent de <see cref="GetMidiNotes"/>.</item>
+        /// <item><b>spread=1</b> : drop-2 — la 2e note depuis le haut monte d'une octave. Voicing "ouvert
+        /// classique" jazz/piano.</item>
+        /// <item><b>spread=2</b> : drop-2-et-4 — les 2e et 4e depuis le haut montent d'une octave. Plus large.</item>
+        /// <item><b>spread=3</b> : notes réparties une à chaque octave (root, 3+12, 5+24, 7+36…) — sonorité
+        /// harpe/carillon.</item>
+        /// </list>
+        /// Le tableau retourné est trié croissant.</summary>
+        public static int[] ApplyVoicing(this KotonChord chord, int baseMidi, int spread)
+        {
+            var notes = chord.GetMidiNotes(baseMidi);
+            if (notes == null || notes.Length == 0) return notes;
+            if (spread <= 0) return notes;
+
+            int n = notes.Length;
+            if (spread == 1 && n >= 2)
+            {
+                // drop-2 : la 2e note depuis le haut monte d'une octave
+                notes[n - 2] += 12;
+            }
+            else if (spread == 2 && n >= 4)
+            {
+                notes[n - 2] += 12;
+                notes[n - 4] += 12;
+            }
+            else if (spread == 2 && n == 3)
+            {
+                // Cas triade : monte juste la note du milieu
+                notes[1] += 12;
+            }
+            else if (spread >= 3)
+            {
+                // Une note par octave — root, 3+12, 5+24…
+                for (int i = 1; i < n; i++) notes[i] += 12 * i;
+            }
+
+            System.Array.Sort(notes);
+            return notes;
+        }
+
+        /// <summary>Trouve l'index dans <paramref name="pool"/> de la note la plus proche (en semitons)
+        /// de <paramref name="targetMidi"/>. Utilisé par le voice leading d'un arpégiateur : quand
+        /// l'accord change, choisir la première note du nouveau motif = celle qui minimise le saut
+        /// depuis la note précédente. Retourne 0 si le pool est vide.</summary>
+        public static int NearestNoteIndex(int[] pool, int targetMidi)
+        {
+            if (pool == null || pool.Length == 0) return 0;
+            int bestIdx = 0;
+            int bestDist = System.Math.Abs(pool[0] - targetMidi);
+            for (int i = 1; i < pool.Length; i++)
+            {
+                int d = System.Math.Abs(pool[i] - targetMidi);
+                if (d < bestDist) { bestDist = d; bestIdx = i; }
+            }
+            return bestIdx;
+        }
+
         /// <summary>Intervalles en demi-tons depuis la fondamentale pour chaque qualité — la table de
         /// vérité harmonique. Un ajout ici (nouvelle qualité) demande aussi une entrée dans
         /// <see cref="KotonChordQuality"/> et une entrée symétrique dans une future sérialisation.

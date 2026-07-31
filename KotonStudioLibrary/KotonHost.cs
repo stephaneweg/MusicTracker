@@ -4,6 +4,26 @@ using System.Collections.Generic;
 namespace KotonStudio.Library
 {
     /// <summary>
+    /// Interface OPTIONNELLE que le <c>UserControl</c> retourné par <see cref="IKotonPlugin.CreateEditor"/>
+    /// peut implémenter pour être notifié quand le contexte du projet change (métrique, tonalité, tempo).
+    /// L'hôte teste via <c>is IKotonEditor</c> et n'appelle que si présent — un éditeur qui ne se soucie
+    /// pas du contexte ne fait rien.
+    ///
+    /// **Cas d'usage** : un arpégiateur adapte son sélecteur "notes par temps" au binaire/ternaire selon
+    /// la signature ; un générateur d'accords change les options selon la tonalité ; etc. Sans cette
+    /// interface, l'éditeur devrait poller <see cref="KotonHost.CurrentContext"/> — cette notification
+    /// évite ça.
+    /// </summary>
+    public interface IKotonEditor
+    {
+        /// <summary>Appelée par l'hôte quand le contexte du projet change de manière observable
+        /// (signature temporelle, tonalité, tempo). L'éditeur peut reconstruire son UI en conséquence.
+        /// Sur le thread UI. Ne PAS bloquer.</summary>
+        void OnContextUpdated(KotonRenderContext ctx);
+    }
+
+
+    /// <summary>
     /// Point d'accès statique vers les services de Koton depuis un plugin. L'hôte injecte les
     /// callbacks au démarrage de l'application et à l'ouverture d'un projet ; les plugins les
     /// invoquent librement au moment du rendu ou depuis leur éditeur.
@@ -53,5 +73,30 @@ namespace KotonStudio.Library
         /// <summary>Coupe tout preview en cours (bouton "⏹ Stop" dans l'éditeur d'un générateur, ou
         /// avant de démarrer une lecture réelle). No-op si aucun preview n'est actif.</summary>
         public static Action StopPreview { get; set; }
+
+        /// <summary>Notifie l'hôte que la durée du bloc générateur a changé (depuis l'éditeur du
+        /// plugin, typiquement un slider "Durée"). L'hôte met à jour la longueur du module timeline
+        /// correspondant, re-render la vignette, et re-flatten l'audio au prochain cycle. Le plugin
+        /// est libre de ne PAS appeler ce callback s'il ne veut pas exposer une durée modifiable
+        /// depuis son éditeur — dans ce cas, seul un resize de la vignette côté timeline modifie
+        /// la durée (via <c>KotonGeneratorModule.DurationBeats</c>).</summary>
+        public static Action<double> NotifyDurationChanged { get; set; }
+
+        /// <summary>Renvoie le contexte courant du projet (tonalité, mode, tempo, signature temporelle).
+        /// Utile à l'éditeur d'un plugin qui doit adapter son UI à la métrique — par exemple un
+        /// arpégiateur qui propose "1, 2, 3, 4 notes par temps" en binaire et "1, 3, 6" en ternaire.
+        /// Le champ <c>BlockStartBeat</c> vaut 0 dans ce contexte "global" (le bloc en cours d'édition
+        /// n'est pas nécessairement défini). Retourne <c>null</c> si aucun projet n'est actif.</summary>
+        public static Func<KotonRenderContext> CurrentContext { get; set; }
+
+        /// <summary>Reporter une exception rencontrée dans le plugin — l'hôte journalise dans
+        /// <c>crash.log</c> et propose à l'utilisateur d'ouvrir une issue GitHub. Utile quand le
+        /// plugin capture une exception défensivement (thread propriétaire, callback qui ne remonte
+        /// pas) et veut la signaler sans planter le processus. Le 2e paramètre = nom du plugin,
+        /// affiché dans le journal comme source.
+        ///
+        /// **null-safety** : <c>null</c> tant que l'hôte ne l'a pas câblé. Un plugin qui n'a pas
+        /// d'hôte (test isolé) doit tester ; sinon un simple <c>?.Invoke</c> suffit.</summary>
+        public static Action<Exception, string> ReportException { get; set; }
     }
 }
