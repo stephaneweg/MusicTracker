@@ -249,18 +249,40 @@ namespace KotonPluginFmSynth
 
         // ---- Oscilloscope ----
 
-        /// <summary>Copie le contenu du ring buffer dans <paramref name="dest"/> (samples les plus
-        /// anciens en premier, les plus récents en dernier). Doit être appelé depuis le thread UI
-        /// (l'éditeur), sans lock — races bénignes sur le contenu individuel des cases mais la copie
-        /// entière reste cohérente au sens visuel.</summary>
+        /// <summary>Synthétise une forme d'onde THÉORIQUE à partir des paramètres courants (ratio,
+        /// index, waveforms, algorithme) et la copie dans <paramref name="dest"/>. Affiche 2 cycles
+        /// à 440Hz pour un tracé lisible. Indépendant de la lecture audio réelle — l'oscilloscope
+        /// affiche toujours quelque chose, même sans note qui joue (le buffer d'audio réel restait
+        /// à zéro dès que le player s'arrêtait → ligne plate). Le LFO et le feedback sont ignorés
+        /// (capture statique du timbre — plus lisible).</summary>
         public void GetOscilloscopeSamples(float[] dest)
         {
             if (dest == null) return;
-            int n = Math.Min(dest.Length, ScopeSize);
-            int start = _scopeWrite;   // le prochain slot à écrire = le plus ancien à lire
+            int n = dest.Length;
+            if (n == 0) return;
+
+            // Snapshot params (mêmes valeurs que Render pour la cohérence timbrale)
+            double ratio = _ratio.Value;
+            double index = _index.Value;
+            FmWaveform modWave = Osc.FromDouble(_modWave.Value);
+            FmWaveform carWave = Osc.FromDouble(_carWave.Value);
+            bool additive = _algo.Value >= 0.5;
+
+            // Affichage : 2 cycles de la fondamentale à 440Hz étalés sur les N samples du buffer.
+            // On calcule directement en phase (0..2π * cycles), pas en temps absolu — ça évite les
+            // artefacts d'aliasing quand le tracé n'est pas aligné sur une période exacte.
+            const double cycles = 2.0;
+            const double TwoPi = 2 * Math.PI;
             for (int i = 0; i < n; i++)
             {
-                dest[i] = _scope[(start + i) % ScopeSize];
+                double phase = (double)i / (n - 1) * cycles * TwoPi;
+                double phc = phase;
+                double phm = phase * ratio;
+                double modOut = Osc.Sample(modWave, phm);
+                double s;
+                if (additive) s = 0.5 * (Osc.Sample(carWave, phc) + modOut);
+                else s = Osc.Sample(carWave, phc + index * modOut);
+                dest[i] = (float)s;
             }
         }
 
