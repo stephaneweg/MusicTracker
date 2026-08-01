@@ -476,7 +476,8 @@ namespace KotonPluginWaveMorph
             };
             var combo = new ComboBox
             {
-                Style = (Style)FindResource("KotonCombo"),
+                // Style implicite ComboBox du theme partage (KotonPluginTheme.xaml) applique
+                // automatiquement — inutile de le referencer par nom (KotonCombo n'existe plus).
                 FontSize = 9,
                 Padding = new Thickness(2),
                 MinWidth = 50,
@@ -681,7 +682,7 @@ namespace KotonPluginWaveMorph
             Grid.SetColumn(typeStack, 1);
             var typeCombo = new ComboBox
             {
-                Style = (Style)FindResource("KotonCombo"),
+                // Style implicite du theme partage — voir MakeKvComboCell pour la meme note.
                 MinWidth = 60,
                 FontSize = 10,
                 Padding = new Thickness(4, 1, 4, 1),
