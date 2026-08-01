@@ -1,0 +1,128 @@
+<UserControl x:Class="KotonPluginStringMachine.StringMachineEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="620" MinHeight="480"
+             Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border BorderThickness="0" Padding="16">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Bandeau du haut : preset -->
+            <Grid Grid.Row="0" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Preset :" VerticalAlignment="Center"
+                           Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1" x:Name="PresetCombo" Width="220" HorizontalAlignment="Left"
+                          SelectionChanged="PresetCombo_SelectionChanged"/>
+                <CheckBox Grid.Column="2" x:Name="ParaphonicCheck" Content="Paraphonique (Solina)"
+                          VerticalAlignment="Center" Margin="10,0,10,0"
+                          Foreground="{DynamicResource KotonText}"
+                          Checked="ParaphonicCheck_Changed" Unchecked="ParaphonicCheck_Changed"/>
+                <TextBlock Grid.Column="3" Text="String Machine · Solina-like"
+                           Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic"
+                           VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- 3 colonnes : Osc/Filter · Envelope · Chorus/Out -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Colonne 1 : oscillateurs + filtre -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Sub octave level" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="SubLevelSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="SubLevelValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Cutoff (Hz)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="CutoffSlider" Minimum="100" Maximum="8000" TickFrequency="50"/>
+                    <TextBlock x:Name="CutoffValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Resonance" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="ResonanceSlider" Minimum="0.5" Maximum="5" TickFrequency="0.1"/>
+                    <TextBlock x:Name="ResonanceValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <!-- Colonne 2 : ADSR -->
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Attack (s)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="AttackSlider" Minimum="0" Maximum="3" TickFrequency="0.05"/>
+                    <TextBlock x:Name="AttackValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Decay (s)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="DecaySlider" Minimum="0" Maximum="3" TickFrequency="0.05"/>
+                    <TextBlock x:Name="DecayValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Sustain level" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="SustainSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="SustainValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Release (s)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="ReleaseSlider" Minimum="0" Maximum="4" TickFrequency="0.1"/>
+                    <TextBlock x:Name="ReleaseValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <!-- Colonne 3 : chorus + sortie -->
+                <StackPanel Grid.Row="0" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Chorus rate (Hz)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="ChorusRateSlider" Minimum="0.1" Maximum="3" TickFrequency="0.05"/>
+                    <TextBlock x:Name="ChorusRateValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Chorus depth" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="ChorusDepthSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="ChorusDepthValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Chorus mix" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="ChorusMixSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="ChorusMixValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Stereo width" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="StereoWidthSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="StereoWidthValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <!-- Row 3 col 0 : Volume (garde la symétrie visuelle) -->
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/>
+                    <TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
