@@ -143,29 +143,45 @@
         </Setter>
     </Style>
 
-    <!-- ================ Slider : rail avec FILL teal de 0 a Value ================ -->
-    <!-- Template avec 2 Rectangles empiles (rail sombre + fill teal masque via Track/RepeatButton) -->
+    <!-- ================ Slider ================ -->
+    <!-- Poignee : gris fonce (KotonPanelHi) avec bordure claire. Fill teal du cote Min → Value,
+         rail neutre du cote Value → Max. Deux styles distincts (implicite horizontal + nomme
+         vertical) car le LayoutTransform Rotate casse le hit-testing en vertical. -->
 
     <Style x:Key="KotonSliderThumb" TargetType="Thumb">
         <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Width" Value="12"/>
+        <Setter Property="Height" Value="14"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
-                    <Border Width="12" Height="14"
-                            Background="{StaticResource KotonAccent}"
-                            BorderBrush="{StaticResource KotonAccentDim}"
-                            BorderThickness="1"
-                            CornerRadius="2"/>
+                    <Border Background="{StaticResource KotonPanelHi}"
+                            BorderBrush="{StaticResource KotonBorderHi}"
+                            BorderThickness="1" CornerRadius="2"/>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!-- Le PART_Track cache 3 zones :
-         - DecreaseRepeatButton = de Min a Value (a colorer en accent)
-         - Thumb (celui du dessus)
-         - IncreaseRepeatButton = de Value a Max (rail sombre) -->
-    <Style x:Key="KotonSliderRepeatButtonFill" TargetType="RepeatButton">
+    <!-- Thumb specifique vertical : oriente autrement (large vs haut) -->
+    <Style x:Key="KotonSliderThumbVertical" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Width" Value="14"/>
+        <Setter Property="Height" Value="12"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="{StaticResource KotonPanelHi}"
+                            BorderBrush="{StaticResource KotonBorderHi}"
+                            BorderThickness="1" CornerRadius="2"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- RepeatButtons : templates orientation-specifiques (le Border interne a Height fixe en
+         horizontal, Width fixe en vertical, pour donner l'aspect "rail fin"). -->
+    <Style x:Key="KotonSliderFillH" TargetType="RepeatButton">
         <Setter Property="OverridesDefaultStyle" Value="True"/>
         <Setter Property="IsTabStop" Value="False"/>
         <Setter Property="Focusable" Value="False"/>
@@ -178,7 +194,7 @@
             </Setter.Value>
         </Setter>
     </Style>
-    <Style x:Key="KotonSliderRepeatButtonRail" TargetType="RepeatButton">
+    <Style x:Key="KotonSliderRailH" TargetType="RepeatButton">
         <Setter Property="OverridesDefaultStyle" Value="True"/>
         <Setter Property="IsTabStop" Value="False"/>
         <Setter Property="Focusable" Value="False"/>
@@ -191,7 +207,34 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="KotonSliderFillV" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="{StaticResource KotonAccent}" Width="4"
+                            CornerRadius="2" HorizontalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="KotonSliderRailV" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="{StaticResource KotonBorder}" Width="4"
+                            CornerRadius="2" HorizontalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
+    <!-- Slider HORIZONTAL implicite : s'applique automatiquement a tout Slider sans Style explicite -->
     <Style TargetType="Slider">
         <Setter Property="Foreground" Value="{StaticResource KotonAccent}"/>
         <Setter Property="Background" Value="{StaticResource KotonBorder}"/>
@@ -201,31 +244,45 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Slider">
-                    <Grid>
-                        <!-- Horizontal (default) : Track avec fill accent + rail + thumb -->
-                        <Track x:Name="PART_Track">
-                            <Track.DecreaseRepeatButton>
-                                <RepeatButton Style="{StaticResource KotonSliderRepeatButtonFill}"
-                                              Command="Slider.DecreaseLarge"/>
-                            </Track.DecreaseRepeatButton>
-                            <Track.Thumb>
-                                <Thumb Style="{StaticResource KotonSliderThumb}"/>
-                            </Track.Thumb>
-                            <Track.IncreaseRepeatButton>
-                                <RepeatButton Style="{StaticResource KotonSliderRepeatButtonRail}"
-                                              Command="Slider.IncreaseLarge"/>
-                            </Track.IncreaseRepeatButton>
-                        </Track>
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="Orientation" Value="Vertical">
-                            <Setter TargetName="PART_Track" Property="LayoutTransform">
-                                <Setter.Value>
-                                    <RotateTransform Angle="-90"/>
-                                </Setter.Value>
-                            </Setter>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
+                    <Track x:Name="PART_Track">
+                        <Track.DecreaseRepeatButton>
+                            <RepeatButton Style="{StaticResource KotonSliderFillH}" Command="Slider.DecreaseLarge"/>
+                        </Track.DecreaseRepeatButton>
+                        <Track.Thumb>
+                            <Thumb Style="{StaticResource KotonSliderThumb}"/>
+                        </Track.Thumb>
+                        <Track.IncreaseRepeatButton>
+                            <RepeatButton Style="{StaticResource KotonSliderRailH}" Command="Slider.IncreaseLarge"/>
+                        </Track.IncreaseRepeatButton>
+                    </Track>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Slider VERTICAL nomme : applique explicitement via Style="{StaticResource KotonVerticalSlider}"
+         Fill teal du bas (Min) jusqu'au thumb, rail neutre au-dessus. -->
+    <Style x:Key="KotonVerticalSlider" TargetType="Slider">
+        <Setter Property="Foreground" Value="{StaticResource KotonAccent}"/>
+        <Setter Property="Background" Value="{StaticResource KotonBorder}"/>
+        <Setter Property="IsMoveToPointEnabled" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="MinWidth" Value="18"/>
+        <Setter Property="Orientation" Value="Vertical"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Track x:Name="PART_Track">
+                        <Track.DecreaseRepeatButton>
+                            <RepeatButton Style="{StaticResource KotonSliderFillV}" Command="Slider.DecreaseLarge"/>
+                        </Track.DecreaseRepeatButton>
+                        <Track.Thumb>
+                            <Thumb Style="{StaticResource KotonSliderThumbVertical}"/>
+                        </Track.Thumb>
+                        <Track.IncreaseRepeatButton>
+                            <RepeatButton Style="{StaticResource KotonSliderRailV}" Command="Slider.IncreaseLarge"/>
+                        </Track.IncreaseRepeatButton>
+                    </Track>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

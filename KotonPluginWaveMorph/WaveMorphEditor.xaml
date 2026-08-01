@@ -142,10 +142,9 @@
                         <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
                             <TextBlock Text="W2" Style="{StaticResource SectionSub}" HorizontalAlignment="Center"/>
                             <TextBlock Text="1.0" Style="{StaticResource SectionSub}" HorizontalAlignment="Center"/>
-                            <Slider x:Name="XFadeSlider" Orientation="Vertical" Height="180"
-                                    Minimum="0" Maximum="1" Value="0.5" HorizontalAlignment="Center"
-                                    Foreground="{StaticResource Accent}" IsMoveToPointEnabled="True"
-                                    Margin="0,4"/>
+                            <Slider x:Name="XFadeSlider" Style="{StaticResource KotonVerticalSlider}"
+                                    Height="180" Minimum="0" Maximum="1" Value="0.5"
+                                    HorizontalAlignment="Center" Margin="0,4"/>
                             <TextBlock Text="0.0" Style="{StaticResource SectionSub}" HorizontalAlignment="Center"/>
                             <TextBlock Text="W1" Style="{StaticResource SectionSub}" HorizontalAlignment="Center"/>
                             <TextBlock x:Name="XFadeValue" Text="0.50" Foreground="{StaticResource Accent}"
