@@ -498,11 +498,19 @@ namespace KotonPluginWaveMorph
             int src = _scope.Length;
             // Lecture du plus ancien au plus récent (ring reordering).
             int start = _scopeWrite;
+            float maxAbs = 0f;
             for (int i = 0; i < n; i++)
             {
                 int srcIdx = (start + (int)((long)i * src / n)) % src;
-                dest[i] = _scope[srcIdx];
+                float s = _scope[srcIdx];
+                dest[i] = s;
+                float a = s < 0 ? -s : s;
+                if (a > maxAbs) maxAbs = a;
             }
+            // Fallback : si le buffer live est vide (aucune note ne joue → ligne plate), on affiche
+            // l'onde théorique (morph) pour que le scope montre TOUJOURS quelque chose et suive en
+            // direct les changements de params. Même approche que FmSynthPlugin.GetOscilloscopeSamples.
+            if (maxAbs < 0.001f) GetMorphWave(dest);
         }
 
         static float DbToLin(float db) => (float)Math.Pow(10.0, db / 20.0);

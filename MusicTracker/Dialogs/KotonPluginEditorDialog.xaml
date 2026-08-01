@@ -2,17 +2,29 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Plugin"
+        xmlns:ctrl="clr-namespace:MusicTracker.Controls"
         SizeToContent="WidthAndHeight"
         MinWidth="360" MinHeight="200"
         ResizeMode="CanResize"
-        WindowStartupLocation="CenterOwner"
-        Foreground="{StaticResource CommonForeground}"
-        Background="{StaticResource CommonBackground}"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent"
         ShowInTaskbar="False" Closing="Window_Closing">
     <!--
     Fenetre WPF simple qui embarque le UserControl retourne par IKotonPlugin.CreateEditor().
     Contrairement a VstPluginWindow, aucun HwndHost ni classe Win32 native n'est necessaire — un
     plugin Koton natif est du WPF pur, WPF sait le layouter en direct sans le probleme d'airspace.
     -->
-    <Border x:Name="hostBorder" Padding="8" MinWidth="360" MinHeight="200"/>
+    <Border Background="{StaticResource CommonBackground}" BorderBrush="{StaticResource OutlineColorBrush}" BorderThickness="3" CornerRadius="8">
+        <DockPanel>
+            <!-- Draggable title bar. -->
+            <Border DockPanel.Dock="Top" Background="{StaticResource CommonBackground}" ctrl:WindowDrag.Enable="True" CornerRadius="6,6,0,0" Padding="10,0,0,0">
+                <Grid>
+                    <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Foreground="#9AA" FontSize="16" FontWeight="Bold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    <Button Content="✕" Click="btnClose_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Width="34" Height="30"
+         Cursor="Hand" Foreground="{StaticResource SecondaryForeground}" Background="Transparent" BorderThickness="0" FontSize="13"/>
+                </Grid>
+            </Border>
+            <Border x:Name="hostBorder" Padding="8" MinWidth="360" MinHeight="200"/>
+        </DockPanel>
+    </Border>
 </Window>

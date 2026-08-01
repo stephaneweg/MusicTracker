@@ -833,7 +833,9 @@ namespace KotonPluginWaveMorph
 
             var slider = new Slider
             {
-                Style = (Style)FindResource("KotonHSlider"),
+                // Le style implicite Slider du theme partage (KotonPluginTheme.xaml) s'applique
+                // automatiquement — fill teal + poignee grise. L'ancien KotonHSlider local etait
+                // juste des Setters sans template, donc le default WPF (blanc) prenait le pas.
                 Minimum = p.Min, Maximum = p.Max, Value = p.Value,
                 Margin = new Thickness(4, 0, 4, 0),
             };

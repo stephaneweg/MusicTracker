@@ -29,6 +29,7 @@ namespace MusicTracker.Dialogs
 
             Loaded += OnLoaded;
         }
+        void btnClose_Click(object sender, RoutedEventArgs e) => this.Close();
 
         void OnLoaded(object sender, RoutedEventArgs e)
         {
