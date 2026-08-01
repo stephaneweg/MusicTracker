@@ -40,6 +40,7 @@ namespace KotonPluginKarplusStrong
         {
             Wire(DampingSlider,    DampingValue,    p => _plugin.SetParam("damping", p),           "damping",         v => v.ToString("F2"));
             Wire(SustainSlider,    SustainValue,    p => _plugin.SetParam("sustain", p),           "sustain",         v => v.ToString("F2"));
+            Wire(HarmonicsSlider,  HarmonicsValue,  p => _plugin.SetParam("harmonics", p),         "harmonics",       v => v.ToString("F2"));
             Wire(ToneSlider,       ToneValue,       p => _plugin.SetParam("tone", p),              "tone",            v => v.ToString("F2"));
             Wire(StiffnessSlider,  StiffnessValue,  p => _plugin.SetParam("stiffness", p),         "stiffness",       v => v.ToString("F2"));
             Wire(BodySlider,       BodyValue,       p => _plugin.SetParam("body_mix", p),          "body_mix",        v => v.ToString("F2"));
@@ -70,6 +71,7 @@ namespace KotonPluginKarplusStrong
                 {
                     case "damping":         DampingSlider.Value    = kp.Value; DampingValue.Text    = kp.Value.ToString("F2"); break;
                     case "sustain":         SustainSlider.Value    = kp.Value; SustainValue.Text    = kp.Value.ToString("F2"); break;
+                    case "harmonics":       HarmonicsSlider.Value  = kp.Value; HarmonicsValue.Text  = kp.Value.ToString("F2"); break;
                     case "tone":            ToneSlider.Value       = kp.Value; ToneValue.Text       = kp.Value.ToString("F2"); break;
                     case "stiffness":       StiffnessSlider.Value  = kp.Value; StiffnessValue.Text  = kp.Value.ToString("F2"); break;
                     case "body_mix":        BodySlider.Value       = kp.Value; BodyValue.Text       = kp.Value.ToString("F2"); break;

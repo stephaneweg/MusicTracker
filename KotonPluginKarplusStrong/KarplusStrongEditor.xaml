@@ -1,7 +1,7 @@
 <UserControl x:Class="KotonPluginKarplusStrong.KarplusStrongEditor"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="560" MinHeight="420"
+             MinWidth="560" MinHeight="470"
              Background="Transparent">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -44,6 +44,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -115,6 +116,16 @@
                     <TextBlock Text="Sustain (0 = naturel, 1 = quasi-infini)" Foreground="{DynamicResource KotonText}"/>
                     <Slider x:Name="SustainSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
                     <TextBlock x:Name="SustainValue" Foreground="{DynamicResource KotonTextDim}"
+                               FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <!-- Harmonics : reduit l'attenuation du LP KS pour preserver les aigus.
+                     0 = amortissement naturel des harmoniques hautes (son doux/dark),
+                     1 = harmoniques hautes preservees (son metallique/brillant/koto/sitar). -->
+                <StackPanel Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,4,0,0">
+                    <TextBlock Text="Harmonics (0 = doux, 1 = metallique)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="HarmonicsSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="HarmonicsValue" Foreground="{DynamicResource KotonTextDim}"
                                FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
             </Grid>

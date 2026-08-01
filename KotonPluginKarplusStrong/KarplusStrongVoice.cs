@@ -11,6 +11,7 @@ namespace KotonPluginKarplusStrong
     {
         public float Damping;           // 0..1 → amortissement dans la boucle (mort des aigus)
         public float Sustain;           // 0..1 → pousse le gain de feedback vers ~1.0 (corde quasi-perpétuelle)
+        public float Harmonics;         // 0..1 → préserve les hautes fréquences en réduisant l'atténuation du LP KS (0=doux/dark, 1=metallic/brillant)
         public float Tone;              // 0..1 → cutoff du LP variable en série avec le filtre KS
         public float Stiffness;         // 0..1 → coefficient de l'all-pass de dispersion (piano feel)
         public float PluckHardness;     // 0..1 → mix bruit blanc / bruit filtré à l'excitation
@@ -162,8 +163,15 @@ namespace KotonPluginKarplusStrong
             // longueur _size — on lit la valeur qui va être écrasée par la prochaine écriture).
             float sample = _buffer[_writeIdx];
 
-            // 1) Filtre LP moyen (KS classique, 2 zéros)
-            float lp = 0.5f * (sample + _lpPrev);
+            // 1) Filtre LP "tilt" — classique KS = (x + prev)/2 (LP moyen -6dB/oct, zéro à Nyquist),
+            //    modifié par Harmonics pour préserver plus d'aigus :
+            //      lp = a*x + (1-a)*prev, avec a = 0.5 + Harmonics*0.5
+            //    → Harmonics=0 : a=0.5 = comportement classique (0.5*x + 0.5*prev)
+            //    → Harmonics=1 : a=1.0 = pas de filtrage (aigus complètement préservés, son métallique/cluster)
+            //    À Harmonics=1 la boucle serait un simple délai pur (attracteur harmonique fort) mais
+            //    reste stable car le tone LP variable et le damping via gEff calment la boucle.
+            float harmAlpha = 0.5f + p.Harmonics * 0.5f;
+            float lp = harmAlpha * sample + (1f - harmAlpha) * _lpPrev;
             _lpPrev = sample;
 
             // 2) Filtre LP variable 1-pôle (Tone) : cutoff mappé 200..8000 Hz sur 0..1
