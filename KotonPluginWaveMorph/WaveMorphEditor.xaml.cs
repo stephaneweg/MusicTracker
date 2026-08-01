@@ -980,6 +980,78 @@ namespace KotonPluginWaveMorph
             w2MultP.Changed += _ => refresh2();
             refresh1();
             refresh2();
+
+            // Rend les textes du badge INTERACTIFS : drag vertical pour Amp/Det (continus),
+            // click-cycle pour Mult (discret enum). Sans ca l'utilisateur voit les valeurs mais
+            // n'a aucun moyen visible de les modifier depuis l'editeur.
+            WireBadgeDrag((TextBlock)FindName("Wave1AmpText"), w1AmpP);
+            WireBadgeDrag((TextBlock)FindName("Wave1DetText"), w1DetP);
+            WireBadgeCycle((TextBlock)FindName("Wave1MultText"), w1MultP);
+            WireBadgeDrag((TextBlock)FindName("Wave2AmpText"), w2AmpP);
+            WireBadgeDrag((TextBlock)FindName("Wave2DetText"), w2DetP);
+            WireBadgeCycle((TextBlock)FindName("Wave2MultText"), w2MultP);
+        }
+
+        /// <summary>Rend un <see cref="TextBlock"/> interactif : drag vertical de +/- 200 px pour
+        /// couvrir la plage complete du <paramref name="p"/>. Curseur SizeNS pour signaler
+        /// l'interactivite, souligne au hover pour feedback visuel supplementaire.</summary>
+        void WireBadgeDrag(TextBlock tb, KotonStudio.Library.KotonParameter p)
+        {
+            if (tb == null) return;
+            tb.Cursor = Cursors.SizeNS;
+            tb.MouseEnter += (s, e) => tb.TextDecorations = System.Windows.TextDecorations.Underline;
+            tb.MouseLeave += (s, e) => tb.TextDecorations = null;
+            bool dragging = false;
+            Point origin = new Point();
+            double startVal = 0;
+            tb.MouseLeftButtonDown += (s, e) =>
+            {
+                dragging = true;
+                origin = e.GetPosition(tb);
+                startVal = p.Value;
+                tb.CaptureMouse();
+                e.Handled = true;
+            };
+            tb.MouseMove += (s, e) =>
+            {
+                if (!dragging) return;
+                var cur = e.GetPosition(tb);
+                double dy = origin.Y - cur.Y;
+                double range = p.Max - p.Min;
+                p.Value = startVal + (dy / 200.0) * range;
+            };
+            tb.MouseLeftButtonUp += (s, e) =>
+            {
+                dragging = false;
+                tb.ReleaseMouseCapture();
+            };
+        }
+
+        /// <summary>Pour les params discrets (enum) : click = cycle vers la valeur suivante.
+        /// Molette souris = cycle aussi (rapide pour parcourir la liste).</summary>
+        void WireBadgeCycle(TextBlock tb, KotonStudio.Library.KotonParameter p)
+        {
+            if (tb == null) return;
+            tb.Cursor = Cursors.Hand;
+            tb.MouseEnter += (s, e) => tb.TextDecorations = System.Windows.TextDecorations.Underline;
+            tb.MouseLeave += (s, e) => tb.TextDecorations = null;
+            tb.MouseLeftButtonDown += (s, e) =>
+            {
+                int cur = (int)Math.Round(p.Value);
+                int next = cur + 1;
+                if (next > (int)p.Max) next = (int)p.Min;
+                p.Value = next;
+                e.Handled = true;
+            };
+            tb.MouseWheel += (s, e) =>
+            {
+                int cur = (int)Math.Round(p.Value);
+                int next = cur + (e.Delta > 0 ? 1 : -1);
+                if (next > (int)p.Max) next = (int)p.Min;
+                else if (next < (int)p.Min) next = (int)p.Max;
+                p.Value = next;
+                e.Handled = true;
+            };
         }
 
         // =========================================================================================

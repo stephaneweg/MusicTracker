@@ -106,27 +106,15 @@
         <Grid Margin="14">
 
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/> <!-- Bandeau titre -->
+                <!-- Bandeau titre retire : le nom du plugin est deja dans la barre de titre du dialogue hote. -->
                 <RowDefinition Height="Auto"/> <!-- Bande 1 : Wave morph -->
                 <RowDefinition Height="Auto"/> <!-- Bande 2 : envs + LFOs -->
                 <RowDefinition Height="Auto"/> <!-- Bande 3 : matrix + filters + output -->
                 <RowDefinition Height="Auto"/> <!-- Bande 4 : onde finale -->
             </Grid.RowDefinitions>
 
-            <!-- =============== Bandeau titre =============== -->
-            <!-- Pas de border/fond : le UserControl est transparent pour se fondre dans le dialogue hote -->
-            <Border Grid.Row="0" Background="{StaticResource Panel}" BorderThickness="0" Padding="12,8">
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="8" Height="8" Fill="{StaticResource Accent}" VerticalAlignment="Center"/>
-                    <TextBlock Text="WAVE MORPH" FontWeight="SemiBold" FontSize="12" Margin="10,0,0,0"
-                               VerticalAlignment="Center"/>
-                    <TextBlock Text="2-oscillator morphing synth" Margin="16,0,0,0"
-                               Style="{StaticResource SectionSub}" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Border>
-
             <!-- =============== BANDE 1 : Wave morph =============== -->
-            <Border Grid.Row="1" Background="{StaticResource Panel}" BorderThickness="0" Padding="12">
+            <Border Grid.Row="0" Background="{StaticResource Panel}" BorderThickness="0" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -251,8 +239,7 @@
             </Border>
 
             <!-- =============== BANDE 2 : 3 envs + 2 LFOs =============== -->
-            <Border Grid.Row="2" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}"
-                    BorderThickness="1,0,1,1" Padding="0">
+            <Border Grid.Row="1" Background="{StaticResource Panel}" BorderThickness="0" Padding="0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -328,8 +315,7 @@
             </Border>
 
             <!-- =============== BANDE 3 : mod matrix + filters + output =============== -->
-            <Border Grid.Row="3" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}"
-                    BorderThickness="1,0,1,1" Padding="0">
+            <Border Grid.Row="2" Background="{StaticResource Panel}" BorderThickness="0" Padding="0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="320"/>
@@ -390,9 +376,7 @@
             </Border>
 
             <!-- =============== BANDE 4 : Onde finale =============== -->
-            <Border Grid.Row="4" Background="#14141a" BorderBrush="{StaticResource Border}"
-                    BorderThickness="1,0,1,1" Padding="14"
-                    CornerRadius="0,0,3,3">
+            <Border Grid.Row="3" Background="#14141a" BorderThickness="0" Padding="14" CornerRadius="3">
                 <StackPanel>
                     <Grid Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
