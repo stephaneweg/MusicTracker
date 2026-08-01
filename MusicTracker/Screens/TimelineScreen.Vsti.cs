@@ -10,6 +10,7 @@ using MusicTracker.Engine;
 using MusicTracker.Engine.Timeline;
 using MusicTracker.Engine.Timeline.Effects;
 using MusicTracker.Localization;
+using KotonStudio.Library;
 
 namespace MusicTracker.Screens
 {
@@ -329,39 +330,57 @@ namespace MusicTracker.Screens
                     Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // Instance dédiée à l'UI (indépendante du renderer). État actuel injecté ; à la fermeture on
-            // capture SaveState et on l'écrit dans track.KotonInstrumentStateBlob. Le plugin est disposé
-            // à la fermeture — ses UserControl sont libérés en cascade par WPF.
-            var plugin = Engine.Timeline.Effects.KotonPluginRegistry.InstantiateInstrument(track.KotonInstrumentId);
+            // Partage l'INSTANCE VIVANTE du renderer si dispo — bouger un slider dans l'editeur
+            // affecte immediatement l'audio (~5-20ms latence via snapshot Render). Sans ca, une
+            // nouvelle instance detachee etait creee et les modifs UI ne s'entendaient qu'apres
+            // fermeture (SaveState -> track.KotonInstrumentStateBlob -> reload au prochain Start).
+            IKotonInstrument plugin = null;
+            bool sharedWithRenderer = false;
+            try
+            {
+                var liveAdapter = player?.GetTrackVsti(track) as Engine.Timeline.Effects.KotonInstrumentAdapter;
+                if (liveAdapter != null) { plugin = liveAdapter.Plugin; sharedWithRenderer = true; }
+            }
+            catch { /* pas de player actif : on retombe sur une instance detachee */ }
+
             if (plugin == null)
             {
-                MessageBox.Show(Window.GetWindow(this),
-                    string.Format(Loc.T("KotonPluginMissing"), track.KotonInstrumentId),
-                    Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            // Prepare est nécessaire pour les plugins qui allouent des buffers audio à Prepare (le FM
-            // synth de référence par ex.). Sample rate de la carte son ; block size raisonnable.
-            try { plugin.Prepare(AudioFormat.SampleRate, 8192); } catch { /* un plugin qui jette au Prepare aura un éditeur inutilisable, mais on ouvre quand même pour que l'utilisateur puisse voir le nom */ }
-            if (!string.IsNullOrEmpty(track.KotonInstrumentStateBlob))
-            {
-                try
+                // Pas de renderer vivant pour cette piste : instance dediee UI (Prepare + LoadState).
+                // A la fermeture on capture SaveState et on l'ecrit dans track.KotonInstrumentStateBlob.
+                plugin = Engine.Timeline.Effects.KotonPluginRegistry.InstantiateInstrument(track.KotonInstrumentId);
+                if (plugin == null)
                 {
-                    var bytes = Convert.FromBase64String(track.KotonInstrumentStateBlob);
-                    plugin.LoadState(bytes);
+                    MessageBox.Show(Window.GetWindow(this),
+                        string.Format(Loc.T("KotonPluginMissing"), track.KotonInstrumentId),
+                        Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
                 }
-                catch { }
+                try { plugin.Prepare(AudioFormat.SampleRate, 8192); } catch { }
+                if (!string.IsNullOrEmpty(track.KotonInstrumentStateBlob))
+                {
+                    try
+                    {
+                        var bytes = Convert.FromBase64String(track.KotonInstrumentStateBlob);
+                        plugin.LoadState(bytes);
+                    }
+                    catch { }
+                }
             }
-            var w = new MusicTracker.Dialogs.KotonPluginEditorDialog(plugin, Window.GetWindow(this));
+
+            var pluginRef = plugin;   // capture pour la closure
+            var sharedRef = sharedWithRenderer;
+            var w = new MusicTracker.Dialogs.KotonPluginEditorDialog(pluginRef, Window.GetWindow(this));
             w.Closed += (s, e) =>
             {
                 try
                 {
-                    var bytes = plugin.SaveState();
+                    var bytes = pluginRef.SaveState();
                     track.KotonInstrumentStateBlob = (bytes == null || bytes.Length == 0) ? null : Convert.ToBase64String(bytes);
                 }
                 catch { }
-                try { plugin.Dispose(); } catch { }
+                // Ne PAS Dispose si l'instance est partagee avec le renderer — le renderer en a
+                // encore besoin. Dispose uniquement l'instance detachee UI-only.
+                if (!sharedRef) { try { pluginRef.Dispose(); } catch { } }
             };
             w.Show();
         }

@@ -601,6 +601,18 @@ namespace MusicTracker.Engine.Timeline
             return false;
         }
 
+        /// <summary>Renvoie l'instance VSTi/Koton VIVANTE utilisée par le renderer pour cette piste
+        /// (ou <c>null</c> si la piste tourne en mode MeltySynth / le player n'a pas encore été
+        /// démarré). L'éditeur d'un plugin en a besoin pour partager l'instance : bouger un slider
+        /// affecte alors immédiatement l'audio, sinon les modifs restent isolées dans une copie UI.</summary>
+        public Effects.IVstInstrumentHost GetTrackVsti(TimelineTrack src)
+        {
+            if (src == null || tracks == null) return null;
+            for (int i = 0; i < tracks.Length; i++)
+                if (tracks[i].Src == src) return tracks[i].Vsti;
+            return null;
+        }
+
         /// <summary>Warm-up des VSTi : envoie de vraies note-on/off à velo=1 sur chaque VSTi puis rend
         /// <paramref name="frames"/> samples SANS toucher au sliceIndex. Objectif : forcer les plugins
         /// sample-based (Cozy Piano etc.) à CHARGER leurs samples — le chargement est déclenché par le
