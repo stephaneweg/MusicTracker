@@ -928,25 +928,24 @@ namespace MusicTracker.Engine.Timeline
             if (tk.Vsti != null)
             {
                 tk.Vsti.Render(tk.BufL.AsSpan(startOff, nn), tk.BufR.AsSpan(startOff, nn));
-                // Plugins Koton natifs : leur MidiCC(cc, value) est libre de tout comportement — le FM
-                // synth par ex. ignore explicitement CC7/CC10 (le mixer serait sans effet sur son
-                // output). On applique donc un mix ANALOGIQUE (volume + pan linéaire) post-render pour
-                // ces plugins uniquement. Les vrais VSTi respectent CC7/CC10 → gain déjà appliqué en
-                // amont par le plugin, pas de double effet.
-                if (tk.Vsti is MusicTracker.Engine.Timeline.Effects.KotonInstrumentAdapter)
+                // Mix ANALOGIQUE (volume + pan linéaire) post-render pour TOUS les plugins VSTi
+                // (Koton natifs, VST2, VST3). Historiquement seuls les Koton natifs le recevaient
+                // parce que les autres étaient supposés respecter CC7/CC10 — mais beaucoup de VST
+                // (Massive, Serum, Diva…) ignorent CC7 côté canal ou l'écrasent avec leur propre
+                // Volume interne, ce qui rendait Mute/Solo/Fader du mixer Koton SANS EFFET sur eux.
+                // Un mix analogique post-render garantit une sémantique uniforme : le fader du mixer
+                // Koton agit comme un fader de console EN AVAL du plugin, comme dans tout DAW moderne
+                // (Ableton, FL, Cubase). Le CC7/CC10 n'est plus envoyé aux VSTi (voir ApplyChannelAutomation)
+                // pour éviter la double atténuation sur ceux qui l'honorent bien.
+                double g = tk.LastMixGain;
+                double pan = tk.LastPan;
+                // Pan linéaire simple : -1 = full left (right = 0), +1 = full right (left = 0).
+                double gL = g * (pan <= 0 ? 1.0 : (1.0 - pan));
+                double gR = g * (pan >= 0 ? 1.0 : (1.0 + pan));
+                for (int k = 0; k < nn; k++)
                 {
-                    double g = tk.LastMixGain;
-                    double pan = tk.LastPan;
-                    // Pan linéaire simple : -1 = full left (right = 0), +1 = full right (left = 0).
-                    // Equal-power (cos/sin) serait plus précis mais différence à peine audible et coût
-                    // trigonométrique inutile ici.
-                    double gL = g * (pan <= 0 ? 1.0 : (1.0 - pan));
-                    double gR = g * (pan >= 0 ? 1.0 : (1.0 + pan));
-                    for (int k = 0; k < nn; k++)
-                    {
-                        tk.BufL[startOff + k] = (float)(tk.BufL[startOff + k] * gL);
-                        tk.BufR[startOff + k] = (float)(tk.BufR[startOff + k] * gR);
-                    }
+                    tk.BufL[startOff + k] = (float)(tk.BufL[startOff + k] * gL);
+                    tk.BufR[startOff + k] = (float)(tk.BufR[startOff + k] * gR);
                 }
             }
             else if (tk.Synth != null)
@@ -1035,16 +1034,15 @@ namespace MusicTracker.Engine.Timeline
                 // Mémorise le gain effectif pour un mix analogique post-render (Koton natifs qui
                 // n'implémentent pas CC7 — sinon le fader et le mute sont sans effet).
                 tracks[ti].LastMixGain = gv;
-                // CC7 direct : chaque synth a MasterVolume = BoostGain(program), donc net = boost * (CC7 modulateur au carré)
-                // = boost * gv², identique à l'ancien schéma partagé mais sans le facteur sqrt(). Le VSTi reçoit le
-                // même CC7 : la plupart des synthés modernes le mappent sur leur volume de canal, ceux qui l'ignorent
-                // laissent le mixeur externe (baseVol × mix appliqués plus loin ? non — pour un VSTi le seul volume
-                // MIDI-piloté est CC7 ; le mixeur mute/solo/vol du header agit par CC7, pas par gain analogique).
+                // CC7 direct pour MeltySynth uniquement : chaque synth a MasterVolume = BoostGain(program),
+                // donc net = boost * (CC7 modulateur au carré) = boost * gv². Les VSTi ne reçoivent PLUS
+                // CC7 depuis 2026-08-02 — leur mix (volume/mute/solo) est appliqué post-render en
+                // analogique dans RenderTrackSlice pour garantir un comportement uniforme quel que soit
+                // le VST (certains ignoraient CC7 → mute/solo sans effet, cf. bug rapporté par l'user).
                 int cc = (int)Math.Round(Math.Max(0.0, Math.Min(1.0, gv)) * 127);
-                if (ChannelVolumeCC)
+                if (ChannelVolumeCC && vsti == null)
                 {
-                    if (vsti != null) vsti.ProcessMidiCC(ch, 7, cc);
-                    else synth.ProcessMidiMessage(ch, 0xB0, 7, cc);
+                    synth.ProcessMidiMessage(ch, 0xB0, 7, cc);
                 }
                 // Pan: −1..+1 → CC10 0..127 (64 = centre). Drums share ch 9, so multiple kits share one pan.
                 // Une lane Pan prend le dessus sur la valeur statique de la piste ; sinon on retombe sur p.Pan.
@@ -1054,10 +1052,9 @@ namespace MusicTracker.Engine.Timeline
                 else
                     pan = p != null ? p.Pan : 0.0;
                 if (pan < -1.0) pan = -1.0; else if (pan > 1.0) pan = 1.0;
-                tracks[ti].LastPan = pan;   // pour le pan analogique post-render (Koton natifs)
+                tracks[ti].LastPan = pan;   // pour le pan analogique post-render (tous les VSTi maintenant)
                 int panCc = (int)Math.Round((pan + 1.0) * 0.5 * 127);
-                if (vsti != null) vsti.ProcessMidiCC(ch, 10, panCc);
-                else synth.ProcessMidiMessage(ch, 0xB0, 10, panCc);
+                if (vsti == null) synth.ProcessMidiMessage(ch, 0xB0, 10, panCc);   // VSTi = pan analogique post-render, pas de CC10
                 // CC91 = reverb send. MeltySynth adds it to the SoundFont's own per-instrument send
                 // (Voice: reverbSend = channel + instrument, clamped), so this places the track in the room
                 // without touching its level. Sending the default (40) is a no-op — a project that never
