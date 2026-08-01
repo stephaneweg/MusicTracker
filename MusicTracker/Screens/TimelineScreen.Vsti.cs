@@ -302,6 +302,10 @@ namespace MusicTracker.Screens
         void SelectKoton(TimelineTrack track, string id)
         {
             PushUndo("track:koton:" + Id(track));
+            // Libere l'ancienne instance Koton cachee AVANT de changer d'id — sinon elle survit
+            // orphelinement dans le cache (fuite memoire + potentiellement audible si le player
+            // recree un adapter pour l'ancien id sur une autre piste).
+            MusicTracker.Engine.Timeline.Effects.KotonInstrumentCache.ReleaseTrack(track);
             track.KotonInstrumentId = id;
             track.KotonInstrumentStateBlob = null;   // nouveau plugin = état par défaut
             // Exclusion mutuelle : sélectionner un plugin Koton natif clear un éventuel VSTi précédent.
@@ -317,6 +321,8 @@ namespace MusicTracker.Screens
         {
             if (string.IsNullOrEmpty(track.KotonInstrumentId)) return;
             PushUndo("track:koton:remove:" + Id(track));
+            // Libere l'instance cachee — plus jamais utilisee par cette piste.
+            MusicTracker.Engine.Timeline.Effects.KotonInstrumentCache.ReleaseTrack(track);
             track.KotonInstrumentId = null;
             track.KotonInstrumentStateBlob = null;
             Render();

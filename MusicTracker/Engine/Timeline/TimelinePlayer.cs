@@ -301,12 +301,16 @@ namespace MusicTracker.Engine.Timeline
                     // Dispatch, capture d'état) est inchangé.
                     if (!string.IsNullOrEmpty(tr.KotonInstrumentId))
                     {
-                        var koton = MusicTracker.Engine.Timeline.Effects.KotonPluginRegistry.InstantiateInstrument(tr.KotonInstrumentId);
-                        if (koton != null)
+                        // CACHE : meme instance a travers tous les Play/Stop — critique pour que le
+                        // dialog d'edition (qui garde une reference sur le plugin) voit les MEMES
+                        // KotonParameter que le renderer. Sans cache, chaque Start creait une nouvelle
+                        // instance, le dialog ecrivait dans l'ancienne, le renderer utilisait la nouvelle
+                        // → aucune modif UI audible tant que le dialog restait ouvert.
+                        bool freshKoton = !MusicTracker.Engine.Timeline.Effects.KotonInstrumentCache.Contains(tr, tr.KotonInstrumentId);
+                        var adapter = MusicTracker.Engine.Timeline.Effects.KotonInstrumentCache.GetOrCreate(tr, tr.KotonInstrumentId, sampleRate);
+                        if (adapter != null)
                         {
-                            var adapter = new MusicTracker.Engine.Timeline.Effects.KotonInstrumentAdapter(
-                                koton, sampleRate, koton.DisplayName);
-                            if (!string.IsNullOrEmpty(tr.KotonInstrumentStateBlob))
+                            if (freshKoton && !string.IsNullOrEmpty(tr.KotonInstrumentStateBlob))
                                 adapter.LoadState(tr.KotonInstrumentStateBlob);
                             tracks[i].Vsti = adapter;
                             tracks[i].Channel = 0;
