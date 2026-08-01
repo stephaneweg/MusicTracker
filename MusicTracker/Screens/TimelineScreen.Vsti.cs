@@ -336,42 +336,38 @@ namespace MusicTracker.Screens
                     Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-            // Partage l'INSTANCE VIVANTE du renderer si dispo — bouger un slider dans l'editeur
-            // affecte immediatement l'audio (~5-20ms latence via snapshot Render). Sans ca, une
-            // nouvelle instance detachee etait creee et les modifs UI ne s'entendaient qu'apres
-            // fermeture (SaveState -> track.KotonInstrumentStateBlob -> reload au prochain Start).
+            // Passe par le CACHE d'instances Koton (KotonInstrumentCache) — meme instance que celle
+            // qu'utilisera le renderer au prochain Play. Bouger un slider modifie DIRECTEMENT les
+            // KotonParameter que Render lit sample-per-buffer, donc changement audio immediat.
+            //
+            // Le cache est peuple soit au 1er Play (via TimelinePlayer.TrySetupMeltySynth), soit
+            // ici (si l'user ouvre le dialog AVANT le 1er Play). Dans les deux cas, il n'y a qu'UNE
+            // instance vivante par (piste, id) pour toute la session — plus de desynchro entre le
+            // dialog et le renderer.
             IKotonInstrument plugin = null;
-            bool sharedWithRenderer = false;
-            try
-            {
-                var liveAdapter = player?.GetTrackVsti(track) as Engine.Timeline.Effects.KotonInstrumentAdapter;
-                if (liveAdapter != null) { plugin = liveAdapter.Plugin; sharedWithRenderer = true; }
-            }
-            catch { /* pas de player actif : on retombe sur une instance detachee */ }
-
+            var adapter = Engine.Timeline.Effects.KotonInstrumentCache.GetOrCreate(track, track.KotonInstrumentId, AudioFormat.SampleRate);
+            if (adapter != null) plugin = adapter.Plugin;
             if (plugin == null)
             {
-                // Pas de renderer vivant pour cette piste : instance dediee UI (Prepare + LoadState).
-                // A la fermeture on capture SaveState et on l'ecrit dans track.KotonInstrumentStateBlob.
-                plugin = Engine.Timeline.Effects.KotonPluginRegistry.InstantiateInstrument(track.KotonInstrumentId);
-                if (plugin == null)
-                {
-                    MessageBox.Show(Window.GetWindow(this),
-                        string.Format(Loc.T("KotonPluginMissing"), track.KotonInstrumentId),
-                        Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                try { plugin.Prepare(AudioFormat.SampleRate, 8192); } catch { }
-                if (!string.IsNullOrEmpty(track.KotonInstrumentStateBlob))
-                {
-                    try
-                    {
-                        var bytes = Convert.FromBase64String(track.KotonInstrumentStateBlob);
-                        plugin.LoadState(bytes);
-                    }
-                    catch { }
-                }
+                MessageBox.Show(Window.GetWindow(this),
+                    string.Format(Loc.T("KotonPluginMissing"), track.KotonInstrumentId),
+                    Loc.T("TrackInstrumentKoton"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
+            // Prepare est idempotent (KotonInstrumentAdapter.EnsurePrepared _prepared=true garde son
+            // etat). Applique LoadState seulement si l'instance est FRAICHE (jamais utilisee) — evite
+            // d'ecraser des params que l'utilisateur vient de modifier dans une session precedente.
+            bool alreadyPrepared = adapter.IsLoaded;
+            if (!alreadyPrepared && !string.IsNullOrEmpty(track.KotonInstrumentStateBlob))
+            {
+                try
+                {
+                    var bytes = Convert.FromBase64String(track.KotonInstrumentStateBlob);
+                    plugin.LoadState(bytes);
+                }
+                catch { }
+            }
+            bool sharedWithRenderer = true;   // toujours partage via le cache maintenant
 
             var pluginRef = plugin;   // capture pour la closure
             var sharedRef = sharedWithRenderer;

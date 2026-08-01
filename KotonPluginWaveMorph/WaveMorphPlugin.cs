@@ -508,9 +508,99 @@ namespace KotonPluginWaveMorph
                 if (a > maxAbs) maxAbs = a;
             }
             // Fallback : si le buffer live est vide (aucune note ne joue → ligne plate), on affiche
-            // l'onde théorique (morph) pour que le scope montre TOUJOURS quelque chose et suive en
-            // direct les changements de params. Même approche que FmSynthPlugin.GetOscilloscopeSamples.
-            if (maxAbs < 0.001f) GetMorphWave(dest);
+            // l'onde THEORIQUE completement processee (morph + filtres + sustain amp + volume) —
+            // comme si on avait une note tenue en sustain qui joue depuis quelques secondes.
+            if (maxAbs < 0.001f) GetProcessedWave(dest);
+        }
+
+        /// <summary>Rend l'onde THEORIQUE complete "en regime permanent" : morphing brut passe a
+        /// travers les 2 filtres (serie/parallele, 12 ou 24 dB) puis multiplie par le volume global
+        /// et le niveau sustain de l'Amp env. Warmup interne de 2048 samples pour laisser les
+        /// biquads converger avant de capturer les samples affiches — simule "une onde qui joue
+        /// depuis quelques secondes". LFO/enveloppes/modulations ignoress (impossible sur snapshot
+        /// statique) mais toute la chaine DSP est visible : l'utilisateur voit l'effet du LP a
+        /// 100 Hz sur son square, l'effet d'un HP sur le sub, etc. — meme sans note qui joue.</summary>
+        public void GetProcessedWave(float[] dest)
+        {
+            if (dest == null || dest.Length == 0) return;
+            var p = SnapshotParams();
+            int n = dest.Length;
+            const int warmup = 2048;   // ~46 ms a 44.1 kHz — largement assez pour convergence biquad
+
+            // Instancie 4 biquads locaux (2 etages par filtre pour la pente 24 dB). Configures une
+            // fois, pas de recompute par sample (le vrai renderer fait pareil).
+            var f1a = new BiquadFilter(_sampleRate);
+            var f1b = new BiquadFilter(_sampleRate);
+            var f2a = new BiquadFilter(_sampleRate);
+            var f2b = new BiquadFilter(_sampleRate);
+            double f1Freq = p.F1Cutoff;
+            double f2Freq = p.F2Cutoff;
+            double f1Q = Clamp01Static(p.F1Res) * 9.9 + 0.1;   // meme mapping que WaveMorphVoice
+            double f2Q = Clamp01Static(p.F2Res) * 9.9 + 0.1;
+            f1a.UpdateCoefs(p.F1Type, f1Freq, f1Q);
+            f2a.UpdateCoefs(p.F2Type, f2Freq, f2Q);
+            if (p.F1Slope24) f1b.UpdateCoefs(p.F1Type, f1Freq, f1Q);
+            if (p.F2Slope24) f2b.UpdateCoefs(p.F2Type, f2Freq, f2Q);
+
+            float w1AmpLin = DbToLin(p.W1AmpDb);
+            float w2AmpLin = DbToLin(p.W2AmpDb);
+            float f1DriveLin = DbToLin(p.F1DriveDb);
+            float f2DriveLin = DbToLin(p.F2DriveDb);
+            // Sustain amp × volume global = le niveau "en regime permanent" d'une note tenue.
+            float finalGain = DbToLin(p.OutVolumeDb) * p.AmpSustain;
+
+            // Synthese : 440 Hz continu. Warmup + n samples ; on n'ecrit dans dest que les n derniers.
+            double phaseIncr = 2.0 * Math.PI * 440.0 / _sampleRate;
+            double phase = 0;
+            const double TwoPi = 2 * Math.PI;
+            int total = warmup + n;
+
+            for (int i = 0; i < total; i++)
+            {
+                float w1v = WaveOsc.Sample(p.W1Wave, phase * p.W1Mult) * w1AmpLin;
+                float w2v = WaveOsc.Sample(p.W2Wave, phase * p.W2Mult) * w2AmpLin;
+                float dry = w1v + p.XFade * (w2v - w1v);
+
+                // F1 (drive + biquad(s) + mix)
+                float f1In = SoftClipStatic(dry * f1DriveLin);
+                float f1Wet = f1a.Process(f1In);
+                if (p.F1Slope24) f1Wet = f1b.Process(f1Wet);
+                float f1Out = dry + (f1Wet - dry) * p.F1Mix;
+
+                float filtered;
+                if (p.ParallelRouting)
+                {
+                    // Parallele : F1 et F2 recoivent dry, sommes moyennes (evite doublement d'amplitude)
+                    float f2In = SoftClipStatic(dry * f2DriveLin);
+                    float f2Wet = f2a.Process(f2In);
+                    if (p.F2Slope24) f2Wet = f2b.Process(f2Wet);
+                    float f2Out = dry + (f2Wet - dry) * p.F2Mix;
+                    filtered = 0.5f * (f1Out + f2Out);
+                }
+                else
+                {
+                    // Serie : F1 output → F2. Meme ordre que WaveMorphVoice.
+                    float f2SerialIn = SoftClipStatic(f1Out * f2DriveLin);
+                    float f2Wet = f2a.Process(f2SerialIn);
+                    if (p.F2Slope24) f2Wet = f2b.Process(f2Wet);
+                    filtered = f1Out + (f2Wet - f1Out) * p.F2Mix;
+                }
+
+                float sample = filtered * finalGain;
+                if (i >= warmup) dest[i - warmup] = sample;
+
+                phase += phaseIncr;
+                if (phase > TwoPi) phase -= TwoPi;
+            }
+        }
+
+        static float Clamp01Static(float v) => v < 0 ? 0 : (v > 1 ? 1 : v);
+
+        // tanh soft-clip approximation rationnelle — meme formule que WaveMorphVoice.SoftClip.
+        static float SoftClipStatic(float x)
+        {
+            float a = x * x;
+            return x * (27f + a) / (27f + 9f * a);
         }
 
         static float DbToLin(float db) => (float)Math.Pow(10.0, db / 20.0);
