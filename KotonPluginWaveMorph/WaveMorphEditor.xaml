@@ -18,16 +18,26 @@
       4. Onde finale (scope live large)
     -->
     <UserControl.Resources>
-        <SolidColorBrush x:Key="Ground"    Color="#16161c"/>
-        <SolidColorBrush x:Key="Panel"     Color="#22222a"/>
-        <SolidColorBrush x:Key="PanelHi"   Color="#2c2c36"/>
-        <SolidColorBrush x:Key="Border"    Color="#35353f"/>
-        <SolidColorBrush x:Key="BorderHi"  Color="#4a4a55"/>
-        <SolidColorBrush x:Key="Accent"    Color="#1FB6C3"/>
-        <SolidColorBrush x:Key="AccentDim" Color="#0F7A88"/>
-        <SolidColorBrush x:Key="Text"      Color="#DDDDDD"/>
-        <SolidColorBrush x:Key="TextDim"   Color="#888888"/>
-        <SolidColorBrush x:Key="TextLo"    Color="#5c5c66"/>
+        <ResourceDictionary>
+            <!-- Theme Koton PARTAGE (KotonStudioLibrary) : styles implicites ComboBox/Button/TextBox/
+                 CheckBox/Slider/Label deja stylises dark theme + palette Koton*. Voir
+                 KotonStudioLibrary/Themes/KotonPluginTheme.xaml pour les detals. -->
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <!-- Alias locaux (Panel, Accent, etc.) qui pointent sur la palette du theme partage.
+                 On garde ces noms courts pour ne pas avoir a renommer toutes les references dans
+                 le XAML et le code-behind du plugin. -->
+            <SolidColorBrush x:Key="Ground"    Color="#16161c"/>
+            <SolidColorBrush x:Key="Panel"     Color="#22222a"/>
+            <SolidColorBrush x:Key="PanelHi"   Color="#2c2c36"/>
+            <SolidColorBrush x:Key="Border"    Color="#35353f"/>
+            <SolidColorBrush x:Key="BorderHi"  Color="#4a4a55"/>
+            <SolidColorBrush x:Key="Accent"    Color="#1FB6C3"/>
+            <SolidColorBrush x:Key="AccentDim" Color="#0F7A88"/>
+            <SolidColorBrush x:Key="Text"      Color="#DDDDDD"/>
+            <SolidColorBrush x:Key="TextDim"   Color="#888888"/>
+            <SolidColorBrush x:Key="TextLo"    Color="#5c5c66"/>
 
         <!-- Slider horizontal minimal (out/panels) : rail fin teal, thumb rectangle -->
         <Style x:Key="KotonHSlider" TargetType="Slider">
@@ -91,15 +101,10 @@
             </Setter>
         </Style>
 
-        <!-- ComboBox theme : fond panel-hi, teal accent sur focus -->
-        <Style x:Key="KotonCombo" TargetType="ComboBox">
-            <Setter Property="Background" Value="{StaticResource PanelHi}"/>
-            <Setter Property="Foreground" Value="{StaticResource Text}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource Border}"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Padding" Value="6,2"/>
-            <Setter Property="MinWidth" Value="80"/>
-        </Style>
+        <!-- Les styles implicites ComboBox / Button / TextBox / CheckBox / Slider / Label sont
+             fournis par le theme partage (KotonPluginTheme.xaml merge en haut). Un plugin peut
+             les override localement ici s'il a besoin de quelque chose de specifique. -->
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
