@@ -20,10 +20,17 @@ namespace KotonPluginFractal
         bool _syncing;
         bool _loading = true;
 
+        // Numérateur de la signature temporelle — utilisé pour convertir mesures ↔ beats.
+        // Initialisé depuis KotonHost.CurrentContext au chargement, ré-actualisé via OnContextUpdated.
+        // Fallback = 4/4 si aucun contexte disponible (preview du bloc non posé).
+        int _tsNum = 4;
+
         public FractalEditor(FractalGenerator plugin)
         {
             _plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));
             InitializeComponent();
+            var initCtx = KotonHost.CurrentContext?.Invoke();
+            if (initCtx != null && initCtx.TimeSigNum > 0) _tsNum = initCtx.TimeSigNum;
             InitCombos();
             WireSliders();
             RefreshFromPlugin();
@@ -76,9 +83,11 @@ namespace KotonPluginFractal
             DurationSlider.ValueChanged += (s, e) =>
             {
                 if (_syncing || _loading) return;
-                _plugin.DurationBeats = e.NewValue;
-                DurationValue.Text = e.NewValue.ToString("F2") + " tps";
-                KotonHost.NotifyDurationChanged?.Invoke(e.NewValue);
+                int measures = (int)Math.Round(e.NewValue);
+                double beats = measures * _tsNum;
+                _plugin.DurationBeats = beats;
+                DurationValue.Text = measures + (measures == 1 ? " mesure" : " mesures");
+                KotonHost.NotifyDurationChanged?.Invoke(beats);
             };
 
             Wire(VossOctavesSlider,  VossOctavesValue,  "voss_octaves",  v => v.ToString("F0"));
@@ -126,8 +135,9 @@ namespace KotonPluginFractal
                     case "lorenz_dim":      LorenzDimCombo.SelectedIndex = (int)kp.Value; break;
                 }
             }
-            DurationSlider.Value = _plugin.DurationBeats;
-            DurationValue.Text = _plugin.DurationBeats.ToString("F2") + " tps";
+            int curMeasures = Math.Max(1, Math.Min(32, (int)Math.Round(_plugin.DurationBeats / Math.Max(1, _tsNum))));
+            DurationSlider.Value = curMeasures;
+            DurationValue.Text = curMeasures + (curMeasures == 1 ? " mesure" : " mesures");
             _syncing = false;
         }
 
@@ -239,9 +249,21 @@ namespace KotonPluginFractal
         // =============================================================================================
         public void OnContextUpdated(KotonRenderContext ctx)
         {
-            // Rien à adapter dynamiquement à la métrique ici — les combos de notes/temps couvrent
-            // binaire et ternaire (1/2/3/4/6/8) sans distinction UI, TickBeats fait le calcul selon
-            // la signature au moment du rendu.
+            // Le slider Durée est libellé en MESURES — sa valeur affichée dépend de la signature
+            // temporelle. En 4/4 : 1 mesure = 4 beats. En 3/4 : 1 mesure = 3 beats. Etc. Quand la
+            // métrique du projet change, on rafraîchit la position du slider pour que le nombre
+            // affiché reste musical.
+            if (ctx != null && ctx.TimeSigNum > 0)
+            {
+                int newTs = ctx.TimeSigNum;
+                if (newTs != _tsNum)
+                {
+                    _tsNum = newTs;
+                    // Re-calculer la position du slider avec la nouvelle métrique — le stockage
+                    // interne est en beats (invariant), seul l'affichage change.
+                    RefreshFromPlugin();
+                }
+            }
         }
     }
 }

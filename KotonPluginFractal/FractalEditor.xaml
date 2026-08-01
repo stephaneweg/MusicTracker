@@ -102,8 +102,8 @@
                                    FontSize="10" HorizontalAlignment="Right"/>
                     </StackPanel>
                     <StackPanel Grid.Row="2" Grid.Column="4" Margin="0,0,0,10">
-                        <TextBlock Text="Durée (temps)" Foreground="{DynamicResource KotonText}"/>
-                        <Slider x:Name="DurationSlider" Minimum="0.25" Maximum="32" TickFrequency="0.25"/>
+                        <TextBlock x:Name="DurationLabel" Text="Durée (mesures)" Foreground="{DynamicResource KotonText}"/>
+                        <Slider x:Name="DurationSlider" Minimum="1" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True"/>
                         <TextBlock x:Name="DurationValue" Foreground="{DynamicResource KotonTextDim}"
                                    FontSize="10" HorizontalAlignment="Right"/>
                     </StackPanel>
