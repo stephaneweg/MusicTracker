@@ -10,13 +10,12 @@
                 <ResourceDictionary.MergedDictionaries>
                     <ResourceDictionary Source="/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
                 </ResourceDictionary.MergedDictionaries>
-                <!- redefinitions ou styles locaux du plugin ici ->
             </ResourceDictionary>
         </UserControl.Resources>
 
     Pourquoi ici et pas dans MusicTracker : un plugin .ksl est un assembly independant qui n'a
-    aucune reference sur MusicTracker.dll (contrat "plugin auto-suffisant"). KotonStudioLibrary est
-    la SEULE dependance commune legitime — c'est donc le bon endroit pour les ressources partagees.
+    aucune reference sur MusicTracker.dll. KotonStudioLibrary est la SEULE dependance commune
+    legitime — c'est donc le bon endroit pour les ressources partagees.
     -->
 
     <!-- ================ Palette Koton ================ -->
@@ -31,41 +30,208 @@
     <SolidColorBrush x:Key="KotonTextDim"   Color="#888888"/>
     <SolidColorBrush x:Key="KotonTextLo"    Color="#5c5c66"/>
 
-    <!-- ================ Styles IMPLICITES ================ -->
-    <!-- Sans x:Key : s'appliquent automatiquement a tous les controles du type dans le UserControl
-         qui merge ce dictionary. Un plugin qui veut un style specifique peut redefinir un style
-         nomme localement et le referencer explicitement. -->
+    <!-- ================ ComboBox : template complet ================ -->
+    <!-- Un simple Setter ne suffit pas — WPF a un ControlTemplate default qui rend le popup
+         avec le systeme, fond blanc = illisible en dark theme. On re-templater completement. -->
 
-    <!-- ComboBox : dark theme avec dropdown lisible (l'ItemContainerStyle interne cible les items
-         du popup, sinon ils gardent le default WPF fond blanc = illisible en dark). -->
-    <Style TargetType="ComboBox">
-        <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
+    <!-- Template du ToggleButton (partie visible avec la fleche) -->
+    <ControlTemplate x:Key="KotonComboToggle" TargetType="ToggleButton">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="18"/>
+            </Grid.ColumnDefinitions>
+            <Border x:Name="MainBorder" Grid.ColumnSpan="2"
+                    Background="{StaticResource KotonPanelHi}"
+                    BorderBrush="{StaticResource KotonBorder}"
+                    BorderThickness="1" CornerRadius="2"/>
+            <Path x:Name="Arrow" Grid.Column="1"
+                  Fill="{StaticResource KotonTextDim}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                  Data="M 0 0 L 4 4 L 8 0 Z"/>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="MainBorder" Property="BorderBrush" Value="{StaticResource KotonBorderHi}"/>
+                <Setter TargetName="Arrow"      Property="Fill"        Value="{StaticResource KotonText}"/>
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="MainBorder" Property="BorderBrush" Value="{StaticResource KotonAccentDim}"/>
+                <Setter TargetName="Arrow"      Property="Fill"        Value="{StaticResource KotonAccent}"/>
+            </Trigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+
+    <!-- Style ComboBoxItem (chaque item du dropdown) -->
+    <Style TargetType="ComboBoxItem">
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource KotonBorder}"/>
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Padding" Value="6,2"/>
-        <Setter Property="MinWidth" Value="80"/>
-        <Setter Property="ItemContainerStyle">
+        <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Template">
             <Setter.Value>
-                <Style TargetType="ComboBoxItem">
-                    <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
-                    <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
-                    <Setter Property="Padding" Value="6,3"/>
-                    <Style.Triggers>
+                <ControlTemplate TargetType="ComboBoxItem">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter Property="Background" Value="{StaticResource KotonAccentDim}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource KotonAccentDim}"/>
                             <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter Property="Foreground" Value="{StaticResource KotonAccent}"/>
                         </Trigger>
-                    </Style.Triggers>
-                </Style>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
-    <!-- Button : cohere avec le dark theme, hover en teal accent. -->
+    <!-- Style ComboBox complet -->
+    <Style TargetType="ComboBox">
+        <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
+        <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource KotonBorder}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                        <ToggleButton Name="ToggleButton"
+                                      Template="{StaticResource KotonComboToggle}"
+                                      Focusable="False"
+                                      IsChecked="{Binding Path=IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                      ClickMode="Press"/>
+                        <ContentPresenter Name="ContentSite"
+                                          IsHitTestVisible="False"
+                                          Content="{TemplateBinding SelectionBoxItem}"
+                                          ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          Margin="6,2,22,2"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Left"/>
+                        <Popup Name="Popup"
+                               Placement="Bottom"
+                               IsOpen="{TemplateBinding IsDropDownOpen}"
+                               AllowsTransparency="True"
+                               Focusable="False"
+                               PopupAnimation="Slide">
+                            <Grid MinWidth="{TemplateBinding ActualWidth}"
+                                  MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                  SnapsToDevicePixels="True">
+                                <Border Background="{StaticResource KotonPanel}"
+                                        BorderBrush="{StaticResource KotonBorder}"
+                                        BorderThickness="1" CornerRadius="2"/>
+                                <ScrollViewer Margin="1">
+                                    <ItemsPresenter SnapsToDevicePixels="True"/>
+                                </ScrollViewer>
+                            </Grid>
+                        </Popup>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ================ Slider : rail avec FILL teal de 0 a Value ================ -->
+    <!-- Template avec 2 Rectangles empiles (rail sombre + fill teal masque via Track/RepeatButton) -->
+
+    <Style x:Key="KotonSliderThumb" TargetType="Thumb">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Width="12" Height="14"
+                            Background="{StaticResource KotonAccent}"
+                            BorderBrush="{StaticResource KotonAccentDim}"
+                            BorderThickness="1"
+                            CornerRadius="2"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Le PART_Track cache 3 zones :
+         - DecreaseRepeatButton = de Min a Value (a colorer en accent)
+         - Thumb (celui du dessus)
+         - IncreaseRepeatButton = de Value a Max (rail sombre) -->
+    <Style x:Key="KotonSliderRepeatButtonFill" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="{StaticResource KotonAccent}" Height="4"
+                            CornerRadius="2" VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="KotonSliderRepeatButtonRail" TargetType="RepeatButton">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="IsTabStop" Value="False"/>
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="{StaticResource KotonBorder}" Height="4"
+                            CornerRadius="2" VerticalAlignment="Center"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Slider">
+        <Setter Property="Foreground" Value="{StaticResource KotonAccent}"/>
+        <Setter Property="Background" Value="{StaticResource KotonBorder}"/>
+        <Setter Property="IsMoveToPointEnabled" Value="True"/>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="MinHeight" Value="18"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid>
+                        <!-- Horizontal (default) : Track avec fill accent + rail + thumb -->
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource KotonSliderRepeatButtonFill}"
+                                              Command="Slider.DecreaseLarge"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource KotonSliderThumb}"/>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Style="{StaticResource KotonSliderRepeatButtonRail}"
+                                              Command="Slider.IncreaseLarge"/>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Orientation" Value="Vertical">
+                            <Setter TargetName="PART_Track" Property="LayoutTransform">
+                                <Setter.Value>
+                                    <RotateTransform Angle="-90"/>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ================ Autres controles ================ -->
     <Style TargetType="Button">
         <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
         <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
@@ -81,7 +247,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- TextBox. -->
     <Style TargetType="TextBox">
         <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
         <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
@@ -91,29 +256,14 @@
         <Setter Property="CaretBrush" Value="{StaticResource KotonAccent}"/>
     </Style>
 
-    <!-- CheckBox. -->
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
         <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
         <Setter Property="BorderBrush" Value="{StaticResource KotonBorder}"/>
     </Style>
 
-    <!-- Slider : teal accent. -->
-    <Style TargetType="Slider">
-        <Setter Property="Foreground" Value="{StaticResource KotonAccent}"/>
-        <Setter Property="Background" Value="{StaticResource KotonBorder}"/>
-        <Setter Property="IsMoveToPointEnabled" Value="True"/>
-    </Style>
-
-    <!-- Label + TextBlock : couleur de texte par defaut. -->
     <Style TargetType="Label">
         <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
-    </Style>
-
-    <!-- ScrollBar : theme sombre discret (le default WPF est trop clair sur fond noir). -->
-    <Style TargetType="ScrollBar">
-        <Setter Property="Background" Value="{StaticResource KotonPanel}"/>
-        <Setter Property="Foreground" Value="{StaticResource KotonBorderHi}"/>
     </Style>
 
 </ResourceDictionary>
