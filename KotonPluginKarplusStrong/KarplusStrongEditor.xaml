@@ -1,7 +1,7 @@
 <UserControl x:Class="KotonPluginKarplusStrong.KarplusStrongEditor"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="560" MinHeight="360"
+             MinWidth="560" MinHeight="420"
              Background="Transparent">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -44,6 +44,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -105,6 +106,15 @@
                     <TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/>
                     <Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/>
                     <TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}"
+                               FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <!-- Sustain sur toute la largeur : pousse le gain de feedback vers 1.0
+                     (independamment du damping qui reste responsable de la mort des aigus). -->
+                <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,4,0,0">
+                    <TextBlock Text="Sustain (0 = naturel, 1 = quasi-infini)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="SustainSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="SustainValue" Foreground="{DynamicResource KotonTextDim}"
                                FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
             </Grid>

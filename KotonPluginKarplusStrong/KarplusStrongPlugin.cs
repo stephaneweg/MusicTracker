@@ -47,6 +47,7 @@ namespace KotonPluginKarplusStrong
         // Paramètres exposés — 8 sliders, plus une combo preset côté éditeur (pas exposée en param).
         // =============================================================================================
         readonly KotonParameter _damping        = new KotonParameter("damping",         "Damping",         0.0, 1.0, 0.45);
+        readonly KotonParameter _sustain        = new KotonParameter("sustain",         "Sustain",         0.0, 1.0, 0.00);
         readonly KotonParameter _tone           = new KotonParameter("tone",            "Tone",            0.0, 1.0, 0.60);
         readonly KotonParameter _stiffness      = new KotonParameter("stiffness",       "Stiffness",       0.0, 1.0, 0.05);
         readonly KotonParameter _pluckPosition  = new KotonParameter("pluck_position",  "Pluck position",  0.02, 0.5, 0.15);
@@ -74,7 +75,7 @@ namespace KotonPluginKarplusStrong
         {
             _params = new List<KotonParameter>
             {
-                _damping, _tone, _stiffness, _pluckPosition, _pluckHardness,
+                _damping, _sustain, _tone, _stiffness, _pluckPosition, _pluckHardness,
                 _bodyMix, _stereoWidth, _volumeDb,
             };
         }
@@ -228,7 +229,7 @@ namespace KotonPluginKarplusStrong
         // =============================================================================================
         struct PluginParams
         {
-            public double Damping_p, Tone_p, Stiffness_p, PluckPosition_p, PluckHardness_p;
+            public double Damping_p, Sustain_p, Tone_p, Stiffness_p, PluckPosition_p, PluckHardness_p;
             public double BodyMix_p, StereoWidth_p, VolumeDb_p;
         }
 
@@ -237,6 +238,7 @@ namespace KotonPluginKarplusStrong
             return new PluginParams
             {
                 Damping_p        = _damping.Value,
+                Sustain_p        = _sustain.Value,
                 Tone_p           = _tone.Value,
                 Stiffness_p      = _stiffness.Value,
                 PluckPosition_p  = _pluckPosition.Value,
@@ -250,6 +252,7 @@ namespace KotonPluginKarplusStrong
         static KsParams ToVoiceParams(PluginParams p) => new KsParams
         {
             Damping        = (float)p.Damping_p,
+            Sustain        = (float)p.Sustain_p,
             Tone           = (float)p.Tone_p,
             Stiffness      = (float)p.Stiffness_p,
             PluckHardness  = (float)p.PluckHardness_p,
@@ -305,26 +308,27 @@ namespace KotonPluginKarplusStrong
 
         static readonly double[,] PresetValues =
         {
-            //          damping tone stiff pluckPos pluckHard body width volDb
-            /*Guitare*/ { 0.45, 0.55, 0.05, 0.15, 0.45, 0.35, 0.30, -6.0 },
-            /*Harpe*/   { 0.25, 0.75, 0.02, 0.50, 0.30, 0.40, 0.45, -6.0 },
-            /*Koto*/    { 0.40, 0.55, 0.20, 0.35, 0.55, 0.35, 0.30, -6.0 },
-            /*Sitar*/   { 0.30, 0.65, 0.55, 0.40, 0.70, 0.15, 0.25, -6.0 },
-            /*Basse*/   { 0.35, 0.30, 0.10, 0.20, 0.65, 0.20, 0.15, -3.0 },
-            /*Mando*/   { 0.55, 0.70, 0.08, 0.20, 0.75, 0.30, 0.30, -6.0 },
+            //          damping sustain tone stiff pluckPos pluckHard body width volDb
+            /*Guitare*/ { 0.45, 0.05, 0.55, 0.05, 0.15, 0.45, 0.35, 0.30, -6.0 },
+            /*Harpe*/   { 0.25, 0.30, 0.75, 0.02, 0.50, 0.30, 0.40, 0.45, -6.0 },
+            /*Koto*/    { 0.40, 0.15, 0.55, 0.20, 0.35, 0.55, 0.35, 0.30, -6.0 },
+            /*Sitar*/   { 0.30, 0.10, 0.65, 0.55, 0.40, 0.70, 0.15, 0.25, -6.0 },
+            /*Basse*/   { 0.35, 0.00, 0.30, 0.10, 0.20, 0.65, 0.20, 0.15, -3.0 },
+            /*Mando*/   { 0.55, 0.00, 0.70, 0.08, 0.20, 0.75, 0.30, 0.30, -6.0 },
         };
 
         public void LoadPreset(int index)
         {
             if (index < 0 || index >= PresetValues.GetLength(0)) return;
             _damping.Value       = PresetValues[index, 0];
-            _tone.Value          = PresetValues[index, 1];
-            _stiffness.Value     = PresetValues[index, 2];
-            _pluckPosition.Value = PresetValues[index, 3];
-            _pluckHardness.Value = PresetValues[index, 4];
-            _bodyMix.Value       = PresetValues[index, 5];
-            _stereoWidth.Value   = PresetValues[index, 6];
-            _volumeDb.Value      = PresetValues[index, 7];
+            _sustain.Value       = PresetValues[index, 1];
+            _tone.Value          = PresetValues[index, 2];
+            _stiffness.Value     = PresetValues[index, 3];
+            _pluckPosition.Value = PresetValues[index, 4];
+            _pluckHardness.Value = PresetValues[index, 5];
+            _bodyMix.Value       = PresetValues[index, 6];
+            _stereoWidth.Value   = PresetValues[index, 7];
+            _volumeDb.Value      = PresetValues[index, 8];
         }
 
         /// <summary>Setter helper utilisé par l'éditeur — évite de dupliquer le mapping id → param.</summary>

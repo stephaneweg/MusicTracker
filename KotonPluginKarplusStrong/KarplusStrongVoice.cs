@@ -9,7 +9,8 @@ namespace KotonPluginKarplusStrong
     /// </summary>
     internal struct KsParams
     {
-        public float Damping;           // 0..1 → amortissement dans la boucle
+        public float Damping;           // 0..1 → amortissement dans la boucle (mort des aigus)
+        public float Sustain;           // 0..1 → pousse le gain de feedback vers ~1.0 (corde quasi-perpétuelle)
         public float Tone;              // 0..1 → cutoff du LP variable en série avec le filtre KS
         public float Stiffness;         // 0..1 → coefficient de l'all-pass de dispersion (piano feel)
         public float PluckHardness;     // 0..1 → mix bruit blanc / bruit filtré à l'excitation
@@ -178,13 +179,16 @@ namespace KotonPluginKarplusStrong
             _apPrevIn = toned;
             _apPrevOut = apOut;
 
-            // 4) Feedback atténué par damping. Formule : g = 0.996 - 0.045*damping.
+            // 4) Feedback atténué par damping. Formule de base : g = 0.996 - 0.045*damping.
             //    damping=0 → 0.996 (corde très longue), damping=1 → 0.951 (mort rapide).
+            //    Le paramètre SUSTAIN pousse ensuite ce gain vers 0.9998 (quasi-perpétuel) — sustain=0
+            //    garde la range naturelle du damping, sustain=1 = pad-like infini. Damping continue
+            //    à agir sur les hautes fréquences (via le filtre LP moyen intrinsèque au KS), donc le
+            //    caractère "corde" est préservé même à sustain maximal.
             //    Le feedback est PROPORTIONNEL à la durée du délai — sinon un aigu meurt en une
-            //    fraction de seconde. Compensation : g_eff = g^(N/1000). N=100 (aigu) → g^0.1 ≈ 0.9955
-            //    (long) ; N=500 (grave) → g^0.5 ≈ 0.978 (rapide) — proche du vrai comportement de
-            //    corde qui décroît en temps physique constant, pas en # de rebouclages.
-            float gBase = 0.996f - p.Damping * 0.045f;
+            //    fraction de seconde. Compensation : g_eff = g^(N/1000).
+            float gBaseNat = 0.996f - p.Damping * 0.045f;
+            float gBase = gBaseNat + p.Sustain * (0.9998f - gBaseNat);
             float gEff = (float)Math.Pow(gBase, _size / 1000.0);
             float outValue = apOut * gEff;
 
