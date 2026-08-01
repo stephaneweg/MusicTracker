@@ -1,10 +1,10 @@
 <UserControl x:Class="KotonPluginWaveMorph.WaveMorphEditor"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#16161c"
+             Background="Transparent"
              Foreground="#DDDDDD"
              FontFamily="Segoe UI"
-             MinWidth="900" MinHeight="640">
+             MinWidth="900" MinHeight="360">
     <!--
     Editeur du Wave Morph. Couleurs hardcodees (un plugin Koton est un assembly independant, pas
     d'acces aux ressources de l'hote). Palette Koton :
@@ -114,8 +114,8 @@
             </Grid.RowDefinitions>
 
             <!-- =============== Bandeau titre =============== -->
-            <Border Grid.Row="0" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}"
-                    BorderThickness="1" CornerRadius="3,3,0,0" Padding="12,8">
+            <!-- Pas de border/fond : le UserControl est transparent pour se fondre dans le dialogue hote -->
+            <Border Grid.Row="0" Background="{StaticResource Panel}" BorderThickness="0" Padding="12,8">
                 <StackPanel Orientation="Horizontal">
                     <Ellipse Width="8" Height="8" Fill="{StaticResource Accent}" VerticalAlignment="Center"/>
                     <TextBlock Text="WAVE MORPH" FontWeight="SemiBold" FontSize="12" Margin="10,0,0,0"
@@ -126,8 +126,7 @@
             </Border>
 
             <!-- =============== BANDE 1 : Wave morph =============== -->
-            <Border Grid.Row="1" Background="{StaticResource Panel}" BorderBrush="{StaticResource Border}"
-                    BorderThickness="1,0,1,1" Padding="12">
+            <Border Grid.Row="1" Background="{StaticResource Panel}" BorderThickness="0" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -150,7 +149,7 @@
                         <StackPanel Grid.Column="0" Orientation="Vertical" HorizontalAlignment="Center">
                             <TextBlock Text="W2" Style="{StaticResource SectionSub}" HorizontalAlignment="Center"/>
                             <TextBlock Text="1.0" Style="{StaticResource SectionSub}" HorizontalAlignment="Center"/>
-                            <Slider x:Name="XFadeSlider" Orientation="Vertical" Height="260"
+                            <Slider x:Name="XFadeSlider" Orientation="Vertical" Height="180"
                                     Minimum="0" Maximum="1" Value="0.5" HorizontalAlignment="Center"
                                     Foreground="{StaticResource Accent}" IsMoveToPointEnabled="True"
                                     Margin="0,4"/>
@@ -274,7 +273,7 @@
                             <TextBlock Text="→ Voix" Style="{StaticResource SectionSub}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <Border x:Name="EnvAmpHost" Background="#14141a" BorderBrush="{StaticResource Border}"
-                                BorderThickness="1" CornerRadius="2" Height="90" Margin="0,6,0,6"/>
+                                BorderThickness="1" CornerRadius="2" Height="70" Margin="0,6,0,6"/>
                         <UniformGrid x:Name="EnvAmpKvGrid" Columns="4" Height="30"/>
                     </StackPanel>
                     <Rectangle Grid.Column="1" Fill="{StaticResource Border}"/>
@@ -286,7 +285,7 @@
                             <TextBlock Text="→ Mod matrix" Style="{StaticResource SectionSub}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <Border x:Name="Env2Host" Background="#14141a" BorderBrush="{StaticResource Border}"
-                                BorderThickness="1" CornerRadius="2" Height="90" Margin="0,6,0,6"/>
+                                BorderThickness="1" CornerRadius="2" Height="70" Margin="0,6,0,6"/>
                         <UniformGrid x:Name="Env2KvGrid" Columns="4" Height="30"/>
                     </StackPanel>
                     <Rectangle Grid.Column="3" Fill="{StaticResource Border}"/>
@@ -298,7 +297,7 @@
                             <TextBlock Text="→ Mod matrix" Style="{StaticResource SectionSub}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <Border x:Name="Env3Host" Background="#14141a" BorderBrush="{StaticResource Border}"
-                                BorderThickness="1" CornerRadius="2" Height="90" Margin="0,6,0,6"/>
+                                BorderThickness="1" CornerRadius="2" Height="70" Margin="0,6,0,6"/>
                         <UniformGrid x:Name="Env3KvGrid" Columns="4" Height="30"/>
                     </StackPanel>
                     <Rectangle Grid.Column="5" Fill="{StaticResource Border}"/>
@@ -310,7 +309,7 @@
                             <TextBlock x:Name="Lfo1SubTitle" Text="Sine" Style="{StaticResource SectionSub}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <Border x:Name="Lfo1Host" Background="#14141a" BorderBrush="{StaticResource Border}"
-                                BorderThickness="1" CornerRadius="2" Height="90" Margin="0,6,0,6"/>
+                                BorderThickness="1" CornerRadius="2" Height="70" Margin="0,6,0,6"/>
                         <UniformGrid x:Name="Lfo1KvGrid" Columns="3" Height="30"/>
                     </StackPanel>
                     <Rectangle Grid.Column="7" Fill="{StaticResource Border}"/>
@@ -322,7 +321,7 @@
                             <TextBlock x:Name="Lfo2SubTitle" Text="Triangle" Style="{StaticResource SectionSub}" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <Border x:Name="Lfo2Host" Background="#14141a" BorderBrush="{StaticResource Border}"
-                                BorderThickness="1" CornerRadius="2" Height="90" Margin="0,6,0,6"/>
+                                BorderThickness="1" CornerRadius="2" Height="70" Margin="0,6,0,6"/>
                         <UniformGrid x:Name="Lfo2KvGrid" Columns="3" Height="30"/>
                     </StackPanel>
                 </Grid>
@@ -412,7 +411,7 @@
                         </StackPanel>
                     </Grid>
                     <Border x:Name="FinalScopeHost" Background="#08080c" BorderBrush="{StaticResource Border}"
-                            BorderThickness="1" CornerRadius="2" Height="90"/>
+                            BorderThickness="1" CornerRadius="2" Height="70"/>
                 </StackPanel>
             </Border>
 
