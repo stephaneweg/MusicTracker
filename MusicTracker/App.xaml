@@ -20,6 +20,12 @@
                 <ResourceDictionary Source="Theme/TabItem.xaml"/>
                 <ResourceDictionary Source="Theme/Slider.xaml"/>
                 <ResourceDictionary Source="Theme/ToolBar.xaml"/>
+                <!-- Theme Koton PARTAGE (KotonStudioLibrary) : override du style implicite Slider par
+                     le style teal avec fill 0 → thumb + poignee grise. Merge en DERNIER pour que ses
+                     styles implicites prennent le pas sur Theme/Slider.xaml (les styles NOMMES de
+                     Slider.xaml — SliderRepeatButtonStyle, HorizontalSliderThumbStyle, etc. — restent
+                     disponibles pour du code qui les reference explicitement via StaticResource). -->
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
 
