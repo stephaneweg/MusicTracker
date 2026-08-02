@@ -50,15 +50,24 @@ namespace KotonPluginHandpan
         int _stealCursor;
         const int Polyphony = 12;   // moins que Mallets, les notes tiennent plus longtemps
 
-        // Modes standards d'un handpan (mesurés sur Halo pan D) — inharmoniques classiques
+        // Modes standards d'un handpan (mesurés sur Halo pan D). Fondamentale TRÈS long (sustain
+        // chantant qui domine), harmoniques BRÈVES (juste pour le transient d'attaque métallique).
+        // Fix 2026-08-02 : version precedente avait tous les modes avec long decay → son trop
+        // "cluster de metal" ; l'user voulait un sinus quasi-pur avec belle attaque + long sustain,
+        // comme un vrai handpan.
         static readonly HpMode[] StandardModes = new[]
         {
-            new HpMode { Ratio = 1.00f, DecayMs = 5000f },   // fondamentale (long decay)
-            new HpMode { Ratio = 2.00f, DecayMs = 3500f },   // octave (mode toké)
-            new HpMode { Ratio = 3.00f, DecayMs = 2500f },   // compound tone (12ème) — SIGNATURE
-            new HpMode { Ratio = 4.00f, DecayMs = 1500f },   // 2e octave
-            new HpMode { Ratio = 5.05f, DecayMs = 900f },    // légèrement inharmonique
+            new HpMode { Ratio = 1.00f, DecayMs = 10000f },  // fondamentale : sustain 10s (le "chant" du bol)
+            new HpMode { Ratio = 2.00f, DecayMs = 800f },    // octave : bref, attaque seule
+            new HpMode { Ratio = 3.00f, DecayMs = 500f },    // compound tone (12ème) — bref
+            new HpMode { Ratio = 4.00f, DecayMs = 300f },    // 2e octave : très bref
+            new HpMode { Ratio = 5.05f, DecayMs = 200f },    // inharmonique : juste transient
         };
+
+        // Amplitudes relatives : fondamentale DOMINE largement (0.75), harmoniques juste pour
+        // colorer l'attaque (0.15, 0.10, 0.05, 0.03). Somme = 1.08 → petite saturation tanh
+        // en sortie qui donne le pic d'attaque riche.
+        static readonly float[] StandardModeAmps = { 0.75f, 0.15f, 0.10f, 0.05f, 0.03f };
 
         // Résonance du corps (shell = bol métallique) : biquad bandpass sur le mix final
         BiquadState _shellL, _shellR;
@@ -118,7 +127,7 @@ namespace KotonPluginHandpan
             if (noteNorm < -1f) noteNorm = -1f; else if (noteNorm > 1f) noteNorm = 1f;
             float pan = noteNorm * (float)_stereoSpread.Value;
 
-            target.NoteOn(note, vel, StandardModes, p, pan);
+            target.NoteOn(note, vel, StandardModes, StandardModeAmps, p, pan);
 
             // Sympathie : la nouvelle note excite les modes des voix déjà actives dont la fréquence
             // est un harmonique proche. Étape séparée du NoteOn car il faut la faire APRÈS

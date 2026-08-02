@@ -71,7 +71,7 @@ namespace KotonPluginHandpan
             _sr = sampleRate;
         }
 
-        public void NoteOn(int note, float velocity, HpMode[] modes, in HandpanParams p, float pan)
+        public void NoteOn(int note, float velocity, HpMode[] modes, float[] modeAmps, in HandpanParams p, float pan)
         {
             _note = note;
             _velocity = velocity;
@@ -103,9 +103,10 @@ namespace KotonPluginHandpan
                 _phase[i] = 0;
                 _phaseInc[i] = 2.0 * Math.PI * f / _sr;
 
-                // Amplitude initiale : proportionnelle à velocity, atténuée pour les modes aigus
-                // selon MalletHardness (main dure = préserve les aigus, main molle = filtre)
-                float ampBase = velocity / (1f + i * 0.6f);   // les modes 2, 3, 4... plus faibles
+                // Amplitude par mode piloté par la table modeAmps (fondamentale dominante,
+                // harmoniques atténuées) — donne le son "quasi-sinus" caractéristique du handpan
+                // au lieu d'un cluster métallique.
+                float ampBase = velocity * (i < modeAmps.Length ? modeAmps[i] : 0.1f);
                 float hardnessGain = (float)Math.Pow(m.Ratio, (p.MalletHardness - 0.5) * 0.5);
                 _amp[i] = ampBase * hardnessGain;
 

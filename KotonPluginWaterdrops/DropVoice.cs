@@ -81,9 +81,12 @@ namespace KotonPluginWaterdrops
             }
 
             _freqTarget = freq;
-            // Glide start : freq × 2^(DropSize × 12 / 12) — de 0 à 12 semi au dessus
+            // Glide MONTANT : la bulle d'air piegee sous l'eau retrecit → fréquence augmente au
+            // fil du temps (Phillips 1959, physique reelle des gouttes). Start LOW, MONTE vers freq.
+            // 2026-08-02 : version precedente avait glide DESCENDANT — musical mais incorrect
+            // physiquement. Le user a demande de suivre la vraie physique.
             double glideSemi = p.DropSize * 12.0;
-            _freqCurrent = freq * Math.Pow(2.0, glideSemi / 12.0);
+            _freqCurrent = freq / Math.Pow(2.0, glideSemi / 12.0);
             // Constante de temps du glide : plus grande = glide plus long
             // 0..1 → 20..120 ms
             double glideMs = 20 + p.DropSize * 100;
