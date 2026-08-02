@@ -160,20 +160,21 @@ namespace KotonPluginBrass
             float pressureEff = p.BreathPressure * _env * _velocity;
             float breath = pressureEff * (1f + _noiseLpState * p.BreathNoise * 0.5f);
 
-            // Non-linéarité "lèvres" — action = tanh(delta_pression × drive). C'est CETTE non-linéarité
-            // qui produit l'auto-oscillation du modèle Cook simplifié : la boucle s'entretient parce que
-            // la différence pression-retour, saturée par le tanh, crée un signal qui alimente la boucle
-            // à chaque sample. Sans cette formulation "différentielle", tanh(retour) × pression étouffait
-            // tout car retour * pressureEff → 0 tant que pressureEff est petit (bug 2026-08-02).
-            float delta = breath + returnPressure;   // + car returnPressure est déjà négatif
+            // Non-linéarité "lèvres" — action = tanh(delta_pression × drive), GATÉE par la pression
+            // courante. Physiquement : sans souffle, les lèvres n'oscillent pas — il faut de la
+            // pression pour maintenir l'auto-oscillation. Le gate = min(1, pressureEff × 4) atteint
+            // sa pleine valeur à pressureEff ≥ 0.25 (donc effet inaudible pendant la note tenue) et
+            // tombe a 0 quand env=0 → la boucle meurt vite au release. Sans ce gate, tanh amplifie
+            // le retour du tube même sans pression (bug sustain infini 2026-08-02).
+            float delta = breath + returnPressure;
             float drive = 1f + p.LipTension * 4f;
-            float lipsAction = (float)Math.Tanh(delta * drive) * 0.5f;
+            float lipsGate = Math.Min(1f, pressureEff * 4f);
+            float lipsAction = (float)Math.Tanh(delta * drive) * 0.5f * lipsGate;
 
-            // Écriture dans le tube : action des lèvres + réflexion (les deux composantes de la pression
-            // au niveau de l'embouchure). Damping global 0.975 = -0.22 dB par aller-retour du tube
-            // → sans breath entretenant l'oscillation, la boucle meurt en ~200-500 ms selon la note
-            // (indispensable pour un release perceptible — bug 2026-08-02 sustain infini).
-            _tube[_writeIdx] = (lipsAction + returnPressure * 0.5f) * 0.975f;
+            // Écriture dans le tube : action des lèvres + réflexion. Damping global 0.995 → sans
+            // action des lèvres (release), la boucle décroit selon ce coef (~-0.04dB par sample,
+            // ~250 ms de decay à mi-amplitude).
+            _tube[_writeIdx] = (lipsAction + returnPressure * 0.5f) * 0.995f;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 

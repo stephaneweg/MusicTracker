@@ -179,12 +179,15 @@ namespace KotonPluginWoodwind
                 // Jet : tanh symmétrique doux
                 excitation = (float)Math.Tanh(driven * 0.7f);
             }
-            excitation *= 0.5f;   // évite les explosions de niveau
+            // GATE de l'excitation par la pression courante : sans souffle, l'anche/le jet ne
+            // s'entretiennent pas — essentiel pour que la boucle meure au release. Sans gate,
+            // tanh(delta * drive) amplifie le retour du tube meme avec pressureEff=0 (bug 2026-08-02).
+            float exGate = Math.Min(1f, pressureEff * 4f);
+            excitation *= 0.5f * exGate;
 
-            // Écriture dans le tube = excitation + réflexion, avec damping global 0.97 (bois amortis
-            // plus vite que cuivres — pas de pavillon métallique qui résonne). Meme bug/fix que Brass :
-            // sans ce damping, la boucle ne meurt jamais → sustain infini apres release.
-            _tube[_writeIdx] = (excitation + returnPressure * 0.5f) * 0.97f;
+            // Écriture dans le tube = excitation + réflexion, damping global 0.99 pour un decay
+            // naturel des harmoniques quand l'excitation est coupée.
+            _tube[_writeIdx] = (excitation + returnPressure * 0.5f) * 0.99f;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
