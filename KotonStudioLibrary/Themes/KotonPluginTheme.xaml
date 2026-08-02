@@ -315,6 +315,9 @@
     </Style>
 
     <!-- ================ Autres controles ================ -->
+    <!-- Button : template custom pour gerer proprement les etats (Normal/Hover/Pressed/Disabled)
+         dans le theme dark. Sans template, WPF utilisait le style par defaut qui appliquait un fond
+         blanc/gris pale en Disabled — tres visible sur le fond dark du theme. -->
     <Style TargetType="Button">
         <Setter Property="Background" Value="{StaticResource KotonPanelHi}"/>
         <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
@@ -322,12 +325,43 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="8,3"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource KotonBorderHi}"/>
-                <Setter Property="Foreground" Value="{StaticResource KotonAccent}"/>
-            </Trigger>
-        </Style.Triggers>
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="3"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter x:Name="Cp"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}"
+                                          RecognizesAccessKey="True"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource KotonBorderHi}"/>
+                            <Setter TargetName="Cp" Property="TextBlock.Foreground" Value="{StaticResource KotonAccent}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource KotonPanel}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource KotonPanel}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource KotonBorder}"/>
+                            <Setter TargetName="Bd" Property="Opacity" Value="0.45"/>
+                            <Setter TargetName="Cp" Property="TextBlock.Foreground" Value="{StaticResource KotonTextLo}"/>
+                            <Setter Property="Cursor" Value="Arrow"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style TargetType="TextBox">
