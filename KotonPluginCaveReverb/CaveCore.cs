@@ -267,13 +267,14 @@ namespace KotonPluginCaveReverb
                     taps[line] = _fdnLines[line][readIdx];
                 }
 
-                // LP feedback (Darkness) + Low boom biquad (résonance basse)
+                // LP feedback (Darkness) SEULEMENT — le boom est desormais applique en SORTIE
+                // (post-FDN, pas dans la boucle) pour eviter le larsen a 80Hz : un peak filter
+                // avec +12dB dans une boucle de feedback accumule de l'energie a la resonance
+                // et fait exploser la reverb apres quelques secondes (bug rapporte 2026-08-02).
                 for (int line = 0; line < 4; line++)
                 {
                     _lpFbState[line] += alphaLpFb * (taps[line] - _lpFbState[line]);
-                    float lp = _lpFbState[line];
-                    // Boom : peak biquad ajoute une résonance à 80 Hz
-                    taps[line] = BiquadProcess(ref _boomBiquad[line], lp);
+                    taps[line] = _lpFbState[line];
                 }
 
                 // Matrice Hadamard
@@ -294,6 +295,11 @@ namespace KotonPluginCaveReverb
 
                 float wetL = (taps[0] + taps[2]) * 0.5f + dripSumL * 0.4f;
                 float wetR = (taps[1] + taps[3]) * 0.5f + dripSumR * 0.4f;
+
+                // Boom EN SORTIE (post-FDN, hors boucle) : peak biquad accentue le grave a 80Hz
+                // sans creer de feedback. Caractere "grotte" preserve, sans larsen.
+                wetL = BiquadProcess(ref _boomBiquad[0], wetL);
+                wetR = BiquadProcess(ref _boomBiquad[1], wetR);
 
                 // Width mid/side
                 float wetMid = (wetL + wetR) * 0.5f;

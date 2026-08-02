@@ -70,6 +70,27 @@ namespace KotonPluginBrass
         int _stealCursor;
         const int Polyphony = 8;
 
+        // Formant filter caractéristique de l'instrument (peak biquad appliqué en sortie).
+        // Chaque cuivre a sa propre courbe de réponse due à la conicité du tube + taille du pavillon :
+        // Trompette (tube cylindrique + petit pavillon) = pic aigu ~1.5kHz brillant ;
+        // Tuba (tube conique large + pavillon énorme) = pic très grave ~200Hz grondement.
+        // Sans ce formant, tous les cuivres sonnaient similaires malgré des params différents.
+        BiquadPeakState _formantL, _formantR;
+        int _lastFormantInstrument = -1;
+
+        // Table par instrument : (freq Hz, Q, gain dB). Approximation des mesures acoustiques
+        // réelles des cuivres (Fletcher & Rossing "Physics of Musical Instruments").
+        static readonly (float freq, float q, float gainDb)[] FormantByInstrument = new (float, float, float)[]
+        {
+            /* Trompette      */ (1500f, 2.0f, 7f),
+            /* Trombone       */ ( 700f, 2.0f, 5f),
+            /* Cor d'harmonie */ ( 450f, 2.2f, 6f),
+            /* Tuba           */ ( 200f, 1.8f, 7f),
+            /* Bugle doux     */ ( 800f, 1.2f, 3f),
+            /* Fanfare        */ (2000f, 3.0f, 9f),
+            /* Section unison */ (1200f, 1.0f, 3f),
+        };
+
         public BrassPlugin()
         {
             _params = new List<KotonParameter>
@@ -187,6 +208,16 @@ namespace KotonPluginBrass
             float volLin = (float)Math.Pow(10.0, p.VolumeDb / 20.0);
             float width = (float)_stereoWidth.Value;
 
+            // Met à jour le formant si l'instrument a changé (signature spectrale spécifique)
+            int instrIdx = Math.Max(0, Math.Min(FormantByInstrument.Length - 1, (int)_instrument.Value));
+            if (instrIdx != _lastFormantInstrument)
+            {
+                var (fFreq, fQ, fGain) = FormantByInstrument[instrIdx];
+                SetBiquadPeak(ref _formantL, _sampleRate, fFreq, fQ, fGain);
+                SetBiquadPeak(ref _formantR, _sampleRate, fFreq, fQ, fGain);
+                _lastFormantInstrument = instrIdx;
+            }
+
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
@@ -203,9 +234,40 @@ namespace KotonPluginBrass
                     sumL += s * (1f - p01);
                     sumR += s * p01;
                 }
+                // Formant filter en sortie — donne à l'instrument sa vraie signature spectrale
+                sumL = BiquadPeakProcess(ref _formantL, sumL);
+                sumR = BiquadPeakProcess(ref _formantR, sumR);
                 left[i] = sumL * volLin;
                 right[i] = sumR * volLin;
             }
+        }
+
+        // Biquad peak filter RBJ cookbook pour le formant caractéristique de l'instrument
+        internal struct BiquadPeakState
+        {
+            public float b0, b1, b2, a1, a2;
+            public float x1, x2, y1, y2;
+            public void ResetState() { x1 = x2 = y1 = y2 = 0f; }
+        }
+        static void SetBiquadPeak(ref BiquadPeakState s, int sr, float freq, float q, float dbGain)
+        {
+            double A = Math.Pow(10.0, dbGain / 40.0);
+            double w0 = 2.0 * Math.PI * freq / sr;
+            double alpha = Math.Sin(w0) / (2.0 * q);
+            double cosw0 = Math.Cos(w0);
+            double a0 = 1.0 + alpha / A;
+            s.b0 = (float)((1.0 + alpha * A) / a0);
+            s.b1 = (float)((-2.0 * cosw0) / a0);
+            s.b2 = (float)((1.0 - alpha * A) / a0);
+            s.a1 = (float)((-2.0 * cosw0) / a0);
+            s.a2 = (float)((1.0 - alpha / A) / a0);
+        }
+        static float BiquadPeakProcess(ref BiquadPeakState s, float x)
+        {
+            float y = s.b0 * x + s.b1 * s.x1 + s.b2 * s.x2 - s.a1 * s.y1 - s.a2 * s.y2;
+            s.x2 = s.x1; s.x1 = x;
+            s.y2 = s.y1; s.y1 = y;
+            return y;
         }
 
         BrassParams ToVoiceParams() => new BrassParams

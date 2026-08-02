@@ -57,6 +57,25 @@ namespace KotonPluginWoodwind
         int _stealCursor;
         const int Polyphony = 8;
 
+        // Formant filter caractéristique du bois (peak biquad en sortie). Chaque bois a sa propre
+        // "voyelle" spectrale due à la géométrie du bore + trous. Flûte = aérien 1.2kHz, Hautbois =
+        // nasal 2.5kHz, Basson = grave roulé 350Hz, Clarinette = mordant 1.5kHz, etc. Sans ce
+        // formant, tous les bois sonnaient similaires (mêmes params, même moteur guide d'onde).
+        BiquadPeakState _formantL, _formantR;
+        int _lastFormantInstrument = -1;
+
+        static readonly (float freq, float q, float gainDb)[] FormantByInstrument = new (float, float, float)[]
+        {
+            /* Flute       */ (1200f, 1.0f, 3f),   // aérien, souffle audible
+            /* Clarinette  */ (1500f, 2.0f, 5f),   // mordant
+            /* Hautbois    */ (2500f, 2.5f, 8f),   // nasal caractéristique
+            /* Basson      */ ( 350f, 2.0f, 6f),   // roulé grave
+            /* Sax alto    */ (1400f, 1.5f, 5f),   // riche medium
+            /* Sax tenor   */ ( 800f, 1.5f, 5f),   // gras medium-grave
+            /* Piccolo     */ (2800f, 1.5f, 5f),   // perçant
+            /* Cor anglais */ (1700f, 2.0f, 6f),   // pastoral légèrement nasal
+        };
+
         public WoodwindPlugin()
         {
             _params = new List<KotonParameter>
@@ -176,6 +195,16 @@ namespace KotonPluginWoodwind
             float volLin = (float)Math.Pow(10.0, p.VolumeDb / 20.0);
             float width = (float)_stereoWidth.Value;
 
+            // Update formant si l'instrument a changé
+            int instrIdx = Math.Max(0, Math.Min(FormantByInstrument.Length - 1, (int)_instrument.Value));
+            if (instrIdx != _lastFormantInstrument)
+            {
+                var (fFreq, fQ, fGain) = FormantByInstrument[instrIdx];
+                SetBiquadPeak(ref _formantL, _sampleRate, fFreq, fQ, fGain);
+                SetBiquadPeak(ref _formantR, _sampleRate, fFreq, fQ, fGain);
+                _lastFormantInstrument = instrIdx;
+            }
+
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
@@ -191,9 +220,39 @@ namespace KotonPluginWoodwind
                     sumL += s * (1f - p01);
                     sumR += s * p01;
                 }
+                sumL = BiquadPeakProcess(ref _formantL, sumL);
+                sumR = BiquadPeakProcess(ref _formantR, sumR);
                 left[i] = sumL * volLin;
                 right[i] = sumR * volLin;
             }
+        }
+
+        // Biquad peak filter RBJ cookbook (formant caractéristique de l'instrument)
+        internal struct BiquadPeakState
+        {
+            public float b0, b1, b2, a1, a2;
+            public float x1, x2, y1, y2;
+            public void ResetState() { x1 = x2 = y1 = y2 = 0f; }
+        }
+        static void SetBiquadPeak(ref BiquadPeakState s, int sr, float freq, float q, float dbGain)
+        {
+            double A = Math.Pow(10.0, dbGain / 40.0);
+            double w0 = 2.0 * Math.PI * freq / sr;
+            double alpha = Math.Sin(w0) / (2.0 * q);
+            double cosw0 = Math.Cos(w0);
+            double a0 = 1.0 + alpha / A;
+            s.b0 = (float)((1.0 + alpha * A) / a0);
+            s.b1 = (float)((-2.0 * cosw0) / a0);
+            s.b2 = (float)((1.0 - alpha * A) / a0);
+            s.a1 = (float)((-2.0 * cosw0) / a0);
+            s.a2 = (float)((1.0 - alpha / A) / a0);
+        }
+        static float BiquadPeakProcess(ref BiquadPeakState s, float x)
+        {
+            float y = s.b0 * x + s.b1 * s.x1 + s.b2 * s.x2 - s.a1 * s.y1 - s.a2 * s.y2;
+            s.x2 = s.x1; s.x1 = x;
+            s.y2 = s.y1; s.y1 = y;
+            return y;
         }
 
         WwParams ToVoiceParams() => new WwParams
