@@ -49,7 +49,7 @@ namespace MusicTracker.Screens
         {
             var btn = new Button
             {
-                Margin = new Thickness(0, 3, 0, 0),
+                Margin = new Thickness(0),
                 FontSize = 11,
                 Padding = new Thickness(6, 2, 6, 2),
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -60,6 +60,37 @@ namespace MusicTracker.Screens
             UpdateVstiButtonLabel(btn, track);
             btn.Click += (s, e) => ShowVstiMenu(btn, track);
             return btn;
+        }
+
+        /// <summary>Row instrument = bouton dropdown principal + petit crayon d'edition juste a cote
+        /// (visible seulement si un instrument est charge). Un clic sur le crayon ouvre directement
+        /// l'editeur du VSTi ou du plugin Koton, sans passer par le sous-menu — plus rapide en usage
+        /// courant. Le dropdown reste utilise pour selectionner un plugin ou en retirer un.</summary>
+        FrameworkElement BuildVstiRow(TimelineTrack track)
+        {
+            var row = new DockPanel { Margin = new Thickness(0, 3, 0, 0) };
+            var editBtn = new Button
+            {
+                Content = "✏",   // ✏
+                Width = 22, Height = 22,
+                Padding = new Thickness(0),
+                FontSize = 12,
+                Cursor = Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(3, 0, 0, 0),
+                ToolTip = Loc.T("EditInstrument"),
+            };
+            bool hasInstrument = !string.IsNullOrEmpty(track.VstiPath) || !string.IsNullOrEmpty(track.KotonInstrumentId);
+            editBtn.Visibility = hasInstrument ? Visibility.Visible : Visibility.Collapsed;
+            editBtn.Click += (s, e) =>
+            {
+                if (!string.IsNullOrEmpty(track.KotonInstrumentId)) OpenKotonEditor(track);
+                else if (!string.IsNullOrEmpty(track.VstiPath)) OpenVstiEditor(track);
+            };
+            DockPanel.SetDock(editBtn, Dock.Right);
+            row.Children.Add(editBtn);
+            row.Children.Add(BuildVstiButton(track));   // LastChild = fill par defaut
+            return row;
         }
 
         static void UpdateVstiButtonLabel(Button btn, TimelineTrack track)

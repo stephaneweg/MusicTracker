@@ -621,6 +621,7 @@
   "TrackInstrumentVsti": "Instrument VSTi…",
   "VstiNoInstrumentsFound": "Aucun instrument VSTi trouvé",
   "VstiEditor": "Éditer le VSTi…",
+  "EditInstrument": "Éditer l'instrument",
   "VstiRemove": "Retirer le VSTi (revenir au son GM)",
   "VstiPluginMissing": "Plugin VSTi introuvable : {0}",
   "VstNetCreditLine": "Hébergement VST via VST.NET (Marc Jacobi, obiwanjacobi/vst.net) — sous licence LGPL-2.1.",

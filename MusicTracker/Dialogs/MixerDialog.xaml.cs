@@ -372,23 +372,10 @@ namespace MusicTracker.Dialogs
                 return;
             }
 
-            var editor = adapter.Plugin.HasEditor ? adapter.Plugin.CreateEditor() : null;
-            if (editor == null)
-            {
-                MessageBox.Show(this, "Ce plugin ne fournit pas d'editeur.", adapter.DisplayName, MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-
-            var w = new Window
-            {
-                Title = adapter.DisplayName,
-                Content = editor,
-                Owner = this,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                SizeToContent = SizeToContent.WidthAndHeight,
-                MinWidth = 400, MinHeight = 300,
-                Background = new SolidColorBrush(Color.FromRgb(0x14, 0x1A, 0x1E)),
-            };
+            // Reuse le dialog Koton stylise (borderless + dragable) prevu pour les instruments —
+            // IKotonPlugin est le contrat commun, il marche pour les effets aussi. Uniformise le look
+            // entre editeurs d'instrument et d'effet.
+            var w = new KotonPluginEditorDialog(adapter.Plugin, this);
             w.Closed += (s, e) =>
             {
                 // On sauvegarde les etats vers TrackEffectData a la fermeture pour la persistance

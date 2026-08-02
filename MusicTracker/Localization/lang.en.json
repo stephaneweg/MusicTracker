@@ -608,6 +608,7 @@
   "TrackInstrumentVsti": "VSTi instrument…",
   "VstiNoInstrumentsFound": "No VSTi instruments found",
   "VstiEditor": "Edit VSTi…",
+  "EditInstrument": "Edit instrument",
   "VstiRemove": "Remove VSTi (return to GM sound)",
   "VstiPluginMissing": "VSTi plugin not found: {0}",
   "VstNetCreditLine": "VST hosting via VST.NET (Marc Jacobi, obiwanjacobi/vst.net) — under the LGPL-2.1 licence.",

@@ -1886,7 +1886,7 @@ namespace MusicTracker.Screens
             // ou "VSTi…" quand aucun n'est chargé. Un ⚠ apparaît si le plugin a été référencé mais est
             // introuvable (fichier déplacé/désinstallé). Disponible sur les 3 types de pistes — un VSTi peut
             // être une drum machine, un synthé mélodique ou un pad d'accompagnement.
-            panel.Children.Add(BuildVstiButton(track));
+            panel.Children.Add(BuildVstiRow(track));
 
             // base volume
             var volRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
