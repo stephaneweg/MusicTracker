@@ -60,6 +60,18 @@ namespace KotonPluginBrass
         float _velocity;
         Random _noiseRng;
 
+        // 2-mass lip model (Adachi-Sato 1996) : deux masses (superieure + inferieure) reliees par
+        // ressort+friction, alimentees par la difference de pression bouche-tube. Vraie physique
+        // des levres qui vibrent — donne l'attaque "buzz" progressive et la stabilisation
+        // harmonique naturelle qu'un simple tanh ne peut pas reproduire.
+        float _lipY1, _lipY1v;   // position + vitesse masse superieure
+        float _lipY2, _lipY2v;   // position + vitesse masse inferieure
+        // Frequence de resonance des levres (~fondamentale de la note, avec un peu de bias
+        // selon la tension). Rigidite = m × omega² ; friction ~ 2 × zeta × omega × m.
+        float _lipOmega;
+        float _lipDamping;
+        float _lipMass;   // = 1.0 par convention, absorbe dans les autres coeffs
+
         const float SilenceThreshold = 1e-5f;
         float _peakEnvelope;
 
@@ -89,6 +101,22 @@ namespace KotonPluginBrass
             _noiseRng = new Random(note * 7919 + Environment.TickCount);
             _vibPhase = (float)(_noiseRng.NextDouble() * 2 * Math.PI);
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
+
+            // Setup 2-mass lip model : la frequence de resonance des levres doit etre proche de
+            // la fondamentale du tube pour que l'oscillation s'installe (lock-in acoustique reel).
+            // LipTension biaise legerement pour permettre le "pitch bend par levres" que fait un
+            // vrai trompettiste (accroche l'harmonique voulu du tube).
+            double lipFreq = freq * (0.9 + p.LipTension * 0.2);   // 0.9×..1.1× freq du tube
+            _lipOmega = (float)(2.0 * Math.PI * lipFreq / _sr);
+            // Damping (zeta) : dur = damping bas = lock-in rapide et agressif ; mou = damping haut =
+            // lock-in progressif doux. Typiquement 0.05..0.3 pour des levres.
+            _lipDamping = 0.30f - p.LipTension * 0.22f;
+            _lipMass = 1f;
+            // Kickstart : petite deflection initiale pour amorcer l'oscillation
+            _lipY1 = 0.01f;
+            _lipY2 = -0.01f;
+            _lipY1v = 0f;
+            _lipY2v = 0f;
 
             float attackSamples = Math.Max(1f, p.AttackSec * _sr);
             _envAttackRate = 1f / attackSamples;
@@ -160,20 +188,45 @@ namespace KotonPluginBrass
             float pressureEff = p.BreathPressure * _env * _velocity;
             float breath = pressureEff * (1f + _noiseLpState * p.BreathNoise * 0.5f);
 
-            // Non-linéarité "lèvres" — action = tanh(delta_pression × drive), GATÉE par la pression
-            // courante. Physiquement : sans souffle, les lèvres n'oscillent pas — il faut de la
-            // pression pour maintenir l'auto-oscillation. Le gate = min(1, pressureEff × 4) atteint
-            // sa pleine valeur à pressureEff ≥ 0.25 (donc effet inaudible pendant la note tenue) et
-            // tombe a 0 quand env=0 → la boucle meurt vite au release. Sans ce gate, tanh amplifie
-            // le retour du tube même sans pression (bug sustain infini 2026-08-02).
+            // 2-MASS LIP MODEL (Adachi-Sato 1996) — vraie physique des levres qui vibrent.
+            // Deux masses reliees par ressort+friction, alimentees par la difference de pression :
+            //   m·ÿ1 + r·ẏ1 + k·y1 = P_bouche - P_tube - offset1
+            //   m·ÿ2 + r·ẏ2 + k·y2 = P_bouche - P_tube + offset2
+            // Les deux masses oscillent en opposition (haut = ouvre, bas = ferme), leur difference
+            // module l'ouverture des levres. Beaucoup plus riche qu'un tanh — donne l'attaque
+            // "buzz" progressif naturel + la possibilite de crack sur souffle excessif.
             float delta = breath + returnPressure;
-            float drive = 1f + p.LipTension * 4f;
-            float lipsGate = Math.Min(1f, pressureEff * 4f);
-            float lipsAction = (float)Math.Tanh(delta * drive) * 0.5f * lipsGate;
+            // Force appliquee : difference de pression module la pression alveolaire des levres
+            // (le vrai driver physique). Positive = pousse ouverture, negative = tire vers fermeture.
+            float force = delta * 3f;
 
-            // Écriture dans le tube : action des lèvres + réflexion. Damping global 0.995 → sans
-            // action des lèvres (release), la boucle décroit selon ce coef (~-0.04dB par sample,
-            // ~250 ms de decay à mi-amplitude).
+            // Integration Euler explicite (dt = 1 sample) sur les 2 masses.
+            // Systeme masse-ressort-friction : ẋ = v ; v̇ = -omega²·x - 2·zeta·omega·v + F/m
+            float k = _lipOmega * _lipOmega;   // rigidite (omega² × m, m=1)
+            float rDamp = 2f * _lipDamping * _lipOmega;   // friction
+
+            // Masse 1 (superieure) : reçoit +force et un petit offset qui la garde legerement fermee au repos
+            float acc1 = -k * (_lipY1 - 0.1f) - rDamp * _lipY1v + force / _lipMass;
+            _lipY1v += acc1;
+            _lipY1  += _lipY1v;
+
+            // Masse 2 (inferieure) : reçoit -force et un offset symmetrique
+            float acc2 = -k * (_lipY2 + 0.1f) - rDamp * _lipY2v - force / _lipMass;
+            _lipY2v += acc2;
+            _lipY2  += _lipY2v;
+
+            // Ouverture = distance entre les 2 masses, clampee a >=0 (si masses se croisent = ferme)
+            float lipOpening = Math.Max(0f, (_lipY1 - _lipY2 + 0.3f) * 0.4f);
+            if (lipOpening > 2f) lipOpening = 2f;   // saturation physique
+
+            // Flow = opening × sign(delta) × sqrt(|delta|) selon Bernoulli
+            float absDelta = Math.Abs(delta);
+            float lipsAction = lipOpening * Math.Sign(delta) * (float)Math.Sqrt(absDelta) * 0.4f;
+            // GATE par pressureEff (comme avant) pour couper le release
+            float lipsGate = Math.Min(1f, pressureEff * 4f);
+            lipsAction *= lipsGate;
+
+            // Écriture dans le tube : action des lèvres + réflexion. Damping global 0.995.
             _tube[_writeIdx] = (lipsAction + returnPressure * 0.5f) * 0.995f;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;

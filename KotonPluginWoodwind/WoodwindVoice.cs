@@ -163,28 +163,51 @@ namespace KotonPluginWoodwind
             float noiseGain = p.BreathNoise * (0.3f + p.ExcitationType * 0.5f);
             float breath = pressureEff * (1f + _noiseLpState * noiseGain);
 
-            // Non-linéarité selon le type d'excitation, opérant sur la différence de pression :
-            //   - Anche : soft clip asymmétrique (l'anche ferme d'un côté). Approximation reed table.
-            //   - Jet : tanh symmétrique plus doux (le jet oscille des deux côtés du tube).
-            float delta = breath + returnPressure;   // + car returnPressure porte déjà son signe
-            float drive = 1f + (1f - p.ReedSoftness) * 2.5f;
-            float driven = delta * drive;
+            // REED TABLE analytique (McIntyre-Woodhouse / Backus / Wilson-Beavers) — remplacement
+            // du tanh simple par la vraie physique d'anche/jet :
+            //   opening(dp) = max(0, 1 - dp/hardness)^power   [l'anche ferme sous forte pression]
+            //   flow(dp)    = opening(dp) × sign(dp) × sqrt(|dp|)   [Bernoulli sur l'ouverture]
+            //
+            // Le sqrt (loi de Bernoulli) est CE qui donne le vrai spectre riche d'une anche —
+            // le tanh precedent etait trop lisse et manquait les harmoniques hautes caracteristiques.
+            //
+            // Difference anche vs jet :
+            //   - Anche (excitationType < 0.5) : power=1 (rapide fermeture), asymmetrique (offset=0)
+            //     → harmoniques impaires dominantes (clarinette caracteristique)
+            //   - Jet d'air (excitationType >= 0.5) : power=0.5 (fermeture progressive), symmetrique
+            //     (offset centre) → spectre complet (flute)
+            float delta = breath + returnPressure;
+            // Hardness : dur (ReedSoftness bas) → hardness bas → anche ferme vite → agressif
+            //            mou (ReedSoftness haut) → hardness haut → anche reste ouverte → doux
+            float hardness = 0.3f + p.ReedSoftness * 1.2f;   // 0.3..1.5
+
             float excitation;
             if (p.ExcitationType < 0.5f)
             {
-                // Anche : asymmétrique. Plus dur à l'ouverture (delta > 0), plus souple à la fermeture.
-                excitation = driven >= 0f ? (float)Math.Tanh(driven) : driven / (1f + Math.Abs(driven) * 0.7f);
+                // ANCHE : opening asymmetrique. Ferme d'un cote (dp positif), reste plus ouverte
+                // dans l'autre (dp negatif). Power = 1 → fermeture lineaire au-dessus du seuil.
+                float dpNorm = delta / hardness;
+                float opening = dpNorm >= 0f
+                    ? Math.Max(0f, 1f - dpNorm)                 // ferme si pression pousse
+                    : 1f;                                        // reste ouverte si pression tire
+                // Flow selon Bernoulli : signe(delta) × sqrt(|delta|), pondere par l'ouverture
+                float absDelta = Math.Abs(delta);
+                float flow = opening * Math.Sign(delta) * (float)Math.Sqrt(absDelta);
+                excitation = flow;
             }
             else
             {
-                // Jet : tanh symmétrique doux
-                excitation = (float)Math.Tanh(driven * 0.7f);
+                // JET D'AIR : opening symmetrique (le jet peut deflechir des deux cotes du biseau).
+                // Power=0.5 pour une fermeture progressive plus douce qu'une anche.
+                float dpNorm = Math.Abs(delta) / hardness;
+                float opening = (float)Math.Max(0.0, Math.Pow(1f - dpNorm, 0.5));
+                float absDelta = Math.Abs(delta);
+                float flow = opening * Math.Sign(delta) * (float)Math.Sqrt(absDelta);
+                excitation = flow;
             }
-            // GATE de l'excitation par la pression courante : sans souffle, l'anche/le jet ne
-            // s'entretiennent pas — essentiel pour que la boucle meure au release. Sans gate,
-            // tanh(delta * drive) amplifie le retour du tube meme avec pressureEff=0 (bug 2026-08-02).
+            // GATE par pressureEff : sans souffle, pas d'auto-oscillation (essentiel pour le release).
             float exGate = Math.Min(1f, pressureEff * 4f);
-            excitation *= 0.5f * exGate;
+            excitation *= 0.6f * exGate;
 
             // Écriture dans le tube = excitation + réflexion, damping global 0.99 pour un decay
             // naturel des harmoniques quand l'excitation est coupée.
