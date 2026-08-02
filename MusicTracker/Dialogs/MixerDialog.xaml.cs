@@ -212,8 +212,38 @@ namespace MusicTracker.Dialogs
                 m.Items.Add(it);
             }
             m.Items.Add(new Separator());
+            BuildKotonSubmenu(m, owner, onChanged);
             BuildVstSubmenu(m, owner, onChanged);
             m.IsOpen = true;
+        }
+
+        /// <summary>Sous-menu « Koton ▸ ... » listant les plugins effets Koton natifs scannés au démarrage
+        /// par <see cref="KotonPluginRegistry"/>. Vide si aucun plugin effet n'est installé dans <c>plugins/</c>.</summary>
+        void BuildKotonSubmenu(ContextMenu parent, List<TrackEffectData> owner, Action onChanged)
+        {
+            var kotonMenu = new MenuItem { Header = Loc.T("FxKotonMenu") };
+            var list = KotonPluginRegistry.Effects;
+            if (list.Count == 0)
+            {
+                var empty = new MenuItem { Header = Loc.T("KotonNoPluginsFound"), IsEnabled = false };
+                kotonMenu.Items.Add(empty);
+            }
+            else
+            {
+                foreach (var p in list)
+                {
+                    var it = new MenuItem { Header = p.DisplayName };
+                    var id = p.Id;
+                    it.Click += (s, e) =>
+                    {
+                        // PluginPath porte l'Id du plugin Koton (pas un chemin) — cf. commentaire dans EffectFactory.KotonKind.
+                        owner.Add(new TrackEffectData { Kind = EffectFactory.KotonKind, Enabled = true, PluginPath = id });
+                        onChanged();
+                    };
+                    kotonMenu.Items.Add(it);
+                }
+            }
+            parent.Items.Add(kotonMenu);
         }
 
         /// <summary>Sous-menu « VST ▸ ... » listant les plugins scannés, avec un item « Re-scanner ». Vide = message explicatif.</summary>
@@ -262,9 +292,16 @@ namespace MusicTracker.Dialogs
             onChanged();
         }
 
-        /// <summary>Ouvre l'éditeur adapté à l'effet : GUI native pour un VST2/VST3, dialogue de sliders génériques sinon.</summary>
+        /// <summary>Ouvre l'éditeur adapté à l'effet : GUI native pour un VST2/VST3, GUI custom pour un
+        /// plugin Koton natif (le plugin fournit son propre UserControl), dialogue de sliders génériques
+        /// pour les 4 effets internes (eq/comp/delay/sat).</summary>
         void OpenEffectEditor(TrackEffectData d)
         {
+            if (d.Kind == EffectFactory.KotonKind)
+            {
+                OpenKotonEffectEditor(d);
+                return;
+            }
             if (d.Kind == EffectFactory.VstKind || d.Kind == EffectFactory.Vst3Kind)
             {
                 if (!VstRuntimeCheck.IsVcRedistInstalled())
@@ -310,6 +347,51 @@ namespace MusicTracker.Dialogs
         {
             if (project == null) return;
             ShowAddFxMenu((FrameworkElement)sender, project.MasterInserts, () => { RefreshMasterInserts(); CaptureUndo(); });
+        }
+
+        /// <summary>Ouvre l'éditeur d'un plugin effet Koton natif dans une fenêtre standalone. Le plugin
+        /// fournit son UserControl via CreateEditor() ; on l'embarque dans une Window avec chrome minimal
+        /// et on sauvegarde son état à la fermeture. Instance dédiée à l'UI (pas partagée avec le renderer
+        /// pour l'instant — un cache d'effets analogue à KotonInstrumentCache est TODO si l'utilisateur
+        /// demande le live-edit d'effets en cours de lecture).</summary>
+        void OpenKotonEffectEditor(TrackEffectData d)
+        {
+            KotonEffectAdapter adapter;
+            try { adapter = new KotonEffectAdapter(d.PluginPath, 44100); }
+            catch
+            {
+                MessageBox.Show(this, Loc.T("KotonPluginFailedToLoad"), Loc.T("FxKotonMenu"), MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            // Restore l'état s'il existe, sinon le plugin garde ses défauts
+            if (!string.IsNullOrEmpty(d.StateBlob)) adapter.LoadState(d.StateBlob);
+
+            var editor = adapter.Plugin.HasEditor ? adapter.Plugin.CreateEditor() : null;
+            if (editor == null)
+            {
+                MessageBox.Show(this, "Ce plugin ne fournit pas d'editeur.", adapter.DisplayName, MessageBoxButton.OK, MessageBoxImage.Information);
+                try { adapter.Dispose(); } catch { }
+                return;
+            }
+
+            var w = new Window
+            {
+                Title = adapter.DisplayName,
+                Content = editor,
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                MinWidth = 400, MinHeight = 300,
+                Background = new SolidColorBrush(Color.FromRgb(0x14, 0x1A, 0x1E)),
+            };
+            w.Closed += (s, e) =>
+            {
+                try { d.StateBlob = adapter.SaveState(); } catch { }
+                try { d.Params = adapter.Save(); } catch { }
+                try { adapter.Dispose(); } catch { }
+                CaptureUndo();
+            };
+            w.Show();
         }
 
         // Rafraîchit tous les vu-mètres à partir des peaks du player en cours de lecture (0 sinon).

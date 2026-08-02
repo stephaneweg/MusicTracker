@@ -18,6 +18,11 @@ namespace MusicTracker.Engine.Timeline.Effects
         /// <summary>Identifiant stable d'un insert VST3 — hébergé par <see cref="Vst3Effect"/>.</summary>
         public const string Vst3Kind = "vst3";
 
+        /// <summary>Identifiant stable d'un insert Koton natif — hébergé par <see cref="KotonEffectAdapter"/>.
+        /// Le champ <see cref="TrackEffectData.PluginPath"/> porte l'Id du plugin Koton (ex. "koton.oceanreverb"),
+        /// pas un chemin — cohérent avec la sémantique de "path opaque de l'implémentation d'effet".</summary>
+        public const string KotonKind = "koton";
+
         /// <summary>Clé de localisation associée à un type (le nom d'affichage).</summary>
         public static string LocKey(string kind)
         {
@@ -29,6 +34,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "sat":   return "FxSaturation";
                 case VstKind: return "FxVst";
                 case Vst3Kind:return "FxVst";   // même intitulé côté UI — l'utilisateur voit "VST" sans distinction de version
+                case KotonKind:return "FxKoton";
                 default:      return kind ?? "";
             }
         }
@@ -43,8 +49,19 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "sat":   return new SaturationEffect(sampleRate);
                 case VstKind: return new VstEffect(sampleRate);  // PluginPath posé par le caller
                 case Vst3Kind:return new Vst3Effect(sampleRate);
+                case KotonKind:return null;                       // Koton natifs : instanciation via CreateKoton (Id requis)
                 default:      return null;
             }
+        }
+
+        /// <summary>Instancie un adaptateur d'effet Koton natif. Retourne <c>null</c> si l'Id est inconnu
+        /// (plugin absent du dossier <c>plugins/</c>) — le TrackEffectData survit en no-op, le projet
+        /// reste chargeable même si l'utilisateur a désinstallé le plugin.</summary>
+        public static IAudioEffect CreateKoton(string kotonEffectId, int sampleRate)
+        {
+            if (string.IsNullOrEmpty(kotonEffectId)) return null;
+            try { return new KotonEffectAdapter(kotonEffectId, sampleRate); }
+            catch { return null; }
         }
 
         /// <summary>Résout le kind à partir du chemin d'un plugin externe : .vst3 → Vst3Kind, sinon VstKind.</summary>
@@ -60,7 +77,17 @@ namespace MusicTracker.Engine.Timeline.Effects
         public static IAudioEffect Create(TrackEffectData data, int sampleRate)
         {
             if (data == null) return null;
-            var fx = Create(data.Kind, sampleRate);
+            IAudioEffect fx;
+            // Koton natif : PluginPath porte l'Id du plugin (pas un chemin de fichier).
+            if (data.Kind == KotonKind)
+            {
+                fx = CreateKoton(data.PluginPath, sampleRate);
+                if (fx == null) return null;
+                fx.LoadState(data.StateBlob);
+                fx.Load(data.Params);
+                return fx;
+            }
+            fx = Create(data.Kind, sampleRate);
             if (fx == null) return null;
             // VST2/VST3 : le PluginPath et le blob d'état viennent des champs dédiés de TrackEffectData
             // (Params reste vide côté VST). Load(Params) est appelé quand même par symétrie,
