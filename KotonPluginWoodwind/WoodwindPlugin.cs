@@ -57,23 +57,27 @@ namespace KotonPluginWoodwind
         int _stealCursor;
         const int Polyphony = 8;
 
-        // Formant filter caractéristique du bois (peak biquad en sortie). Chaque bois a sa propre
-        // "voyelle" spectrale due à la géométrie du bore + trous. Flûte = aérien 1.2kHz, Hautbois =
-        // nasal 2.5kHz, Basson = grave roulé 350Hz, Clarinette = mordant 1.5kHz, etc. Sans ce
-        // formant, tous les bois sonnaient similaires (mêmes params, même moteur guide d'onde).
-        BiquadPeakState _formantL, _formantR;
+        // Formant filter caractéristique du bois : DEUX peak biquads en série en sortie pour
+        // simuler correctement la "voyelle" spectrale de chaque bois. Le vrai timbre nasal du
+        // hautbois par ex vient de DEUX pics (~1200Hz + ~2700Hz), comme la voyelle nasale "in"
+        // en francais — un seul pic ne donne qu'un son "boosté" mais pas nasal. Ce fix (2026-08-02)
+        // vient d'un retour utilisateur explicite : le hautbois "n'avait pas le son un peu
+        // nasillard si caractéristique".
+        BiquadPeakState _formant1L, _formant1R;
+        BiquadPeakState _formant2L, _formant2R;
         int _lastFormantInstrument = -1;
 
-        static readonly (float freq, float q, float gainDb)[] FormantByInstrument = new (float, float, float)[]
+        // (freq1, q1, gain1, freq2, q2, gain2). Un formant 2 à gain 0 = un seul formant actif.
+        static readonly (float f1, float q1, float g1, float f2, float q2, float g2)[] FormantByInstrument = new (float, float, float, float, float, float)[]
         {
-            /* Flute       */ (1200f, 1.0f, 3f),   // aérien, souffle audible
-            /* Clarinette  */ (1500f, 2.0f, 5f),   // mordant
-            /* Hautbois    */ (2500f, 2.5f, 8f),   // nasal caractéristique
-            /* Basson      */ ( 350f, 2.0f, 6f),   // roulé grave
-            /* Sax alto    */ (1400f, 1.5f, 5f),   // riche medium
-            /* Sax tenor   */ ( 800f, 1.5f, 5f),   // gras medium-grave
-            /* Piccolo     */ (2800f, 1.5f, 5f),   // perçant
-            /* Cor anglais */ (1700f, 2.0f, 6f),   // pastoral légèrement nasal
+            /* Flute       */ (1200f, 1.0f, 3f,    0f, 1f, 0f),      // aérien, souffle audible, un seul pic
+            /* Clarinette  */ (1500f, 2.0f, 5f,    3000f, 2f, 3f),   // mordant + pic aigu impair
+            /* Hautbois    */ (1200f, 3.0f, 8f,    2700f, 3f, 10f),  // NASAL : 2 pics comme "in", très marqué
+            /* Basson      */ ( 350f, 2.0f, 6f,    900f, 2f, 4f),    // roulé grave + medium
+            /* Sax alto    */ (1400f, 1.5f, 5f,    2500f, 1.5f, 3f), // riche medium + brillance
+            /* Sax tenor   */ ( 800f, 1.5f, 5f,    2000f, 1.5f, 3f), // gras medium-grave + presence
+            /* Piccolo     */ (2800f, 1.5f, 5f,    5000f, 1.5f, 4f), // perçant + aigus extremes
+            /* Cor anglais */ (1000f, 2.5f, 6f,    2200f, 2.5f, 8f), // pastoral avec caractere nasal doux
         };
 
         public WoodwindPlugin()
@@ -195,13 +199,17 @@ namespace KotonPluginWoodwind
             float volLin = (float)Math.Pow(10.0, p.VolumeDb / 20.0);
             float width = (float)_stereoWidth.Value;
 
-            // Update formant si l'instrument a changé
+            // Update formant si l'instrument a changé (2 peaks en série)
             int instrIdx = Math.Max(0, Math.Min(FormantByInstrument.Length - 1, (int)_instrument.Value));
             if (instrIdx != _lastFormantInstrument)
             {
-                var (fFreq, fQ, fGain) = FormantByInstrument[instrIdx];
-                SetBiquadPeak(ref _formantL, _sampleRate, fFreq, fQ, fGain);
-                SetBiquadPeak(ref _formantR, _sampleRate, fFreq, fQ, fGain);
+                var (f1, q1, g1, f2, q2, g2) = FormantByInstrument[instrIdx];
+                SetBiquadPeak(ref _formant1L, _sampleRate, f1, q1, g1);
+                SetBiquadPeak(ref _formant1R, _sampleRate, f1, q1, g1);
+                // Second formant : si gain > 0, actif ; sinon peak à gain 0 = passthrough
+                float f2eff = f2 > 20f ? f2 : 1000f;
+                SetBiquadPeak(ref _formant2L, _sampleRate, f2eff, q2, g2);
+                SetBiquadPeak(ref _formant2R, _sampleRate, f2eff, q2, g2);
                 _lastFormantInstrument = instrIdx;
             }
 
@@ -220,8 +228,10 @@ namespace KotonPluginWoodwind
                     sumL += s * (1f - p01);
                     sumR += s * p01;
                 }
-                sumL = BiquadPeakProcess(ref _formantL, sumL);
-                sumR = BiquadPeakProcess(ref _formantR, sumR);
+                sumL = BiquadPeakProcess(ref _formant1L, sumL);
+                sumR = BiquadPeakProcess(ref _formant1R, sumR);
+                sumL = BiquadPeakProcess(ref _formant2L, sumL);
+                sumR = BiquadPeakProcess(ref _formant2R, sumR);
                 left[i] = sumL * volLin;
                 right[i] = sumR * volLin;
             }

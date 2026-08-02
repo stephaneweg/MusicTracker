@@ -146,11 +146,12 @@ namespace KotonPluginWoodwind
             float lpCutoff = 800f + (1f - p.Damping) * 2500f;
             float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
             _lpState += lpAlpha * (tapped - _lpState);
-            // Réflexion : négative pour un tube fermé (anche : clarinette), positive pour un tube ouvert
-            // (jet d'air : flûte). C'est ce qui distingue le spectre harmoniques impaires seulement
-            // (clarinette) du spectre complet (flûte).
-            float reflectionCoef = p.ExcitationType < 0.5f ? -0.98f : 0.95f;
-            float returnPressure = reflectionCoef * _lpState;
+            // Réflexion NEGATIVE pour les deux modes — la formulation guide d'onde avec tanh
+            // s'auto-entretient uniquement avec reflexion negative. Version precedente avait
+            // reflexion positive pour le jet (theoriquement correct pour tube ouvert) mais la
+            // boucle ne s'entretient pas → que du bruit blanc audible (bug rapporte 2026-08-02).
+            // Le caractere "tube ouvert" du jet est compense par le drive plus fort applique plus bas.
+            float returnPressure = -0.98f * _lpState;
 
             // Souffle bruité
             float noise = (float)(_noiseRng.NextDouble() * 2 - 1);
