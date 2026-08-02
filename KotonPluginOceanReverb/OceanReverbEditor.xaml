@@ -1,0 +1,141 @@
+<UserControl x:Class="KotonPluginOceanReverb.OceanReverbEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="640" MinHeight="440"
+             Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border BorderThickness="0" Padding="16">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Bandeau haut : preset + mix lock -->
+            <Grid Grid.Row="0" Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Preset :" VerticalAlignment="Center"
+                           Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1" x:Name="PresetCombo" Width="220" HorizontalAlignment="Left"
+                          SelectionChanged="PresetCombo_SelectionChanged"/>
+                <CheckBox Grid.Column="2" x:Name="MixLockCheck" Content="Mix lock"
+                          VerticalAlignment="Center" Margin="10,0,10,0"
+                          Foreground="{DynamicResource KotonText}"
+                          ToolTip="Preserve la valeur Mix lors du parcours des presets"/>
+                <TextBlock Grid.Column="3" Text="Ocean Reverb · atmospherique"
+                           Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic"
+                           VerticalAlignment="Center"/>
+            </Grid>
+
+            <!-- Bandeau MODE : 3 boutons pour Abyss/Tide/Foam (visuels) + Freeze -->
+            <Grid Grid.Row="1" Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Mode :" VerticalAlignment="Center"
+                           Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1" x:Name="ModeCombo" Width="160"
+                          SelectionChanged="ModeCombo_SelectionChanged"/>
+                <TextBlock Grid.Column="2" x:Name="ModeDescription" Margin="12,0,0,0"
+                           Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic"
+                           VerticalAlignment="Center"/>
+                <CheckBox Grid.Column="4" x:Name="FreezeCheck" Content="❄ Freeze"
+                          VerticalAlignment="Center" Foreground="{DynamicResource KotonAccent}"
+                          FontWeight="Bold"
+                          Checked="FreezeCheck_Changed" Unchecked="FreezeCheck_Changed"
+                          ToolTip="Queue infinie : la reverb se nourrit d'elle-meme"/>
+            </Grid>
+
+            <!-- Grille 3 colonnes de paramètres -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Colonne 1 : ESPACE -->
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Size" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="SizeSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="SizeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Decay" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="DecaySlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="DecayValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Pre-delay (ms)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="PreDelaySlider" Minimum="0" Maximum="500" TickFrequency="5"/>
+                    <TextBlock x:Name="PreDelayValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="HP filter (Hz)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="HpFilterSlider" Minimum="20" Maximum="1000" TickFrequency="10"/>
+                    <TextBlock x:Name="HpFilterValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <!-- Colonne 2 : COULEUR -->
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Brightness" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="BrightnessSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="BrightnessValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Movement" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="MovementSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="MovementValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Ducking" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="DuckingSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="DuckingValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Stereo width" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="StereoWidthSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="StereoWidthValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <!-- Colonne 3 : SORTIE -->
+                <StackPanel Grid.Row="0" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Mix (dry/wet)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="MixSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="MixValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Output (dB)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="OutGainSlider" Minimum="-30" Maximum="6" TickFrequency="1"/>
+                    <TextBlock x:Name="OutGainValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
