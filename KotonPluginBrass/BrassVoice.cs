@@ -138,38 +138,44 @@ namespace KotonPluginBrass
             float sizeVib = _size / (float)Math.Pow(2.0, vibCents / 1200.0);
             int sizeI = Math.Max(4, Math.Min(_size, (int)sizeVib));
 
-            // Lecture au bout du tube
+            // Lecture au bout du tube = pression réfléchie
             int readIdx = _writeIdx - sizeI;
             while (readIdx < 0) readIdx += _size;
             float tapped = _tube[readIdx];
 
-            // Non-linéarité "lèvres" : compression + drive selon LipTension × Pressure × envelope
-            //   pressure_eff = pressure × env × velocity → force effective de l'insufflation
-            //   drive_eff = 1 + LipTension × 4 → gain avant le tanh (1..5)
-            //   lipsOutput = tanh(driven) × pressure_eff — quand pressure = 0, aucun retour
-            float pressureEff = p.BreathPressure * _env * _velocity;
-            float driveEff = 1f + p.LipTension * 4f;
-            float driven = tapped * driveEff + pressureEff * 0.5f;
-            float lipsOut = (float)Math.Tanh(driven) * pressureEff;
+            // Filtre LP dans la boucle (le tube absorbe les aigus au retour)
+            float lpCutoff = 800f + (1f - p.Damping) * 3000f;
+            float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
+            _lpState += lpAlpha * (tapped - _lpState);
+            // Réflexion négative aux lèvres (tube fermé) avec petit damping global (0.995 = ~-0.04dB par aller-retour)
+            float returnPressure = -0.995f * _lpState;
 
-            // Souffle : bruit blanc filtré LP à 4000 Hz, ajouté proportionnellement à BreathNoise
+            // Souffle : bruit blanc filtré LP à 4000 Hz
             float noise = (float)(_noiseRng.NextDouble() * 2 - 1);
             float noiseAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 4000f / _sr);
             _noiseLpState += noiseAlpha * (noise - _noiseLpState);
-            float breathNoise = _noiseLpState * p.BreathNoise * pressureEff * 0.3f;
 
-            // Feedback LP (Damping) : le tube absorbe les aigus progressivement
-            float lpCutoff = 800f + (1f - p.Damping) * 3000f;   // 800..3800 Hz
-            float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
-            _lpState += lpAlpha * (lipsOut - _lpState);
+            // Pression du souffle (insufflation continue) — modulée par l'enveloppe et la vélocité,
+            // bruit ajouté selon BreathNoise (composante audible du souffle).
+            float pressureEff = p.BreathPressure * _env * _velocity;
+            float breath = pressureEff * (1f + _noiseLpState * p.BreathNoise * 0.5f);
 
-            // Écriture dans le tube = feedback filtré + souffle
-            float writeVal = _lpState + breathNoise;
-            _tube[_writeIdx] = writeVal;
+            // Non-linéarité "lèvres" — action = tanh(delta_pression × drive). C'est CETTE non-linéarité
+            // qui produit l'auto-oscillation du modèle Cook simplifié : la boucle s'entretient parce que
+            // la différence pression-retour, saturée par le tanh, crée un signal qui alimente la boucle
+            // à chaque sample. Sans cette formulation "différentielle", tanh(retour) × pression étouffait
+            // tout car retour * pressureEff → 0 tant que pressureEff est petit (bug 2026-08-02).
+            float delta = breath + returnPressure;   // + car returnPressure est déjà négatif
+            float drive = 1f + p.LipTension * 4f;
+            float lipsAction = (float)Math.Tanh(delta * drive) * 0.5f;
+
+            // Écriture dans le tube : action des lèvres + réflexion (les deux composantes de la pression
+            // au niveau de l'embouchure). C'est ce qui va s'entretenir dans la boucle.
+            _tube[_writeIdx] = lipsAction + returnPressure * 0.5f;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
-            // Sortie : compensation brightness sur le tap (contrebalance le LP dans la boucle)
+            // Sortie audio = pression au niveau du pavillon (= tap, la pression sortant du tube)
             float outSignal = tapped * (0.5f + p.Brightness * 0.8f);
 
             // Bell size : LP en sortie (petit pavillon = mordant, gros = arrondi)

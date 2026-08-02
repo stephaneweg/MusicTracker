@@ -234,7 +234,10 @@
         </Setter>
     </Style>
 
-    <!-- Slider HORIZONTAL implicite : s'applique automatiquement a tout Slider sans Style explicite -->
+    <!-- Slider implicite : s'applique a tout Slider sans Style explicite. Le template DEFAUT est
+         horizontal ; un trigger sur Orientation=Vertical bascule sur le template vertical (fill du
+         bas jusqu'au thumb, rail au-dessus). Sans ce trigger, un slider Vertical utilise le template
+         horizontal et rend rien (thumb + rail ecrases, cf. bug mixeur 2026-08-02). -->
     <Style TargetType="Slider">
         <Setter Property="Foreground" Value="{StaticResource KotonAccent}"/>
         <Setter Property="Background" Value="{StaticResource KotonBorder}"/>
@@ -258,6 +261,29 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Vertical">
+                <Setter Property="MinHeight" Value="0"/>
+                <Setter Property="MinWidth" Value="18"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Slider">
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource KotonSliderFillV}" Command="Slider.DecreaseLarge"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource KotonSliderThumbVertical}"/>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource KotonSliderRailV}" Command="Slider.IncreaseLarge"/>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Slider VERTICAL nomme : applique explicitement via Style="{StaticResource KotonVerticalSlider}"

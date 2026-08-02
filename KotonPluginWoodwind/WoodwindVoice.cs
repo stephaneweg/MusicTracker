@@ -142,46 +142,53 @@ namespace KotonPluginWoodwind
             while (readIdx < 0) readIdx += _size;
             float tapped = _tube[readIdx];
 
-            float pressureEff = p.AirPressure * _env * _velocity;
+            // LP dans le feedback (Damping)
+            float lpCutoff = 800f + (1f - p.Damping) * 2500f;
+            float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
+            _lpState += lpAlpha * (tapped - _lpState);
+            // Réflexion : négative pour un tube fermé (anche : clarinette), positive pour un tube ouvert
+            // (jet d'air : flûte). C'est ce qui distingue le spectre harmoniques impaires seulement
+            // (clarinette) du spectre complet (flûte).
+            float reflectionCoef = p.ExcitationType < 0.5f ? -0.98f : 0.95f;
+            float returnPressure = reflectionCoef * _lpState;
 
-            // Non-linéarité selon le type d'excitation :
-            //   - Anche (excitationType < 0.5) : asymmétrique — l'anche ferme sous forte pression
-            //     mais reste ouverte sinon. Modélisé par : tanh(x) si x>0, x/(1+|x|) si x<0.
-            //   - Jet d'air (excitationType >= 0.5) : symmétrique doux, moins de drive.
-            float driveBase = 1f + (1f - p.ReedSoftness) * 2.5f;   // reed dur = drive plus fort (jusqu'à 3.5)
-            float driven = tapped * driveBase + pressureEff * 0.4f;
-            float reedOut;
-            if (p.ExcitationType < 0.5f)
-            {
-                // Anche : asymmétrique. tanh compresse fort à la fermeture, laisse passer à l'ouverture.
-                reedOut = driven >= 0f ? (float)Math.Tanh(driven) : driven / (1f + Math.Abs(driven) * 0.5f);
-                reedOut *= pressureEff;
-            }
-            else
-            {
-                // Jet d'air : tanh symmétrique + moitié de drive (plus doux qu'une anche)
-                reedOut = (float)Math.Tanh(driven * 0.5f) * pressureEff;
-            }
-
-            // Souffle : plus important pour un jet d'air (flûte) que pour une anche
+            // Souffle bruité
             float noise = (float)(_noiseRng.NextDouble() * 2 - 1);
             float noiseAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 3000f / _sr);
             _noiseLpState += noiseAlpha * (noise - _noiseLpState);
-            float noiseGain = p.BreathNoise * pressureEff * (0.3f + p.ExcitationType * 0.5f);   // ×0.3..×0.8
-            float breathNoise = _noiseLpState * noiseGain;
 
-            // LP dans le feedback (Damping)
-            float lpCutoff = 800f + (1f - p.Damping) * 2500f;   // 800..3300 Hz (moins que Brass)
-            float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
-            _lpState += lpAlpha * (reedOut - _lpState);
+            float pressureEff = p.AirPressure * _env * _velocity;
+            // Bruit d'excitation plus fort pour un jet d'air (souffle audible caractéristique flûte)
+            float noiseGain = p.BreathNoise * (0.3f + p.ExcitationType * 0.5f);
+            float breath = pressureEff * (1f + _noiseLpState * noiseGain);
 
-            _tube[_writeIdx] = _lpState + breathNoise;
+            // Non-linéarité selon le type d'excitation, opérant sur la différence de pression :
+            //   - Anche : soft clip asymmétrique (l'anche ferme d'un côté). Approximation reed table.
+            //   - Jet : tanh symmétrique plus doux (le jet oscille des deux côtés du tube).
+            float delta = breath + returnPressure;   // + car returnPressure porte déjà son signe
+            float drive = 1f + (1f - p.ReedSoftness) * 2.5f;
+            float driven = delta * drive;
+            float excitation;
+            if (p.ExcitationType < 0.5f)
+            {
+                // Anche : asymmétrique. Plus dur à l'ouverture (delta > 0), plus souple à la fermeture.
+                excitation = driven >= 0f ? (float)Math.Tanh(driven) : driven / (1f + Math.Abs(driven) * 0.7f);
+            }
+            else
+            {
+                // Jet : tanh symmétrique doux
+                excitation = (float)Math.Tanh(driven * 0.7f);
+            }
+            excitation *= 0.5f;   // évite les explosions de niveau
+
+            // Écriture dans le tube = excitation + réflexion (comme Brass, formulation guide d'onde)
+            _tube[_writeIdx] = excitation + returnPressure * 0.5f;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
             float outSignal = tapped * (0.4f + p.Brightness * 0.9f);
 
-            // Bore size : LP en sortie (petit bore = clair, gros bore = doux)
+            // Bore size : LP en sortie
             float boreCutoff = 1500f + (1f - p.BoreSize) * 6000f;
             float boreAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * boreCutoff / _sr);
             _boreLpState += boreAlpha * (outSignal - _boreLpState);
