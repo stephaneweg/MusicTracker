@@ -170,8 +170,10 @@ namespace KotonPluginBrass
             float lipsAction = (float)Math.Tanh(delta * drive) * 0.5f;
 
             // Écriture dans le tube : action des lèvres + réflexion (les deux composantes de la pression
-            // au niveau de l'embouchure). C'est ce qui va s'entretenir dans la boucle.
-            _tube[_writeIdx] = lipsAction + returnPressure * 0.5f;
+            // au niveau de l'embouchure). Damping global 0.975 = -0.22 dB par aller-retour du tube
+            // → sans breath entretenant l'oscillation, la boucle meurt en ~200-500 ms selon la note
+            // (indispensable pour un release perceptible — bug 2026-08-02 sustain infini).
+            _tube[_writeIdx] = (lipsAction + returnPressure * 0.5f) * 0.975f;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 

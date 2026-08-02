@@ -181,8 +181,10 @@ namespace KotonPluginWoodwind
             }
             excitation *= 0.5f;   // évite les explosions de niveau
 
-            // Écriture dans le tube = excitation + réflexion (comme Brass, formulation guide d'onde)
-            _tube[_writeIdx] = excitation + returnPressure * 0.5f;
+            // Écriture dans le tube = excitation + réflexion, avec damping global 0.97 (bois amortis
+            // plus vite que cuivres — pas de pavillon métallique qui résonne). Meme bug/fix que Brass :
+            // sans ce damping, la boucle ne meurt jamais → sustain infini apres release.
+            _tube[_writeIdx] = (excitation + returnPressure * 0.5f) * 0.97f;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
