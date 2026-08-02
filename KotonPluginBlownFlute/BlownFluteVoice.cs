@@ -153,39 +153,38 @@ namespace KotonPluginBlownFlute
             float lpCutoff = 1500f + (1f - p.Damping) * 4500f;
             float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
             _lpState += lpAlpha * (tapped - _lpState);
-            // Réflexion POSITIVE aux extremités (tube ouvert-ouvert = flûte, spectre complet)
-            // + damping global à 0.985 (le tube n'est pas parfaitement conservatif)
-            float returnPressure = 0.985f * _lpState;
+            // Réflexion NEGATIVE (formulation guide d'onde standard qui auto-oscille avec la
+            // non-linearite tanh — meme approche que Woodwind mode anche qui marche). Version
+            // precedente avait reflexion positive + non-lin x-x³/3 : mathematiquement plausible
+            // pour un tube ouvert mais ne s'auto-entretient pas → seul le breath audible passe,
+            // le tube reste silencieux. Bug rapporte 2026-08-02 : "que du bruit blanc".
+            float returnPressure = -0.985f * _lpState;
 
-            // Souffle : bruit blanc filtré à ~3.5kHz (audibilité maximale, comme un vrai souffle sur bois)
+            // Souffle : bruit blanc filtré à ~3.5kHz
             float noise = (float)(_rng.NextDouble() * 2 - 1);
             float noiseAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 3500f / _sr);
             _noiseLpState += noiseAlpha * (noise - _noiseLpState);
 
-            // Turbulence variable : plus la pression est forte + JetInstability haute, plus le
-            // souffle devient chaotique (bruit haute fréquence modulé par la pression). C'est
-            // caractéristique du shakuhachi joué "muraiki" (souffle expressif turbulent).
+            // Turbulence variable : muraiki
             float turbCutoff = 500f + (1f - p.JetInstability) * 4000f;
             float turbAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * turbCutoff / _sr);
             _turbState += turbAlpha * (noise - _turbState);
             float turbulence = _turbState * p.JetInstability;
 
             float pressureEff = p.BreathPressure * _env * _velocity;
-            // Le souffle audible = bruit filtré + turbulence, modulé par pressure
             float breathAudible = (_noiseLpState * p.BreathNoise + turbulence * 0.5f) * pressureEff;
             float breath = pressureEff * (1f + breathAudible * 0.4f);
 
-            // Non-linéarité du JET (McIntyre-Woodhouse simplifié) :
-            // Le jet d'air a un comportement soft-cubed : x - x³/3 (compression douce autour de 0).
-            // On calcule la différence pression-retour puis on applique cette non-linéarité.
-            // GATE par pressureEff pour éviter l'auto-entretien sans souffle (comme Brass/Woodwind).
-            float delta = breath - returnPressure;
-            // Le jet drive avec un peu d'embouchure shift (tilt) — un léger décalage de la nonlin
+            // Non-linéarité du jet : tanh(delta * drive). La flute a besoin d'un drive plus
+            // fort qu'un simple anche (car le jet n'a pas la meme efficacite qu'une anche pour
+            // piloter la boucle) — d'ou le 2.0 + jetInstability*2.
+            float delta = breath + returnPressure;   // + car returnPressure est deja negatif
             float bias = p.EmbouchureShift * 0.1f;
-            float driven = delta * (1f + p.JetInstability * 1.5f) + bias;
-            float clipped = driven - (driven * driven * driven) / 3f;   // x - x³/3
+            float driven = delta * (2f + p.JetInstability * 2f) + bias;
+            float jetOut = (float)Math.Tanh(driven);
+            // GATE par pressureEff pour eviter l'auto-entretien sans souffle
             float jetGate = Math.Min(1f, pressureEff * 5f);
-            float jetOut = clipped * jetGate * 0.5f;
+            jetOut *= jetGate * 0.5f;
 
             // Écriture dans le tube = jet + réflexion, avec damping global 0.995
             _tube[_writeIdx] = (jetOut + returnPressure * 0.5f) * 0.995f;
@@ -193,7 +192,6 @@ namespace KotonPluginBlownFlute
             if (_writeIdx >= _size) _writeIdx = 0;
 
             // Sortie audio = pression au niveau du tube + composante de souffle audible
-            // (dans une vraie flûte, on entend le tube ET le souffle qui passe à côté)
             float sig = tapped * (0.4f + p.Brightness * 0.8f) + breathAudible * 0.3f;
 
             // Détection d'énergie pour libération
