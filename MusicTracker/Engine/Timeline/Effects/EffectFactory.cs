@@ -78,14 +78,14 @@ namespace MusicTracker.Engine.Timeline.Effects
         {
             if (data == null) return null;
             IAudioEffect fx;
-            // Koton natif : PluginPath porte l'Id du plugin (pas un chemin de fichier).
+            // Koton natif : PluginPath porte l'Id du plugin (pas un chemin de fichier). L'instance
+            // vient du CACHE (KotonEffectCache) — même objet pour le renderer et pour l'éditeur UI,
+            // ce qui permet le live-edit : bouger un slider dans le dialog s'entend au prochain
+            // buffer sans avoir a Stop/Play.
             if (data.Kind == KotonKind)
             {
-                fx = CreateKoton(data.PluginPath, sampleRate);
-                if (fx == null) return null;
-                fx.LoadState(data.StateBlob);
-                fx.Load(data.Params);
-                return fx;
+                var adapter = KotonEffectCache.GetOrCreate(data, sampleRate);
+                return adapter;   // null si Id inconnu — insert survit en no-op
             }
             fx = Create(data.Kind, sampleRate);
             if (fx == null) return null;

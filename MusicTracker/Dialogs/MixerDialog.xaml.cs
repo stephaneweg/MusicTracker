@@ -192,7 +192,13 @@ namespace MusicTracker.Dialogs
             row.Children.Add(onoff);
 
             var del = new Button { Content = "×", Width = 16, Height = 18, Style = (Style)FindResource("TinyButton"), Margin = new Thickness(3, 0, 0, 0), ToolTip = Loc.T("RemoveEffect") };
-            del.Click += (s, e) => { owner.Remove(d); onChanged(); };
+            del.Click += (s, e) =>
+            {
+                // Libere l'instance Koton cachee (l'insert n'existe plus, plus besoin de garder l'adapter)
+                if (d.Kind == EffectFactory.KotonKind) KotonEffectCache.Release(d);
+                owner.Remove(d);
+                onChanged();
+            };
             Grid.SetColumn(del, 2);
             row.Children.Add(del);
 
@@ -356,21 +362,20 @@ namespace MusicTracker.Dialogs
         /// demande le live-edit d'effets en cours de lecture).</summary>
         void OpenKotonEffectEditor(TrackEffectData d)
         {
-            KotonEffectAdapter adapter;
-            try { adapter = new KotonEffectAdapter(d.PluginPath, 44100); }
-            catch
+            // Instance SHARED via le cache — meme adapter pour l'editeur et pour le renderer, donc
+            // bouger un slider s'entend immediatement pendant la lecture. Cf. commentaire de
+            // KotonEffectCache pour la motivation (bug rapporte 2026-08-02 sur Ocean Reverb).
+            var adapter = KotonEffectCache.GetOrCreate(d, 44100);
+            if (adapter == null)
             {
                 MessageBox.Show(this, Loc.T("KotonPluginFailedToLoad"), Loc.T("FxKotonMenu"), MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            // Restore l'état s'il existe, sinon le plugin garde ses défauts
-            if (!string.IsNullOrEmpty(d.StateBlob)) adapter.LoadState(d.StateBlob);
 
             var editor = adapter.Plugin.HasEditor ? adapter.Plugin.CreateEditor() : null;
             if (editor == null)
             {
                 MessageBox.Show(this, "Ce plugin ne fournit pas d'editeur.", adapter.DisplayName, MessageBoxButton.OK, MessageBoxImage.Information);
-                try { adapter.Dispose(); } catch { }
                 return;
             }
 
@@ -386,9 +391,12 @@ namespace MusicTracker.Dialogs
             };
             w.Closed += (s, e) =>
             {
+                // On sauvegarde les etats vers TrackEffectData a la fermeture pour la persistance
+                // (au chargement du .sq, on relira ces valeurs pour re-hydrater les KotonParameter).
+                // Le plugin RESTE en cache — il continue a rendre l'audio, le prochain open editor
+                // repartira du meme adapter (pas de reset du state visible).
                 try { d.StateBlob = adapter.SaveState(); } catch { }
                 try { d.Params = adapter.Save(); } catch { }
-                try { adapter.Dispose(); } catch { }
                 CaptureUndo();
             };
             w.Show();
