@@ -38,7 +38,7 @@ namespace KotonPluginElectricViolin
         readonly KotonParameter _bowForce      = new KotonParameter("bow_force",       "Bow force",       0.0, 1.0, 0.55);
         readonly KotonParameter _bowVelocity   = new KotonParameter("bow_velocity",    "Bow velocity",    0.0, 1.0, 0.65);
         readonly KotonParameter _bowPosition   = new KotonParameter("bow_position",    "Bow position",    0.0, 0.5, 0.12);
-        readonly KotonParameter _damping       = new KotonParameter("damping",         "Damping",         0.0, 1.0, 0.30);
+        readonly KotonParameter _damping       = new KotonParameter("damping",         "Damping",         0.0, 1.0, 0.65);
         readonly KotonParameter _bodyIntensity = new KotonParameter("body_intensity",  "Body (formants)", 0.0, 1.0, 0.75);
         readonly KotonParameter _warmth        = new KotonParameter("warmth",          "Warmth (piezo)",  0.0, 1.0, 0.45);
         readonly KotonParameter _vibratoRate   = new KotonParameter("vibrato_rate",    "Vibrato rate",    0.0, 8.0, 5.5, "Hz");
@@ -175,14 +175,16 @@ namespace KotonPluginElectricViolin
             "Ballade (doux lyrique)",
             "Sultasto (près touche, feutre)"
         };
+        // Damping augmente (2026-08-03) : sustain reduit sur tous les presets — user rapportait
+        // que les notes trainaient trop longtemps.
         static readonly double[,] PresetValues = {
             //          bF   bV   bP    damp body warm vibR vibD trR trD attk rel  vol
-            /*Zeta*/    { 0.60, 0.65, 0.15, 0.30, 0.80, 0.55, 5.5, 20.0, 5.0, 0.15, 0.10, 0.30, -3.0 },
-            /*Wood*/    { 0.75, 0.75, 0.08, 0.25, 0.70, 0.75, 5.0, 18.0, 5.5, 0.20, 0.06, 0.20, -3.0 },
-            /*Clean*/   { 0.50, 0.55, 0.15, 0.35, 0.65, 0.20, 5.0, 15.0, 0.0, 0.00, 0.12, 0.25, -3.0 },
-            /*Lead*/    { 0.70, 0.80, 0.10, 0.20, 0.75, 0.60, 6.0, 22.0, 5.5, 0.18, 0.05, 0.20, -3.0 },
-            /*Ballade*/ { 0.45, 0.55, 0.20, 0.40, 0.85, 0.35, 4.5, 14.0, 3.5, 0.12, 0.25, 0.50, -3.0 },
-            /*Sultasto*/{ 0.50, 0.55, 0.32, 0.45, 0.80, 0.30, 5.0, 15.0, 4.0, 0.10, 0.30, 0.40, -3.0 },
+            /*Zeta*/    { 0.60, 0.65, 0.15, 0.65, 0.80, 0.55, 5.5, 12.0, 5.0, 0.15, 0.10, 0.25, -3.0 },
+            /*Wood*/    { 0.75, 0.75, 0.08, 0.55, 0.70, 0.75, 5.0, 10.0, 5.5, 0.20, 0.06, 0.15, -3.0 },
+            /*Clean*/   { 0.50, 0.55, 0.15, 0.75, 0.65, 0.20, 5.0, 10.0, 0.0, 0.00, 0.12, 0.20, -3.0 },
+            /*Lead*/    { 0.70, 0.80, 0.10, 0.50, 0.75, 0.60, 6.0, 14.0, 5.5, 0.18, 0.05, 0.15, -3.0 },
+            /*Ballade*/ { 0.45, 0.55, 0.20, 0.75, 0.85, 0.35, 4.5, 10.0, 3.5, 0.12, 0.25, 0.40, -3.0 },
+            /*Sultasto*/{ 0.50, 0.55, 0.32, 0.80, 0.80, 0.30, 5.0, 10.0, 4.0, 0.10, 0.30, 0.30, -3.0 },
         };
         public void LoadPreset(int idx)
         {
