@@ -1302,6 +1302,10 @@ namespace MusicTracker.Screens
             // and it runs on open, on import AND on every undo/redo (RestoreState) — omit it and the markers vanish
             // at each Ctrl+Z. `?? new List<>` covers a hand-edited file with "Markers": null.
             project.Markers = dp.Markers ?? new System.Collections.Generic.List<SectionMarker>();
+            // Meme raison pour les inserts du bus master : ce sont un CHAMP (pas une propriete initialisee),
+            // et sans cette ligne ils disparaissaient a chaque ouverture / undo — les params etaient
+            // bien serialises dans le .sq, juste jamais recopies dans l'instance vivante.
+            project.MasterInserts = dp.MasterInserts ?? new System.Collections.Generic.List<MusicTracker.Engine.Timeline.Effects.TrackEffectData>();
             project.Tracks.Clear();
             if (dp.Tracks != null) foreach (var t in dp.Tracks) project.Tracks.Add(t);
             TimelineHelper.SyncUserStyleRefs(project);   // make chords that reference a user style authoritative from it
