@@ -120,6 +120,30 @@
                                           TextBlock.Foreground="{TemplateBinding Foreground}"
                                           VerticalAlignment="Center"
                                           HorizontalAlignment="Left"/>
+                        <!-- IsEditable=True : rendu du texte editable. PART_ContentHost DOIT etre un
+                             ScrollViewer (Border ne fait rien rendre). Sans ce bloc, un ComboBox
+                             editable affichait un champ VIDE (cboModel du dialogue IA compose). -->
+                        <TextBox x:Name="PART_EditableTextBox"
+                                 Style="{x:Null}"
+                                 HorizontalAlignment="Stretch"
+                                 VerticalAlignment="Center"
+                                 Margin="6,2,22,2"
+                                 Focusable="True"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="{TemplateBinding Foreground}"
+                                 CaretBrush="{TemplateBinding Foreground}"
+                                 Visibility="Collapsed"
+                                 IsReadOnly="{TemplateBinding IsReadOnly}">
+                            <TextBox.Template>
+                                <ControlTemplate TargetType="TextBox">
+                                    <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                                                  Background="Transparent"
+                                                  HorizontalScrollBarVisibility="Hidden"
+                                                  VerticalScrollBarVisibility="Hidden"/>
+                                </ControlTemplate>
+                            </TextBox.Template>
+                        </TextBox>
                         <Popup Name="Popup"
                                Placement="Bottom"
                                IsOpen="{TemplateBinding IsDropDownOpen}"
@@ -138,6 +162,12 @@
                             </Grid>
                         </Popup>
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsEditable" Value="True">
+                            <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
