@@ -67,11 +67,26 @@
             <!-- Grande zone Morph -->
             <Border Grid.Row="2" Background="{DynamicResource KotonPanel}" BorderBrush="{DynamicResource KotonBorder}"
                     BorderThickness="1" CornerRadius="4" Padding="16,12" Margin="0,0,0,14">
-                <StackPanel>
-                    <TextBlock Text="MORPH  A ← → B" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" HorizontalAlignment="Center" FontSize="12"/>
-                    <Slider x:Name="MorphSlider" Minimum="0" Maximum="1" TickFrequency="0.02" Margin="0,4,0,0"/>
-                    <TextBlock x:Name="MorphValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="MORPH  A ← → B" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" HorizontalAlignment="Center" FontSize="12"/>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Mode :" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox Grid.Row="0" Grid.Column="2" x:Name="ModeCombo" Width="140" SelectionChanged="ModeCombo_SelectionChanged" Margin="0,0,8,0"/>
+                    <ToggleButton Grid.Row="0" Grid.Column="3" x:Name="PreviewBtn" Content="🔊 Preview A4"
+                                  Checked="Preview_Checked" Unchecked="Preview_Unchecked" Padding="8,2"
+                                  ToolTip="Envoi une note MIDI 69 (A4) permanente pour visualiser les ondes sans jouer"/>
+                    <Slider Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" x:Name="MorphSlider" Minimum="0" Maximum="1" TickFrequency="0.02" Margin="0,6,0,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" x:Name="MorphValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Center" Margin="0,32,0,0"/>
+                </Grid>
             </Border>
 
             <!-- Bas : Modulation + Volume -->

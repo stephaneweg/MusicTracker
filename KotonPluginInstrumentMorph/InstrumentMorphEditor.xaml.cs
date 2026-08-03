@@ -19,6 +19,12 @@ namespace KotonPluginInstrumentMorph
         readonly DispatcherTimer _scopeTimer;
         readonly float[] _snapA, _snapB, _snapOut;
 
+        // Buffers de rendu offline (preview A4 quand l'app ne joue pas)
+        const int PreviewBlockSize = 1024;
+        readonly float[] _previewL = new float[PreviewBlockSize];
+        readonly float[] _previewR = new float[PreviewBlockSize];
+        bool _plugPrepared;
+
         // Items du dropdown : on stocke KotonInstrumentDescriptor pour recuperer l'Id sur SelectionChanged.
         // Un item "— aucun —" en tete permet de laisser le canal muet.
         sealed class ComboItem
@@ -50,6 +56,11 @@ namespace KotonPluginInstrumentMorph
             Unloaded += (s, e) => _scopeTimer.Stop();
 
             PopulateInstrumentCombos();
+
+            ModeCombo.Items.Clear();
+            ModeCombo.Items.Add("Mix (crossfade signaux)");
+            ModeCombo.Items.Add("Spectral morph (vocoder — vrai timbre hybride)");
+            ModeCombo.SelectedIndex = (int)Math.Round(GetParam("mode"));
 
             Wire(MorphSlider, MorphValue, "morph", v => v.ToString("F2"));
             Wire(LfoRateSlider, LfoRateValue, "lfo_rate", v => v.ToString("F2") + " Hz");
@@ -166,10 +177,51 @@ namespace KotonPluginInstrumentMorph
 
         void RefreshScope()
         {
+            // Si Preview A4 actif : on rend nous-memes un bloc offline dans des buffers jetables,
+            // ce qui alimente le ring peek du plugin — donc les scopes bougent meme sans lecture.
+            // Idempotent : on prepare le plugin la premiere fois seulement (44100 Hz + block 1024).
+            if (PreviewBtn.IsChecked == true)
+            {
+                try
+                {
+                    if (!_plugPrepared) { _plugin.Prepare(44100, PreviewBlockSize); _plugPrepared = true; _plugin.NoteOn(69, 80, 0); }
+                    _plugin.Render(new Span<float>(_previewL, 0, PreviewBlockSize),
+                                   new Span<float>(_previewR, 0, PreviewBlockSize));
+                }
+                catch { }
+            }
+
             try { _plugin.SnapshotPeek(_snapA, _snapB, _snapOut); } catch { return; }
             _waveA.SetSamples(_snapA);
             _waveB.SetSamples(_snapB);
             _waveOut.SetSamples(_snapOut);
+        }
+
+        double GetParam(string id)
+        {
+            foreach (var kp in _plugin.Parameters) if (kp.Id == id) return kp.Value;
+            return 0;
+        }
+
+        void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_loading || _syncing) return;
+            _plugin.SetParam("mode", ModeCombo.SelectedIndex);
+        }
+
+        // Preview A4 : maintient une note MIDI 69 sur le plugin (broadcastee aux 2 instruments A/B)
+        // pour visualiser les 3 ondes en continu, sans avoir besoin de jouer depuis la timeline.
+        // Le NoteOn est envoye au premier Render offline dans RefreshScope (Prepare + NoteOn together
+        // pour eviter de rater la sync).
+        void Preview_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_loading) return;
+            // Le NoteOn effectif est envoye dans RefreshScope apres Prepare (une seule fois)
+        }
+        void Preview_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (_loading) return;
+            try { _plugin.NoteOff(69, 0); } catch { }
         }
 
         public void OnContextUpdated(KotonRenderContext ctx) { }

@@ -45,6 +45,9 @@ namespace KotonPluginInstrumentMorph
         internal string _stateB;
 
         readonly KotonParameter _morph      = new KotonParameter("morph",      "Morph A → B",  0.0, 1.0, 0.5);
+        // Mode 0 = Mix (lerp signaux, sonne comme 2 instruments a la fois),
+        // Mode 1 = Spectral morph (banc de filtres + env followers, vrai timbre hybride)
+        readonly KotonParameter _mode       = new KotonParameter("mode",       "Mode",         0, 1, 1);
         readonly KotonParameter _lfoRate    = new KotonParameter("lfo_rate",   "LFO rate",     0.0, 12.0, 0.0, "Hz");
         readonly KotonParameter _lfoDepth   = new KotonParameter("lfo_depth",  "LFO depth",    0.0, 1.0, 0.0);
         readonly KotonParameter _envMorph   = new KotonParameter("env_morph",  "Env morph",    -1.0, 1.0, 0.0);
@@ -82,8 +85,75 @@ namespace KotonPluginInstrumentMorph
         public InstrumentMorphPlugin()
         {
             _params = new List<KotonParameter> {
-                _morph, _lfoRate, _lfoDepth, _envMorph, _envMs, _gainA, _gainB, _volumeDb,
+                _morph, _mode, _lfoRate, _lfoDepth, _envMorph, _envMs, _gainA, _gainB, _volumeDb,
             };
+            InitVocoder();
+        }
+
+        // ======= Vocoder-style spectral morph =======
+        // 16 bandes BP log-spaced 80..6400 Hz. Chaque bande a un env follower (peak avec attaque
+        // 5ms / release 50ms). Le carrier = mix A+B ; on remodele son enveloppe SPECTRALE avec les
+        // env A et B interpolees. Resultat : au milieu (m=0.5) on a un timbre HYBRIDE reel — le
+        // spectre est intermediaire entre A et B, pas la superposition des 2.
+        const int Bands = 16;
+        static readonly float[] BandFreqs;
+        static InstrumentMorphPlugin()
+        {
+            BandFreqs = new float[Bands];
+            // Log-spaced 80 -> 6400 Hz (6.3 octaves, ~0.42 oct par bande)
+            double logMin = Math.Log(80), logMax = Math.Log(6400);
+            for (int i = 0; i < Bands; i++)
+                BandFreqs[i] = (float)Math.Exp(logMin + (logMax - logMin) * i / (Bands - 1));
+        }
+        readonly BiquadState[] _bpA = new BiquadState[Bands];
+        readonly BiquadState[] _bpB = new BiquadState[Bands];
+        readonly BiquadState[] _bpC = new BiquadState[Bands];
+        readonly float[] _envA = new float[Bands];
+        readonly float[] _envB = new float[Bands];
+        readonly float[] _envC = new float[Bands];
+        float _envAtk, _envRel;
+
+        void InitVocoder()
+        {
+            for (int i = 0; i < Bands; i++)
+            {
+                _envA[i] = 0f; _envB[i] = 0f; _envC[i] = 0f;
+                _bpA[i] = default; _bpB[i] = default; _bpC[i] = default;
+            }
+        }
+        void SetupVocoderForSr(int sr)
+        {
+            for (int i = 0; i < Bands; i++)
+            {
+                SetBiquadBP(ref _bpA[i], sr, BandFreqs[i], 3.5f);
+                SetBiquadBP(ref _bpB[i], sr, BandFreqs[i], 3.5f);
+                SetBiquadBP(ref _bpC[i], sr, BandFreqs[i], 3.5f);
+            }
+            _envAtk = (float)Math.Exp(-1.0 / (0.005 * sr));   // 5 ms attack
+            _envRel = (float)Math.Exp(-1.0 / (0.060 * sr));   // 60 ms release
+        }
+
+        internal struct BiquadState { public float b0, b1, b2, a1, a2; public float x1, x2, y1, y2; }
+        static void SetBiquadBP(ref BiquadState s, int sr, float freq, float q)
+        {
+            if (freq < 20f) freq = 20f;
+            if (freq > sr * 0.45f) freq = sr * 0.45f;
+            double w0 = 2.0 * Math.PI * freq / sr;
+            double alpha = Math.Sin(w0) / (2.0 * q);
+            double cosw0 = Math.Cos(w0);
+            double a0 = 1.0 + alpha;
+            s.b0 = (float)(alpha / a0);
+            s.b1 = 0;
+            s.b2 = (float)(-alpha / a0);
+            s.a1 = (float)(-2.0 * cosw0 / a0);
+            s.a2 = (float)((1.0 - alpha) / a0);
+        }
+        static float BiquadProc(ref BiquadState s, float x)
+        {
+            float y = s.b0 * x + s.b1 * s.x1 + s.b2 * s.x2 - s.a1 * s.y1 - s.a2 * s.y2;
+            s.x2 = s.x1; s.x1 = x;
+            s.y2 = s.y1; s.y1 = y;
+            return y;
         }
 
         public bool HasEditor => true;
@@ -126,6 +196,7 @@ namespace KotonPluginInstrumentMorph
             _bufAR = new float[maxBlockSize];
             _bufBL = new float[maxBlockSize];
             _bufBR = new float[maxBlockSize];
+            SetupVocoderForSr(sampleRate);
             try { _a?.Prepare(sampleRate, maxBlockSize); } catch { }
             try { _b?.Prepare(sampleRate, maxBlockSize); } catch { }
         }
@@ -179,6 +250,7 @@ namespace KotonPluginInstrumentMorph
             }
 
             float baseMorph = (float)_morph.Value;
+            int mode = (int)Math.Round(_mode.Value);
             float lfoRate = (float)_lfoRate.Value;
             float lfoDepth = (float)_lfoDepth.Value;
             float envMorphAmount = (float)_envMorph.Value;
@@ -196,24 +268,62 @@ namespace KotonPluginInstrumentMorph
                     if (_lfoPhase >= 1.0) _lfoPhase -= 1.0;
                     lfo = (float)Math.Sin(_lfoPhase * 2.0 * Math.PI);
                 }
-                // Envelope note (decroit exp vers 0)
                 _envAmount *= _envDecay;
 
                 float m = baseMorph + lfo * lfoDepth * 0.5f + _envAmount * envMorphAmount * 0.5f;
                 if (m < 0f) m = 0f;
                 if (m > 1f) m = 1f;
 
-                // Lerp lineaire sample-par-sample : out = A*(1-m) + B*m — VRAI wave morph
-                // (au milieu m=0.5, A et B a 50% chacun ; contrairement au cos/sin equi-puissance
-                // qui donne 70%+70% et boost le milieu). Le "creux" au milieu = signature du morph.
                 float aL = _bufAL[i] * gainALin;
                 float aR = _bufAR[i] * gainALin;
                 float bL = _bufBL[i] * gainBLin;
                 float bR = _bufBR[i] * gainBLin;
-                float mixL = aL + (bL - aL) * m;
-                float mixR = aR + (bR - aR) * m;
-                float sL = mixL * outLin;
-                float sR = mixR * outLin;
+                float aMono = (aL + aR) * 0.5f;
+                float bMono = (bL + bR) * 0.5f;
+
+                float sL, sR;
+                if (mode == 0)
+                {
+                    // Mode Mix : lerp lineaire signaux (2 instruments qui se croisent en volume)
+                    float mixL = aL + (bL - aL) * m;
+                    float mixR = aR + (bR - aR) * m;
+                    sL = mixL * outLin;
+                    sR = mixR * outLin;
+                }
+                else
+                {
+                    // Mode Vocoder (spectral morph) : le carrier = mix, on remodele sa distribution
+                    // spectrale bande par bande avec les enveloppes de A et B interpolees. Au
+                    // milieu m=0.5, le signal a un timbre HYBRIDE (spectre intermediaire) plutot
+                    // qu'une superposition.
+                    float cMono = aMono + (bMono - aMono) * m;
+
+                    float voc = 0f;
+                    for (int b = 0; b < Bands; b++)
+                    {
+                        float aBand = BiquadProc(ref _bpA[b], aMono);
+                        float bBand = BiquadProc(ref _bpB[b], bMono);
+                        float cBand = BiquadProc(ref _bpC[b], cMono);
+
+                        // Env followers peak-hold : attaque rapide, release lent
+                        float absA = aBand < 0 ? -aBand : aBand;
+                        float absB = bBand < 0 ? -bBand : bBand;
+                        float absC = cBand < 0 ? -cBand : cBand;
+                        _envA[b] = absA > _envA[b] ? _envAtk * _envA[b] + (1 - _envAtk) * absA : _envRel * _envA[b] + (1 - _envRel) * absA;
+                        _envB[b] = absB > _envB[b] ? _envAtk * _envB[b] + (1 - _envAtk) * absB : _envRel * _envB[b] + (1 - _envRel) * absB;
+                        _envC[b] = absC > _envC[b] ? _envAtk * _envC[b] + (1 - _envAtk) * absC : _envRel * _envC[b] + (1 - _envRel) * absC;
+
+                        float envTarget = _envA[b] * (1 - m) + _envB[b] * m;
+                        float gain = envTarget / (_envC[b] + 1e-5f);
+                        if (gain > 6f) gain = 6f;
+                        voc += cBand * gain;
+                    }
+                    // Compensation gain global (les BP recouvrent, le vocoder est plutot chaud)
+                    voc *= 0.6f;
+                    sL = voc * outLin;
+                    sR = voc * outLin;
+                }
+
                 if (sL > 1f) sL = 1f; else if (sL < -1f) sL = -1f;
                 if (sR > 1f) sR = 1f; else if (sR < -1f) sR = -1f;
                 left[i] = sL;
@@ -221,8 +331,6 @@ namespace KotonPluginInstrumentMorph
 
                 // Peek pour l'editeur : sample mono (moyenne L+R) des 3 signaux (A pur, B pur, OUT)
                 // dans un ring buffer. Editeur snapshot a 30 Hz.
-                float aMono = (aL + aR) * 0.5f;
-                float bMono = (bL + bR) * 0.5f;
                 float oMono = (sL + sR) * 0.5f;
                 _peekA[_peekPos] = aMono;
                 _peekB[_peekPos] = bMono;
