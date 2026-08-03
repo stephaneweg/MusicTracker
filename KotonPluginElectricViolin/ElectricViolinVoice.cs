@@ -4,64 +4,74 @@ namespace KotonPluginElectricViolin
 {
     internal struct EvParams
     {
-        public float BowForce;
-        public float BowVelocity;
-        public float BowPosition;      // 0..0.5 → altère la couleur (via toneHz)
-        public float Damping;
-        public float VibratoRateHz;
+        public float BowForce;         // 0..1 → vélocité effective de l'archet → cutoff LP dynamique
+        public float BowVelocity;      // 0..1 → alimente aussi le LP cutoff (couleur)
+        public float BowPosition;      // 0..0.5 → altère le LP base cutoff (couleur du brillant)
+        public float Damping;          // 0..1 → contribue au sustain et à la vitesse de release
+        public float VibratoRateHz;    // 4.5..6.5 Hz typique
         public float VibratoDepthCents;
         public float TremoloRateHz;
         public float TremoloDepth;
-        public float BodyIntensity;    // 0..1 → mix des 3 formants caisse
-        public float Warmth;           // 0..1 → saturation tanh piezo
+        public float BodyIntensity;    // 0..1 → gain des 2 formants (600Hz + 3kHz)
+        public float Warmth;           // 0..1 → saturation tanh (arrondit la dent de scie)
         public float AttackSec;
         public float ReleaseSec;
         public float VolumeDb;
     }
 
     /// <summary>
-    /// Electric Violin — refonte v3 (2026-08-03).
+    /// Electric Violin v8 — refonte selon le brief DSP Gemini pour un son Zeta jazz fusion "charnu
+    /// crémeux". Abandon TOTAL des guides d'ondes (v1-v7) qui donnaient soit du bruit, soit un son
+    /// "souffle dans bouteille", soit un effet caverne. La vraie voie pour un violon électrique
+    /// (pas acoustique) : sawtooth propre + chaîne DSP de traitement.
     ///
-    /// Après 2 tentatives ratées (v1 MSW ad-hoc → bruit, v2 guide d'onde bidirectionnel + bowTable
-    /// Friedlander → "souffle dans bouteille", analysé par librosa : F0 instable, HNR 0.10,
-    /// spectrum 79% aigus) — je fork ici le code de KotonPluginBowedStrings qui SONNE proprement
-    /// (F0 stable, harmoniques entiers), et j'ajoute la coloration Zeta par-dessus :
+    /// **Chaîne** :
+    /// 1. Sawtooth anti-aliasé (PolyBLEP) à la fréquence de la note
+    /// 2. LP 24dB dynamique (cutoff = f(velocity, pression)) — harmoniques hautes quand on pousse
+    /// 3. Warm saturation tanh — arrondit les angles de la dent de scie ("crémeux")
+    /// 4. 2 formants EQ (peak +3dB à 600Hz corps, +2dB à 3kHz présence)
+    /// 5. Compressor simple (envelope follower + gain reduction rapide)
+    /// 6. LP final serré à 7kHz (élimine l'aspect "chirurgical/froid" du numérique)
+    /// 7. Vibrato avec DÉLAI de 200ms + fade-in de 100ms + FM + AM légère
     ///
-    /// 1. Guide d'onde 1 ligne (KS bowed classique, comme Bowed Strings)
-    /// 2. Excitation par bruit blanc filtré modulé par bowPressure × envelope × velocity
-    /// 3. LP moyen + LP variable dans la boucle (Damping, Tone via BowPosition)
-    /// 4. **3 formants biquad EN PARALLÈLE** sur la sortie (résonances de caisse : 300/700/2500 Hz).
-    ///    Parallèle = pas de feedback interne, spectre additif propre.
-    /// 5. **Saturation tanh Warmth** en sortie (simule le pickup piezo légèrement crunchy).
-    /// 6. Vibrato ample (~5 Hz, 15-25 cents typique).
-    /// 7. Tremolo optionnel en sortie.
-    ///
-    /// Résultat attendu : son de violon avec F0 stable (comme Bowed Strings), harmoniques riches
-    /// grâce à la friction du bruit filtré, mais coloré "Zeta jazz fusion" par les formants + piezo.
+    /// Justification Gemini : "Pour ce son Fusion bien lisse, un oscillateur de dent de scie filtré
+    /// dynamiquement donne un résultat plus propre et maîtrisé qu'un waveguide pur (qui sonne trop
+    /// acoustique)." → conclusion validée après 7 versions ratées de waveguide.
     /// </summary>
     internal sealed class ElectricViolinVoice
     {
         readonly int _sr;
-        readonly float[] _buffer;
-        int _writeIdx;
-        int _size;
 
-        float _lpPrev;
-        float _tonePrev;
-        float _bowNoisePrev;
-        Random _rng;
+        // === Oscillateur sawtooth (PolyBLEP) ===
+        double _phase;
+        double _phaseInc;
+        double _baseFreq;
 
-        // Vibrato + tremolo
-        float _vibPhase, _vibInc;
-        float _tremPhase, _tremInc;
-
-        // Body : 3 formants biquad EN PARALLÈLE (résonances caisse violon)
-        BiquadState _f1, _f2, _f3;
-
-        // Enveloppe
+        // === Envelope ===
         enum EnvStage { Idle, Attack, Sustain, Release }
         EnvStage _stage = EnvStage.Idle;
         float _env, _envAttackRate, _envReleaseRate;
+
+        // === Vibrato avec délai + fade-in ===
+        float _vibPhase;
+        float _vibInc;
+        int _vibDelaySamplesRemaining;   // 200 ms avant activation
+        float _vibFadeIn;                // 0..1, fade progressif sur 150 ms après le délai
+
+        // === Tremolo ===
+        float _tremPhase, _tremInc;
+
+        // === LP dynamique 24dB (2 biquads LP 12dB en cascade) ===
+        BiquadState _lpDyn1, _lpDyn2;
+
+        // === Formants (peak EQ à 600Hz et 3kHz) ===
+        BiquadState _formant1, _formant2;
+
+        // === LP final serré à 7 kHz ===
+        BiquadState _lpFinal;
+
+        // === Compressor simple ===
+        float _compEnv;   // envelope follower level
 
         bool _active;
         int _note;
@@ -76,42 +86,38 @@ namespace KotonPluginElectricViolin
         public ElectricViolinVoice(int sampleRate)
         {
             _sr = sampleRate;
-            _buffer = new float[Math.Max(sampleRate / 20, 4096)];
-            // Formants violon avec Q ATTENUES (2026-08-03 : v5 avait Q=6/5/4 → effet "caverne"
-            // avec pics etroits qui sur-resonnent). Q=2/1.8/1.5 = bandes plus larges qui simulent
-            // mieux la caisse continue d'un violon reel (pas des pics narrow-band).
-            SetBiquadBandpass(ref _f1, sampleRate, 300f, 2.0f);
-            SetBiquadBandpass(ref _f2, sampleRate, 700f, 1.8f);
-            SetBiquadBandpass(ref _f3, sampleRate, 2500f, 1.5f);
+            // Formants fixes (peak EQ +dB par défaut, gain moduble via BodyIntensity)
+            SetBiquadPeaking(ref _formant1, sampleRate, 600f, 2.0f, 4.0f);
+            SetBiquadPeaking(ref _formant2, sampleRate, 3000f, 2.5f, 3.0f);
+            SetBiquadLP(ref _lpFinal, sampleRate, 7000f, 0.707f);
         }
 
         public void NoteOn(int note, float velocity, in EvParams p)
         {
             _note = note;
             _velocity = velocity;
+            _baseFreq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
+            _phase = 0;
+            _phaseInc = _baseFreq / _sr;
 
-            double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            _size = Math.Max(4, Math.Min(_buffer.Length, (int)Math.Round(_sr / freq)));
+            _lpDyn1.ResetState(); _lpDyn2.ResetState();
+            _formant1.ResetState(); _formant2.ResetState();
+            _lpFinal.ResetState();
+            _compEnv = 0f;
 
-            Array.Clear(_buffer, 0, _size);
-            _writeIdx = 0;
-            _lpPrev = 0f;
-            _tonePrev = 0f;
-            _bowNoisePrev = 0f;
-            _f1.ResetState(); _f2.ResetState(); _f3.ResetState();
-
-            _rng = new Random(note * 7919 + Environment.TickCount);
-            // Vibrato phase = 0 (au lieu de random) : les voix successives sont synchronisees
-            // → son SOLO focalise au lieu de l'effet 'ensemble' quand vibratos desynchronises.
+            // Vibrato : délai 200ms + fade-in 150ms
+            _vibDelaySamplesRemaining = (int)(0.2 * _sr);
+            _vibFadeIn = 0f;
             _vibPhase = 0f;
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
             _tremPhase = 0f;
             _tremInc = (float)(2 * Math.PI * p.TremoloRateHz / _sr);
 
-            float attackSamples = Math.Max(1f, p.AttackSec * _sr);
-            _envAttackRate = 1f / attackSamples;
-            float releaseSamples = Math.Max(1f, p.ReleaseSec * _sr);
-            _envReleaseRate = 1f / releaseSamples;
+            // Attack : 15-50 ms selon param (borne inférieure à 15ms pour éviter le "click")
+            float attackSec = Math.Max(0.015f, p.AttackSec);
+            _envAttackRate = 1f / (attackSec * _sr);
+            float releaseSec = Math.Max(0.02f, p.ReleaseSec);
+            _envReleaseRate = 1f / (releaseSec * _sr);
             _env = 0f;
             _stage = EnvStage.Attack;
 
@@ -130,14 +136,13 @@ namespace KotonPluginElectricViolin
             _stage = EnvStage.Idle;
             _env = 0f;
             _peakEnvelope = 0f;
-            Array.Clear(_buffer, 0, _buffer.Length);
         }
 
         public float RenderSample(in EvParams p)
         {
             if (!_active) return 0f;
 
-            // Enveloppe
+            // --- Envelope ---
             switch (_stage)
             {
                 case EnvStage.Attack:
@@ -150,79 +155,103 @@ namespace KotonPluginElectricViolin
                     break;
             }
 
-            // Vibrato : longueur de délai modulée
-            _vibPhase += _vibInc;
-            if (_vibPhase > 2 * Math.PI) _vibPhase -= (float)(2 * Math.PI);
-            float vibCents = (float)Math.Sin(_vibPhase) * p.VibratoDepthCents;
-            float sizeVib = _size / (float)Math.Pow(2.0, vibCents / 1200.0);
-            int sizeI = (int)sizeVib;
-            if (sizeI < 4) sizeI = 4;
-            if (sizeI > _size) sizeI = _size;
+            // --- Vibrato dynamique avec délai + fade-in ---
+            float vibMod = 0f;
+            if (_vibDelaySamplesRemaining > 0)
+            {
+                _vibDelaySamplesRemaining--;
+            }
+            else
+            {
+                // Fade-in sur ~150 ms après le délai
+                _vibFadeIn += 1f / (0.15f * _sr);
+                if (_vibFadeIn > 1f) _vibFadeIn = 1f;
+                _vibPhase += _vibInc;
+                if (_vibPhase > 2 * Math.PI) _vibPhase -= (float)(2 * Math.PI);
+                vibMod = (float)Math.Sin(_vibPhase) * p.VibratoDepthCents * _vibFadeIn;
+            }
 
-            // Excitation par archet : bruit blanc filtré modulé par bow pressure × env × velocity
-            // BowVelocity contrôle la brillance du bruit (dur = bruit brut, doux = LP fort).
-            // Fix 2026-08-03 : bruit reduit (0.5→0.18) + LP plus fort pour eliminer le "frottement
-            // d'archet" audible rapporte par l'user. Le bruit reste juste assez pour amorcer et
-            // colorer les harmoniques, sans etre le composant dominant.
-            float noise = (float)(_rng.NextDouble() * 2.0 - 1.0);
-            float alphaSmooth = 0.015f + (1f - p.BowVelocity) * 0.15f;   // LP tres agressif → bruit tres filtre
-            _bowNoisePrev += alphaSmooth * (noise - _bowNoisePrev);
-            float bowInj = _bowNoisePrev * p.BowForce * _env * _velocity * 0.18f;   // niveau divise par ~3
+            // Fréquence effective (vibrato FM)
+            double effFreq = _baseFreq * Math.Pow(2.0, vibMod / 1200.0);
+            _phaseInc = effFreq / _sr;
 
-            // Lecture au bout de la ligne à retard
-            int readIdx = _writeIdx - sizeI;
-            while (readIdx < 0) readIdx += _size;
-            float sample = _buffer[readIdx];
+            // --- 1) OSCILLATEUR SAWTOOTH (PolyBLEP anti-aliasé) ---
+            float saw = (float)(2.0 * _phase - 1.0);
+            // PolyBLEP correction aux points de discontinuité (wrap-around)
+            double dt = _phaseInc;
+            if (_phase < dt)
+            {
+                double t = _phase / dt;
+                saw -= (float)(t + t - t * t - 1.0);
+            }
+            else if (_phase > 1.0 - dt)
+            {
+                double t = (_phase - 1.0) / dt;
+                saw -= (float)(t * t + t + t + 1.0);
+            }
+            _phase += _phaseInc;
+            if (_phase >= 1.0) _phase -= 1.0;
 
-            // 1) LP moyen tilt classique KS
-            float lp = 0.5f * (sample + _lpPrev);
-            _lpPrev = sample;
+            // Amplitude modulation légère (AM du vibrato) — 5% de depth quand vibrato pleine
+            float amMod = 1f - 0.05f * _vibFadeIn * (float)Math.Sin(_vibPhase);
+            saw *= amMod * _env * _velocity;
 
-            // 2) LP variable "tone" : BowPosition contrôle le cutoff.
-            //    Bow position 0.05 (près chevalet) = très brillant (8kHz)
-            //    Bow position 0.5 (sultasto, près touche) = feutré (500Hz)
-            float toneHz = 500f + (0.5f - p.BowPosition) * 15000f;   // range 500..8000 Hz
-            if (toneHz < 200f) toneHz = 200f;
-            if (toneHz > 8000f) toneHz = 8000f;
-            float toneCoef = 1f - (float)Math.Exp(-2.0 * Math.PI * toneHz / _sr);
-            _tonePrev += toneCoef * (lp - _tonePrev);
-            float toned = _tonePrev;
+            // --- 2) LP DYNAMIQUE 24dB (cascade 2 biquads LP 12dB) ---
+            // Cutoff = f(velocity, BowForce, BowPosition)
+            //   base 1500 Hz, monte jusqu'à 6000 Hz avec BowForce+Velocity
+            //   BowPosition module : chevalet (0) = plus brillant, sultasto (0.5) = plus feutré
+            float dynCutoff = 1500f
+                            + p.BowForce * _velocity * 4000f
+                            + (0.5f - p.BowPosition) * 2000f;
+            if (dynCutoff < 400f) dynCutoff = 400f;
+            if (dynCutoff > 7000f) dynCutoff = 7000f;
+            SetBiquadLP(ref _lpDyn1, _sr, dynCutoff, 0.707f);
+            SetBiquadLP(ref _lpDyn2, _sr, dynCutoff, 0.707f);
+            float lp1 = BiquadProcess(ref _lpDyn1, saw);
+            float lp2 = BiquadProcess(ref _lpDyn2, lp1);
+            float filtered = lp2;
 
-            // 3) Feedback atténué (comme Bowed Strings) — damping contrôle la couleur/brillance résiduelle
-            float gBase = 0.996f - p.Damping * 0.045f;
-            float gEff = (float)Math.Pow(gBase, sizeI / 1000.0);
-            float outValue = toned * gEff + bowInj;
+            // --- 3) WARM SATURATION (tanh) — arrondit la dent de scie ---
+            float driven = filtered * (1f + p.Warmth * 2f);
+            float saturated = (float)Math.Tanh(driven) * (1f / (1f + p.Warmth * 0.8f));
 
-            _buffer[_writeIdx] = outValue;
-            _writeIdx++;
-            if (_writeIdx >= _size) _writeIdx = 0;
+            // --- 4) FORMANTS (peak EQ à 600 Hz + 3 kHz) ---
+            // Les formants sont EN PARALLÈLE additifs, contrôlés par BodyIntensity
+            float form1 = BiquadProcess(ref _formant1, saturated);
+            float form2 = BiquadProcess(ref _formant2, saturated);
+            float withFormants = saturated + (form1 * 0.3f + form2 * 0.25f) * p.BodyIntensity;
+            withFormants *= 1f / (1f + p.BodyIntensity * 0.35f);   // norm légère
 
-            // === POST-PROCESSING (coloration Zeta) ===
-            // Signal source pour le body = sample tap (le signal "propre" qui sort de la ligne)
-            float bodyIn = sample;
+            // --- 5) COMPRESSOR SIMPLE (envelope follower + gain reduction) ---
+            //   Attack ~5ms, release ~80ms, ratio ~3:1, threshold -12dB (0.25)
+            float absSig = Math.Abs(withFormants);
+            float envAttack = 1f - (float)Math.Exp(-1.0 / (0.005 * _sr));
+            float envRelease = 1f - (float)Math.Exp(-1.0 / (0.080 * _sr));
+            float envRate = absSig > _compEnv ? envAttack : envRelease;
+            _compEnv += envRate * (absSig - _compEnv);
+            float compGain = 1f;
+            if (_compEnv > 0.25f)
+            {
+                float excess = _compEnv - 0.25f;
+                float reduction = excess * (1f - 1f / 3f);   // ratio 3:1
+                compGain = (0.25f + (_compEnv - reduction * 3f)) / _compEnv;
+                if (compGain > 1f) compGain = 1f;
+                if (compGain < 0.3f) compGain = 0.3f;
+            }
+            float compressed = withFormants * compGain * 1.15f;   // makeup léger
 
-            // 3 formants EN PARALLÈLE (pas en série) — additifs sur le dry.
-            // Gains reduits (2026-08-03) : 0.6/0.5/0.4 → 0.3/0.25/0.2 pour attenuer l'effet
-            // "caverne resonante" rapporte par l'user.
-            float f1Out = BiquadProcess(ref _f1, bodyIn);
-            float f2Out = BiquadProcess(ref _f2, bodyIn);
-            float f3Out = BiquadProcess(ref _f3, bodyIn);
-            float bodyOut = bodyIn + (f1Out * 0.3f + f2Out * 0.25f + f3Out * 0.2f) * p.BodyIntensity;
-            bodyOut *= 1f / (1f + p.BodyIntensity * 0.4f);   // norm plus legere
+            // --- 6) LP FINAL 7 kHz (élimine "froid numérique") ---
+            float final = BiquadProcess(ref _lpFinal, compressed);
 
-            // Warmth : saturation tanh compensée (pickup piezo crunchy)
-            float driven = bodyOut * (1f + p.Warmth * 2.5f);
-            float saturated = (float)Math.Tanh(driven);
-
-            // Tremolo LFO en sortie (subtil)
+            // --- 7) TREMOLO en sortie (subtil) ---
             _tremPhase += _tremInc;
             if (_tremPhase > 2 * Math.PI) _tremPhase -= (float)(2 * Math.PI);
-            float trem = 1f - p.TremoloDepth * 0.4f * (1f - (float)Math.Cos(_tremPhase));
+            float trem = 1f - p.TremoloDepth * 0.3f * (1f - (float)Math.Cos(_tremPhase));
 
-            float finalOut = saturated * trem;
+            float outSignal = final * trem * 0.6f;   // 0.6 marge anti-clip finale
 
-            // Silence detection basée sur le tap brut (comme Bowed Strings)
-            float absOut = Math.Abs(outValue);
+            // Silence detection
+            float absOut = Math.Abs(outSignal);
             _peakEnvelope = Math.Max(_peakEnvelope * 0.9998f, absOut);
             if (_stage == EnvStage.Release && _env <= 0f && _peakEnvelope < SilenceThreshold)
             {
@@ -231,27 +260,42 @@ namespace KotonPluginElectricViolin
                 return 0f;
             }
 
-            return finalOut;
+            return outSignal;
         }
 
-        // === Biquad bandpass RBJ ===
+        // === Biquad LP (RBJ cookbook) ===
         internal struct BiquadState
         {
             public float b0, b1, b2, a1, a2;
             public float x1, x2, y1, y2;
             public void ResetState() { x1 = x2 = y1 = y2 = 0f; }
         }
-        static void SetBiquadBandpass(ref BiquadState s, int sr, float freq, float q)
+        static void SetBiquadLP(ref BiquadState s, int sr, float freq, float q)
         {
+            if (freq < 20f) freq = 20f;
+            if (freq > sr * 0.45f) freq = sr * 0.45f;
             double w0 = 2.0 * Math.PI * freq / sr;
             double alpha = Math.Sin(w0) / (2.0 * q);
             double cosw0 = Math.Cos(w0);
             double a0 = 1.0 + alpha;
-            s.b0 = (float)(alpha / a0);
-            s.b1 = 0f;
-            s.b2 = (float)(-alpha / a0);
+            s.b0 = (float)((1.0 - cosw0) / 2.0 / a0);
+            s.b1 = (float)((1.0 - cosw0) / a0);
+            s.b2 = s.b0;
             s.a1 = (float)(-2.0 * cosw0 / a0);
             s.a2 = (float)((1.0 - alpha) / a0);
+        }
+        static void SetBiquadPeaking(ref BiquadState s, int sr, float freq, float q, float gainDb)
+        {
+            double A = Math.Pow(10.0, gainDb / 40.0);
+            double w0 = 2.0 * Math.PI * freq / sr;
+            double alpha = Math.Sin(w0) / (2.0 * q);
+            double cosw0 = Math.Cos(w0);
+            double a0 = 1.0 + alpha / A;
+            s.b0 = (float)((1.0 + alpha * A) / a0);
+            s.b1 = (float)(-2.0 * cosw0 / a0);
+            s.b2 = (float)((1.0 - alpha * A) / a0);
+            s.a1 = (float)(-2.0 * cosw0 / a0);
+            s.a2 = (float)((1.0 - alpha / A) / a0);
         }
         static float BiquadProcess(ref BiquadState s, float x)
         {
