@@ -64,6 +64,14 @@ namespace KotonPluginInstrumentMorph
         // Buffers reutilises pour le rendu A / B avant crossfade
         float[] _bufAL, _bufAR, _bufBL, _bufBR;
 
+        // Peek buffers ring pour l'affichage 3 ondes en temps reel (A / B / OUT). Circulaire de
+        // PeekSize samples ~46 ms a 44.1kHz — l'editeur snapshot a 30 Hz.
+        const int PeekSize = 2048;
+        readonly float[] _peekA = new float[PeekSize];
+        readonly float[] _peekB = new float[PeekSize];
+        readonly float[] _peekOut = new float[PeekSize];
+        int _peekPos;
+
         // Etat de la modulation
         double _lfoPhase;
         // Envelope de morph par-note : declenche au NoteOn, atteint 0 (destination = morph nominal)
@@ -195,16 +203,31 @@ namespace KotonPluginInstrumentMorph
                 if (m < 0f) m = 0f;
                 if (m > 1f) m = 1f;
 
-                // Crossfade equi-puissance cos/sin
-                float gA = (float)Math.Cos(m * Math.PI * 0.5) * gainALin;
-                float gB = (float)Math.Sin(m * Math.PI * 0.5) * gainBLin;
-
-                float sL = (_bufAL[i] * gA + _bufBL[i] * gB) * outLin;
-                float sR = (_bufAR[i] * gA + _bufBR[i] * gB) * outLin;
+                // Lerp lineaire sample-par-sample : out = A*(1-m) + B*m — VRAI wave morph
+                // (au milieu m=0.5, A et B a 50% chacun ; contrairement au cos/sin equi-puissance
+                // qui donne 70%+70% et boost le milieu). Le "creux" au milieu = signature du morph.
+                float aL = _bufAL[i] * gainALin;
+                float aR = _bufAR[i] * gainALin;
+                float bL = _bufBL[i] * gainBLin;
+                float bR = _bufBR[i] * gainBLin;
+                float mixL = aL + (bL - aL) * m;
+                float mixR = aR + (bR - aR) * m;
+                float sL = mixL * outLin;
+                float sR = mixR * outLin;
                 if (sL > 1f) sL = 1f; else if (sL < -1f) sL = -1f;
                 if (sR > 1f) sR = 1f; else if (sR < -1f) sR = -1f;
                 left[i] = sL;
                 right[i] = sR;
+
+                // Peek pour l'editeur : sample mono (moyenne L+R) des 3 signaux (A pur, B pur, OUT)
+                // dans un ring buffer. Editeur snapshot a 30 Hz.
+                float aMono = (aL + aR) * 0.5f;
+                float bMono = (bL + bR) * 0.5f;
+                float oMono = (sL + sR) * 0.5f;
+                _peekA[_peekPos] = aMono;
+                _peekB[_peekPos] = bMono;
+                _peekOut[_peekPos] = oMono;
+                _peekPos = (_peekPos + 1) % PeekSize;
             }
         }
 
@@ -267,5 +290,23 @@ namespace KotonPluginInstrumentMorph
             try { if (_a != null) { var s = _a.SaveState(); _stateA = s != null && s.Length > 0 ? Encoding.UTF8.GetString(s) : null; } } catch { }
             try { if (_b != null) { var s = _b.SaveState(); _stateB = s != null && s.Length > 0 ? Encoding.UTF8.GetString(s) : null; } } catch { }
         }
+
+        /// <summary>Snapshot des 3 ring-buffers de peek (A/B/OUT) dans les tableaux fournis
+        /// (allocation-free : l'appelant reutilise les buffers a travers les frames). Les samples
+        /// sont ordonnes chronologiquement (les plus vieux au debut, plus recent a la fin). Appele
+        /// par l'editeur a 30 Hz — coût = 3 copies de 2048 floats.</summary>
+        public void SnapshotPeek(float[] outA, float[] outB, float[] outMix)
+        {
+            if (outA == null || outA.Length != PeekSize) return;
+            int start = _peekPos;   // le prochain slot a ecrire = le plus vieux
+            for (int i = 0; i < PeekSize; i++)
+            {
+                int src = (start + i) % PeekSize;
+                outA[i] = _peekA[src];
+                outB[i] = _peekB[src];
+                outMix[i] = _peekOut[src];
+            }
+        }
+        public int PeekBufferSize => PeekSize;
     }
 }

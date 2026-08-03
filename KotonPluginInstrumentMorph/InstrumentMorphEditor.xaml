@@ -13,13 +13,32 @@
     <Border BorderThickness="0" Padding="16">
         <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="120"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Header + selection A/B -->
+            <!-- Scope 3 ondes : A | resultante | B (WaveDisplayControl branches en code-behind) -->
             <Grid Grid.Row="0" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="1.4*"/><ColumnDefinition Width="8"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="14"/><RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="A" HorizontalAlignment="Center" Foreground="{DynamicResource KotonAccent}" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="MORPH" HorizontalAlignment="Center" Foreground="{DynamicResource KotonAccent}" FontSize="10" FontWeight="Bold"/>
+                <TextBlock Grid.Row="0" Grid.Column="4" Text="B" HorizontalAlignment="Center" Foreground="{DynamicResource KotonAccent}" FontSize="10" FontWeight="Bold"/>
+                <Border Grid.Row="1" Grid.Column="0" x:Name="WaveAHost" Background="{DynamicResource KotonPanel}" BorderBrush="{DynamicResource KotonBorder}" BorderThickness="1" CornerRadius="3"/>
+                <Border Grid.Row="1" Grid.Column="2" x:Name="WaveOutHost" Background="{DynamicResource KotonPanelHi}" BorderBrush="{DynamicResource KotonAccent}" BorderThickness="1.5" CornerRadius="3"/>
+                <Border Grid.Row="1" Grid.Column="4" x:Name="WaveBHost" Background="{DynamicResource KotonPanel}" BorderBrush="{DynamicResource KotonBorder}" BorderThickness="1" CornerRadius="3"/>
+            </Grid>
+
+            <!-- Header + selection A/B -->
+            <Grid Grid.Row="1" Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="60"/>
                     <ColumnDefinition Width="*"/>
@@ -46,7 +65,7 @@
             </Grid>
 
             <!-- Grande zone Morph -->
-            <Border Grid.Row="1" Background="{DynamicResource KotonPanel}" BorderBrush="{DynamicResource KotonBorder}"
+            <Border Grid.Row="2" Background="{DynamicResource KotonPanel}" BorderBrush="{DynamicResource KotonBorder}"
                     BorderThickness="1" CornerRadius="4" Padding="16,12" Margin="0,0,0,14">
                 <StackPanel>
                     <TextBlock Text="MORPH  A ← → B" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" HorizontalAlignment="Center" FontSize="12"/>
@@ -56,7 +75,7 @@
             </Border>
 
             <!-- Bas : Modulation + Volume -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="3">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="16"/>

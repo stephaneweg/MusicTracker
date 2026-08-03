@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Threading;
 using KotonStudio.Library;
 
 namespace KotonPluginInstrumentMorph
@@ -10,6 +12,12 @@ namespace KotonPluginInstrumentMorph
     {
         readonly InstrumentMorphPlugin _plugin;
         bool _syncing, _loading = true;
+
+        readonly WaveDisplayControl _waveA = new WaveDisplayControl();
+        readonly WaveDisplayControl _waveB = new WaveDisplayControl();
+        readonly WaveDisplayControl _waveOut = new WaveDisplayControl();
+        readonly DispatcherTimer _scopeTimer;
+        readonly float[] _snapA, _snapB, _snapOut;
 
         // Items du dropdown : on stocke KotonInstrumentDescriptor pour recuperer l'Id sur SelectionChanged.
         // Un item "— aucun —" en tete permet de laisser le canal muet.
@@ -24,6 +32,22 @@ namespace KotonPluginInstrumentMorph
         {
             _plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));
             InitializeComponent();
+
+            // Wave scope (3 vues) : instancie WaveDisplayControl et embed dans les 3 Border hosts.
+            _waveA.SetColor(Color.FromRgb(0x1F, 0xB6, 0xC3));                       // teal Koton
+            _waveB.SetColor(Color.FromRgb(0xE8, 0x9A, 0x3C));                       // orange complementaire
+            _waveOut.SetColor(Color.FromRgb(0xFF, 0xFF, 0xFF));                      // blanc = resultante
+            WaveAHost.Child = _waveA;
+            WaveBHost.Child = _waveB;
+            WaveOutHost.Child = _waveOut;
+
+            int n = _plugin.PeekBufferSize;
+            _snapA = new float[n]; _snapB = new float[n]; _snapOut = new float[n];
+
+            _scopeTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
+            _scopeTimer.Tick += (s, e) => RefreshScope();
+            Loaded += (s, e) => _scopeTimer.Start();
+            Unloaded += (s, e) => _scopeTimer.Stop();
 
             PopulateInstrumentCombos();
 
@@ -138,6 +162,14 @@ namespace KotonPluginInstrumentMorph
             };
             w.Closed += (s, ev) => { try { _plugin.CaptureChildStates(); } catch { } };
             w.Show();
+        }
+
+        void RefreshScope()
+        {
+            try { _plugin.SnapshotPeek(_snapA, _snapB, _snapOut); } catch { return; }
+            _waveA.SetSamples(_snapA);
+            _waveB.SetSamples(_snapB);
+            _waveOut.SetSamples(_snapOut);
         }
 
         public void OnContextUpdated(KotonRenderContext ctx) { }
