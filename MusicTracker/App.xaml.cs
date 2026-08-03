@@ -53,6 +53,20 @@ namespace MusicTracker
             }
             catch { /* le scan est protégé en interne ; ce catch = filet ultime */ }
 
+            // Cable les callbacks "listage / instanciation d'instrument" — utilises par les plugins
+            // qui utilisent d'autres instruments Koton en source (InstrumentMorph). Le registre live
+            // dans MusicTracker donc on passe par ces delegates pour eviter que le SDK y ait acces.
+            KotonStudio.Library.KotonHost.ListInstruments = () =>
+            {
+                var lst = new List<KotonStudio.Library.KotonInstrumentDescriptor>();
+                foreach (var i in Engine.Timeline.Effects.KotonPluginRegistry.Instruments)
+                    lst.Add(new KotonStudio.Library.KotonInstrumentDescriptor {
+                        Id = i.Id, DisplayName = i.DisplayName, Category = i.Category });
+                return lst;
+            };
+            KotonStudio.Library.KotonHost.InstantiateInstrument = id =>
+                Engine.Timeline.Effects.KotonPluginRegistry.InstantiateInstrument(id);
+
             base.OnStartup(e);
         }
     }

@@ -1,0 +1,108 @@
+<UserControl x:Class="KotonPluginInstrumentMorph.InstrumentMorphEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="620" MinHeight="360"
+             Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border BorderThickness="0" Padding="16">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Header + selection A/B -->
+            <Grid Grid.Row="0" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="A :" VerticalAlignment="Center" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                <ComboBox Grid.Row="0" Grid.Column="1" x:Name="ComboA" SelectionChanged="ComboA_SelectionChanged" Margin="0,0,10,4"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Gain A" VerticalAlignment="Center" Foreground="{DynamicResource KotonTextDim}" Margin="0,0,4,4" FontSize="10"/>
+                <Slider Grid.Row="0" Grid.Column="3" x:Name="GainASlider" Minimum="-12" Maximum="12" TickFrequency="1" Margin="0,0,6,4"/>
+                <Button Grid.Row="0" Grid.Column="4" Content="Éditer A…" x:Name="EditABtn" Click="EditA_Click" Margin="0,0,0,4" Padding="8,2"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="B :" VerticalAlignment="Center" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" x:Name="ComboB" SelectionChanged="ComboB_SelectionChanged" Margin="0,0,10,0"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="Gain B" VerticalAlignment="Center" Foreground="{DynamicResource KotonTextDim}" Margin="0,0,4,0" FontSize="10"/>
+                <Slider Grid.Row="1" Grid.Column="3" x:Name="GainBSlider" Minimum="-12" Maximum="12" TickFrequency="1" Margin="0,0,6,0"/>
+                <Button Grid.Row="1" Grid.Column="4" Content="Éditer B…" x:Name="EditBBtn" Click="EditB_Click" Padding="8,2"/>
+            </Grid>
+
+            <!-- Grande zone Morph -->
+            <Border Grid.Row="1" Background="{DynamicResource KotonPanel}" BorderBrush="{DynamicResource KotonBorder}"
+                    BorderThickness="1" CornerRadius="4" Padding="16,12" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="MORPH  A ← → B" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" HorizontalAlignment="Center" FontSize="12"/>
+                    <Slider x:Name="MorphSlider" Minimum="0" Maximum="1" TickFrequency="0.02" Margin="0,4,0,0"/>
+                    <TextBlock x:Name="MorphValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Bas : Modulation + Volume -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="LFO rate (Hz)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="LfoRateSlider" Minimum="0" Maximum="12" TickFrequency="0.25"/>
+                    <TextBlock x:Name="LfoRateValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="LFO depth" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="LfoDepthSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="LfoDepthValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/>
+                    <TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Env morph (offset)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="EnvMorphSlider" Minimum="-1" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="EnvMorphValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Env time (ms)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="EnvMsSlider" Minimum="10" Maximum="5000" TickFrequency="50"/>
+                    <TextBlock x:Name="EnvMsValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <TextBlock Grid.Row="1" Grid.Column="4" TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource KotonTextLo}"
+                           Text="Env morph = offset au démarrage de chaque note qui décroit vers 0 sur Env time. Utile pour un morph d'attaque (ex: violon → flûte pendant l'attaque)."/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" TextWrapping="Wrap" Margin="0,8,0,0"
+                           FontStyle="Italic" FontSize="10" Foreground="{DynamicResource KotonTextLo}"
+                           Text="Chaque instrument garde ses propres presets et paramètres. Utilise « Éditer A/B… » pour ouvrir leur éditeur natif. Les modifs sont sauvegardées avec le projet."/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

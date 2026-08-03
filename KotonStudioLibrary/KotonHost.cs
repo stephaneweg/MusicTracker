@@ -98,5 +98,25 @@ namespace KotonStudio.Library
         /// **null-safety** : <c>null</c> tant que l'hôte ne l'a pas câblé. Un plugin qui n'a pas
         /// d'hôte (test isolé) doit tester ; sinon un simple <c>?.Invoke</c> suffit.</summary>
         public static Action<Exception, string> ReportException { get; set; }
+
+        /// <summary>Enumère les instruments Koton disponibles (id + display name), pour peupler un
+        /// combo box dans un plugin qui EN UTILISE d'autres — typiquement InstrumentMorph qui
+        /// morphe entre 2 sorties d'instrument. L'hôte le câble au KotonPluginRegistry ; le plugin
+        /// s'auto-exclut de la liste s'il ne veut pas se référencer lui-même (récursion).</summary>
+        public static Func<IEnumerable<KotonInstrumentDescriptor>> ListInstruments { get; set; }
+
+        /// <summary>Instancie un instrument par son Id (une nouvelle instance à chaque appel).
+        /// Retourne <c>null</c> si l'id est inconnu ou si le constructeur du plugin jette. L'hôte
+        /// délègue à KotonPluginRegistry.InstantiateInstrument.</summary>
+        public static Func<string, IKotonInstrument> InstantiateInstrument { get; set; }
+    }
+
+    /// <summary>Descripteur léger d'un instrument Koton exposé au plugin via <see cref="KotonHost.ListInstruments"/>.
+    /// Version light de KotonInstrumentInfo (qui vit côté host et contient une Type qu'un plugin n'a pas besoin de voir).</summary>
+    public sealed class KotonInstrumentDescriptor
+    {
+        public string Id { get; set; }
+        public string DisplayName { get; set; }
+        public string Category { get; set; }
     }
 }
