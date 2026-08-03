@@ -24,6 +24,7 @@ namespace KotonPluginCaveReverb
             Wire(PreDelaySlider,    PreDelayValue,    "pre_delay",    v => v.ToString("F0") + " ms");
             Wire(DripAmountSlider,  DripAmountValue,  "drip_amount",  v => v.ToString("F2"));
             Wire(DripPitchSlider,   DripPitchValue,   "drip_pitch",   v => v.ToString("F2"));
+            Wire(DripVolumeSlider,  DripVolumeValue,  "drip_volume",  v => v.ToString("F2") + "x");
             Wire(StereoWidthSlider, StereoWidthValue, "stereo_width", v => v.ToString("F2"));
             Wire(MixSlider,         MixValue,         "mix",          v => v.ToString("F2"));
             Wire(OutGainSlider,     OutGainValue,     "out_gain",     v => v.ToString("F1") + " dB");
@@ -56,6 +57,7 @@ namespace KotonPluginCaveReverb
                     case "pre_delay":    PreDelaySlider.Value    = kp.Value; PreDelayValue.Text    = kp.Value.ToString("F0") + " ms"; break;
                     case "drip_amount":  DripAmountSlider.Value  = kp.Value; DripAmountValue.Text  = kp.Value.ToString("F2"); break;
                     case "drip_pitch":   DripPitchSlider.Value   = kp.Value; DripPitchValue.Text   = kp.Value.ToString("F2"); break;
+                    case "drip_volume":  DripVolumeSlider.Value  = kp.Value; DripVolumeValue.Text  = kp.Value.ToString("F2") + "x"; break;
                     case "stereo_width": StereoWidthSlider.Value = kp.Value; StereoWidthValue.Text = kp.Value.ToString("F2"); break;
                     case "mix":          MixSlider.Value         = kp.Value; MixValue.Text         = kp.Value.ToString("F2"); break;
                     case "out_gain":     OutGainSlider.Value     = kp.Value; OutGainValue.Text     = kp.Value.ToString("F1") + " dB"; break;

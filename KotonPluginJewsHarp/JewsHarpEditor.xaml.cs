@@ -20,6 +20,7 @@ namespace KotonPluginJewsHarp
             Wire(LameFreqSlider, LameFreqValue, "lame_freq", v => v.ToString("F0") + " Hz");
             Wire(LameDecaySlider, LameDecayValue, "lame_decay", v => v.ToString("F2"));
             Wire(TwangSlider, TwangValue, "twang", v => v.ToString("F2"));
+            Wire(SpringSlider, SpringValue, "spring", v => v.ToString("F2"));
             Wire(FormantQSlider, FormantQValue, "formant_q", v => v.ToString("F1"));
             Wire(FormantMinSlider, FormantMinValue, "formant_min", v => v.ToString("F0") + " Hz");
             Wire(FormantMaxSlider, FormantMaxValue, "formant_max", v => v.ToString("F0") + " Hz");
@@ -47,6 +48,7 @@ namespace KotonPluginJewsHarp
                     case "lame_freq": LameFreqSlider.Value = kp.Value; LameFreqValue.Text = kp.Value.ToString("F0") + " Hz"; break;
                     case "lame_decay": LameDecaySlider.Value = kp.Value; LameDecayValue.Text = kp.Value.ToString("F2"); break;
                     case "twang": TwangSlider.Value = kp.Value; TwangValue.Text = kp.Value.ToString("F2"); break;
+                    case "spring": SpringSlider.Value = kp.Value; SpringValue.Text = kp.Value.ToString("F2"); break;
                     case "formant_q": FormantQSlider.Value = kp.Value; FormantQValue.Text = kp.Value.ToString("F1"); break;
                     case "formant_min": FormantMinSlider.Value = kp.Value; FormantMinValue.Text = kp.Value.ToString("F0") + " Hz"; break;
                     case "formant_max": FormantMaxSlider.Value = kp.Value; FormantMaxValue.Text = kp.Value.ToString("F0") + " Hz"; break;

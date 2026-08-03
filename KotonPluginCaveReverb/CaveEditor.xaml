@@ -32,7 +32,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
@@ -70,6 +70,11 @@
                     <TextBlock Text="Drip pitch" Foreground="{DynamicResource KotonText}"/>
                     <Slider x:Name="DripPitchSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
                     <TextBlock x:Name="DripPitchValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Drip volume (×)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="DripVolumeSlider" Minimum="0" Maximum="2" TickFrequency="0.1"/>
+                    <TextBlock x:Name="DripVolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
 
                 <StackPanel Grid.Row="0" Grid.Column="4" Margin="0,0,0,10">

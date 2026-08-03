@@ -38,6 +38,7 @@ namespace KotonPluginJewsHarp
         readonly KotonParameter _lameFreq    = new KotonParameter("lame_freq",    "Lame frequency", 60.0, 300.0, 130.0, "Hz");
         readonly KotonParameter _lameDecay   = new KotonParameter("lame_decay",   "Lame decay",     0.0, 1.0, 0.55);
         readonly KotonParameter _twang       = new KotonParameter("twang",        "Twang (impact)", 0.0, 1.0, 0.65);
+        readonly KotonParameter _spring      = new KotonParameter("spring",       "Spring (ressort)", 0.0, 1.0, 0.55);
         readonly KotonParameter _formantQ    = new KotonParameter("formant_q",    "Formant Q",      2.0, 20.0, 10.0);
         readonly KotonParameter _formantMin  = new KotonParameter("formant_min",  "Formant min (C2)", 200.0, 800.0, 400.0, "Hz");
         readonly KotonParameter _formantMax  = new KotonParameter("formant_max",  "Formant max (C6)", 1500.0, 5000.0, 3500.0, "Hz");
@@ -56,7 +57,7 @@ namespace KotonPluginJewsHarp
         public JewsHarpPlugin()
         {
             _params = new List<KotonParameter> {
-                _lameFreq, _lameDecay, _twang, _formantQ, _formantMin, _formantMax,
+                _lameFreq, _lameDecay, _twang, _spring, _formantQ, _formantMin, _formantMax,
                 _breath, _brightness, _volumeDb,
             };
         }
@@ -89,12 +90,18 @@ namespace KotonPluginJewsHarp
                 target.Kill();
             }
 
-            // Note MIDI → position du formant (mapping linéaire C2=36 → formantMin, C6=84 → formantMax)
-            float noteNorm = Math.Max(0f, Math.Min(1f, (note - 36) / 48f));
-            float formantFreq = (float)(_formantMin.Value + noteNorm * (_formantMax.Value - _formantMin.Value));
+            // 2026-08-03 : la lame suit la note MIDI (tonal). LameFreq devient un OFFSET en semi-tons
+            // (-24..+24) autour de la note jouée — utile pour transposer d'une octave si tu veux du
+            // Vargan grave sans changer le mapping clavier. Formant fixe controle par FormantMin (Hz).
+            double noteFreq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
+            double semitoneOffset = (_lameFreq.Value - 130.0) / 12.0;   // reuse du slider LameFreq comme offset ±13 semi typiquement
+            // Interpretation directe : LameFreq slider = frequence en Hz de reference si tu veux
+            // caler sur note fixe, MAIS on privilegie la note MIDI. On garde noteFreq pur.
+            double lameFreqActual = noteFreq;
+            float formantFreq = (float)_formantMin.Value;   // formant fixe en Hz — pur, controlable
 
             target.NoteOn(note, vel,
-                (float)_lameFreq.Value, (float)_lameDecay.Value, (float)_twang.Value,
+                (float)lameFreqActual, (float)_lameDecay.Value, (float)_twang.Value, (float)_spring.Value,
                 formantFreq, (float)_formantQ.Value,
                 (float)_breath.Value, (float)_brightness.Value);
         }
@@ -146,21 +153,21 @@ namespace KotonPluginJewsHarp
             "Morsing indien (petit, aigu)", "Kubing bamboo (doux)", "Doromb (melodique)"
         };
         static readonly double[,] PresetValues = {
-            //           lFrq lDec twng fQ   fMin fMax  brth brgh vol
-            /*Metal*/    { 130, 0.55, 0.65, 10, 400, 3500, 0.15, 0.55, -3.0 },
-            /*Vargan*/   { 85,  0.75, 0.70, 12, 300, 2800, 0.20, 0.45, -3.0 },
-            /*Morsing*/  { 180, 0.35, 0.75, 14, 500, 4500, 0.10, 0.75, -4.0 },
-            /*Kubing*/   { 110, 0.65, 0.35, 8,  400, 3000, 0.25, 0.40, -3.0 },
-            /*Doromb*/   { 140, 0.60, 0.60, 11, 450, 3800, 0.15, 0.60, -3.0 },
+            //           lFrq lDec twng spr  fQ   fMin fMax  brth brgh vol
+            /*Metal*/    { 130, 0.55, 0.65, 0.55, 10, 700,  3500, 0.15, 0.55, -3.0 },
+            /*Vargan*/   { 85,  0.75, 0.70, 0.70, 12, 500,  2800, 0.20, 0.45, -3.0 },
+            /*Morsing*/  { 180, 0.35, 0.75, 0.45, 14, 900,  4500, 0.10, 0.75, -4.0 },
+            /*Kubing*/   { 110, 0.65, 0.35, 0.30, 8,  600,  3000, 0.25, 0.40, -3.0 },
+            /*Doromb*/   { 140, 0.60, 0.60, 0.50, 11, 750,  3800, 0.15, 0.60, -3.0 },
         };
         public void LoadPreset(int idx)
         {
             if (idx < 0 || idx >= PresetValues.GetLength(0)) return;
             _lameFreq.Value = PresetValues[idx, 0]; _lameDecay.Value = PresetValues[idx, 1];
-            _twang.Value = PresetValues[idx, 2]; _formantQ.Value = PresetValues[idx, 3];
-            _formantMin.Value = PresetValues[idx, 4]; _formantMax.Value = PresetValues[idx, 5];
-            _breath.Value = PresetValues[idx, 6]; _brightness.Value = PresetValues[idx, 7];
-            _volumeDb.Value = PresetValues[idx, 8];
+            _twang.Value = PresetValues[idx, 2]; _spring.Value = PresetValues[idx, 3];
+            _formantQ.Value = PresetValues[idx, 4]; _formantMin.Value = PresetValues[idx, 5];
+            _formantMax.Value = PresetValues[idx, 6]; _breath.Value = PresetValues[idx, 7];
+            _brightness.Value = PresetValues[idx, 8]; _volumeDb.Value = PresetValues[idx, 9];
         }
         public void SetParam(string id, double value)
         {
@@ -172,17 +179,28 @@ namespace KotonPluginJewsHarp
     {
         readonly int _sr;
 
-        // Sawtooth à la fréquence de la lame (FIXE, indépendante de la note MIDI)
+        // Sawtooth à la fréquence de la lame
         double _phase;
-        double _phaseInc;
+        double _phaseInc;         // valeur cible (frequence de la note)
+        double _phaseIncBase;     // memorise pour la modulation spring
+
+        // Spring "boing-oing-oing" : sinusoide amortie qui oscille plusieurs fois
+        // (pitch + amplitude modulation ensemble), typiquement 15-25 Hz sur ~500ms
+        // → donne 6-15 rebonds audibles avant extinction.
+        double _springPhase;
+        double _springFreq;       // frequence des rebonds (Hz)
+        float _springEnv;
+        float _springDecay;
 
         // Enveloppe d'amplitude (twang + decay)
         float _amp;
         float _decayFactor;
 
-        // Twang impact : chirp très court + click au NoteOn
+        // Twang impact : chirp descendant caractéristique du ressort
         float _twangAmp;
         float _twangDecay;
+        double _twangPhase;
+        double _twangFreq;        // freq du chirp, descend rapidement
 
         // Bruit d'excitation (souffle qui passe)
         float _noiseState;
@@ -209,26 +227,38 @@ namespace KotonPluginJewsHarp
         }
 
         public void NoteOn(int note, float velocity, float lameFreqHz, float lameDecay,
-                           float twang, float formantFreq, float formantQ,
+                           float twang, float spring, float formantFreq, float formantQ,
                            float breath, float brightness)
         {
             _note = note;
             _rng = new Random(note * 7919 + Environment.TickCount);
-            _phaseInc = lameFreqHz / _sr;
+            _phaseIncBase = lameFreqHz / _sr;
+            _phaseInc = _phaseIncBase;
             _brightness = brightness;
             _breathAmount = breath;
 
             // Amplitude : twang initial fort + envelope de décroissance
             _amp = velocity;
-            float decayMs = 200f + lameDecay * 3000f;   // 200ms..3.2s
+            float decayMs = 200f + lameDecay * 3000f;
             _decayFactor = (float)Math.Exp(-6.907755278982137 / (decayMs * _sr / 1000.0));
 
-            // Twang chirp initial très court (~15 ms)
-            _twangAmp = twang * velocity * 1.5f;
-            _twangDecay = (float)Math.Exp(-6.907755278982137 / (15 * _sr / 1000.0));
+            // Spring "boing-oing-oing" : sinusoide amortie qui module pitch ET amplitude.
+            // freq ~15 Hz base + jusqu'a 25 Hz au max spring. Decay ~500 ms sur spring=1.
+            _springPhase = 0;
+            _springFreq = 15.0 + spring * 12.0;              // 15..27 Hz (rebonds audibles)
+            _springEnv = spring;                             // amplitude du boing initial
+            float springDecayMs = 200f + spring * 500f;      // 200..700 ms → 3..15 rebonds
+            _springDecay = (float)Math.Exp(-6.907755278982137 / (springDecayMs * _sr / 1000.0));
 
-            // Formant peak avec Q élevé — c'est la CLÉ du son de guimbarde
-            SetBiquadPeaking(ref _formant, _sr, formantFreq, formantQ, 15.0f);   // +15 dB boost
+            // Twang chirp descendant : sinus qui commence a haute freq et redescend
+            // rapidement, donnant l'impact metallique initial.
+            _twangAmp = twang * 0.7f * velocity;
+            _twangDecay = (float)Math.Exp(-6.907755278982137 / (60 * _sr / 1000.0));
+            _twangPhase = 0;
+            _twangFreq = lameFreqHz * (3.0 + twang * 4.0);   // demarre a 3x..7x la fondamentale
+
+            // Formant peak avec Q eleve — la CLE du son de guimbarde
+            SetBiquadPeaking(ref _formant, _sr, formantFreq, formantQ, 15.0f);
 
             _active = true;
         }
@@ -251,21 +281,33 @@ namespace KotonPluginJewsHarp
         {
             if (!_active) return 0f;
 
-            // 1) Sawtooth à la fréquence fixe de la lame
+            // Spring "boing-oing-oing" : LFO sinusoidal amorti qui module pitch + amplitude
+            // ensemble. On entend le pitch osciller ET le volume pulser au meme rythme.
+            _springPhase += _springFreq / _sr;
+            if (_springPhase > 1.0) _springPhase -= 1.0;
+            _springEnv *= _springDecay;
+            double springOsc = Math.Sin(_springPhase * 2.0 * Math.PI) * _springEnv;
+            double pitchMul = 1.0 + springOsc * 0.12;   // ±12% pitch swing (~200 cents peak)
+            float ampMul = (float)(1.0 + springOsc * 0.55f);  // ±55% amplitude modulation
+            _phaseInc = _phaseIncBase * pitchMul;
+
+            // 1) Sawtooth a la frequence (avec spring pitch bend)
             float saw = (float)(2.0 * _phase - 1.0);
-            // PolyBLEP
             double dt = _phaseInc;
             if (_phase < dt) { double t = _phase / dt; saw -= (float)(t + t - t * t - 1.0); }
             else if (_phase > 1.0 - dt) { double t = (_phase - 1.0) / dt; saw -= (float)(t * t + t + t + 1.0); }
             _phase += _phaseInc;
             if (_phase >= 1.0) _phase -= 1.0;
 
-            // 2) Twang impact (chirp très court additif)
+            // 2) Twang chirp descendant : impact metallique initial (indep du spring)
             float twang = 0f;
             if (_twangAmp > 1e-4f)
             {
-                twang = ((float)_rng.NextDouble() * 2 - 1) * _twangAmp;
+                _twangPhase += _twangFreq / _sr * 2.0 * Math.PI;
+                if (_twangPhase > 2 * Math.PI) _twangPhase -= 2 * Math.PI;
+                twang = (float)Math.Sin(_twangPhase) * _twangAmp;
                 _twangAmp *= _twangDecay;
+                _twangFreq *= 0.9992;   // freq descend rapidement (chirp)
             }
 
             // 3) Bruit de souffle
@@ -273,8 +315,8 @@ namespace KotonPluginJewsHarp
             _noiseState = _noiseState * 0.9f + noise * 0.1f;   // LP léger sur le noise
             float breath = _noiseState * _breathAmount * _amp * 0.15f;
 
-            // 4) Signal composite : sawtooth × amp + twang + breath
-            float source = saw * _amp + twang + breath;
+            // 4) Signal composite : sawtooth × amp × springAM + twang + breath
+            float source = saw * _amp * ampMul + twang + breath;
 
             // 5) Filtre formant (BP peak, Q élevé) — c'est CE qui fait la voix de guimbarde
             float formanted = BiquadProcess(ref _formant, source);

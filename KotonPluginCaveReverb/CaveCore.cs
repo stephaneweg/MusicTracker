@@ -11,6 +11,7 @@ namespace KotonPluginCaveReverb
         public float PreDelayMs;       // 0..300 ms (grande cave = pré-delay long)
         public float DripAmount;       // 0..1 → densité des drips métalliques aléatoires
         public float DripPitch;        // 0..1 → fréquence des drips (bas..haut)
+        public float DripVolume;       // 0..2 → multiplicateur du volume de chaque drip
         public float StereoWidth;
         public float Mix;
         public float OutGainDb;
@@ -218,7 +219,7 @@ namespace KotonPluginCaveReverb
                             double df = dripFreqHz * (1.0 + detune);
                             _dripPhase[d] = 0;
                             _dripPhaseInc[d] = 2 * Math.PI * df / _sr;
-                            _dripAmp[d] = 0.3f + (float)_dripRng.NextDouble() * 0.4f;
+                            _dripAmp[d] = (0.3f + (float)_dripRng.NextDouble() * 0.4f) * p.DripVolume;
                             // Decay court : ~50-200 ms
                             double decayMs = 50 + _dripRng.NextDouble() * 150;
                             _dripDecay[d] = (float)Math.Exp(-6.9078 / (decayMs * _sr / 1000.0));

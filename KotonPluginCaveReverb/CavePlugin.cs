@@ -37,8 +37,9 @@ namespace KotonPluginCaveReverb
         readonly KotonParameter _lowBoom    = new KotonParameter("low_boom",     "Low boom",     0.0, 1.0, 0.55);
         readonly KotonParameter _darkness   = new KotonParameter("darkness",     "Darkness",     0.0, 1.0, 0.65);
         readonly KotonParameter _preDelay   = new KotonParameter("pre_delay",    "Pre-delay",    0.0, 300.0, 60.0, "ms");
-        readonly KotonParameter _dripAmount = new KotonParameter("drip_amount",  "Drips",        0.0, 1.0, 0.15);
+        readonly KotonParameter _dripAmount = new KotonParameter("drip_amount",  "Drips (densité)", 0.0, 1.0, 0.15);
         readonly KotonParameter _dripPitch  = new KotonParameter("drip_pitch",   "Drip pitch",   0.0, 1.0, 0.50);
+        readonly KotonParameter _dripVolume = new KotonParameter("drip_volume",  "Drip volume",  0.0, 2.0, 1.00);
         readonly KotonParameter _stereoWidth= new KotonParameter("stereo_width", "Stereo width", 0.0, 1.0, 0.95);
         readonly KotonParameter _mix        = new KotonParameter("mix",          "Mix",          0.0, 1.0, 0.45);
         readonly KotonParameter _outGain    = new KotonParameter("out_gain",     "Output",       -30.0, 6.0, -2.0, "dB");
@@ -55,7 +56,7 @@ namespace KotonPluginCaveReverb
             _params = new List<KotonParameter>
             {
                 _size, _decay, _lowBoom, _darkness, _preDelay,
-                _dripAmount, _dripPitch, _stereoWidth, _mix, _outGain,
+                _dripAmount, _dripPitch, _dripVolume, _stereoWidth, _mix, _outGain,
             };
         }
 
@@ -78,6 +79,7 @@ namespace KotonPluginCaveReverb
                 LowBoom = (float)_lowBoom.Value, Darkness = (float)_darkness.Value,
                 PreDelayMs = (float)_preDelay.Value,
                 DripAmount = (float)_dripAmount.Value, DripPitch = (float)_dripPitch.Value,
+                DripVolume = (float)_dripVolume.Value,
                 StereoWidth = (float)_stereoWidth.Value, Mix = (float)_mix.Value,
                 OutGainDb = (float)_outGain.Value,
             };
