@@ -1,0 +1,88 @@
+<UserControl x:Class="KotonPluginJewsHarp.JewsHarpEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="600" MinHeight="380" Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border BorderThickness="0" Padding="16">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0" Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Preset :" VerticalAlignment="Center" Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1" x:Name="PresetCombo" Width="260" HorizontalAlignment="Left" SelectionChanged="PresetCombo_SelectionChanged"/>
+                <TextBlock Grid.Column="2" Text="Guimbarde · lame fixe + formant bouche" Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" VerticalAlignment="Center"/>
+            </Grid>
+            <TextBlock Grid.Row="1" Margin="0,0,0,10" TextWrapping="Wrap"
+                       Foreground="{DynamicResource KotonAccent}" FontStyle="Italic"
+                       Text="↳ La note MIDI ne change PAS la hauteur (la lame vibre a une freq fixe). Elle module le FORMANT de la 'bouche'. Joue une gamme = tu entends les harmoniques de la lame se reveler successivement."/>
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Lame frequency (Hz)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="LameFreqSlider" Minimum="60" Maximum="300" TickFrequency="5"/>
+                    <TextBlock x:Name="LameFreqValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Lame decay" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="LameDecaySlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="LameDecayValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Twang (impact)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="TwangSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="TwangValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Breath (souffle)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="BreathSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="BreathValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Formant Q (aigu ↔ large)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="FormantQSlider" Minimum="2" Maximum="20" TickFrequency="0.5"/>
+                    <TextBlock x:Name="FormantQValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Formant min Hz (grave note)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="FormantMinSlider" Minimum="200" Maximum="800" TickFrequency="10"/>
+                    <TextBlock x:Name="FormantMinValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Formant max Hz (aigu note)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="FormantMaxSlider" Minimum="1500" Maximum="5000" TickFrequency="50"/>
+                    <TextBlock x:Name="FormantMaxValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Brightness" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="BrightnessSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="BrightnessValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="0" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/>
+                    <TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
