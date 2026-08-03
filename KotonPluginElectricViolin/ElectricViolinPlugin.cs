@@ -39,7 +39,7 @@ namespace KotonPluginElectricViolin
         readonly KotonParameter _bowVelocity   = new KotonParameter("bow_velocity",    "Bow velocity",    0.0, 1.0, 0.65);
         readonly KotonParameter _bowPosition   = new KotonParameter("bow_position",    "Bow position",    0.0, 0.5, 0.12);
         readonly KotonParameter _damping       = new KotonParameter("damping",         "Damping",         0.0, 1.0, 0.65);
-        readonly KotonParameter _bodyIntensity = new KotonParameter("body_intensity",  "Body (formants)", 0.0, 1.0, 0.75);
+        readonly KotonParameter _bodyIntensity = new KotonParameter("body_intensity",  "Body (formants)", 0.0, 1.0, 0.35);
         readonly KotonParameter _warmth        = new KotonParameter("warmth",          "Warmth (piezo)",  0.0, 1.0, 0.45);
         readonly KotonParameter _vibratoRate   = new KotonParameter("vibrato_rate",    "Vibrato rate",    0.0, 8.0, 5.5, "Hz");
         readonly KotonParameter _vibratoDepth  = new KotonParameter("vibrato_depth",   "Vibrato depth",   0.0, 40.0, 12.0, "ct");

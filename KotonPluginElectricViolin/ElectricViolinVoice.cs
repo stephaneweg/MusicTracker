@@ -86,9 +86,11 @@ namespace KotonPluginElectricViolin
         public ElectricViolinVoice(int sampleRate)
         {
             _sr = sampleRate;
-            // Formants fixes (peak EQ +dB par défaut, gain moduble via BodyIntensity)
-            SetBiquadPeaking(ref _formant1, sampleRate, 600f, 2.0f, 4.0f);
-            SetBiquadPeaking(ref _formant2, sampleRate, 3000f, 2.5f, 3.0f);
+            // Formants avec gains REDUITS et Q ELARGIS (2026-08-03 : v8 avait +4/+3dB Q=2/2.5
+            // → sonnait comme une seconde voix aux fréquences boostees). Version douce : +2/+1.5dB
+            // Q=1.2/1.4 = bosses larges qui colorent sans creer de pics identifiables.
+            SetBiquadPeaking(ref _formant1, sampleRate, 600f, 1.2f, 2.0f);
+            SetBiquadPeaking(ref _formant2, sampleRate, 3000f, 1.4f, 1.5f);
             SetBiquadLP(ref _lpFinal, sampleRate, 7000f, 0.707f);
         }
 
@@ -222,23 +224,25 @@ namespace KotonPluginElectricViolin
             float withFormants = saturated + (form1 * 0.3f + form2 * 0.25f) * p.BodyIntensity;
             withFormants *= 1f / (1f + p.BodyIntensity * 0.35f);   // norm légère
 
-            // --- 5) COMPRESSOR SIMPLE (envelope follower + gain reduction) ---
-            //   Attack ~5ms, release ~80ms, ratio ~3:1, threshold -12dB (0.25)
+            // --- 5) COMPRESSOR DOUX (attack lente pour eviter le pumping) ---
+            //   Attack ~30ms, release ~150ms, ratio ~2:1, threshold -9dB (0.35)
+            //   Version precedente (attack 5ms ratio 3:1) creait du pumping audible qui donnait
+            //   l'impression d'un 2e instrument qui module l'amplitude.
             float absSig = Math.Abs(withFormants);
-            float envAttack = 1f - (float)Math.Exp(-1.0 / (0.005 * _sr));
-            float envRelease = 1f - (float)Math.Exp(-1.0 / (0.080 * _sr));
+            float envAttack = 1f - (float)Math.Exp(-1.0 / (0.030 * _sr));
+            float envRelease = 1f - (float)Math.Exp(-1.0 / (0.150 * _sr));
             float envRate = absSig > _compEnv ? envAttack : envRelease;
             _compEnv += envRate * (absSig - _compEnv);
             float compGain = 1f;
-            if (_compEnv > 0.25f)
+            if (_compEnv > 0.35f)
             {
-                float excess = _compEnv - 0.25f;
-                float reduction = excess * (1f - 1f / 3f);   // ratio 3:1
-                compGain = (0.25f + (_compEnv - reduction * 3f)) / _compEnv;
+                float excess = _compEnv - 0.35f;
+                float reduction = excess * 0.5f;   // ratio 2:1
+                compGain = (0.35f + excess - reduction) / _compEnv;
                 if (compGain > 1f) compGain = 1f;
-                if (compGain < 0.3f) compGain = 0.3f;
+                if (compGain < 0.5f) compGain = 0.5f;
             }
-            float compressed = withFormants * compGain * 1.15f;   // makeup léger
+            float compressed = withFormants * compGain * 1.1f;   // makeup discret
 
             // --- 6) LP FINAL 7 kHz (élimine "froid numérique") ---
             float final = BiquadProcess(ref _lpFinal, compressed);
