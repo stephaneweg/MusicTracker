@@ -77,6 +77,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Generators", "Generators", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Effects", "Effects", "{FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginVowelSynth", "KotonPluginVowelSynth\KotonPluginVowelSynth.csproj", "{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -483,6 +485,18 @@ Global
 		{F6C4D8B7-3E9A-4B2C-8F5D-7C4E9B3A5D62}.Release|x64.Build.0 = Release|x64
 		{F6C4D8B7-3E9A-4B2C-8F5D-7C4E9B3A5D62}.Release|x86.ActiveCfg = Release|x64
 		{F6C4D8B7-3E9A-4B2C-8F5D-7C4E9B3A5D62}.Release|x86.Build.0 = Release|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Debug|Any CPU.Build.0 = Debug|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Debug|x64.ActiveCfg = Debug|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Debug|x64.Build.0 = Debug|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Debug|x86.ActiveCfg = Debug|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Debug|x86.Build.0 = Debug|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Release|Any CPU.ActiveCfg = Release|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Release|Any CPU.Build.0 = Release|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Release|x64.ActiveCfg = Release|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Release|x64.Build.0 = Release|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Release|x86.ActiveCfg = Release|x64
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
