@@ -46,8 +46,15 @@
         </ControlTemplate.Triggers>
     </ControlTemplate>
 
+    <!-- PART_ContentHost DOIT etre un ScrollViewer (ou AdornerDecorator) pour qu'un TextBox
+         rende son texte : avec un simple Border, le texte editable reste invisible. Consequence
+         visible : dans les ComboBox IsEditable="True" (cboModel du dialogue IA, dropdowns des
+         grilles rythmiques, etc.) le texte selectionne ne s'affichait pas — bug de theme, pas
+         de donnee manquante. Bg = transparent parce que le fond est deja peint par le
+         OuterBorderContainer du ToggleButton dessous. -->
     <ControlTemplate x:Key="ComboBoxTextBox" TargetType="TextBox">
-        <Border x:Name="PART_ContentHost" Focusable="False" Background="{TemplateBinding Background}" />
+        <ScrollViewer x:Name="PART_ContentHost" Focusable="False" Background="{TemplateBinding Background}"
+                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
     </ControlTemplate>
 
     <Style x:Key="{x:Type ComboBox}" TargetType="ComboBox">
