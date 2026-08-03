@@ -103,7 +103,10 @@ namespace KotonPluginSpace
             float mix = (float)_mix.Value;
             float outLin = (float)Math.Pow(10.0, _outGain.Value / 20.0);
             float width = (float)_stereoWidth.Value;
-            float feedback = 0.75f + (float)_decay.Value * 0.23f;
+            // Feedback plafonne a 0.90 (au lieu de 0.98) : au-dessus, la reinjection du pitch shifter
+            // octave down + FDN entretient une queue immortelle car le pitch shifter alimente le
+            // FDN avec du signal frais qui compense le decay. Bug rapporte 2026-08-02.
+            float feedback = 0.65f + (float)_decay.Value * 0.25f;   // range 0.65..0.90
             float sizeMul = 0.5f + (float)_size.Value * 1.4f;
             float octaveMix = (float)_octaveDown.Value;
             float coldness = (float)_coldness.Value;
@@ -157,8 +160,9 @@ namespace KotonPluginSpace
                 float g1 = _pitchRead1 < fadeSize ? _pitchRead1 / fadeSize : _pitchRead1 > grainSize - fadeSize ? (grainSize - _pitchRead1) / fadeSize : 1f;
                 float g2 = _pitchRead2 < fadeSize ? _pitchRead2 / fadeSize : _pitchRead2 > grainSize - fadeSize ? (grainSize - _pitchRead2) / fadeSize : 1f;
                 float pitchOut = (p1L * g1 + p2L * g2);
-                // Injection dans FDN : diffusion + pitch down feedback
-                float pitchInj = pitchOut * octaveMix * 0.6f;
+                // Injection dans FDN : diffusion + pitch down feedback. Gain reduit a 0.35 (au lieu
+                // de 0.6) pour eviter que le pitch shifter n'alimente le FDN indefiniment.
+                float pitchInj = pitchOut * octaveMix * 0.35f;
                 float in0 = pdL + pitchInj;
                 float in1 = pdR + pitchInj;
                 float in2 = -pdL - pitchInj;
@@ -229,11 +233,11 @@ namespace KotonPluginSpace
         public static readonly string[] PresetNames = { "Vaisseau spatial", "Nebuleuse", "Trou noir (drone)", "Space station humming", "Etoiles lointaines" };
         static readonly double[,] PresetValues = {
             //          size decay oct  cold twk  pre  wid mix  out
-            /*Vaiss*/   { 0.60, 0.75, 0.35, 0.55, 0.30, 40,  1.00, 0.55, -3.0 },
-            /*Nebul*/   { 0.85, 0.90, 0.55, 0.65, 0.55, 80,  1.00, 0.70, -3.0 },
-            /*Trou n*/  { 1.00, 0.98, 0.85, 0.85, 0.10, 20,  1.00, 0.85, -4.0 },
-            /*Statio*/  { 0.65, 0.80, 0.25, 0.75, 0.20, 60,  0.85, 0.60, -2.0 },
-            /*Etoiles*/ { 0.80, 0.88, 0.40, 0.50, 0.80, 100, 1.00, 0.65, -3.0 },
+            /*Vaiss*/   { 0.60, 0.70, 0.35, 0.55, 0.30, 40,  1.00, 0.55, -3.0 },
+            /*Nebul*/   { 0.85, 0.85, 0.55, 0.65, 0.55, 80,  1.00, 0.70, -3.0 },
+            /*Trou n*/  { 1.00, 0.92, 0.75, 0.85, 0.10, 20,  1.00, 0.85, -4.0 },
+            /*Statio*/  { 0.65, 0.75, 0.25, 0.75, 0.20, 60,  0.85, 0.60, -2.0 },
+            /*Etoiles*/ { 0.80, 0.82, 0.40, 0.50, 0.80, 100, 1.00, 0.65, -3.0 },
         };
         public void LoadPreset(int idx, bool keepMix)
         {
