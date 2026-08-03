@@ -77,12 +77,12 @@ namespace KotonPluginElectricViolin
         {
             _sr = sampleRate;
             _buffer = new float[Math.Max(sampleRate / 20, 4096)];
-            // Formants classiques violon (Meyer 1978, mesures Stradivarius) :
-            // F1 = 300 Hz Q=6 (grave chaud "chest"), F2 = 700 Hz Q=5 (corps),
-            // F3 = 2500 Hz Q=4 (le "singing" caractéristique)
-            SetBiquadBandpass(ref _f1, sampleRate, 300f, 6f);
-            SetBiquadBandpass(ref _f2, sampleRate, 700f, 5f);
-            SetBiquadBandpass(ref _f3, sampleRate, 2500f, 4f);
+            // Formants violon avec Q ATTENUES (2026-08-03 : v5 avait Q=6/5/4 → effet "caverne"
+            // avec pics etroits qui sur-resonnent). Q=2/1.8/1.5 = bandes plus larges qui simulent
+            // mieux la caisse continue d'un violon reel (pas des pics narrow-band).
+            SetBiquadBandpass(ref _f1, sampleRate, 300f, 2.0f);
+            SetBiquadBandpass(ref _f2, sampleRate, 700f, 1.8f);
+            SetBiquadBandpass(ref _f3, sampleRate, 2500f, 1.5f);
         }
 
         public void NoteOn(int note, float velocity, in EvParams p)
@@ -101,7 +101,9 @@ namespace KotonPluginElectricViolin
             _f1.ResetState(); _f2.ResetState(); _f3.ResetState();
 
             _rng = new Random(note * 7919 + Environment.TickCount);
-            _vibPhase = (float)(_rng.NextDouble() * 2 * Math.PI);
+            // Vibrato phase = 0 (au lieu de random) : les voix successives sont synchronisees
+            // → son SOLO focalise au lieu de l'effet 'ensemble' quand vibratos desynchronises.
+            _vibPhase = 0f;
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
             _tremPhase = 0f;
             _tremInc = (float)(2 * Math.PI * p.TremoloRateHz / _sr);
@@ -199,14 +201,14 @@ namespace KotonPluginElectricViolin
             // Signal source pour le body = sample tap (le signal "propre" qui sort de la ligne)
             float bodyIn = sample;
 
-            // 3 formants EN PARALLÈLE (pas en série) — additifs sur le dry
+            // 3 formants EN PARALLÈLE (pas en série) — additifs sur le dry.
+            // Gains reduits (2026-08-03) : 0.6/0.5/0.4 → 0.3/0.25/0.2 pour attenuer l'effet
+            // "caverne resonante" rapporte par l'user.
             float f1Out = BiquadProcess(ref _f1, bodyIn);
             float f2Out = BiquadProcess(ref _f2, bodyIn);
             float f3Out = BiquadProcess(ref _f3, bodyIn);
-            // Body mix : signal dry + formants (chacun avec son propre poids)
-            float bodyOut = bodyIn + (f1Out * 0.6f + f2Out * 0.5f + f3Out * 0.4f) * p.BodyIntensity;
-            // Normalisation approximative pour éviter explosion quand BodyIntensity haut
-            bodyOut *= 1f / (1f + p.BodyIntensity * 0.8f);
+            float bodyOut = bodyIn + (f1Out * 0.3f + f2Out * 0.25f + f3Out * 0.2f) * p.BodyIntensity;
+            bodyOut *= 1f / (1f + p.BodyIntensity * 0.4f);   // norm plus legere
 
             // Warmth : saturation tanh compensée (pickup piezo crunchy)
             float driven = bodyOut * (1f + p.Warmth * 2.5f);
