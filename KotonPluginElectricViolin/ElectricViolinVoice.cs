@@ -151,48 +151,56 @@ namespace KotonPluginElectricViolin
             float lpCutoff = 1500f + (1f - p.Damping) * 6000f;
             float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
             _lpState += lpAlpha * (stringVel - _lpState);
-            float returnVel = -0.995f * _lpState;   // réflexion négative au chevalet
+            // Réflexion au chevalet : négative + damping global 0.995 (perte par cycle acoustique)
+            float returnVel = -0.995f * _lpState;
 
-            // ARCHET : vitesse effective = bowVelocity × envelope × velocity
-            float bowVel = p.BowVelocity * 0.3f * _env * _velocity;   // scaled to -0.3..0.3
-            float bowForce = p.BowForce * _env * _velocity;
+            // ARCHET — MSW friction stick-slip. La friction alimente EN CONTINU la boucle
+            // guide d'onde, générant l'auto-oscillation en dents de scie caractéristique du violon.
+            //
+            // Formulation stable : bowVelocity normalisée à 0..0.5, friction avec courbe qui
+            // dépasse 1.0 en zone stick pour garantir que l'énergie injectée > énergie perdue par
+            // le LP feedback → boucle s'entretient.
+            float bowVel = p.BowVelocity * 0.5f * _env * _velocity;   // 0..0.5 vitesse effective
+            float bowForce = p.BowForce;   // 0..1, module l'AMPLITUDE de la friction
 
-            // MSW friction stick-slip :
-            //   v_rel = bowVel - stringVel_at_bow
-            //   stringVel_at_bow ≈ (readVel + writeVel) / 2 ≈ stringVel (approximation valide car bow proche du chevalet)
-            //   Zone STICK : |v_rel| < threshold → friction linéaire forte (la corde suit l'archet)
-            //   Zone SLIP  : |v_rel| >= threshold → friction décroissante (la corde glisse en arrière)
             float vRel = bowVel - returnVel;
             float aRel = Math.Abs(vRel);
             float friction;
-            const float stickThreshold = 0.08f;
+            const float stickThreshold = 0.1f;
             if (aRel < stickThreshold)
             {
-                // Stick : friction ~ v_rel × μ_static (forte)
-                friction = vRel * 5f;
+                // Zone STICK : la corde "colle" à l'archet. Friction forte linéaire.
+                friction = vRel * 4.0f;
             }
             else
             {
-                // Slip : friction décroit avec |v_rel| (μ_kinetic × exp-like)
-                friction = Math.Sign(vRel) * (0.4f / (1f + aRel * 3f));
+                // Zone SLIP : la corde glisse en arrière. Friction décroit exponentiellement
+                // avec |vRel| — c'est ce qui produit la commutation stick→slip→stick périodique
+                // qui donne l'onde en dents de scie caractéristique.
+                friction = Math.Sign(vRel) * (float)Math.Exp(-aRel * 2.0) * 0.6f;
             }
-            // Force appliquée à la corde = friction × bowForce
-            float excitation = friction * bowForce * 0.6f;
+            // GATE par bowVel : sans mouvement d'archet, pas d'excitation (release meurt propre)
+            float excitationGate = Math.Min(1f, bowVel * 8f);
 
-            // BowPosition : filtre comb (accentue certains harmoniques selon position)
-            // 0 = milieu de la corde (fondamentale forte, harmoniques paires atténuées)
-            // 0.5 = près du chevalet (harmoniques hautes accentuées)
-            // Approximation simple : filtre comb à sizeI × bowPosition
-            int combOffset = (int)(sizeI * (0.05f + p.BowPosition * 0.4f));
-            if (combOffset > 0 && combOffset < sizeI)
+            // Force injectée dans la corde = friction × bowForce × gate × gain de compensation
+            // pour vaincre les pertes du LP feedback. Le facteur 1.8 garantit une amplitude
+            // stable en sustain (empiriquement — dépend du LP cutoff).
+            float excitation = friction * bowForce * excitationGate * 1.8f;
+
+            // BowPosition : petit filtre comb (accentue certains harmoniques selon position sur
+            // la corde). Effet subtil, ne doit pas déphaser trop la boucle principale.
+            int combOffset = (int)(sizeI * (0.05f + p.BowPosition * 0.35f));
+            if (combOffset > 4 && combOffset < sizeI - 4)
             {
                 int combIdx = _writeIdx - combOffset;
                 while (combIdx < 0) combIdx += _size;
-                excitation -= _string[combIdx] * 0.3f;
+                excitation += _string[combIdx] * 0.15f;
             }
 
-            // Écriture : excitation + réflexion (guide d'onde bidirectionnel simplifié)
-            _string[_writeIdx] = excitation + returnVel * 0.5f;
+            // Écriture dans la ligne : réflexion PLEINE (returnVel × 1.0) + excitation.
+            // Le damping global vient du -0.995 sur returnVel + du LP feedback qui absorbe
+            // les aigus. La boucle s'entretient tant que excitation > pertes.
+            _string[_writeIdx] = returnVel + excitation;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
