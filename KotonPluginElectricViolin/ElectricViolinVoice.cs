@@ -4,53 +4,93 @@ namespace KotonPluginElectricViolin
 {
     internal struct EvParams
     {
-        public float BowForce;         // 0..1 → force d'appui de l'archet
-        public float BowVelocity;      // 0..1 → vitesse (mappée sur -0.3..0.3 dans le stick-slip)
-        public float BowPosition;      // 0..0.5 → position sur la corde (0=milieu, chevalet approche)
-        public float Damping;          // 0..1 → LP feedback (perte HF au chevalet)
+        public float BowForce;
+        public float BowVelocity;
+        public float BowPosition;      // 0..0.5 → position sur la corde (0=milieu, 0.5=chevalet)
+        public float Damping;
         public float VibratoRateHz;
         public float VibratoDepthCents;
         public float TremoloRateHz;
         public float TremoloDepth;
-        public float BodyIntensity;    // 0..1 → gain des 3 formants caisse
-        public float Warmth;           // 0..1 → saturation tanh piezo en sortie
+        public float BodyIntensity;
+        public float Warmth;
         public float AttackSec;
         public float ReleaseSec;
         public float VolumeDb;
     }
 
     /// <summary>
-    /// Une voix de violon électrique — modélisation physique par guide d'onde Smith/McIntyre-
-    /// Schumacher-Woodhouse (MSW 1983). Le vrai moteur du son violon = la non-linéarité stick-slip
-    /// de la friction de l'archet sur la corde, qui produit naturellement une onde en dents de scie
-    /// (spectre riche en harmoniques impaires + paires selon la position d'archet).
+    /// Electric Violin — refonte v2 basée sur la structure de FAUST physmodels.lib/violin.lib :
+    /// guide d'onde bidirectionnel (2 lignes à retard, une pour l'onde ascendante et une pour la
+    /// descendante) avec un point d'archet qui échange l'énergie entre les 2 via une **bowTable
+    /// Friedlander** pré-calculée. C'est le vrai modèle académique (Rocchesso 1999, Serafin 2001).
     ///
-    /// **DSP** :
-    /// 1. Guide d'onde = ligne à retard longueur N = SR/f, avec LP feedback au chevalet (perte HF)
-    /// 2. Point d'archet à position pilotée par BowPosition. À chaque sample :
-    ///    - Lit la vitesse de la corde à cet endroit
-    ///    - Calcule la vitesse relative v_rel = bowVelocity - stringVel
-    ///    - Applique la friction MSW : forte dans la zone stick (|v_rel| petit), décroissante
-    ///      dans la zone slip (|v_rel| grand) → forme d'onde dents de scie
-    ///    - Injecte cette friction × bowForce dans la boucle
-    /// 3. Vibrato : modulation de la longueur de la ligne (frequence)
-    /// 4. Sortie : 3 formants biquad bandpass série (caisse : 300 Hz, 700 Hz, 2500 Hz Q=5-8)
-    /// 5. Saturation tanh (Warmth) : simule le pickup piezo légèrement crunchy
+    /// **Différence avec v1** (qui sonnait comme du bruit blanc) :
+    ///   v1 : formulation MSW ad-hoc avec calculs conditionnels stick/slip par-sample, gain
+    ///        empirique à 1.8×, comb filter réinjecté — la boucle explosait en bruit
+    ///   v2 : bowTable pré-calculée selon la formule de Friedlander (asymétrique, physique correcte),
+    ///        2 lignes de délai couplées au bow point, coupling coefficient γ contrôlant l'échange
+    ///        d'énergie. Formulation numériquement stable et musicalement propre.
+    ///
+    /// **BowTable Friedlander** : friction(vRel) = vRel × exp(-0.5 × (vRel/scale)²) — courbe
+    /// asymétrique qui pique à |vRel|=scale puis décroît exponentiellement. C'est ce qui produit
+    /// la commutation stick↔slip qui donne l'onde en dents de scie caractéristique du violon,
+    /// SANS les instabilités des formulations conditionnelles.
     /// </summary>
     internal sealed class ElectricViolinVoice
     {
         readonly int _sr;
-        readonly float[] _string;
-        int _writeIdx;
-        int _size;
 
-        float _lpState;
+        // Guide d'onde BIDIRECTIONNEL : 2 lignes à retard.
+        // Ligne upper = onde qui va du chevalet vers le sillet.
+        // Ligne lower = onde qui va du sillet vers le chevalet.
+        // Le point d'archet est à la position "bowPos" (0..1) le long de la corde.
+        readonly float[] _upperString;
+        readonly float[] _lowerString;
+        int _upperWrite, _lowerWrite;
+        int _stringLen;
+
+        // BowTable pré-calculée (Friedlander) — 512 points, symétrique autour de 0
+        static readonly float[] BowTable = BuildBowTable();
+        const int BowTableSize = 512;
+        const float BowTableRange = 1.0f;   // vRel range [-1, +1] → indices [0, 511]
+
+        static float[] BuildBowTable()
+        {
+            var t = new float[BowTableSize];
+            for (int i = 0; i < BowTableSize; i++)
+            {
+                float vRel = (i - BowTableSize / 2f) / (BowTableSize / 2f) * BowTableRange;
+                // Friedlander : friction pique à |vRel|~0.15 puis décroit rapidement
+                float scale = 0.15f;
+                float x = vRel / scale;
+                t[i] = vRel * (float)Math.Exp(-0.5 * x * x) / scale;
+            }
+            return t;
+        }
+
+        static float LookupBowTable(float vRel)
+        {
+            float pos = (vRel / BowTableRange + 1f) * (BowTableSize / 2f);
+            if (pos < 0) pos = 0;
+            if (pos >= BowTableSize - 1) pos = BowTableSize - 2;
+            int i0 = (int)pos;
+            float f = pos - i0;
+            return BowTable[i0] * (1f - f) + BowTable[i0 + 1] * f;
+        }
+
+        // Filtres au chevalet et au sillet
+        float _bridgeLpState;   // LP au chevalet (perte HF à la radiation)
+        float _nutHpState;      // HP au sillet (petit high-pass au bout de la corde)
+
+        // Body (3 formants biquad série)
+        BiquadState _f1, _f2, _f3;
+
+        // Vibrato + tremolo
         float _vibPhase, _vibInc;
         float _tremPhase, _tremInc;
 
-        // Formants biquad série (résonances de la caisse)
-        BiquadState _f1, _f2, _f3;
-
+        // Enveloppe
         enum EnvStage { Idle, Attack, Sustain, Release }
         EnvStage _stage = EnvStage.Idle;
         float _env, _envAttackRate, _envReleaseRate;
@@ -68,9 +108,13 @@ namespace KotonPluginElectricViolin
         public ElectricViolinVoice(int sampleRate)
         {
             _sr = sampleRate;
-            _string = new float[Math.Max(sampleRate / 20, 4096)];
-            // Formants classiques du violon : 300 Hz Q=8 (grave chaud), 700 Hz Q=6 (corps),
-            // 2500 Hz Q=5 (le "singing" caractéristique)
+            // Buffer max = 2 secondes (largement suffisant pour toutes les notes)
+            int maxLen = sampleRate * 2 / 10;
+            _upperString = new float[maxLen];
+            _lowerString = new float[maxLen];
+            // Formants classiques violon (basés sur Stradivarius mesuré, cf. Meyer 1978) :
+            // F1 = 300 Hz Q=8 (grave chaud "chest"), F2 = 700 Hz Q=6 (corps),
+            // F3 = 2500 Hz Q=5 (le "singing" caractéristique)
             SetBiquadBandpass(ref _f1, sampleRate, 300f, 8f);
             SetBiquadBandpass(ref _f2, sampleRate, 700f, 6f);
             SetBiquadBandpass(ref _f3, sampleRate, 2500f, 5f);
@@ -82,11 +126,15 @@ namespace KotonPluginElectricViolin
             _velocity = velocity;
 
             double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            _size = Math.Max(4, Math.Min(_string.Length, (int)Math.Round(_sr / freq)));
+            // Longueur totale de la corde = SR/f/2 pour chaque moitié (bidirectionnel) ×2 = SR/f
+            _stringLen = Math.Max(8, Math.Min(_upperString.Length, (int)(_sr / freq / 2)));
 
-            Array.Clear(_string, 0, _size);
-            _writeIdx = 0;
-            _lpState = 0f;
+            Array.Clear(_upperString, 0, _upperString.Length);
+            Array.Clear(_lowerString, 0, _lowerString.Length);
+            _upperWrite = 0;
+            _lowerWrite = 0;
+            _bridgeLpState = 0f;
+            _nutHpState = 0f;
             _f1.ResetState(); _f2.ResetState(); _f3.ResetState();
 
             _vibPhase = 0f;
@@ -116,13 +164,15 @@ namespace KotonPluginElectricViolin
             _stage = EnvStage.Idle;
             _env = 0f;
             _peakEnvelope = 0f;
-            Array.Clear(_string, 0, _string.Length);
+            Array.Clear(_upperString, 0, _upperString.Length);
+            Array.Clear(_lowerString, 0, _lowerString.Length);
         }
 
         public float RenderSample(in EvParams p)
         {
             if (!_active) return 0f;
 
+            // Envelope
             switch (_stage)
             {
                 case EnvStage.Attack:
@@ -135,96 +185,94 @@ namespace KotonPluginElectricViolin
                     break;
             }
 
-            // Vibrato : longueur de délai modulée
+            // BOW POSITION : divise la corde en 2 segments.
+            // bowPos = 0.15 typique = archet à 15% du chevalet.
+            float bowPos = 0.05f + p.BowPosition;   // range 0.05..0.55
+            int upperLen = Math.Max(2, (int)(_stringLen * bowPos));            // segment chevalet → archet
+            int lowerLen = Math.Max(2, _stringLen - upperLen);                  // segment archet → sillet
+
+            // Vibrato : moduler légèrement la longueur totale
             _vibPhase += _vibInc;
             if (_vibPhase > 2 * Math.PI) _vibPhase -= (float)(2 * Math.PI);
             float vibCents = (float)Math.Sin(_vibPhase) * p.VibratoDepthCents;
-            float sizeVib = _size / (float)Math.Pow(2.0, vibCents / 1200.0);
-            int sizeI = Math.Max(4, Math.Min(_size, (int)sizeVib));
+            float vibFactor = (float)Math.Pow(2.0, -vibCents / 1200.0);
+            int upperLenV = Math.Max(2, (int)(upperLen * vibFactor));
+            int lowerLenV = Math.Max(2, (int)(lowerLen * vibFactor));
+            if (upperLenV >= _upperString.Length) upperLenV = _upperString.Length - 1;
+            if (lowerLenV >= _lowerString.Length) lowerLenV = _lowerString.Length - 1;
 
-            // Lecture au bout de la corde (chevalet)
-            int readIdx = _writeIdx - sizeI;
-            while (readIdx < 0) readIdx += _size;
-            float stringVel = _string[readIdx];
+            // 1) LECTURE au point d'archet : les 2 ondes qui arrivent
+            //    - onde upper au bout (chevalet)
+            //    - onde lower au bout (sillet)
+            int upReadIdx = _upperWrite - upperLenV;
+            while (upReadIdx < 0) upReadIdx += _upperString.Length;
+            float upperIn = _upperString[upReadIdx];
 
-            // LP feedback (perte HF au chevalet — Damping)
-            float lpCutoff = 1500f + (1f - p.Damping) * 6000f;
+            int loReadIdx = _lowerWrite - lowerLenV;
+            while (loReadIdx < 0) loReadIdx += _lowerString.Length;
+            float lowerIn = _lowerString[loReadIdx];
+
+            // 2) POINT D'ARCHET (interaction non-linéaire via bowTable)
+            //    La vitesse de la corde au point d'archet = somme des 2 ondes qui arrivent.
+            float stringVel = upperIn + lowerIn;
+            float bowVel = p.BowVelocity * 0.4f * _env * _velocity;   // range 0..0.4
+            float bowForce = p.BowForce * _env * _velocity;
+
+            float vRel = bowVel - stringVel;
+            // Lookup dans la bowTable (Friedlander) : friction non-linéaire
+            float friction = LookupBowTable(vRel) * bowForce * 3.0f;
+            // Gate : sans mouvement d'archet, pas d'excitation (release meurt)
+            float gate = Math.Min(1f, bowForce * 3f);
+            friction *= gate;
+
+            // 3) ÉCHANGE D'ÉNERGIE au bow point : chaque onde qui repart est
+            //    la somme des 2 ondes qui arrivent (Kirchhoff) - la moitié de la friction
+            //    (l'archet ajoute de l'énergie à la corde)
+            float upperOut = lowerIn + friction * 0.5f;
+            float lowerOut = upperIn + friction * 0.5f;
+
+            // 4) RÉFLEXION au chevalet (fin de la ligne upper)
+            //    LP + réflexion négative : la corde perd de l'énergie et inverse la phase.
+            //    Damping contrôle le LP cutoff.
+            float lpCutoff = 2000f + (1f - p.Damping) * 5000f;
             float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
-            _lpState += lpAlpha * (stringVel - _lpState);
-            // Réflexion au chevalet : négative + damping global 0.995 (perte par cycle acoustique)
-            float returnVel = -0.995f * _lpState;
+            _bridgeLpState += lpAlpha * (upperOut - _bridgeLpState);
+            float bridgeReflection = -0.985f * _bridgeLpState;
 
-            // ARCHET — MSW friction stick-slip. La friction alimente EN CONTINU la boucle
-            // guide d'onde, générant l'auto-oscillation en dents de scie caractéristique du violon.
-            //
-            // Formulation stable : bowVelocity normalisée à 0..0.5, friction avec courbe qui
-            // dépasse 1.0 en zone stick pour garantir que l'énergie injectée > énergie perdue par
-            // le LP feedback → boucle s'entretient.
-            float bowVel = p.BowVelocity * 0.5f * _env * _velocity;   // 0..0.5 vitesse effective
-            float bowForce = p.BowForce;   // 0..1, module l'AMPLITUDE de la friction
+            // 5) RÉFLEXION au sillet (fin de la ligne lower) : réflexion presque parfaite,
+            //    petit HP pour éviter l'accumulation DC
+            float alphaHp = 1f - (float)Math.Exp(-2.0 * Math.PI * 30f / _sr);
+            _nutHpState += alphaHp * (lowerOut - _nutHpState);
+            float nutReflection = -0.995f * (lowerOut - _nutHpState);
 
-            float vRel = bowVel - returnVel;
-            float aRel = Math.Abs(vRel);
-            float friction;
-            const float stickThreshold = 0.1f;
-            if (aRel < stickThreshold)
-            {
-                // Zone STICK : la corde "colle" à l'archet. Friction forte linéaire.
-                friction = vRel * 4.0f;
-            }
-            else
-            {
-                // Zone SLIP : la corde glisse en arrière. Friction décroit exponentiellement
-                // avec |vRel| — c'est ce qui produit la commutation stick→slip→stick périodique
-                // qui donne l'onde en dents de scie caractéristique.
-                friction = Math.Sign(vRel) * (float)Math.Exp(-aRel * 2.0) * 0.6f;
-            }
-            // GATE par bowVel : sans mouvement d'archet, pas d'excitation (release meurt propre)
-            float excitationGate = Math.Min(1f, bowVel * 8f);
+            // 6) ÉCRITURE dans les lignes
+            _upperString[_upperWrite] = nutReflection;   // repart du sillet vers chevalet dans upperString
+            _lowerString[_lowerWrite] = bridgeReflection;   // repart du chevalet vers sillet dans lowerString
+            _upperWrite++; if (_upperWrite >= _upperString.Length) _upperWrite = 0;
+            _lowerWrite++; if (_lowerWrite >= _lowerString.Length) _lowerWrite = 0;
 
-            // Force injectée dans la corde = friction × bowForce × gate × gain de compensation
-            // pour vaincre les pertes du LP feedback. Le facteur 1.8 garantit une amplitude
-            // stable en sustain (empiriquement — dépend du LP cutoff).
-            float excitation = friction * bowForce * excitationGate * 1.8f;
+            // 7) SORTIE audio = pression au chevalet (bridgeLpState = ce qui rayonne)
+            float bridgeOut = _bridgeLpState;
 
-            // BowPosition : petit filtre comb (accentue certains harmoniques selon position sur
-            // la corde). Effet subtil, ne doit pas déphaser trop la boucle principale.
-            int combOffset = (int)(sizeI * (0.05f + p.BowPosition * 0.35f));
-            if (combOffset > 4 && combOffset < sizeI - 4)
-            {
-                int combIdx = _writeIdx - combOffset;
-                while (combIdx < 0) combIdx += _size;
-                excitation += _string[combIdx] * 0.15f;
-            }
+            // 8) Body : 3 formants biquad série (résonance de la caisse)
+            float f1Out = BiquadProcess(ref _f1, bridgeOut);
+            float f2Out = BiquadProcess(ref _f2, bridgeOut);
+            float f3Out = BiquadProcess(ref _f3, bridgeOut);
+            // Mix parallèle des formants (mode plus classique que série pour body violon)
+            float bodyOut = bridgeOut * (1f - p.BodyIntensity * 0.4f)
+                          + (f1Out * 0.5f + f2Out * 0.4f + f3Out * 0.3f) * p.BodyIntensity * 1.2f;
 
-            // Écriture dans la ligne : réflexion PLEINE (returnVel × 1.0) + excitation.
-            // Le damping global vient du -0.995 sur returnVel + du LP feedback qui absorbe
-            // les aigus. La boucle s'entretient tant que excitation > pertes.
-            _string[_writeIdx] = returnVel + excitation;
-            _writeIdx++;
-            if (_writeIdx >= _size) _writeIdx = 0;
+            // 9) Warmth : saturation piezo tanh douce
+            float saturated = (float)Math.Tanh(bodyOut * (1f + p.Warmth * 2f)) * (1f - p.Warmth * 0.3f);
 
-            // SORTIE : signal brut de la corde, passé par les 3 formants série + saturation piezo
-            float bodyIn = stringVel;
-
-            // Formants biquad série avec gain contrôlable par BodyIntensity
-            float f1Out = BiquadProcess(ref _f1, bodyIn);
-            float f2Out = BiquadProcess(ref _f2, f1Out);
-            float f3Out = BiquadProcess(ref _f3, f2Out);
-            // Mix dry + formants selon BodyIntensity
-            float body = bodyIn * (1f - p.BodyIntensity * 0.6f) + (f1Out * 0.4f + f2Out * 0.3f + f3Out * 0.3f) * p.BodyIntensity * 2f;
-
-            // Saturation piezo (Warmth) : tanh doux
-            float driven = body * (1f + p.Warmth * 3f);
-            float saturated = (float)Math.Tanh(driven) / (1f + p.Warmth * 2f);   // compense le gain
-
-            // Tremolo LFO en sortie (subtil)
+            // 10) Tremolo LFO en sortie
             _tremPhase += _tremInc;
             if (_tremPhase > 2 * Math.PI) _tremPhase -= (float)(2 * Math.PI);
-            float trem = 1f - p.TremoloDepth * 0.5f * (1f - (float)Math.Cos(_tremPhase));
-            float outSignal = saturated * trem;
+            float trem = 1f - p.TremoloDepth * 0.4f * (1f - (float)Math.Cos(_tremPhase));
 
-            // Détection d'énergie
+            float outSignal = saturated * trem * 0.8f;   // 0.8 marge anti-clip
+
+            // Silence detection
             float absOut = Math.Abs(outSignal);
             _peakEnvelope = Math.Max(_peakEnvelope * 0.9998f, absOut);
             if (_stage == EnvStage.Release && _env <= 0f && _peakEnvelope < SilenceThreshold)
