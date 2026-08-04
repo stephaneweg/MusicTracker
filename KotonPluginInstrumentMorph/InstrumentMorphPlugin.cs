@@ -292,33 +292,36 @@ namespace KotonPluginInstrumentMorph
                 }
                 else
                 {
-                    // Mode Vocoder (spectral morph) : le carrier = mix, on remodele sa distribution
-                    // spectrale bande par bande avec les enveloppes de A et B interpolees. Au
-                    // milieu m=0.5, le signal a un timbre HYBRIDE (spectre intermediaire) plutot
-                    // qu'une superposition.
-                    float cMono = aMono + (bMono - aMono) * m;
-
-                    float voc = 0f;
+                    // Mode Vocoder V2 : DOUBLE VOCODER CONVERGENT. Le probleme du vocoder V1 (carrier
+                    // = lerp signaux) : l'env du carrier vaut deja lerp(envA, envB) donc gain=1 et
+                    // ca sonne comme un simple mix. Ici on fait 2 vocoders paralleles qui recolorent
+                    // A et B SEPAREMENT vers le meme spectre cible, puis crossfade :
+                    //   voiceA = A recolore vers env_target (= lerp env_A + env_B)
+                    //   voiceB = B recolore vers env_target (meme cible)
+                    //   out    = voiceA*(1-m) + voiceB*m
+                    // Au milieu, voiceA et voiceB ont le MEME spectre → ne se contredisent plus,
+                    // fusionnent en un timbre unifie. Aux extremes, gain=1 → A pur ou B pur.
+                    float voiceA = 0f, voiceB = 0f;
                     for (int b = 0; b < Bands; b++)
                     {
                         float aBand = BiquadProc(ref _bpA[b], aMono);
                         float bBand = BiquadProc(ref _bpB[b], bMono);
-                        float cBand = BiquadProc(ref _bpC[b], cMono);
 
                         // Env followers peak-hold : attaque rapide, release lent
                         float absA = aBand < 0 ? -aBand : aBand;
                         float absB = bBand < 0 ? -bBand : bBand;
-                        float absC = cBand < 0 ? -cBand : cBand;
                         _envA[b] = absA > _envA[b] ? _envAtk * _envA[b] + (1 - _envAtk) * absA : _envRel * _envA[b] + (1 - _envRel) * absA;
                         _envB[b] = absB > _envB[b] ? _envAtk * _envB[b] + (1 - _envAtk) * absB : _envRel * _envB[b] + (1 - _envRel) * absB;
-                        _envC[b] = absC > _envC[b] ? _envAtk * _envC[b] + (1 - _envAtk) * absC : _envRel * _envC[b] + (1 - _envRel) * absC;
 
                         float envTarget = _envA[b] * (1 - m) + _envB[b] * m;
-                        float gain = envTarget / (_envC[b] + 1e-5f);
-                        if (gain > 6f) gain = 6f;
-                        voc += cBand * gain;
+                        float gainA = envTarget / (_envA[b] + 1e-5f);
+                        float gainB = envTarget / (_envB[b] + 1e-5f);
+                        if (gainA > 4f) gainA = 4f;
+                        if (gainB > 4f) gainB = 4f;
+                        voiceA += aBand * gainA;
+                        voiceB += bBand * gainB;
                     }
-                    // Compensation gain global (les BP recouvrent, le vocoder est plutot chaud)
+                    float voc = voiceA * (1 - m) + voiceB * m;
                     voc *= 0.6f;
                     sL = voc * outLin;
                     sR = voc * outLin;
