@@ -3,6 +3,7 @@ using MusicTracker.Localization;
 using MusicTracker.Screens;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -70,6 +71,14 @@ namespace MusicTracker
         {
             base.OnClosing(e);
             if (e.Cancel) return;
+            // Ferme les fenetres secondaires (mixer, editeurs de plugin, VST) AVANT les ConfirmDiscard :
+            // sinon, comme WPF z-order les OwnedWindows au-dessus de leur Owner, le ConfirmDialog modal
+            // s'affiche derriere le mixer et l'utilisateur ne peut plus interagir. Une copie de la liste
+            // OwnedWindows est necessaire (Close() la modifie pendant l'iteration).
+            foreach (Window w in new System.Collections.Generic.List<Window>(OwnedWindows.Cast<Window>()))
+            {
+                try { w.Close(); } catch { }
+            }
             // Copie du tableau : ConfirmDiscard peut enregistrer, donc toucher à la liste des onglets.
             var tabs = editorTabs.ToArray();
             foreach (var t in tabs)
