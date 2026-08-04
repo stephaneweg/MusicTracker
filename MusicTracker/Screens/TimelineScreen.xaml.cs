@@ -4214,10 +4214,121 @@ namespace MusicTracker.Screens
             // reste géré par la lane historique (toujours affichée), donc pas offert ici.
             menu.Items.Add(BuildAddAutomationMenu(track));
             menu.Items.Add(BuildRemoveAutomationMenu(track));
+
+            // Convertir les blocs PolyChord de cette piste en une nouvelle piste melodique (une note
+            // par tick, decoupee en riffs de N mesures — utile pour extraire une "melodie" du motif).
+            bool hasPolyChord = false;
+            if (track.Items != null)
+                foreach (var it in track.Items)
+                    if (it?.Module is Engine.Flow.PolyChordModule) { hasPolyChord = true; break; }
+            if (hasPolyChord)
+            {
+                menu.Items.Add(new Separator());
+                var conv = new MenuItem { Header = Loc.T("ConvertirAccordsMelodie") };
+                foreach (int bpr in new[] { 1, 2, 4, 8 })
+                {
+                    var sub = new MenuItem { Header = string.Format(Loc.T("XMesuresParRiff"), bpr) };
+                    int captured = bpr;
+                    sub.Click += (s, e) => ConvertChordsToMelody(track, captured);
+                    conv.Items.Add(sub);
+                }
+                menu.Items.Add(conv);
+            }
+
             menu.Items.Add(new Separator());
             menu.Items.Add(del);
             menu.PlacementTarget = anchor;
             menu.IsOpen = true;
+        }
+
+        // Convertit tous les blocs PolyChord de <paramref name="source"/> en une NOUVELLE piste Instrument
+        // (meme patch MIDI que la source), avec les notes decoupees en riffs de <paramref name="barsPerRiff"/>
+        // mesures. Chaque note du riff genere par PolyChord.Generate est reportee dans le segment ou tombe
+        // son Start absolu, avec sa longueur eventuellement clippee a la borne du segment.
+        void ConvertChordsToMelody(TimelineTrack source, int barsPerRiff)
+        {
+            if (source == null || source.Items == null || source.Items.Count == 0) return;
+            int beatsPerBar = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
+            int riffBeats = Math.Max(1, barsPerRiff * beatsPerBar);
+            const int TargetSpq = 24;   // resolution des nouveaux riffs (1/16e triolet, tres fin)
+
+            // 1) Collecter toutes les notes de tous les PolyChordModule en beats absolus.
+            var abs = new System.Collections.Generic.List<(double startBeat, double lenBeat, int midi)>();
+            double cursor = 0;
+            foreach (var it in source.Items)
+            {
+                if (it == null) continue;
+                cursor += it.SilenceBefore;
+                if (it.Module is Engine.Flow.PolyChordModule pcm)
+                {
+                    var riff = Engine.Flow.PolyChord.Generate(pcm);
+                    double beatsPerSlice = 1.0 / Math.Max(1, riff.SlicesPerQuarter);
+                    foreach (var n in riff.Notes)
+                    {
+                        double sB = cursor + n.Start * beatsPerSlice;
+                        double lB = Math.Max(beatsPerSlice, n.Length * beatsPerSlice);
+                        int midi = n.Note + 12;   // row grille -> MIDI
+                        abs.Add((sB, lB, midi));
+                    }
+                }
+                double dur = it.Module != null ? Engine.Flow.ModuleDuration.Beats(it.Module, project.RiffById) : 0;
+                cursor += dur;
+            }
+            if (abs.Count == 0) { MessageBox.Show(Loc.T("AucunAccordAConvertir")); return; }
+
+            // 2) Nouvelle piste Instrument (meme patch) juste apres la source.
+            PushUndo("track:chords2mel");
+            int srcIdx = project.Tracks.IndexOf(source);
+            var newTrack = new TimelineTrack
+            {
+                Name = source.Name + " (" + Loc.T("Melodie") + ")",
+                Type = TimelineTrackType.Instrument,
+                Instrument = source.Instrument,
+            };
+            project.Tracks.Insert(srcIdx + 1, newTrack);
+
+            // 3) Decoupage en riffs de riffBeats. Chaque note appartient au segment qui contient son Start ;
+            // sa longueur est clippee a la borne du segment (evite qu'un legato deborde sur le riff suivant).
+            double totalBeats = cursor;
+            int numSegs = Math.Max(1, (int)Math.Ceiling(totalBeats / riffBeats));
+            double lastEnd = 0;
+            for (int seg = 0; seg < numSegs; seg++)
+            {
+                double segStart = seg * riffBeats;
+                double segEnd = segStart + riffBeats;
+                var segNotes = new System.Collections.Generic.List<RiffNote>();
+                foreach (var (sB, lB, midi) in abs)
+                {
+                    if (sB < segStart - 1e-6 || sB >= segEnd - 1e-6) continue;
+                    double relStart = sB - segStart;
+                    double relLen = Math.Min(lB, segEnd - sB);
+                    int startSlice = (int)Math.Round(relStart * TargetSpq);
+                    int lenSlice = Math.Max(1, (int)Math.Round(relLen * TargetSpq));
+                    int row = midi - 12;
+                    if (row < 0 || row > 95) continue;
+                    segNotes.Add(new RiffNote(row, startSlice, lenSlice));
+                }
+                if (segNotes.Count == 0) continue;
+                segNotes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+
+                var newRiff = new Riff
+                {
+                    Id = Guid.NewGuid(),
+                    Name = source.Name + " mel " + (seg + 1),
+                    Notes = segNotes,
+                    SlicesPerQuarter = TargetSpq,
+                    LengthSlices = riffBeats * TargetSpq,
+                };
+                project.Riffs.Add(newRiff);
+                newTrack.Items.Add(new TimelineItem
+                {
+                    Module = new Engine.Flow.PlayRiffModule { RiffId = newRiff.Id },
+                    SilenceBefore = Math.Max(0, segStart - lastEnd),
+                });
+                lastEnd = segStart + riffBeats;
+            }
+
+            Render();
         }
 
         // Paramètres offerts dans le menu "Ajouter automation" (Volume est déjà présent en permanence via la lane
