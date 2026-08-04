@@ -5013,21 +5013,23 @@ namespace MusicTracker.Screens
         }
 
         // Export the whole timeline to WAV/MP3 (renders a fresh TimelinePlayer offline via WaveExporter).
-        void ExportAudio(string path, bool mp3)
+        void ExportAudio(string path, bool mp3, System.Collections.Generic.HashSet<TimelineTrack> selected = null)
         {
             if (!SoundFontGuard.EnsureReady(Window.GetWindow(this), "Export")) return;
-            var p = new Engine.Timeline.TimelinePlayer(project, project.RiffById, AudioFormat.SampleRate);
-            long cap = p.EstimatedTotalSamples + 5L * AudioFormat.SampleRate; // + a few seconds of ring-out tail
-
-            var dlg = new ExportProgressDialog((progress, token) =>
-                Engine.WaveExporter.RenderProvider(path, mp3, p, cap, AudioFormat.SampleRate, progress, token, p.Start, p.Stop))
+            // Le player respecte Mute/Solo — on applique la selection via ces flags, restauree apres.
+            using (WithTemporarySelection(selected))
             {
-                Owner = Window.GetWindow(this),
-            };
-            dlg.ShowDialog();
-
-            if (!string.IsNullOrEmpty(dlg.Error)) MessageBox.Show("Export error : " + dlg.Error);
-            else if (dlg.Success) MessageBox.Show(Loc.T("ExportTermine") + path);
+                var p = new Engine.Timeline.TimelinePlayer(project, project.RiffById, AudioFormat.SampleRate);
+                long cap = p.EstimatedTotalSamples + 5L * AudioFormat.SampleRate; // + a few seconds of ring-out tail
+                var dlg = new ExportProgressDialog((progress, token) =>
+                    Engine.WaveExporter.RenderProvider(path, mp3, p, cap, AudioFormat.SampleRate, progress, token, p.Start, p.Stop))
+                {
+                    Owner = Window.GetWindow(this),
+                };
+                dlg.ShowDialog();
+                if (!string.IsNullOrEmpty(dlg.Error)) MessageBox.Show("Export error : " + dlg.Error);
+                else if (dlg.Success) MessageBox.Show(Loc.T("ExportTermine") + path);
+            }
         }
 
         // Import a MIDI / MuseScore file into the timeline (one track per staff, riffs/drum patterns,
@@ -5142,38 +5144,78 @@ namespace MusicTracker.Screens
 
             string path = sfd.FileName;
             string ext = (System.IO.Path.GetExtension(path) ?? "").ToLowerInvariant();
+
+            // Dialog "Pistes a exporter" : cochees par defaut sauf les mutees. L'utilisateur peut
+            // decocher ce qu'il ne veut pas exporter. Le meme dialog s'applique aux 5 formats
+            // (WAV/MP3/MIDI/MusicXML/MSCX/PDF) pour une UX uniforme. Annuler = abandon complet.
+            var tsel = new Dialogs.TrackSelectionDialog(project) { Owner = Window.GetWindow(this) };
+            if (tsel.ShowDialog() != true || tsel.Result == null || tsel.Result.Count == 0) return;
+            var selected = new System.Collections.Generic.HashSet<TimelineTrack>(tsel.Result);
+
             switch (ext)
             {
-                case ".wav": case ".mp3": ExportAudio(path, ext == ".mp3"); break;
-                case ".mid": case ".midi": ExportMidi(path); break;
-                case ".musicxml": case ".xml": ExportMusicXml(path); break;
-                case ".mscx": ExportMuseScore(path); break;
+                case ".wav": case ".mp3": ExportAudio(path, ext == ".mp3", selected); break;
+                case ".mid": case ".midi": ExportMidi(path, selected); break;
+                case ".musicxml": case ".xml": ExportMusicXml(path, selected); break;
+                case ".mscx": ExportMuseScore(path, selected); break;
                 // Le PDF n'est pas écrit directement : l'application produit un aperçu imprimable, et c'est
                 // « Microsoft Print to PDF » qui grave le fichier. On ouvre donc l'aperçu au lieu d'écrire.
-                case ".pdf": ExportPdfPreview(); break;
+                case ".pdf": ExportPdfPreview(selected); break;
                 default:
                     MessageBox.Show(string.Format(Loc.T("FormatDExportInconnu"), ext));
                     break;
             }
         }
 
-        void ExportMidi(string path)
+        void ExportMidi(string path, System.Collections.Generic.HashSet<TimelineTrack> selected = null)
         {
             try
             {
-                Engine.Timeline.MidiTimelineExporter.Export(path, project, project.RiffById);
+                using (WithTemporarySelection(selected))
+                    Engine.Timeline.MidiTimelineExporter.Export(path, project, project.RiffById);
                 MessageBox.Show(Loc.T("ExportMIDITermine") + path);
             }
             catch (Exception ex) { MessageBox.Show(Loc.T("ErreurDExportMIDI") + ex.Message); }
         }
 
+        // Applique temporairement Mute=false pour les pistes cochees et Mute=true pour les non-cochees
+        // (+ Solo=false partout pour eviter les interferences), pour que les exporters qui iterent sur
+        // project.Tracks respectent naturellement la selection. Restauration a Dispose(). Si selected
+        // est null (compat retro), pas de changement.
+        IDisposable WithTemporarySelection(System.Collections.Generic.HashSet<TimelineTrack> selected)
+        {
+            if (selected == null) return new NoopScope();
+            var backup = new System.Collections.Generic.Dictionary<TimelineTrack, (bool mute, bool solo)>();
+            foreach (var t in project.Tracks)
+            {
+                backup[t] = (t.Mute, t.Solo);
+                t.Mute = !selected.Contains(t);
+                t.Solo = false;
+            }
+            return new RestoreScope(backup);
+        }
+        sealed class NoopScope : IDisposable { public void Dispose() { } }
+        sealed class RestoreScope : IDisposable
+        {
+            readonly System.Collections.Generic.Dictionary<TimelineTrack, (bool mute, bool solo)> _b;
+            public RestoreScope(System.Collections.Generic.Dictionary<TimelineTrack, (bool mute, bool solo)> b) { _b = b; }
+            public void Dispose() { foreach (var kv in _b) { kv.Key.Mute = kv.Value.mute; kv.Key.Solo = kv.Value.solo; } }
+        }
+
         // Export the score to a native MuseScore .mscx file (the checked ♫ tracks, else all instrument tracks;
         // drums skipped). One staff per part, with its clef + key + time signature.
-        void ExportMuseScore(string path)
+        void ExportMuseScore(string path, System.Collections.Generic.HashSet<TimelineTrack> selected = null)
         {
             var src = new System.Collections.Generic.List<TimelineTrack>();
-            foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) src.Add(t);
-            if (src.Count == 0) foreach (var t in project.Tracks) if (t.Type != TimelineTrackType.Drum) src.Add(t);
+            if (selected != null)
+            {
+                foreach (var t in project.Tracks) if (selected.Contains(t)) src.Add(t);
+            }
+            else
+            {
+                foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) src.Add(t);
+                if (src.Count == 0) foreach (var t in project.Tracks) if (t.Type != TimelineTrackType.Drum) src.Add(t);
+            }
 
             var parts = new System.Collections.Generic.List<Engine.Timeline.MuseScoreExporter.Part>();
             foreach (var t in src)
@@ -5195,11 +5237,18 @@ namespace MusicTracker.Screens
         // Export the score to MusicXML — the interchange format every notation program reads. Same track rule as the
         // MuseScore export (the checked ♫ tracks, else all instrument tracks; drums skipped) so there is only one
         // convention to learn; unlike the .mscx, notes are tied over the bar lines instead of being truncated.
-        void ExportMusicXml(string path)
+        void ExportMusicXml(string path, System.Collections.Generic.HashSet<TimelineTrack> selected = null)
         {
             var src = new System.Collections.Generic.List<TimelineTrack>();
-            foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) src.Add(t);
-            if (src.Count == 0) foreach (var t in project.Tracks) if (t.Type != TimelineTrackType.Drum) src.Add(t);
+            if (selected != null)
+            {
+                foreach (var t in project.Tracks) if (selected.Contains(t)) src.Add(t);
+            }
+            else
+            {
+                foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) src.Add(t);
+                if (src.Count == 0) foreach (var t in project.Tracks) if (t.Type != TimelineTrackType.Drum) src.Add(t);
+            }
 
             var parts = new System.Collections.Generic.List<Engine.Timeline.MusicXmlExporter.Part>();
             foreach (var t in src)
@@ -5220,10 +5269,17 @@ namespace MusicTracker.Screens
         }
 
         // Export the checked (♫) tracks as an A4 score, broken into lines of 2/4/8/16 measures, printed to PDF.
-        void ExportPdfPreview()
+        void ExportPdfPreview(System.Collections.Generic.HashSet<TimelineTrack> selected = null)
         {
             var list = new System.Collections.Generic.List<Engine.Score.TrackScore>();
-            foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) list.Add(Engine.Score.ScoreBuilder.Build(project, t, project.RiffById));
+            if (selected != null)
+            {
+                foreach (var t in project.Tracks) if (selected.Contains(t)) list.Add(Engine.Score.ScoreBuilder.Build(project, t, project.RiffById));
+            }
+            else
+            {
+                foreach (var t in project.Tracks) if (scoreTracks.Contains(t)) list.Add(Engine.Score.ScoreBuilder.Build(project, t, project.RiffById));
+            }
             if (list.Count == 0) { MessageBox.Show(Loc.T("CocheAuMoinsUnePistePour")); return; }
 
             // Title: the file name (no extension, '_' → space); fallback when unsaved.
