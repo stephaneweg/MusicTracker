@@ -422,20 +422,52 @@ namespace MusicTracker.Engine.Flow
             outNotes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
 
             // Mode "monodie emergente" : quand plusieurs anneaux ont un onset au meme slice, on n'en
-            // garde qu'UN SEUL au hasard (seed reproductible). Post-passe simple : groupe par Start,
-            // pick au sein du groupe. Chaque slice ne conserve donc qu'une seule note maximum, la
-            // sequence polyrythmique devient une monodie qui traverse les anneaux.
+            // garde qu'UN SEUL. Choix par VOICE-LEADING : parmi les candidats du tick, celui qui
+            // minimise le saut en semi-tons avec la note precedente, avec option d'octavier (±1, ±2)
+            // pour rester proche. Si le meilleur saut brut > quinte (7 st), l'octaviage kick in
+            // automatiquement — la ligne melodique glisse au lieu de sauter.
+            // Le seed ne sert plus qu'au 1er tick (avant qu'il y ait une "lastNote" de reference).
             if (m.MonodicPick && outNotes.Count > 1)
             {
                 var rndMono = new Random(m.MonodicSeed);
                 var filtered = new List<RiffNote>(outNotes.Count);
+                int lastNote = -1;
                 int i0 = 0;
                 while (i0 < outNotes.Count)
                 {
                     int i1 = i0 + 1;
                     while (i1 < outNotes.Count && outNotes[i1].Start == outNotes[i0].Start) i1++;
-                    int keep = i0 + rndMono.Next(i1 - i0);
-                    filtered.Add(outNotes[keep]);
+
+                    RiffNote pick;
+                    if (lastNote < 0)
+                    {
+                        // Premier tick : tirage aleatoire pur (seed reproductible).
+                        pick = outNotes[i0 + rndMono.Next(i1 - i0)];
+                    }
+                    else
+                    {
+                        // Voice-leading : pour chaque candidat, on teste ±0 ±12 ±24 semi-tons et
+                        // on garde la combinaison qui minimise |cand+oct*12 - lastNote|.
+                        int bestIdx = i0, bestOctShift = 0, bestDist = int.MaxValue;
+                        for (int k = i0; k < i1; k++)
+                        {
+                            int cand = outNotes[k].Note;
+                            for (int oct = -2; oct <= 2; oct++)
+                            {
+                                int shifted = cand + oct * 12;
+                                if (shifted < 0 || shifted > 95) continue;   // borne row du RiffNote
+                                int d = Math.Abs(shifted - lastNote);
+                                if (d < bestDist)
+                                {
+                                    bestDist = d; bestIdx = k; bestOctShift = oct;
+                                }
+                            }
+                        }
+                        var orig = outNotes[bestIdx];
+                        pick = new RiffNote(orig.Note + bestOctShift * 12, orig.Start, orig.Length);
+                    }
+                    filtered.Add(pick);
+                    lastNote = pick.Note;
                     i0 = i1;
                 }
                 outNotes = filtered;
