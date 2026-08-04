@@ -482,7 +482,7 @@ namespace MusicTracker.Engine.Flow
                                 for (int k = i0; k < i1; k++)
                                 {
                                     int cand = outNotes[k].Note;
-                                    for (int oct = -2; oct <= 2; oct++)
+                                    for (int oct = -4; oct <= 4; oct++)   // ±4 octaves : couvre toute plage MIDI
                                     {
                                         int shifted = cand + oct * 12;
                                         if (shifted < 0 || shifted > 95) continue;
@@ -518,14 +518,15 @@ namespace MusicTracker.Engine.Flow
             => Math.Max(1, (int)Math.Round(TotalBeats(m) * spq));
 
         // Octaviage anti-saut : etant donne UNE note candidate (deja choisie par la strategie), teste
-        // ±0 ±12 ±24 semi-tons et garde la version qui minimise |shifted - lastNote|. Si lastNote < 0
-        // (1er tick, pas de reference), renvoie la note originale. Applique aux 3 strategies fixes
-        // (Highest / Lowest / Random) pour eviter les gros sauts d'octave.
+        // ±4 octaves et garde la version qui minimise |shifted - lastNote|. Vise a rester dans la
+        // limite d'une 7e mineure (10 st) — si le meilleur trouve est encore > 10, on garde quand
+        // meme (impossible de mieux, par ex. note candidate proche d'une extremite MIDI). Si
+        // lastNote < 0 (1er tick), renvoie la note originale.
         static RiffNote OctaveShiftForVoiceLeading(RiffNote orig, int lastNote)
         {
             if (lastNote < 0) return orig;
             int bestOct = 0, bestDist = Math.Abs(orig.Note - lastNote);
-            for (int oct = -2; oct <= 2; oct++)
+            for (int oct = -4; oct <= 4; oct++)
             {
                 if (oct == 0) continue;
                 int shifted = orig.Note + oct * 12;
