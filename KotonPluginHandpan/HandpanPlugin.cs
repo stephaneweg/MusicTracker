@@ -35,7 +35,7 @@ namespace KotonPluginHandpan
         public string DisplayName => "Handpan";
 
         readonly KotonParameter _malletHardness = new KotonParameter("mallet_hardness", "Touch",          0.0, 1.0, 0.35);
-        readonly KotonParameter _resonance      = new KotonParameter("resonance",       "Resonance",      0.0, 1.0, 0.60);
+        readonly KotonParameter _resonance      = new KotonParameter("resonance",       "Resonance",      0.0, 1.0, 0.35);
         readonly KotonParameter _brightness     = new KotonParameter("brightness",      "Brightness",     0.0, 1.0, 0.45);
         readonly KotonParameter _sympathy       = new KotonParameter("sympathy",        "Sympathy",       0.0, 1.0, 0.55);
         readonly KotonParameter _shellMix       = new KotonParameter("shell_mix",       "Shell (bol)",    0.0, 1.0, 0.35);
@@ -57,7 +57,7 @@ namespace KotonPluginHandpan
         // comme un vrai handpan.
         static readonly HpMode[] StandardModes = new[]
         {
-            new HpMode { Ratio = 1.00f, DecayMs = 10000f },  // fondamentale : sustain 10s (le "chant" du bol)
+            new HpMode { Ratio = 1.00f, DecayMs = 6000f },   // fondamentale : sustain 6s (le "chant" du bol)
             new HpMode { Ratio = 2.00f, DecayMs = 800f },    // octave : bref, attaque seule
             new HpMode { Ratio = 3.00f, DecayMs = 500f },    // compound tone (12ème) — bref
             new HpMode { Ratio = 4.00f, DecayMs = 300f },    // 2e octave : très bref
@@ -153,7 +153,13 @@ namespace KotonPluginHandpan
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
-            // No-op — le handpan décroit naturellement (pas de damper).
+            // Damping "main sur le bol" : accelere la decroissance des modes actifs pour cette note.
+            // Sinon le sustain naturel (10s x Resonance) rend un enchainement de notes rapides
+            // impossible a ecouter (drone infini). Le geste physique du joueur = pose de la main.
+            if (_voices == null) return;
+            for (int i = 0; i < _voices.Length; i++)
+                if (_voices[i].IsActive && _voices[i].Note == note)
+                    _voices[i].NoteOff();
         }
 
         public void MidiCC(int cc, int value, int sampleOffset = 0)

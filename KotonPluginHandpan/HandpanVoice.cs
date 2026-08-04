@@ -110,8 +110,9 @@ namespace KotonPluginHandpan
                 float hardnessGain = (float)Math.Pow(m.Ratio, (p.MalletHardness - 0.5) * 0.5);
                 _amp[i] = ampBase * hardnessGain;
 
-                // Decay allongé par Resonance (0..1 → ×1..×3)
-                float effectiveDecayMs = m.DecayMs * (1f + p.Resonance * 2f) / (1f + m.Ratio * darkness * 0.4f);
+                // Decay allongé par Resonance (0..1 → ×1..×2). Etait x1..x3 mais rendait le sustain
+                // ingérable (fondamentale 6s x 3 = 18s → superposition de notes = drone infini).
+                float effectiveDecayMs = m.DecayMs * (1f + p.Resonance * 1.0f) / (1f + m.Ratio * darkness * 0.4f);
                 double samples = effectiveDecayMs * _sr / 1000.0;
                 if (samples < 1) samples = 1;
                 _decayFactor[i] = (float)Math.Exp(-6.907755278982137 / samples);
@@ -161,6 +162,22 @@ namespace KotonPluginHandpan
             _active = false;
             _numModes = 0;
             for (int i = 0; i < MaxModes; i++) _amp[i] = 0f;
+        }
+
+        /// <summary>Damping "main sur le bol" au NoteOff : accelere le decay des modes actifs par un
+        /// facteur ~6. Sans ca, avec les 5-10s de sustain naturel + Resonance, un enchainement de
+        /// notes rapides devient un drone infini qui donne l'impression d'une reverb sans fin.
+        /// Physiquement equivalent au geste du joueur qui pose la main sur la note pour l'etouffer.</summary>
+        public void NoteOff()
+        {
+            for (int i = 0; i < _numModes; i++)
+            {
+                if (_amp[i] < 1e-5f) continue;
+                // decayFactor = exp(-log(1000)/N) ; on veut equiv N' = N/6 → new = exp(-log(1000)/N*6) = old^6
+                float d = _decayFactor[i];
+                float d6 = d * d; d6 *= d6; d6 *= d;   // d^5 (approx 6 sans call Math.Pow)
+                _decayFactor[i] = d6;
+            }
         }
 
         public float RenderSample()

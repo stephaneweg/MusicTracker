@@ -109,11 +109,10 @@ namespace KotonPluginShimmerSparkle
             // grain n'attenue pas), donc feedback+shimmer_inject > gain unitaire = buildup lent
             // meme apres SoftClip. On soustrait shimmerAmt au feedback pour que l'energie totale
             // reinjectee par cycle reste sous 1.
-            float feedback = 0.5f + p.Decay * 0.40f;
-            float shimmerAmt = p.Shimmer * 0.35f;   // scale l'injection
-            feedback -= shimmerAmt * 0.90f;         // compensation : chaque unite de shimmer inject
-                                                    // remplace ~1 unite de feedback pour rester stable
-            if (feedback < 0.20f) feedback = 0.20f; // garde une queue minimale meme a shimmer max
+            float feedback = 0.5f + p.Decay * 0.32f;   // max 0.82 (etait 0.90 -> queue quasi-infinie)
+            float shimmerAmt = p.Shimmer * 0.30f;      // shimmer inject max 0.30
+            feedback -= shimmerAmt * 1.05f;            // over-compensation legere -> gain cycle < 1
+            if (feedback < 0.15f) feedback = 0.15f;    // queue minimale meme a shimmer max
             float damping = p.Damping;
             double shimmerRate = Math.Pow(2.0, p.ShimmerSemis / 12.0);
             _psRateCache = shimmerRate;
