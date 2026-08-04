@@ -104,11 +104,17 @@ namespace KotonPluginShimmerSparkle
             int n = left.Length;
             int preSamples = Math.Max(0, Math.Min(_preL.Length - 1, (int)(p.PreDelayMs * _sr / 1000.0)));
             // Feedback plafonne a 0.90 (etait 0.999 = quasi-infini + shimmer inject = divergence
-            // exponentielle en quelques secondes -> NaN silencieux). 0.90 + shimmer 0.35 laisse une
-            // marge, la queue reste tres longue (~10s a taux fort) sans exploser.
+            // exponentielle en quelques secondes -> NaN silencieux). Ensuite COMPENSATION : chaque
+            // tour de shimmer AJOUTE de l'energie qui n'etait pas dans le signal (le pitch shifter
+            // grain n'attenue pas), donc feedback+shimmer_inject > gain unitaire = buildup lent
+            // meme apres SoftClip. On soustrait shimmerAmt au feedback pour que l'energie totale
+            // reinjectee par cycle reste sous 1.
             float feedback = 0.5f + p.Decay * 0.40f;
+            float shimmerAmt = p.Shimmer * 0.35f;   // scale l'injection
+            feedback -= shimmerAmt * 0.90f;         // compensation : chaque unite de shimmer inject
+                                                    // remplace ~1 unite de feedback pour rester stable
+            if (feedback < 0.20f) feedback = 0.20f; // garde une queue minimale meme a shimmer max
             float damping = p.Damping;
-            float shimmerAmt = p.Shimmer * 0.35f;   // scale l'injection pour eviter la boucle divergente
             double shimmerRate = Math.Pow(2.0, p.ShimmerSemis / 12.0);
             _psRateCache = shimmerRate;
             float wet = p.Mix;
