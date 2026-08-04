@@ -103,9 +103,12 @@ namespace KotonPluginShimmerSparkle
         {
             int n = left.Length;
             int preSamples = Math.Max(0, Math.Min(_preL.Length - 1, (int)(p.PreDelayMs * _sr / 1000.0)));
-            float feedback = 0.5f + p.Decay * 0.499f;
+            // Feedback plafonne a 0.90 (etait 0.999 = quasi-infini + shimmer inject = divergence
+            // exponentielle en quelques secondes -> NaN silencieux). 0.90 + shimmer 0.35 laisse une
+            // marge, la queue reste tres longue (~10s a taux fort) sans exploser.
+            float feedback = 0.5f + p.Decay * 0.40f;
             float damping = p.Damping;
-            float shimmerAmt = p.Shimmer;
+            float shimmerAmt = p.Shimmer * 0.35f;   // scale l'injection pour eviter la boucle divergente
             double shimmerRate = Math.Pow(2.0, p.ShimmerSemis / 12.0);
             _psRateCache = shimmerRate;
             float wet = p.Mix;
@@ -173,16 +176,21 @@ namespace KotonPluginShimmerSparkle
                 float shimmerInject = shifted * shimmerAmt;
 
                 // Feedback : chaque ligne recoit rvIn + mix Hadamard + shimmer, avec LP damping
-                float wr0 = rvIn + m0 * feedback + shimmerInject * 0.5f;
-                float wr1 = rvIn + m1 * feedback + shimmerInject * 0.5f;
-                float wr2 = rvIn + m2 * feedback + shimmerInject * 0.5f;
-                float wr3 = rvIn + m3 * feedback + shimmerInject * 0.5f;
+                float wr0 = rvIn + m0 * feedback + shimmerInject;
+                float wr1 = rvIn + m1 * feedback + shimmerInject;
+                float wr2 = rvIn + m2 * feedback + shimmerInject;
+                float wr3 = rvIn + m3 * feedback + shimmerInject;
 
                 // Damping LP dans le feedback
                 _dlLp[0] = _dlLp[0] + (1 - damping) * (wr0 - _dlLp[0]); wr0 = _dlLp[0];
                 _dlLp[1] = _dlLp[1] + (1 - damping) * (wr1 - _dlLp[1]); wr1 = _dlLp[1];
                 _dlLp[2] = _dlLp[2] + (1 - damping) * (wr2 - _dlLp[2]); wr2 = _dlLp[2];
                 _dlLp[3] = _dlLp[3] + (1 - damping) * (wr3 - _dlLp[3]); wr3 = _dlLp[3];
+
+                // Soft-clip tanh dans le feedback + guard NaN/Inf (l'ancien code laissait diverger,
+                // au bout de quelques secondes NaN → toute la reverb devient silencieuse et le
+                // son "disparaissait"). Un soft-clip a ±1.3 limite l'energie sans casser le sustain.
+                wr0 = SoftClip(wr0); wr1 = SoftClip(wr1); wr2 = SoftClip(wr2); wr3 = SoftClip(wr3);
 
                 WriteDL(0, wr0); WriteDL(1, wr1); WriteDL(2, wr2); WriteDL(3, wr3);
 
@@ -196,6 +204,17 @@ namespace KotonPluginShimmerSparkle
                 if (outR > 1f) outR = 1f; else if (outR < -1f) outR = -1f;
                 left[i] = outL; right[i] = outR;
             }
+        }
+
+        // Soft-clip tanh + guard NaN/Inf : garde le signal borne dans [-1.3, +1.3] (tanh est doux
+        // avant clipping dur) et remet a 0 si un NaN/Inf s'infiltre (pitch shifter, dividez-par-zero,
+        // denormals x infinity). Sans ce guard le feedback pouvait diverger silencieusement.
+        static float SoftClip(float x)
+        {
+            if (float.IsNaN(x) || float.IsInfinity(x)) return 0f;
+            // tanh a ~x=1 vaut 0.76 ; on scale pour que le domaine utile [-1,+1] passe sans distorsion
+            // audible, mais que des pointes a ±3 se saturent doucement.
+            return (float)Math.Tanh(x * 0.8) * 1.25f;
         }
 
         float ReadDL(int i, float size)
