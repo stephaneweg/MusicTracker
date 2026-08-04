@@ -452,18 +452,18 @@ namespace MusicTracker.Engine.Flow
                         {
                             int bestK = i0;
                             for (int k = i0 + 1; k < i1; k++) if (outNotes[k].Note > outNotes[bestK].Note) bestK = k;
-                            pick = outNotes[bestK];
+                            pick = OctaveShiftForVoiceLeading(outNotes[bestK], lastNote);
                             break;
                         }
                         case PolyChordMonoStrategy.Lowest:
                         {
                             int bestK = i0;
                             for (int k = i0 + 1; k < i1; k++) if (outNotes[k].Note < outNotes[bestK].Note) bestK = k;
-                            pick = outNotes[bestK];
+                            pick = OctaveShiftForVoiceLeading(outNotes[bestK], lastNote);
                             break;
                         }
                         case PolyChordMonoStrategy.Random:
-                            pick = outNotes[i0 + rndMono.Next(i1 - i0)];
+                            pick = OctaveShiftForVoiceLeading(outNotes[i0 + rndMono.Next(i1 - i0)], lastNote);
                             break;
                         case PolyChordMonoStrategy.Auto:
                         default:
@@ -516,6 +516,25 @@ namespace MusicTracker.Engine.Flow
         /// deux mesures » (symptôme rapporté par l'utilisateur). On veut boucler sur la durée du module.</summary>
         static int TotalSlices(PolyChordModule m, int spq)
             => Math.Max(1, (int)Math.Round(TotalBeats(m) * spq));
+
+        // Octaviage anti-saut : etant donne UNE note candidate (deja choisie par la strategie), teste
+        // ±0 ±12 ±24 semi-tons et garde la version qui minimise |shifted - lastNote|. Si lastNote < 0
+        // (1er tick, pas de reference), renvoie la note originale. Applique aux 3 strategies fixes
+        // (Highest / Lowest / Random) pour eviter les gros sauts d'octave.
+        static RiffNote OctaveShiftForVoiceLeading(RiffNote orig, int lastNote)
+        {
+            if (lastNote < 0) return orig;
+            int bestOct = 0, bestDist = Math.Abs(orig.Note - lastNote);
+            for (int oct = -2; oct <= 2; oct++)
+            {
+                if (oct == 0) continue;
+                int shifted = orig.Note + oct * 12;
+                if (shifted < 0 || shifted > 95) continue;
+                int d = Math.Abs(shifted - lastNote);
+                if (d < bestDist) { bestDist = d; bestOct = oct; }
+            }
+            return bestOct == 0 ? orig : new RiffNote(orig.Note + bestOct * 12, orig.Start, orig.Length);
+        }
 
         // Choix de l'index de départ dans un nouveau voicing (règle Restart appliquée au changement d'accord).
         static int ResolveStart(ChordRestartMode restart, int[] voiced, EuclidChordLayer lay, int lastPlayedMidi, int lastIdx)
