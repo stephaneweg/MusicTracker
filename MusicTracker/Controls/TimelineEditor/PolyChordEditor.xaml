@@ -73,9 +73,19 @@
                     <CheckBox x:Name="chkMonodicPick" Content="Monodie émergente (un anneau à la fois)"
                               Foreground="#CCCCCC" FontSize="11" VerticalAlignment="Center"
                               Click="chkMonodicPick_Click"
-                              ToolTip="Sur un tick avec plusieurs anneaux actifs, n'en choisit qu'UN seul (seed reproductible) — la superposition devient une monodie."/>
+                              ToolTip="Sur un tick avec plusieurs anneaux actifs, n'en choisit qu'UN seul — la superposition devient une monodie."/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <TextBlock Text="Stratégie" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="cboMonodicStrategy" Width="180" SelectionChanged="cboMonodicStrategy_SelectionChanged"/>
                     <TextBlock Text="Seed" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="14,0,4,0"/>
                     <TextBox x:Name="txtMonodicSeed" Width="46" LostFocus="txtMonodicSeed_LostFocus"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <CheckBox x:Name="chkAvoidRepeat" Content="Éviter les répétitions (Auto uniquement)"
+                              Foreground="#CCCCCC" FontSize="11" VerticalAlignment="Center"
+                              Click="chkAvoidRepeat_Click"
+                              ToolTip="Pénalise la note précédente au choix — la mélodie évite de piétiner sur la même hauteur."/>
                 </StackPanel>
 
                 <TextBlock Text="{loc:Tr 'ListeDesAccords'}" Foreground="#AAAAAA" FontSize="11" Margin="0,10,0,1"/>

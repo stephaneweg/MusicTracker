@@ -306,6 +306,8 @@ namespace MusicTracker.Engine.Flow
         ChordRestartMode restart = ChordRestartMode.Nearest;
         bool monodicPick;
         int monodicSeed = 42;
+        bool monodicAvoidRepeat = true;
+        PolyChordMonoStrategy monodicStrategy = PolyChordMonoStrategy.Auto;
 
         public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
         /// <summary>Durée du CYCLE de la roue en TEMPS (noires) — c'est ce paramètre qui fixe la vitesse rythmique
@@ -327,6 +329,18 @@ namespace MusicTracker.Engine.Flow
         /// <summary>Seed du tirage au sort en mode MonodicPick — même seed = même séquence mélodique.
         /// Permet de tester plusieurs "mélodies" issues du même motif polyrythmique.</summary>
         public int MonodicSeed { get { return monodicSeed; } set { if (monodicSeed != value) { monodicSeed = value; OnChanged(nameof(MonodicSeed)); } } }
+
+        /// <summary>Mode MonodicPick : pénalise la note précédente au moment de choisir, pour éviter
+        /// que la même hauteur se répète en série (la mélodie tourne au lieu de piétiner). La pénalité
+        /// augmente avec chaque répétition consécutive (+3 st équivalents par répétition), donc une
+        /// répétition ponctuelle reste possible si aucun autre choix n'est proche. S'applique uniquement
+        /// à la stratégie <c>Auto</c> (voice-leading).</summary>
+        public bool MonodicAvoidRepeat { get { return monodicAvoidRepeat; } set { if (monodicAvoidRepeat != value) { monodicAvoidRepeat = value; OnChanged(nameof(MonodicAvoidRepeat)); } } }
+
+        /// <summary>Mode MonodicPick : quelle règle applique au groupe de candidats d'un tick. Highest/Lowest =
+        /// note la plus haute/grave (fixe). Auto = voice-leading avec octaviage (mélodie fluide, ancien défaut).
+        /// Random = tirage pseudo-aléatoire (seed).</summary>
+        public PolyChordMonoStrategy MonodicStrategy { get { return monodicStrategy; } set { if (monodicStrategy != value) { monodicStrategy = value; OnChanged(nameof(MonodicStrategy)); } } }
 
         public System.Collections.ObjectModel.ObservableCollection<PolyChordItem> Chords { get; set; } = new System.Collections.ObjectModel.ObservableCollection<PolyChordItem>();
         public System.Collections.ObjectModel.ObservableCollection<EuclidChordLayer> Layers { get; set; } = new System.Collections.ObjectModel.ObservableCollection<EuclidChordLayer>();

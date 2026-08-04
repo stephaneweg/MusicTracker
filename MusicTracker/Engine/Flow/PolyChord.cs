@@ -18,6 +18,12 @@ namespace MusicTracker.Engine.Flow
     /// Les 5 autres = point d'accroche musical fixe : la plus grave/aiguë, la fondamentale, la tierce, la quinte.</summary>
     public enum ChordRestartMode { Nearest = 0, Grave, Aigu, Tonic, Tierce, Quinte }
 
+    /// <summary>Mode "monodie emergente" (MonodicPick) : strategie de selection quand plusieurs anneaux ont un
+    /// onset simultane. <see cref="Highest"/>/<see cref="Lowest"/> = toujours la note la plus haute/grave du
+    /// groupe (fixe). <see cref="Auto"/> = voice-leading (minimise le saut avec la note precedente + octaviage
+    /// automatique) — melodie fluide. <see cref="Random"/> = tirage pseudo-aleatoire (seed).</summary>
+    public enum PolyChordMonoStrategy { Highest = 0, Lowest, Auto, Random }
+
     // ===================== un accord de la liste ================================================================
 
     /// <summary>Un accord de la liste d'un <see cref="PolyChordModule"/> : mêmes champs que ceux qu'on saisit à
@@ -432,6 +438,7 @@ namespace MusicTracker.Engine.Flow
                 var rndMono = new Random(m.MonodicSeed);
                 var filtered = new List<RiffNote>(outNotes.Count);
                 int lastNote = -1;
+                int repeatCount = 0;
                 int i0 = 0;
                 while (i0 < outNotes.Count)
                 {
@@ -439,34 +446,61 @@ namespace MusicTracker.Engine.Flow
                     while (i1 < outNotes.Count && outNotes[i1].Start == outNotes[i0].Start) i1++;
 
                     RiffNote pick;
-                    if (lastNote < 0)
+                    switch (m.MonodicStrategy)
                     {
-                        // Premier tick : tirage aleatoire pur (seed reproductible).
-                        pick = outNotes[i0 + rndMono.Next(i1 - i0)];
-                    }
-                    else
-                    {
-                        // Voice-leading : pour chaque candidat, on teste ±0 ±12 ±24 semi-tons et
-                        // on garde la combinaison qui minimise |cand+oct*12 - lastNote|.
-                        int bestIdx = i0, bestOctShift = 0, bestDist = int.MaxValue;
-                        for (int k = i0; k < i1; k++)
+                        case PolyChordMonoStrategy.Highest:
                         {
-                            int cand = outNotes[k].Note;
-                            for (int oct = -2; oct <= 2; oct++)
-                            {
-                                int shifted = cand + oct * 12;
-                                if (shifted < 0 || shifted > 95) continue;   // borne row du RiffNote
-                                int d = Math.Abs(shifted - lastNote);
-                                if (d < bestDist)
-                                {
-                                    bestDist = d; bestIdx = k; bestOctShift = oct;
-                                }
-                            }
+                            int bestK = i0;
+                            for (int k = i0 + 1; k < i1; k++) if (outNotes[k].Note > outNotes[bestK].Note) bestK = k;
+                            pick = outNotes[bestK];
+                            break;
                         }
-                        var orig = outNotes[bestIdx];
-                        pick = new RiffNote(orig.Note + bestOctShift * 12, orig.Start, orig.Length);
+                        case PolyChordMonoStrategy.Lowest:
+                        {
+                            int bestK = i0;
+                            for (int k = i0 + 1; k < i1; k++) if (outNotes[k].Note < outNotes[bestK].Note) bestK = k;
+                            pick = outNotes[bestK];
+                            break;
+                        }
+                        case PolyChordMonoStrategy.Random:
+                            pick = outNotes[i0 + rndMono.Next(i1 - i0)];
+                            break;
+                        case PolyChordMonoStrategy.Auto:
+                        default:
+                            if (lastNote < 0)
+                            {
+                                // Premier tick : tirage aleatoire (seed reproductible) — pas de reference.
+                                pick = outNotes[i0 + rndMono.Next(i1 - i0)];
+                            }
+                            else
+                            {
+                                // Voice-leading + anti-repetition : pour chaque candidat, teste ±0 ±12 ±24
+                                // semi-tons et garde la combinaison qui minimise le score = distance + penalite
+                                // (si AvoidRepeat et shifted == lastNote → +3 + 3*repeatCount).
+                                int bestIdx = i0, bestOctShift = 0;
+                                double bestScore = double.MaxValue;
+                                for (int k = i0; k < i1; k++)
+                                {
+                                    int cand = outNotes[k].Note;
+                                    for (int oct = -2; oct <= 2; oct++)
+                                    {
+                                        int shifted = cand + oct * 12;
+                                        if (shifted < 0 || shifted > 95) continue;
+                                        double d = Math.Abs(shifted - lastNote);
+                                        if (m.MonodicAvoidRepeat && shifted == lastNote)
+                                            d += 3.0 + 3.0 * repeatCount;
+                                        if (d < bestScore) { bestScore = d; bestIdx = k; bestOctShift = oct; }
+                                    }
+                                }
+                                var orig = outNotes[bestIdx];
+                                pick = new RiffNote(orig.Note + bestOctShift * 12, orig.Start, orig.Length);
+                            }
+                            break;
                     }
+
                     filtered.Add(pick);
+                    if (pick.Note == lastNote) repeatCount++;
+                    else repeatCount = 0;
                     lastNote = pick.Note;
                     i0 = i1;
                 }

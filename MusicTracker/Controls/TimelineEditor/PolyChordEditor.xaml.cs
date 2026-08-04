@@ -119,6 +119,15 @@ namespace MusicTracker.Controls.TimelineEditor
             chkOpenVoicing.IsChecked = pc.OpenVoicing;
             chkMonodicPick.IsChecked = pc.MonodicPick;
             txtMonodicSeed.Text = pc.MonodicSeed.ToString();
+            if (cboMonodicStrategy.Items.Count == 0)
+            {
+                cboMonodicStrategy.Items.Add("Note la plus haute");
+                cboMonodicStrategy.Items.Add("Note la plus basse");
+                cboMonodicStrategy.Items.Add("Auto (voice-leading)");
+                cboMonodicStrategy.Items.Add("Aléatoire");
+            }
+            cboMonodicStrategy.SelectedIndex = (int)pc.MonodicStrategy;
+            chkAvoidRepeat.IsChecked = pc.MonodicAvoidRepeat;
 
             // Combos accords : MÊME vocabulaire que l'éditeur d'accord ordinaire, dominantes secondaires comprises
             // (ChordDegreeChoices est partagé par les deux). La liste dépend de la tonalité, donc EnsureChoices.
@@ -445,6 +454,22 @@ namespace MusicTracker.Controls.TimelineEditor
         {
             if (int.TryParse(txtMonodicSeed.Text, out int v) && v != pc.MonodicSeed)
             { host.PushUndo?.Invoke("polychord:seed"); pc.MonodicSeed = v; RedrawAll(); }
+        }
+        void chkAvoidRepeat_Click(object sender, RoutedEventArgs e)
+        {
+            if (chkAvoidRepeat.IsChecked == pc.MonodicAvoidRepeat) return;
+            host.PushUndo?.Invoke("polychord:avoidrep");
+            pc.MonodicAvoidRepeat = chkAvoidRepeat.IsChecked == true;
+            RedrawAll();
+        }
+        void cboMonodicStrategy_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (cboMonodicStrategy.SelectedIndex < 0) return;
+            var v = (MusicTracker.Engine.Flow.PolyChordMonoStrategy)cboMonodicStrategy.SelectedIndex;
+            if (pc.MonodicStrategy == v) return;
+            host.PushUndo?.Invoke("polychord:monostrat");
+            pc.MonodicStrategy = v;
+            RedrawAll();
         }
 
         // ---- accords : choix du degré (ou d'une DOMINANTE SECONDAIRE) ---------------------------------------
