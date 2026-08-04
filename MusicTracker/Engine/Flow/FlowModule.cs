@@ -304,6 +304,8 @@ namespace MusicTracker.Engine.Flow
         int voiceLeadAnchor;                        // 0 auto / 1 basse proche / 2 haut proche (idem CadenceModule)
         PolyChordMode mode = PolyChordMode.OneRingPerTone;
         ChordRestartMode restart = ChordRestartMode.Nearest;
+        bool monodicPick;
+        int monodicSeed = 42;
 
         public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
         /// <summary>Durée du CYCLE de la roue en TEMPS (noires) — c'est ce paramètre qui fixe la vitesse rythmique
@@ -315,6 +317,16 @@ namespace MusicTracker.Engine.Flow
         public int VoiceLeadAnchor { get { return voiceLeadAnchor; } set { int v = Math.Max(0, Math.Min(2, value)); if (voiceLeadAnchor != v) { voiceLeadAnchor = v; OnChanged(nameof(VoiceLeadAnchor)); } } }
         public PolyChordMode Mode { get { return mode; } set { if (mode != value) { mode = value; OnChanged(nameof(Mode)); } } }
         public ChordRestartMode Restart { get { return restart; } set { if (restart != value) { restart = value; OnChanged(nameof(Restart)); } } }
+
+        /// <summary>Mode « monodie émergente » : quand plusieurs anneaux ont un onset au même slice, on n'en
+        /// choisit qu'UN SEUL au hasard (seed reproductible), les autres se taisent à ce tick. Résultat : au
+        /// lieu d'une superposition polyphonique, une ligne mélodique émerge du croisement des anneaux — chaque
+        /// coup de la mélodie provient d'un anneau différent, selon le motif polyrythmique. Idée user 2026-08-04.</summary>
+        public bool MonodicPick { get { return monodicPick; } set { if (monodicPick != value) { monodicPick = value; OnChanged(nameof(MonodicPick)); } } }
+
+        /// <summary>Seed du tirage au sort en mode MonodicPick — même seed = même séquence mélodique.
+        /// Permet de tester plusieurs "mélodies" issues du même motif polyrythmique.</summary>
+        public int MonodicSeed { get { return monodicSeed; } set { if (monodicSeed != value) { monodicSeed = value; OnChanged(nameof(MonodicSeed)); } } }
 
         public System.Collections.ObjectModel.ObservableCollection<PolyChordItem> Chords { get; set; } = new System.Collections.ObjectModel.ObservableCollection<PolyChordItem>();
         public System.Collections.ObjectModel.ObservableCollection<EuclidChordLayer> Layers { get; set; } = new System.Collections.ObjectModel.ObservableCollection<EuclidChordLayer>();

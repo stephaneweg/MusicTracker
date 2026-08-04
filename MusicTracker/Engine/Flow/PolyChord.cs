@@ -420,6 +420,27 @@ namespace MusicTracker.Engine.Flow
             }
 
             outNotes.Sort((a, b) => a.Start != b.Start ? a.Start.CompareTo(b.Start) : a.Note.CompareTo(b.Note));
+
+            // Mode "monodie emergente" : quand plusieurs anneaux ont un onset au meme slice, on n'en
+            // garde qu'UN SEUL au hasard (seed reproductible). Post-passe simple : groupe par Start,
+            // pick au sein du groupe. Chaque slice ne conserve donc qu'une seule note maximum, la
+            // sequence polyrythmique devient une monodie qui traverse les anneaux.
+            if (m.MonodicPick && outNotes.Count > 1)
+            {
+                var rndMono = new Random(m.MonodicSeed);
+                var filtered = new List<RiffNote>(outNotes.Count);
+                int i0 = 0;
+                while (i0 < outNotes.Count)
+                {
+                    int i1 = i0 + 1;
+                    while (i1 < outNotes.Count && outNotes[i1].Start == outNotes[i0].Start) i1++;
+                    int keep = i0 + rndMono.Next(i1 - i0);
+                    filtered.Add(outNotes[keep]);
+                    i0 = i1;
+                }
+                outNotes = filtered;
+            }
+
             return new Riff { Name = "PolyChords", Notes = outNotes, SlicesPerQuarter = spq, LengthSlices = TotalSlices(m, spq) };
         }
 

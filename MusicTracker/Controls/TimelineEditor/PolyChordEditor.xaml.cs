@@ -117,6 +117,8 @@ namespace MusicTracker.Controls.TimelineEditor
             txtOctave.Text = pc.Octave.ToString();
             txtCycleBeats.Text = pc.CycleBeats.ToString();
             chkOpenVoicing.IsChecked = pc.OpenVoicing;
+            chkMonodicPick.IsChecked = pc.MonodicPick;
+            txtMonodicSeed.Text = pc.MonodicSeed.ToString();
 
             // Combos accords : MÊME vocabulaire que l'éditeur d'accord ordinaire, dominantes secondaires comprises
             // (ChordDegreeChoices est partagé par les deux). La liste dépend de la tonalité, donc EnsureChoices.
@@ -431,6 +433,18 @@ namespace MusicTracker.Controls.TimelineEditor
             host.PushUndo?.Invoke("polychord:open");
             pc.OpenVoicing = chkOpenVoicing.IsChecked == true;
             RedrawAll();
+        }
+        void chkMonodicPick_Click(object sender, RoutedEventArgs e)
+        {
+            if (chkMonodicPick.IsChecked == pc.MonodicPick) return;
+            host.PushUndo?.Invoke("polychord:monodic");
+            pc.MonodicPick = chkMonodicPick.IsChecked == true;
+            RedrawAll();
+        }
+        void txtMonodicSeed_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(txtMonodicSeed.Text, out int v) && v != pc.MonodicSeed)
+            { host.PushUndo?.Invoke("polychord:seed"); pc.MonodicSeed = v; RedrawAll(); }
         }
 
         // ---- accords : choix du degré (ou d'une DOMINANTE SECONDAIRE) ---------------------------------------
