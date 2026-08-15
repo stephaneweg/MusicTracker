@@ -2590,6 +2590,7 @@ namespace MusicTracker.Screens
             else if (item.Module is Engine.Flow.PolyDrumModule pdm2) { txtEditorTitle.Text = Loc.T("EditeurBatteriePolyrythmique"); editorHost.Content = BuildPolyDrumEditor(track, item, pdm2); selfScroll = true; }
             else if (item.Module is Engine.Flow.MelodicPolyModule mpm) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodiquePolyrythmique"); editorHost.Content = BuildMelodicPolyEditor(track, item, mpm); selfScroll = true; }
             else if (item.Module is Engine.Flow.PolyChordModule pcmm) { txtEditorTitle.Text = Loc.T("EditeurAccordsPolyrythmiques"); editorHost.Content = BuildPolyChordEditor(track, item, pcmm); selfScroll = true; }
+            else if (item.Module is Engine.Flow.ChordArticulationModule cam) { txtEditorTitle.Text = Loc.T("EditeurArticulationAccord"); editorHost.Content = BuildChordArticulationEditor(track, item, cam); selfScroll = true; }
             else if (item.Module is MelodicLineModule ml) { txtEditorTitle.Text = Loc.T("EditeurLigneMelodique"); editorHost.Content = BuildMelodicLineEditor(track, item, ml); selfScroll = true; }
             // Un module générateur Koton natif : le plugin fournit son UserControl WPF, on l'affiche
             // dans le panneau du bas avec une barre Preview/Stop (voir TimelineScreen.KotonGenerator.cs).
@@ -4002,6 +4003,68 @@ namespace MusicTracker.Screens
         // « Insérer ▸ Accords polyrythmiques » : crée un nouveau module PolyChord AVEC un premier accord (I) et
         // deux anneaux de longueurs différentes, comme les autres modules polyrythmiques (un seul anneau n'a rien
         // à déphaser). Va TOUJOURS sur la piste Accords (via AppendChord).
+        // Éditeur du bloc d'articulation : uniquement des paramètres de RÉALISATION (aucun paramètre d'accord —
+        // l'harmonie vient de la piste Accords). Durée libre, donc « Durée du bloc » est un réglage de premier plan.
+        UIElement BuildChordArticulationEditor(TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca)
+        {
+            riffEditItem = item; riffEditTrack = track; riffOpenLen = project.DispLen(item); riffDirty = false;
+
+            var grid = TwoColumns(out StackPanel left, out ContentControl host);
+            Action refresh = () => Render();
+
+            left.Children.Add(new TextBlock
+            {
+                Text = Loc.T("ArticulationSuitAccords"),
+                Foreground = "#8A8F98".ToBrush(), FontSize = 11, TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 8),
+            });
+
+            left.Children.Add(EdLabel(Loc.T("DureeDuBlocTemps")));
+            left.Children.Add(ParamNum((int)Math.Round(ca.Beats), v => { if (v > 0) ca.Beats = v; }, refresh));
+
+            left.Children.Add(EdLabel(Loc.T("Style")));
+            left.Children.Add(ParamCombo(PatternGenerator.StyleNames, ca.Style, v => ca.Style = v, refresh));
+
+            left.Children.Add(EdLabel(Loc.T("Octave")));
+            left.Children.Add(ParamNum(ca.Octave, v => ca.Octave = v, refresh));
+
+            var bass = new CheckBox { Content = Loc.T("Basse"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 8, 0, 0), IsChecked = ca.Bass };
+            bass.Checked += (s, e) => { ca.Bass = true; refresh(); };
+            bass.Unchecked += (s, e) => { ca.Bass = false; refresh(); };
+            left.Children.Add(bass);
+
+            var bassBeat = new CheckBox { Content = Loc.T("BasseParTemps"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(18, 2, 0, 0), IsChecked = ca.BassPerBeat };
+            bassBeat.Checked += (s, e) => { ca.BassPerBeat = true; refresh(); };
+            bassBeat.Unchecked += (s, e) => { ca.BassPerBeat = false; refresh(); };
+            left.Children.Add(bassBeat);
+
+            var open = new CheckBox { Content = Loc.T("VoicingOuvert"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = ca.OpenVoicing };
+            open.Checked += (s, e) => { ca.OpenVoicing = true; refresh(); };
+            open.Unchecked += (s, e) => { ca.OpenVoicing = false; refresh(); };
+            left.Children.Add(open);
+
+            var halve = new CheckBox { Content = Loc.T("HalveDurations"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = ca.HalveDurations };
+            halve.Checked += (s, e) => { ca.HalveDurations = true; refresh(); };
+            halve.Unchecked += (s, e) => { ca.HalveDurations = false; refresh(); };
+            left.Children.Add(halve);
+
+            left.Children.Add(EdLabel(Loc.T("Renversement")));
+            left.Children.Add(ParamNum(ca.Inversion, v => ca.Inversion = v, refresh));
+
+            return grid;
+        }
+
+        // « Articulation d'accord » : un bloc de RÉALISATION posé sur une piste INSTRUMENT. Il ne porte aucun
+        // accord — à la lecture il articule l'accord actif de la piste Accords à chaque instant. Sa longueur est
+        // libre : par défaut une mesure, à étirer ensuite pour couvrir autant d'accords que voulu.
+        private void btnAddChordArticulation_Click(object sender, RoutedEventArgs e)
+        {
+            if (selectedTrack == null || selectedTrack.Type == TimelineTrackType.Chord)
+            { MessageBox.Show(Loc.T("SelectionneDAbordUnePisteInstrument")); return; }
+            int bpb = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
+            AppendModule(new Engine.Flow.ChordArticulationModule { Beats = bpb });
+        }
+
         private void btnAddPolyChord_Click(object sender, RoutedEventArgs e)
         {
             var m = new Engine.Flow.PolyChordModule { Mode = Engine.Flow.PolyChordMode.OneRingPerTone };

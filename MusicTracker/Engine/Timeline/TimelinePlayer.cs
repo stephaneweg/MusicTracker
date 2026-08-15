@@ -229,7 +229,11 @@ namespace MusicTracker.Engine.Timeline
                     ReleaseAt = new List<int>[totalSlices + 1],
                     Template = InstrumentCatalog.GetPreset(tr.Instrument),
                     BaseVol = tr.Volume,
-                    Mix = (tr.Mute || (anySolo && !tr.Solo)) ? 0.0 : 1.0,
+                    // La piste ACCORDS est désormais une source d'harmonie SILENCIEUSE : elle ne fournit que
+                    // « quel accord règne à cet instant » au contexte (articulations, lignes mélodiques,
+                    // polyrythmes). Ce qu'on entend vient des modules d'articulation posés sur les pistes
+                    // instrument. Elle garde sa durée et ses accords — seul le rendu audio est coupé.
+                    Mix = (tr.Mute || (anySolo && !tr.Solo) || tr.Type == TimelineTrackType.Chord) ? 0.0 : 1.0,
                     Autom = (tr.VolumeAutomation != null ? tr.VolumeAutomation.OrderBy(p => p.Beat).ToList() : new List<VolumePoint>()),
                     LaneSnaps = SnapshotLanes(tr.AutomationLanes),
                     Src = tr,
@@ -443,6 +447,9 @@ namespace MusicTracker.Engine.Timeline
                 case PolyDrumModule pd: return PolyDrum.Generate(pd);
                 case CadenceModule cm: return PatternGenerator.GenerateCadence(cm);
                 case PolyChordModule pc: return PolyChord.Generate(pc);
+                // Articulation d'accord : ne porte aucun accord — elle lit l'harmonie active à sa position
+                // absolue, d'où le besoin de melodyProject + absoluteStartBeat (même schéma que le générateur Koton).
+                case ChordArticulationModule ca: return ChordArticulation.Generate(ca, melodyProject, resolve, absoluteStartBeat);
                 // Générateur Koton natif : instance vivante + RenderNotes → Riff canonique via le
                 // helper partagé (même chemin que ScoreModel et l'export MIDI, pour éviter la
                 // divergence audio/partition/export — cf. « New module → 3 resolvers »). L'offset

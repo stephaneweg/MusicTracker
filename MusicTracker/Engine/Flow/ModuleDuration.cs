@@ -34,6 +34,8 @@ namespace MusicTracker.Engine.Flow
                     return MelodicEuclid.TotalBeats(mp);
                 case PolyChordModule pc:
                     return PolyChord.TotalBeats(pc);
+                case ChordArticulationModule ca:
+                    return Timeline.ChordArticulation.TotalBeats(ca);   // longueur LIBRE, indépendante des accords couverts
                 case KotonGeneratorModule kg:
                     // La durée est PORTÉE par le module (pas par le plugin) — les redimensionnements
                     // depuis la timeline et l'éditeur passent tous par KotonGeneratorModule.DurationBeats.

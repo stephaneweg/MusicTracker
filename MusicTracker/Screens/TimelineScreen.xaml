@@ -389,6 +389,7 @@
                     <MenuItem x:Name="menuInsert" Header="{loc:Tr 'Insert'}" Foreground="#DDDDDD">
                         <MenuItem x:Name="miAddRiff" Header="Riff" Click="btnAddRiff_Click"/>
                         <MenuItem x:Name="miAddPattern" Header="{loc:Tr 'Chords'}" Click="btnAddPattern_Click"/>
+                        <MenuItem x:Name="miAddChordArticulation" Header="{loc:Tr 'ChordArticulation'}" Click="btnAddChordArticulation_Click" ToolTip="{loc:Tr 'ChordArticulationTip'}"/>
                         <MenuItem x:Name="miAddCadence" Header="{loc:Tr 'Cadence'}" Click="btnAddCadence_Click"/>
                         <MenuItem x:Name="miAddPolyChord" Header="{loc:Tr 'AccordsPolyrythmiques'}" Click="btnAddPolyChord_Click" ToolTip="{loc:Tr 'ListeDaccordsSurAnneauxEuclidiens'}"/>
                         <MenuItem x:Name="miInsertMelodicLine" Header="{loc:Tr 'MelodicLineRhythm'}" Click="btnInsertMelodicLine_Click" ToolTip="{loc:Tr 'AddsAMelodicLineRhythmOnly'}"/>

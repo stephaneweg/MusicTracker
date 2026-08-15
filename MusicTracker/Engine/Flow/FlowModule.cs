@@ -17,6 +17,7 @@ namespace MusicTracker.Engine.Flow
     [JsonDerivedType(typeof(PolyDrumModule), "PolyDrum")]
     [JsonDerivedType(typeof(MelodicPolyModule), "MelodicPoly")]
     [JsonDerivedType(typeof(PolyChordModule), "PolyChord")]
+    [JsonDerivedType(typeof(ChordArticulationModule), "ChordArticulation")]
     [JsonDerivedType(typeof(KotonGeneratorModule), "KotonGenerator")]
     public abstract class FlowModule : INotifyPropertyChanged
     {
@@ -171,6 +172,78 @@ namespace MusicTracker.Engine.Flow
         }
 
         [JsonIgnore] public override string Title { get { return "Pattern"; } }
+    }
+
+    /// <summary>
+    /// ARTICULATION D'ACCORD — le « comment on joue » séparé du « quel accord ». Posé sur une piste
+    /// INSTRUMENT, ce module ne définit AUCUN accord : à chaque instant il lit l'accord actif sur la piste
+    /// Accords (voir <see cref="Timeline.Harmony.ChordAt"/>) et l'articule avec son style.
+    ///
+    /// Sa longueur est LIBRE (<see cref="Beats"/>) et indépendante des accords : un bloc peut couvrir 4 accords
+    /// et le suivant 2. Le rendu segmente la durée du bloc aux frontières des accords actifs et articule chaque
+    /// segment avec l'accord qui y règne (voir <see cref="ChordArticulation"/>).
+    ///
+    /// Porte tous les paramètres de RÉALISATION qui vivaient sur <see cref="PatternGeneratorModule"/> :
+    /// style (y compris grille « Personnalisé » et styles utilisateur), basse, voicing/octave/renversement,
+    /// et la cellule mélodique optionnelle.
+    /// </summary>
+    public class ChordArticulationModule : FlowModule
+    {
+        double beats = 4;         // durée TOTALE du bloc en temps (indépendante des accords qu'il couvre)
+        int style = 0;            // index into PatternGenerator.StyleNames
+        int octave = 4;
+        int inversion = 0;
+        int voiceLeadMode = 0;    // renversement auto d'après l'accord précédent
+        bool openVoicing = false;
+        bool bass = false;
+        bool bassPerBeat = false;
+        int heldMode = 0;
+        int climbMode = 0;
+        bool halveDurations = false;
+
+        /// <summary>Durée totale du bloc, en temps (noires). Indépendante du découpage en accords.</summary>
+        public double Beats { get { return beats; } set { double v = Math.Max(0.25, value); if (beats != v) { beats = v; OnChanged(nameof(Beats)); } } }
+        public int Style { get { return style; } set { if (style != value) { style = value; OnChanged(nameof(Style)); } } }
+        public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
+        public int Inversion { get { return inversion; } set { int v = Math.Max(0, value); if (inversion != v) { inversion = v; OnChanged(nameof(Inversion)); } } }
+        public int VoiceLeadMode { get { return voiceLeadMode; } set { int v = Math.Max(0, Math.Min(3, value)); if (voiceLeadMode != v) { voiceLeadMode = v; OnChanged(nameof(VoiceLeadMode)); } } }
+        public bool OpenVoicing { get { return openVoicing; } set { if (openVoicing != value) { openVoicing = value; OnChanged(nameof(OpenVoicing)); } } }
+        public bool Bass { get { return bass; } set { if (bass != value) { bass = value; OnChanged(nameof(Bass)); } } }
+        public bool BassPerBeat { get { return bassPerBeat; } set { if (bassPerBeat != value) { bassPerBeat = value; OnChanged(nameof(BassPerBeat)); } } }
+        public int HeldMode { get { return heldMode; } set { int v = Math.Max(0, Math.Min(3, value)); if (heldMode != v) { heldMode = v; OnChanged(nameof(HeldMode)); } } }
+        public int ClimbMode { get { return climbMode; } set { int v = Math.Max(0, Math.Min(3, value)); if (climbMode != v) { climbMode = v; OnChanged(nameof(ClimbMode)); } } }
+        public bool HalveDurations { get { return halveDurations; } set { if (halveDurations != value) { halveDurations = value; OnChanged(nameof(HalveDurations)); } } }
+
+        // ---- style « Personnalisé » : grille d'une mesure (ligne = voix de l'accord), comme sur le pattern ----
+        public SequencerSlice[] CustomSlices { get; set; }
+        public int CustomSlicesPerQuarter { get; set; } = 4;
+        public List<RiffNote> CustomNotes { get; set; }
+        /// <summary>Nom du style utilisateur choisi (Style = CustomStyle), pour que l'éditeur le re-sélectionne.</summary>
+        public string UserStyleName { get; set; }
+
+        // ---- cellule mélodique optionnelle (2e voix, degrés diatoniques) ----
+        int melodicOctave = 5;
+        int melodicAnchor = 0;
+        bool melodicOpenVoicing = false;
+        int melodicVoiceLead = 0;
+        public int MelodicOctave { get { return melodicOctave; } set { if (melodicOctave != value) { melodicOctave = value; OnChanged(nameof(MelodicOctave)); } } }
+        public int MelodicAnchor { get { return melodicAnchor; } set { int v = Math.Max(0, Math.Min(1, value)); if (melodicAnchor != v) { melodicAnchor = v; OnChanged(nameof(MelodicAnchor)); } } }
+        public bool MelodicOpenVoicing { get { return melodicOpenVoicing; } set { if (melodicOpenVoicing != value) { melodicOpenVoicing = value; OnChanged(nameof(MelodicOpenVoicing)); } } }
+        public int MelodicVoiceLead { get { return melodicVoiceLead; } set { int v = Math.Max(0, value); if (melodicVoiceLead != v) { melodicVoiceLead = v; OnChanged(nameof(MelodicVoiceLead)); } } }
+        public SequencerSlice[] MelodicSlices { get; set; }
+        public int MelodicSlicesPerQuarter { get; set; } = 4;
+        public List<RiffNote> MelodicNotes { get; set; }
+        [JsonIgnore] public bool HasMelodic =>
+            (MelodicNotes != null && MelodicNotes.Count > 0) || (MelodicSlices != null && MelodicSlices.Length > 0);
+
+        public void SetCustomNotes(List<RiffNote> notes, int slicesPerQuarter)
+        {
+            CustomNotes = notes;
+            CustomSlicesPerQuarter = Math.Max(1, slicesPerQuarter);
+            OnChanged(nameof(CustomNotes));
+        }
+
+        [JsonIgnore] public override string Title { get { return "Articulation d'accord"; } }
     }
 
     /// <summary>
