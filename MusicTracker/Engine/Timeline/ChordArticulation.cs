@@ -110,9 +110,17 @@ namespace MusicTracker.Engine.Timeline
             }
 
             if (project.Tracks == null) return list;
+            // La piste ACCORDS est LA source d'harmonie : on la consulte d'abord. Sans elle seulement, on retombe sur
+            // les autres pistes (anciens projets où les accords vivaient sur une piste instrument). Sans cet ordre, un
+            // module polyrythmique posé sur une piste instrument serait pris pour la source de sa propre harmonie.
+            bool found = false;
+            foreach (var pass in new[] { true, false })
+            {
+            if (found) break;
             foreach (var tr in project.Tracks)
             {
                 if (tr?.Items == null) continue;
+                if ((tr.Type == TimelineTrackType.Chord) != pass) continue;
                 double cursor = 0;
                 bool any = false;
                 foreach (var item in tr.Items)
@@ -150,7 +158,8 @@ namespace MusicTracker.Engine.Timeline
                         }
                     }
                 }
-                if (any) break;   // première piste porteuse d'harmonie : on s'arrête là (comme Harmony.ChordAt)
+                if (any) { found = true; break; }   // première piste porteuse d'harmonie : on s'arrête là
+            }
             }
 
             list.Sort((a, b) => a.Start.CompareTo(b.Start));

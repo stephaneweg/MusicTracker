@@ -4078,18 +4078,17 @@ namespace MusicTracker.Screens
 
         private void btnAddPolyChord_Click(object sender, RoutedEventArgs e)
         {
+            // Le module ne décrit QUE le polyrythme : il lit l'accord actif de la piste Accords. Il se pose donc sur
+            // une piste INSTRUMENT (c'est lui qui sonne), avec sa propre durée — plus d'accord interne à créer.
+            if (selectedTrack == null || selectedTrack.Type == TimelineTrackType.Chord)
+            { MessageBox.Show(Loc.T("SelectionneDAbordUnePisteInstrument")); return; }
+
             var m = new Engine.Flow.PolyChordModule { Mode = Engine.Flow.PolyChordMode.OneRingPerTone };
             // Deux anneaux par défaut (E(3,8) grave + E(5,8) plus haut) — donne quelque chose d'audible tout de suite.
             m.Layers.Add(new Engine.Flow.EuclidChordLayer { Hits = 3, Steps = 8, ToneIndex = 0 });
             m.Layers.Add(new Engine.Flow.EuclidChordLayer { Hits = 5, Steps = 8, ToneIndex = 1 });
-            // Un accord I par défaut (durée = un temps par beat = 1 mesure), l'utilisateur ajoute ensuite les autres.
-            int bpb = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
-            var key = project.Key ?? new Engine.Score.KeySignature();
-            var d = Engine.Flow.MusicTheory.DiatonicChord(key, 0);
-            m.Chords.Add(new Engine.Flow.PolyChordItem { Degree = 0, Root = d.root, Quality = d.quality, Beats = bpb });
-            AppendChord(m);
-            Engine.Flow.ChordDegrees.Revoice(selectedTrack);
-            Render();
+            m.Beats = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));   // une mesure par défaut, à étirer ensuite
+            AppendModule(m);
         }
 
         Grid TwoColumns(out StackPanel left, out ContentControl right)

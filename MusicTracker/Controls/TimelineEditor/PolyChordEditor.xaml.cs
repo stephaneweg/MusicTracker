@@ -116,6 +116,8 @@ namespace MusicTracker.Controls.TimelineEditor
 
             txtOctave.Text = pc.Octave.ToString();
             txtCycleBeats.Text = pc.CycleBeats.ToString();
+            // 0 = ancien module (longueur dérivée de ses accords) : on affiche la longueur effective.
+            txtModuleBeats.Text = (pc.Beats > 0 ? pc.Beats : PolyChord.TotalBeats(pc)).ToString();
             chkOpenVoicing.IsChecked = pc.OpenVoicing;
             chkMonodicPick.IsChecked = pc.MonodicPick;
             txtMonodicSeed.Text = pc.MonodicSeed.ToString();
@@ -435,6 +437,14 @@ namespace MusicTracker.Controls.TimelineEditor
         {
             if (int.TryParse(txtCycleBeats.Text, out int v) && v > 0 && v != pc.CycleBeats)
             { host.PushUndo?.Invoke("polychord:cycle"); pc.CycleBeats = v; RedrawAll(); }
+        }
+
+        // Durée TOTALE du bloc : depuis la dissociation, elle ne se déduit plus des accords internes (il n'y en a
+        // plus) — c'est un réglage à part entière, comme sur l'articulation d'accord.
+        void txtModuleBeats_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (double.TryParse(txtModuleBeats.Text, out double v) && v > 0 && v != pc.Beats)
+            { host.PushUndo?.Invoke("polychord:beats"); pc.Beats = v; RedrawAll(); }
         }
         void chkOpenVoicing_Click(object sender, RoutedEventArgs e)
         {

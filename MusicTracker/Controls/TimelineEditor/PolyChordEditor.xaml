@@ -54,7 +54,10 @@
                 <ComboBox x:Name="cboRestart" Width="220" HorizontalAlignment="Left" SelectionChanged="cboRestart_SelectionChanged"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                    <TextBlock Text="{loc:Tr 'TempsCycle'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBlock Text="{loc:Tr 'DureeDuBlocTemps'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                    <TextBox x:Name="txtModuleBeats" Width="40" LostFocus="txtModuleBeats_LostFocus"
+                             ToolTip="{loc:Tr 'ArticulationSuitAccords'}"/>
+                    <TextBlock Text="{loc:Tr 'TempsCycle'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="12,0,4,0"/>
                     <TextBox x:Name="txtCycleBeats" Width="40" LostFocus="txtCycleBeats_LostFocus"
                              ToolTip="{loc:Tr 'DureeDuCycleIndependanteDesAccords'}"/>
                     <TextBlock Text="{loc:Tr 'Octave'}" Foreground="#AAAAAA" FontSize="11" VerticalAlignment="Center" Margin="12,0,4,0"/>
@@ -88,7 +91,14 @@
                               ToolTip="Pénalise la note précédente au choix — la mélodie évite de piétiner sur la même hauteur."/>
                 </StackPanel>
 
-                <TextBlock Text="{loc:Tr 'ListeDesAccords'}" Foreground="#AAAAAA" FontSize="11" Margin="0,10,0,1"/>
+                <!-- Le module ne définit PLUS d'accords : il articule l'accord actif de la piste Accords. La liste
+                     interne reste dans le modèle (anciens fichiers / arrangements IA, utilisée en repli quand aucun
+                     accord n'est actif) mais n'est plus proposée à l'édition. -->
+                <TextBlock Text="{loc:Tr 'ArticulationSuitAccords'}" Foreground="#8A8F98" FontSize="10"
+                           TextWrapping="Wrap" MaxWidth="240" Margin="0,10,0,0"/>
+
+                <TextBlock Text="{loc:Tr 'ListeDesAccords'}" Foreground="#AAAAAA" FontSize="11" Margin="0,10,0,1"
+                           Visibility="Collapsed"/>
 
                 <!-- Une ligne par accord : degré/qualité/couleur/suspension + Beats + supprimer.
                      ItemsSource bindé côté code-behind (idem PolyDrumEditor / MelodicPolyEditor). -->
@@ -98,7 +108,7 @@
                      ne se virtualise et la mise en page devient quadratique : mesuré à 80 s d'ouverture. On borne
                      donc la hauteur et on donne à la liste SON propre ScrollViewer, seule façon d'avoir un viewport
                      fini — sans quoi VirtualizingStackPanel est inopérant. -->
-                <ItemsControl x:Name="chordsList" MaxHeight="420"
+                <ItemsControl x:Name="chordsList" MaxHeight="420" Visibility="Collapsed"
                               ScrollViewer.CanContentScroll="True"
                               VirtualizingStackPanel.IsVirtualizing="True"
                               VirtualizingStackPanel.VirtualizationMode="Recycling">

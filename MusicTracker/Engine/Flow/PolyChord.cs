@@ -194,10 +194,40 @@ namespace MusicTracker.Engine.Flow
         /// <summary>Durée totale du module en TEMPS = somme des Beats de tous les accords. 0 si vide.</summary>
         public static double TotalBeats(PolyChordModule m)
         {
-            if (m?.Chords == null || m.Chords.Count == 0) return 0;
-            int sum = 0;
+            if (m == null) return 0;
+            if (m.Beats > 0) return m.Beats;              // longueur propre au module (dissociation accord/polyrythme)
+            if (m.Chords == null || m.Chords.Count == 0) return 0;
+            int sum = 0;                                   // ancien comportement : somme des accords internes
             foreach (var c in m.Chords) if (c != null) sum += Math.Max(1, c.Beats);
             return sum;
+        }
+
+        /// <summary>
+        /// Accords que le module doit articuler sur son étendue. Le module ne DÉFINIT plus d'accords : la source
+        /// normale est l'harmonie active de la piste Accords, découpée à ses frontières et convertie en items
+        /// (seule la hauteur compte ici — le voicing est refait par <see cref="VoicedNotes"/>). Repli sur la liste
+        /// interne quand aucun accord n'est actif (anciens fichiers, arrangements produits par l'IA), pour que le
+        /// module continue de sonner au lieu de devenir muet.
+        /// </summary>
+        static IList<PolyChordItem> EffectiveChords(PolyChordModule m, Timeline.TimelineProject project, Func<Guid, Riff> resolve, double startBeat)
+        {
+            double total = TotalBeats(m);
+            if (project != null && total > 0)
+            {
+                var segs = Timeline.ChordArticulation.Segments(project, resolve, startBeat, total);
+                if (segs.Count > 0)
+                {
+                    var list = new List<PolyChordItem>(segs.Count);
+                    foreach (var s in segs)
+                        list.Add(new PolyChordItem
+                        {
+                            Root = s.Root, Quality = s.Quality, Inversion = s.Inversion,
+                            Beats = Math.Max(1, (int)Math.Round(s.Len)),
+                        });
+                    return list;
+                }
+            }
+            return m?.Chords;
         }
 
         /// <summary>Durée du cycle de la roue en TEMPS (défaut migration : 4). C'est le rythme des anneaux ; ne dépend
@@ -293,27 +323,33 @@ namespace MusicTracker.Engine.Flow
         ///
         /// Legato → une note est tenue jusqu'au prochain onset du même anneau, MAIS coupée au changement d'accord
         /// (le voicing suivant réattaque proprement).</summary>
-        public static Riff Generate(PolyChordModule m)
+        /// <summary>
+        /// Rendu du module. Les accords ne viennent plus du module lui-même mais de l'harmonie active à sa position
+        /// (<paramref name="project"/> + <paramref name="startBeat"/>) : le module ne décrit QUE le polyrythme
+        /// (anneaux, cycle, durée). Sans projet fourni, on retombe sur ses accords internes (anciens fichiers).
+        /// </summary>
+        public static Riff Generate(PolyChordModule m, Timeline.TimelineProject project = null, Func<Guid, Riff> resolve = null, double startBeat = 0)
         {
             var outNotes = new List<RiffNote>();
             int spq = SpqFor(m);
-            if (m?.Chords == null || m.Chords.Count == 0)
+            var chords = EffectiveChords(m, project, resolve, startBeat);
+            if (chords == null || chords.Count == 0)
                 return new Riff { Name = "PolyChords", Notes = outNotes, SlicesPerQuarter = spq, LengthSlices = 1 };
 
             // Voicing par accord (calculé une fois — Revoice écrit Inversion/OctaveShift).
-            var voicedPerChord = new int[m.Chords.Count][];
-            for (int i = 0; i < m.Chords.Count; i++)
-                voicedPerChord[i] = VoicedNotes(m.Chords[i], m.Octave, m.OpenVoicing);
+            var voicedPerChord = new int[chords.Count][];
+            for (int i = 0; i < chords.Count; i++)
+                voicedPerChord[i] = VoicedNotes(chords[i], m.Octave, m.OpenVoicing);
 
             // Bornes d'accord en slices (fin exclusive de chaque accord) — cherchées par recherche linéaire dans
             // ChordIndexAt. En pratique on a peu d'accords (< 20), inutile de sortir la binary search.
             int cycleBeats = CycleBeats(m);
             int cycleSlices = cycleBeats * spq;
-            var chordEnd = new int[m.Chords.Count];
+            var chordEnd = new int[chords.Count];
             int acc = 0;
-            for (int i = 0; i < m.Chords.Count; i++)
+            for (int i = 0; i < chords.Count; i++)
             {
-                acc += Math.Max(1, m.Chords[i].Beats) * spq;
+                acc += Math.Max(1, chords[i].Beats) * spq;
                 chordEnd[i] = acc;
             }
             int totalSlices = acc;

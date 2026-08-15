@@ -373,6 +373,7 @@ namespace MusicTracker.Engine.Flow
     {
         int octave = 4;
         int cycleBeats = 4;
+        double beats;                               // 0 = hérité (longueur = somme des accords internes, anciens fichiers)
         bool openVoicing;
         int voiceLeadAnchor;                        // 0 auto / 1 basse proche / 2 haut proche (idem CadenceModule)
         PolyChordMode mode = PolyChordMode.OneRingPerTone;
@@ -388,6 +389,12 @@ namespace MusicTracker.Engine.Flow
         /// on passe simplement à l'accord suivant à sa borne, et la roue continue de tourner au même tempo. Longueur
         /// totale du module = somme des Beats des accords ; nombre de cycles = totalBeats / CycleBeats.</summary>
         public int CycleBeats { get { return cycleBeats; } set { int v = Math.Max(1, value); if (cycleBeats != v) { cycleBeats = v; OnChanged(nameof(CycleBeats)); } } }
+
+        /// <summary>Durée TOTALE du module en temps. Depuis la dissociation accord/articulation le module ne porte
+        /// plus ses propres accords : il lit l'harmonie active de la piste Accords, donc sa longueur est un réglage
+        /// à part entière (comme l'articulation d'accord). 0 = ancien comportement (longueur = somme des accords
+        /// internes), conservé pour que les fichiers antérieurs gardent leur durée.</summary>
+        public double Beats { get { return beats; } set { double v = value <= 0 ? 0 : Math.Max(0.25, value); if (beats != v) { beats = v; OnChanged(nameof(Beats)); } } }
         public bool OpenVoicing { get { return openVoicing; } set { if (openVoicing != value) { openVoicing = value; OnChanged(nameof(OpenVoicing)); } } }
         public int VoiceLeadAnchor { get { return voiceLeadAnchor; } set { int v = Math.Max(0, Math.Min(2, value)); if (voiceLeadAnchor != v) { voiceLeadAnchor = v; OnChanged(nameof(VoiceLeadAnchor)); } } }
         public PolyChordMode Mode { get { return mode; } set { if (mode != value) { mode = value; OnChanged(nameof(Mode)); } } }

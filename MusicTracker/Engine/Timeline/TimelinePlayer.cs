@@ -446,7 +446,7 @@ namespace MusicTracker.Engine.Timeline
                 case DrumPatternModule d: return DrumPattern.Generate(d);
                 case PolyDrumModule pd: return PolyDrum.Generate(pd);
                 case CadenceModule cm: return PatternGenerator.GenerateCadence(cm);
-                case PolyChordModule pc: return PolyChord.Generate(pc);
+                case PolyChordModule pc: return PolyChord.Generate(pc, melodyProject, resolve, absoluteStartBeat);
                 // Articulation d'accord : ne porte aucun accord — elle lit l'harmonie active à sa position
                 // absolue, d'où le besoin de melodyProject + absoluteStartBeat (même schéma que le générateur Koton).
                 case ChordArticulationModule ca: return ChordArticulation.Generate(ca, melodyProject, resolve, absoluteStartBeat);

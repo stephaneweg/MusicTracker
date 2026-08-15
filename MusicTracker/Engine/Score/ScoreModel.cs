@@ -475,7 +475,7 @@ namespace MusicTracker.Engine.Score
                 case MelodicPolyModule mp: return MelodicEuclid.Generate(mp, project, resolve, key, startBeat, carry);
                 // Accords polyrythmiques. Generate() suffit : la conduite des voix a déjà écrit Inversion/OctaveShift
                 // sur chaque accord (ChordDegrees.Revoice, à l'édition), exactement comme pour le player.
-                case PolyChordModule pc: return PolyChord.Generate(pc);
+                case PolyChordModule pc: return PolyChord.Generate(pc, project, resolve, startBeat);
                 case ChordArticulationModule ca: return Timeline.ChordArticulation.Generate(ca, project, resolve, startBeat);
                 // Générateur Koton natif : même chemin que TimelinePlayer et TimelineImporter — le
                 // helper partagé garantit que la partition suit exactement ce qui sera joué et exporté.

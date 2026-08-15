@@ -243,7 +243,7 @@ namespace MusicTracker.Engine.Timeline
                 case PolyDrumModule pd: riff = PolyDrum.Generate(pd); break;              // idem
                 case MelodicLineModule ml: riff = MelodicLineEngine.GenerateLine(ml, project, resolve, key, startBeat, carry); break;
                 case MelodicPolyModule mp: riff = MelodicEuclid.Generate(mp, project, resolve, key, startBeat, carry); break;
-                case PolyChordModule pc: riff = PolyChord.Generate(pc); break;  // accords polyrythmiques
+                case PolyChordModule pc: riff = PolyChord.Generate(pc, project, resolve, startBeat); break;  // polyrythme sur l'accord actif
                 case ChordArticulationModule ca: riff = ChordArticulation.Generate(ca, project, resolve, startBeat); break; // articulation sur l'accord actif
                 // Générateur Koton natif : même chemin que TimelinePlayer.RiffForModule (utilise
                 // KotonGeneratorRuntime.RenderRiff pour uniformiser audio / partition / export).
