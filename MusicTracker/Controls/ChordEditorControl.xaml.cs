@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows;
@@ -21,8 +21,9 @@ namespace MusicTracker.Controls
     }
 
     /// <summary>
-    /// Independent editor for ONE chord. The fields are declared in XAML and bound to <see cref="ChordEditorViewModel"/>;
-    /// only the hand-drawn rhythm grid (a custom canvas control) is configured from code.
+    /// Independent editor for ONE chord — HARMONIE SEULE (degré / fondamentale / couleur / suspension / mode forcé
+    /// + durée). Tout le « comment on le joue » a migré vers le module « Articulation d'accord » : plus de grille
+    /// d'accompagnement ni de cellule mélodique ici, donc plus rien à configurer depuis le code (tout est en XAML).
     /// </summary>
     public partial class ChordEditorControl : UserControl
     {
@@ -34,71 +35,7 @@ namespace MusicTracker.Controls
         public void Show(TimelineProject project, TimelineTrack track, PatternGeneratorModule pg, IChordEditorHost host)
         {
             vm = new ChordEditorViewModel(project, track, pg, host);
-            vm.GridRefreshNeeded += RefreshGrid;
-            vm.MelodicRefreshNeeded += RefreshMelodicGrid;
             DataContext = vm;
-            RefreshGrid();
-            RefreshMelodicGrid();
-        }
-
-        // The optional MELODIC CELL: a 2nd grid whose 14 rows are the diatonic degrees (1..7 over 2 octaves), polyphonic.
-        void RefreshMelodicGrid()
-        {
-            var pg = vm.Pg;
-            var labels = new[] { "1", "2", "3", "4", "5", "6", "7", "1'", "2'", "3'", "4'", "5'", "6'", "7'" };
-            var rg = new RhythmGridControl();
-            Func<SequencerSlice[], int, Riff> mk = (gr, gs) =>
-            {
-                var t = new PatternGeneratorModule { Root = pg.Root, Quality = pg.Quality, Inversion = pg.Inversion, MelodicOctave = pg.MelodicOctave, MelodicAnchor = pg.MelodicAnchor, BeatsPerBar = pg.BeatsPerBar, Repeats = 1 };
-                t.SetMelodicNotes(rg.CurrentNotes(), gs, rg.Beats * gs);
-                return PatternGenerator.GenerateMelodic(t, vm.Key);
-            };
-            rg.Configure(labels, pg.BeatsPerBar, pg.MelodicSlicesPerQuarter > 0 ? pg.MelodicSlicesPerQuarter : 4, pg.MelodicSlices,
-                new string[0], (st, b) => null, PatternGenerator.SlicesPerQuarter, mk, InstrumentCatalog.GetPreset(vm.Track.Instrument),
-                noteList: true, existingNotes: pg.MelodicNotes);
-            bool dirty = false;
-            rg.GridChanged += () => { pg.SetMelodicNotes(rg.CurrentNotes(), rg.Spb, rg.Beats * rg.Spb); dirty = true; };
-            rg.Unloaded += (s, e) => { if (dirty) { dirty = false; vm.Host.Rerender(); } };
-            MelodicHost.Content = rg;
-        }
-
-        // The rhythm grid is a canvas-based custom control configured procedurally (not practically bindable).
-        void RefreshGrid()
-        {
-            var pg = vm.Pg;
-            if (pg.Style != PatternGenerator.CustomStyle)
-            {
-                GridHost.Content = new TextBlock { Text = Loc.T("ChoisisLeStylePersonnalisePourEditer"), Foreground = Br("#888888"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(10) };
-                return;
-            }
-            var chord = PatternGenerator.ChordNotes(pg.Root, pg.Octave, pg.Quality, pg.Inversion);
-            var labels = new[] { Loc.T("Basse"), "1", "3", "5", "7", "1'", "9", "3'", "5'", "7'", "9'" }; // rows in PITCH order (9 > 1')
-            var builtin = TakeBuiltin(PatternGenerator.StyleNames, PatternGenerator.CustomStyle);
-            var userStyles = vm.UserStyles;
-            var styleNames = new string[builtin.Length + userStyles.Count];
-            Array.Copy(builtin, styleNames, builtin.Length);
-            for (int i = 0; i < userStyles.Count; i++) styleNames[builtin.Length + i] = userStyles[i].Name;
-
-            Func<int, int, SequencerSlice[]> seedFunc = (st, b) =>
-                st < builtin.Length ? PatternGenerator.VoiceBarForCustom(st, b, chord.Length)
-                                    : (st - builtin.Length < userStyles.Count ? userStyles[st - builtin.Length].Slices : null);
-            Func<int, int> seedSpbFunc = st =>
-                st >= builtin.Length && st - builtin.Length < userStyles.Count ? Math.Max(1, userStyles[st - builtin.Length].Spb)
-                                                                              : PatternGenerator.SlicesPerQuarter;
-            var rg = new RhythmGridControl();
-            Func<SequencerSlice[], int, Riff> mk = (gr, gs) => { var t = new PatternGeneratorModule { Root = pg.Root, Octave = pg.Octave, Quality = pg.Quality, Inversion = pg.Inversion, OpenVoicing = pg.OpenVoicing, Style = PatternGenerator.CustomStyle, BeatsPerBar = pg.BeatsPerBar, Repeats = 1 }; t.SetCustom(gr, gs); t.CustomNotes = rg.CurrentNotes(); return PatternGenerator.Generate(t); };
-            Action onSaveStyle = () => vm.SaveStyle(rg.CurrentGrid(), rg.Spb, rg.Beats, rg.CurrentNotes());
-            Action onApplyToSection = !string.IsNullOrEmpty(pg.UserStyleName) ? (Action)vm.ApplyMotif : null;
-            rg.Configure(labels, pg.BeatsPerBar, pg.CustomSlicesPerQuarter > 0 ? pg.CustomSlicesPerQuarter : 4, pg.CustomSlices, styleNames, seedFunc, PatternGenerator.SlicesPerQuarter, mk, InstrumentCatalog.GetPreset(vm.Track.Instrument), seedSpbFunc, onSaveStyle, noteList: true, existingNotes: pg.CustomNotes, onApplyToSection: onApplyToSection);
-            bool chordDirty = false;
-            rg.GridChanged += () =>
-            {
-                pg.SetCustomNotes(rg.CurrentNotes(), rg.Spb, rg.Beats * rg.Spb);
-                vm.SetBeatsFromGrid(Math.Max(1, rg.Beats));   // sync the "Nombre de temps" field without a full rebuild
-                chordDirty = true;
-            };
-            rg.Unloaded += (s, e) => { if (chordDirty) { chordDirty = false; vm.Host.Rerender(); } };
-            GridHost.Content = rg;
         }
 
         static System.Windows.Media.Brush Br(string hex) => (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(hex);

@@ -1,5 +1,7 @@
 {
   "ChordArticulation": "Chord articulation",
+  "PisteAccordsSilencieuse": "Silent track — supplies the current chord",
+  "AccordHarmonieSeuleTip": "This chord only describes harmony. To hear it, drop a \"Chord articulation\" block on an instrument track: that block carries the style, bass and voicing.",
   "BasseParTemps": "Bass on every beat",
   "VoicingOuvert": "Open voicing",
   "HalveDurations": "Halve note values",

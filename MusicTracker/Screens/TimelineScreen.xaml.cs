@@ -1847,7 +1847,18 @@ namespace MusicTracker.Screens
             }
             panel.Children.Add(top);
 
-            if (track.Type != TimelineTrackType.Drum)   // instrument + chords tracks pick their instrument (drums = kit)
+            // La piste ACCORDS n'a plus d'instrument : elle est silencieuse et ne sert qu'à fournir l'accord courant
+            // au contexte (ce sont les modules « Articulation d'accord », sur les pistes instrument, qui sonnent).
+            if (track.Type == TimelineTrackType.Chord)
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = Loc.T("PisteAccordsSilencieuse"),
+                    Foreground = "#777C85".ToBrush(), FontSize = 10, TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 3, 0, 0),
+                });
+            }
+            else if (track.Type != TimelineTrackType.Drum)   // instrument tracks pick their instrument (drums = kit)
             {
                 var inst = new ComboBox { Margin = new Thickness(0, 3, 0, 0), FontSize = 11, ItemsSource = InstrumentCatalog.Names(), SelectedIndex = track.Instrument };
                 inst.SelectionChanged += (s, e) =>
