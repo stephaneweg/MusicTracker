@@ -64,13 +64,21 @@ namespace MusicTracker.Engine.Timeline
                 };
 
                 var r = PatternGenerator.Generate(pg);
+                // Le riff rendu N'EST PAS forcément à la résolution canonique : un style « Personnalisé » revient à la
+                // résolution de SA grille (4 slices/temps par défaut) et les styles arpégés peuvent halver la valeur.
+                // Sans ce rééchelonnage, une noire de 4 slices relue comme 4/24 de temps sonnait en double-croche.
+                int srcSpq = r.SlicesPerQuarter > 0 ? r.SlicesPerQuarter : spq;
+                double scale = (double)spq / srcSpq;
+
                 int off = (int)Math.Round((s.Start - moduleStartBeat) * spq);
                 int segSlices = (int)Math.Round(segBeats * spq);
                 foreach (var n in r.Notes)
                 {
-                    if (n.Start >= segSlices) continue;                       // déborde le segment → ignoré
-                    int len = Math.Min(n.Length, segSlices - n.Start);        // rogné à la frontière d'accord
-                    int start = off + n.Start;
+                    int nStart = (int)Math.Round(n.Start * scale);
+                    int nLen = Math.Max(1, (int)Math.Round(n.Length * scale));
+                    if (nStart >= segSlices) continue;                        // déborde le segment → ignoré
+                    int len = Math.Min(nLen, segSlices - nStart);             // rogné à la frontière d'accord
+                    int start = off + nStart;
                     if (len <= 0 || start >= totalSlices) continue;
                     len = Math.Min(len, totalSlices - start);                 // rogné à la fin du bloc
                     if (len > 0) notes.Add(new RiffNote(n.Note, start, len));
