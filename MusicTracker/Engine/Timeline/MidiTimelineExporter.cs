@@ -54,6 +54,9 @@ namespace MusicTracker.Engine.Timeline
                 // batterie passant par la vélocité (voir plus bas), une vélocité nulle n'existe pas (0 = note off).
                 // Le projet, lui, garde tout : seule cette exportation-ci est muette.
                 if (t.Mute || (anySolo && !t.Solo)) continue;
+                // La piste ACCORDS ne produit aucun son : elle ne décrit que l'harmonie fournie aux articulations.
+                // Elle n'a donc rien à exporter (l'export refléterait sinon des notes qu'on n'entend pas).
+                if (t.Type == TimelineTrackType.Chord) continue;
 
                 bool drum = t.Type == TimelineTrackType.Drum;
                 int channel = drum ? 10 : (nextChannel == 10 ? ++nextChannel : nextChannel); // skip 10 for melodic

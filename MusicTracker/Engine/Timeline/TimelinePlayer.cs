@@ -240,10 +240,15 @@ namespace MusicTracker.Engine.Timeline
                 };
                 double cursor = 0;
                 var carry = new[] { -1, -1, -1, -1, -1, -1, -1, -1, -1 };   // cross-module continuity per voice: [0..2] last pitch, [3..5] last downbeat, [6..8] its chord root
+                // La piste ACCORDS ne joue RIEN : on ne place aucune note. Mettre son Mix à 0 ne suffisait pas —
+                // dès qu'une tranche de mixeur existe, le mix est recalculé depuis Mute/Solo et écrase cette valeur,
+                // et un VSTi posé dessus sonnait quand même. La seule façon fiable est de n'émettre aucun événement :
+                // la piste reste une pure source d'harmonie pour les articulations / lignes mélodiques.
+                bool silent = tr.Type == TimelineTrackType.Chord;
                 foreach (var item in tr.Items)
                 {
                     cursor += item.SilenceBefore;
-                    PlaceItem(T, item, cursor, resolveRiff, carry);
+                    if (!silent) PlaceItem(T, item, cursor, resolveRiff, carry);
                     cursor += TimelineProject.ItemLength(item, resolveRiff);
                 }
                 list.Add(T);
