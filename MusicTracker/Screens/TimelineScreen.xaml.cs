@@ -1897,9 +1897,19 @@ namespace MusicTracker.Screens
                 panel.Children.Add(kit);
             }
 
+            // La piste ACCORDS ne produit aucun son : ni VSTi, ni volume, ni muet/solo (un « solo » sur elle
+            // rendrait d'ailleurs tout le reste silencieux). Elle n'expose que ses accords.
+            if (track.Type == TimelineTrackType.Chord)
+            {
+                border.Child = panel;
+                trackHeaders[track] = border;
+                border.PreviewMouseLeftButtonDown += (s, e) => SelectTrack(track);
+                return border;
+            }
+
             // Bouton VSTi : ouvre un menu (choix, éditer, retirer). L'étiquette montre le nom du plugin actif
             // ou "VSTi…" quand aucun n'est chargé. Un ⚠ apparaît si le plugin a été référencé mais est
-            // introuvable (fichier déplacé/désinstallé). Disponible sur les 3 types de pistes — un VSTi peut
+            // introuvable (fichier déplacé/désinstallé). Disponible sur les pistes sonores — un VSTi peut
             // être une drum machine, un synthé mélodique ou un pad d'accompagnement.
             panel.Children.Add(BuildVstiRow(track));
 
@@ -3362,20 +3372,14 @@ namespace MusicTracker.Screens
             var chord = TimelineHelper.ChordTrack(project);                   // cadences ALWAYS go to the chords track
             var key = project.Key ?? new Engine.Score.KeySignature();
 
-            // Continue from the chords track's last chord: propose starting from its degree (and keep its bass + rhythm).
-            // rhythm = -1 → the dialog defaults to "Auto" (articulation derived from the chosen cadence style).
-            int startDeg = 0; bool bass = false; int rhythm = -1;
+            // Continue from the chords track's last chord: propose starting from its degree.
+            int startDeg = 0;
             var lastChord = TimelineHelper.LastChordOn(chord);
             if (lastChord != null)
-            {
                 startDeg = Engine.Flow.MusicTheory.DegreeOf(key, ((lastChord.Root % 12) + 12) % 12);
-                bass = lastChord.Bass; rhythm = lastChord.Style;
-            }
-            var dlg = new Dialogs.CadenceDialog(startDeg, bass, rhythm) { Owner = Window.GetWindow(this) };
-            if (dlg.ShowDialog() != true) return;
 
-            // "Auto" → pick an idiomatic articulation for the chosen cadence style (jazz→comping, blues→shuffle…).
-            int rhythmStyle = dlg.RhythmStyle < 0 ? Engine.Flow.MusicTheory.AutoRhythmStyle(dlg.StyleIndex) : dlg.RhythmStyle;
+            var dlg = new Dialogs.CadenceDialog(startDeg, false, -1) { Owner = Window.GetWindow(this) };
+            if (dlg.ShowDialog() != true) return;
 
             int measureBeats = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
             int cpm = Math.Max(1, Math.Min(dlg.ChordsPerMeasure, measureBeats));   // each chord ≥ 1 beat
@@ -3386,29 +3390,10 @@ namespace MusicTracker.Screens
             var chords = BuildCadenceChords(key, dlg.StartDegree, numChords, dlg.StyleIndex, octave);
             if (chords.Count == 0) return;
 
-            // "Personnalisé" articulation → draw the motif NOW (at creation), seeded from the first chord. It's applied
-            // to every generated chord. Cancelling the motif aborts the whole insertion.
-            SequencerSlice[] motif = null; int motifSpb = 4; System.Collections.Generic.List<RiffNote> motifNotes = null;
-            bool custom = rhythmStyle == PatternGenerator.CustomStyle;
-            if (custom && !PromptMotifDialog(chord, chords[0].root, chords[0].quality, octave, chordBeats, null, 4, out motif, out motifSpb, out motifNotes))
-                return;
-            // Each chord spans the MOTIF's full length (a 2-bar motif → each chord lasts 2 bars, so nothing is truncated).
-            int chordBeatsEff = (custom && motif != null && motifSpb > 0) ? Math.Max(1, motif.Length / motifSpb) : chordBeats;
-            // Register the drawn motif as a SHARED user style "cadence_N": every chord references it, so editing one
-            // chord's grid propagates to the whole cadence (and it shows up in the style dropdown for reuse).
-            string cadenceStyleName = null;
-            if (custom && motif != null)
-            {
-                cadenceStyleName = NextCadenceStyleName();
-                var us = project.UserChordStyles ?? (project.UserChordStyles = new System.Collections.Generic.List<UserChordStyle>());
-                us.Add(new UserChordStyle { Name = cadenceStyleName, Slices = (SequencerSlice[])motif.Clone(), Spb = motifSpb, Beats = chordBeatsEff, Notes = motifNotes != null ? new System.Collections.Generic.List<RiffNote>(motifNotes) : null });
-            }
-
             CommitRiffEditor();
-            // Insert the cadence as a SEQUENCE of individual, fully-parameterized chord objects (not one Cadence blob):
-            // each chord is an editable PatternGeneratorModule with its voice-led inversion/register — so it inherits the
-            // whole chord toolset (custom motif, user styles, couleur, voicing ouvert, per-chord voice-leading).
-            bool vl = dlg.VoiceLead;
+            // Une cadence pose UNIQUEMENT des accords : degré/qualité/couleur/suspension/mode + durée. Aucun style
+            // d'articulation, aucune basse, aucun voicing, aucun motif personnalisé — c'est le module « Articulation
+            // d'accord », posé sur une piste instrument, qui décide comment ces accords sont joués.
             TimelineItem firstItem = null;
             foreach (var ch in chords)
             {
@@ -3417,19 +3402,13 @@ namespace MusicTracker.Screens
                 {
                     Root = ch.root, Quality = ch.quality,
                     Degree = dc.degree, DiatonicColour = dc.colour, Suspension = dc.suspension, ModeOverride = dc.mode,   // by DEGREE (else absolute for chromatic/secondary chords)
-                    Inversion = vl ? ch.inversion : 0,
-                    Octave = octave + (vl ? ch.octaveShift : 0),
-                    VoiceLeadMode = vl ? 1 : 0,                       // renversement AUTO (chain re-voices on edit)
-                    OpenVoicing = dlg.OpenVoicing,
-                    Style = rhythmStyle, Bass = dlg.Bass,
-                    BeatsPerBar = chordBeatsEff, Repeats = 1,
+                    Octave = octave,
+                    BeatsPerBar = chordBeats, Repeats = 1,
                 };
-                if (custom && motif != null) { pg.UserStyleName = cadenceStyleName; pg.SetCustom((SequencerSlice[])motif.Clone(), motifSpb); pg.CustomNotes = motifNotes != null ? new System.Collections.Generic.List<RiffNote>(motifNotes) : null; } // shared "cadence_N" ref
                 var it = new TimelineItem { Module = pg };
                 TimelineHelper.InsertTopLevel(chord, it);
                 if (firstItem == null) firstItem = it;
             }
-            if (vl) Engine.Flow.ChordDegrees.Revoice(chord);   // apply auto voice-leading across the inserted chain (from any prior context)
             selectedTrack = chord; selectedItem = firstItem;
             Render();
             RefreshScore();
@@ -4021,6 +4000,8 @@ namespace MusicTracker.Screens
             riffEditItem = item; riffEditTrack = track; riffOpenLen = project.DispLen(item); riffDirty = false;
 
             var grid = TwoColumns(out StackPanel left, out ContentControl host);
+            // Changer de style doit faire apparaître (ou disparaître) la grille de motif → on reconstruit l'éditeur.
+            Action rebuild = () => { editorHost.Content = BuildChordArticulationEditor(track, item, ca); Render(); };
             Action refresh = () => Render();
 
             left.Children.Add(new TextBlock
@@ -4034,7 +4015,7 @@ namespace MusicTracker.Screens
             left.Children.Add(ParamNum((int)Math.Round(ca.Beats), v => { if (v > 0) ca.Beats = v; }, refresh));
 
             left.Children.Add(EdLabel(Loc.T("Style")));
-            left.Children.Add(ParamCombo(PatternGenerator.StyleNames, ca.Style, v => ca.Style = v, refresh));
+            left.Children.Add(ParamCombo(PatternGenerator.StyleNames, ca.Style, v => ca.Style = v, rebuild));
 
             left.Children.Add(EdLabel(Loc.T("Octave")));
             left.Children.Add(ParamNum(ca.Octave, v => ca.Octave = v, refresh));
@@ -4062,7 +4043,69 @@ namespace MusicTracker.Screens
             left.Children.Add(EdLabel(Loc.T("Renversement")));
             left.Children.Add(ParamNum(ca.Inversion, v => ca.Inversion = v, refresh));
 
+            RefreshArticulationGrid(host, track, item, ca);
             return grid;
+        }
+
+        // Panneau droit de l'articulation : la grille de motif du style « Personnalisé » (rangées = voix de l'accord),
+        // identique à celle qui vivait dans l'éditeur d'accord. Comme l'articulation ne porte pas d'accord, on dessine
+        // sur l'accord ACTIF sous le bloc (à défaut la tonique du morceau) — le motif reste portable d'un accord à l'autre.
+        void RefreshArticulationGrid(ContentControl host, TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca)
+        {
+            if (ca.Style != PatternGenerator.CustomStyle)
+            {
+                host.Content = new TextBlock
+                {
+                    Text = Loc.T("ChoisisLeStylePersonnalisePourEditer"),
+                    Foreground = "#888888".ToBrush(), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(10),
+                };
+                return;
+            }
+
+            // Accord de référence pour l'aperçu : le premier accord actif sous le bloc, sinon la tonique.
+            double startBeat = project.ItemStartBeat(track, item);
+            int root, quality;
+            var segs = Engine.Timeline.ChordArticulation.Segments(project, project.RiffById, startBeat, Engine.Timeline.ChordArticulation.TotalBeats(ca));
+            if (segs.Count > 0) { root = segs[0].Root; quality = segs[0].Quality; }
+            else { var d = Engine.Flow.MusicTheory.DiatonicChord(project.Key ?? new Engine.Score.KeySignature(), 0); root = d.root; quality = d.quality; }
+
+            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.TotalBeats(ca)));
+            var chord = PatternGenerator.ChordNotes(root, ca.Octave, quality, ca.Inversion);
+            var labels = new[] { Loc.T("Basse"), "1", "3", "5", "7", "1'", "9", "3'", "5'", "7'", "9'" };  // rangées en ordre de HAUTEUR
+
+            var rg = new Controls.RhythmGridControl();
+            Func<SequencerSlice[], int, Riff> mk = (gr, gs) =>
+            {
+                var t = new PatternGeneratorModule
+                {
+                    Root = root, Octave = ca.Octave, Quality = quality, Inversion = ca.Inversion,
+                    OpenVoicing = ca.OpenVoicing, Style = PatternGenerator.CustomStyle,
+                    BeatsPerBar = beats, Repeats = 1,
+                };
+                t.SetCustom(gr, gs);
+                t.CustomNotes = rg.CurrentNotes();
+                return PatternGenerator.Generate(t);
+            };
+            // Amorces = les motifs des styles intégrés, pour partir d'un rythme existant puis le retoucher.
+            var builtin = new string[PatternGenerator.CustomStyle];
+            for (int i = 0; i < builtin.Length && i < PatternGenerator.StyleNames.Length; i++) builtin[i] = PatternGenerator.StyleNames[i];
+            Func<int, int, SequencerSlice[]> seedFunc = (st, b) => PatternGenerator.VoiceBarForCustom(st, b, chord.Length);
+
+            rg.Configure(labels, beats, ca.CustomSlicesPerQuarter > 0 ? ca.CustomSlicesPerQuarter : 4, ca.CustomSlices,
+                         builtin, seedFunc, PatternGenerator.SlicesPerQuarter, mk,
+                         InstrumentCatalog.GetPreset(track.Instrument),
+                         noteList: true, existingNotes: ca.CustomNotes);
+
+            bool dirty = false;
+            rg.GridChanged += () =>
+            {
+                ca.SetCustomNotes(rg.CurrentNotes(), rg.Spb);
+                ca.CustomSlices = rg.CurrentGrid();
+                if (rg.Beats > 0) ca.Beats = rg.Beats;     // le motif porte la longueur du bloc
+                dirty = true;
+            };
+            rg.Unloaded += (s, e) => { if (dirty) { dirty = false; Render(); } };
+            host.Content = rg;
         }
 
         // « Articulation d'accord » : un bloc de RÉALISATION posé sur une piste INSTRUMENT. Il ne porte aucun
