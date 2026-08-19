@@ -4151,7 +4151,7 @@ namespace MusicTracker.Screens
         // Elle ne dépend pas de l'accord (les degrés se transposent sur chaque accord traversé), d'où des rangées fixes.
         void RefreshArticulationMelodicGrid(ContentControl host, TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca)
         {
-            var labels = new[] { "1", "2", "3", "4", "5", "6", "7", "1'", "2'", "3'", "4'", "5'", "6'", "7'" };
+            var labels = new[] { "1", "2", "3", "4", "5", "6", "7", "1'", "2'", "3'", "4'", "5'", "6'", "7'", "1''", "2''", "3''", "4''", "5''", "6''", "7''" };
             int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.TotalBeats(ca)));   // la PHRASE mélodique couvre TOUT le module
             var key = project.Key ?? new Engine.Score.KeySignature();
 

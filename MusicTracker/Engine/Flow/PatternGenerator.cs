@@ -340,9 +340,10 @@ namespace MusicTracker.Engine.Flow
         }
 
         // ================= MELODIC CELL (optional 2nd voice attached to a chord) =================
-        // The grid has 14 rows = the 7 DIATONIC DEGREES of the key over 2 octaves (all scale tones, incl. non-chord),
+        // The grid has 21 rows = the 7 DIATONIC DEGREES of the key over 3 octaves (all scale tones, incl. non-chord),
         // starting from the chord's ANCHOR (its root, or its inversion bass). Polyphonic. Pitch = walk the key's scale.
-        public const int MelodicRowCount = 14;
+        // (Etait 14 = 2 octaves ; passe a 21 pour laisser une melodie plus ample.)
+        public const int MelodicRowCount = 21;
 
         // Concert MIDI for a melodic grid row, given the key scale/tonic, the anchor pitch-class and the melody octave.
         static int MelodicPitch(int[] scale, int tonicPc, int anchorPc, int melodicOctave, int row)
