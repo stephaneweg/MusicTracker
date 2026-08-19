@@ -4011,8 +4011,12 @@ namespace MusicTracker.Screens
                 Margin = new Thickness(0, 0, 0, 8),
             });
 
-            left.Children.Add(EdLabel(Loc.T("DureeDuBlocTemps")));
-            left.Children.Add(ParamNum((int)Math.Round(ca.Beats), v => { if (v > 0) ca.Beats = v; }, refresh));
+            left.Children.Add(EdLabel(Loc.T("CelluleTemps")));
+            left.Children.Add(ParamNum((int)Math.Round(ca.Beats), v => { if (v > 0) ca.Beats = v; }, rebuild));
+
+            left.Children.Add(EdLabel(Loc.T("DureeTotaleTemps")));
+            left.Children.Add(ParamNum((int)Math.Round(Engine.Timeline.ChordArticulation.TotalBeats(ca)),
+                                       v => { if (v > 0) ca.LengthBeats = v; }, refresh));
 
             // Styles intégrés PUIS styles utilisateur enregistrés dans le projet : choisir un style utilisateur
             // recharge son motif (et sa longueur) dans le bloc, exactement comme sur l'ancien éditeur d'accord.

@@ -24,7 +24,12 @@ namespace MusicTracker.Engine.Timeline
             public int Root, Quality, Inversion;
         }
 
-        public static double TotalBeats(ChordArticulationModule m) => m == null ? 0 : Math.Max(0.25, m.Beats);
+        /// <summary>Durée occupée sur la timeline : la durée totale si elle est fixée, sinon une seule cellule.</summary>
+        public static double TotalBeats(ChordArticulationModule m)
+            => m == null ? 0 : Math.Max(0.25, m.LengthBeats > 0 ? m.LengthBeats : m.Beats);
+
+        /// <summary>Longueur de la cellule répétée (le motif), toujours &gt; 0.</summary>
+        public static double CellBeats(ChordArticulationModule m) => m == null ? 4 : Math.Max(0.25, m.Beats);
 
         /// <summary>
         /// Rendu du bloc posé à <paramref name="moduleStartBeat"/> (temps absolu sur sa piste). Renvoie un riff
@@ -39,16 +44,28 @@ namespace MusicTracker.Engine.Timeline
             var notes = new List<RiffNote>();
             if (m == null) return new Riff { Name = "Articulation", Notes = notes, LengthSlices = totalSlices, SlicesPerQuarter = spq };
 
-            var segs = Segments(project, resolve, moduleStartBeat, total);
-            for (int i = 0; i < segs.Count; i++)
+            // La CELLULE se répète jusqu'à remplir la durée totale, la dernière étant tronquée. Le motif est toujours
+            // rendu depuis le DÉBUT de la cellule (le rythme ne redémarre donc pas à chaque accord) ; à l'intérieur
+            // d'une cellule, on ne garde d'un rendu que la portion couverte par l'accord qui y règne — un changement
+            // d'accord en cours de cellule change les hauteurs sans casser la continuité rythmique.
+            double cell = CellBeats(m);
+            int cellCount = Math.Max(1, (int)Math.Ceiling(total / cell - 1e-9));
+            int genBeats = Math.Max(1, (int)Math.Ceiling(cell - 1e-9));
+
+            for (int c = 0; c < cellCount; c++)
             {
-                var s = segs[i];
+                double cellStart = c * cell;                       // relatif au module
+                double cellLen = Math.Min(cell, total - cellStart); // dernière cellule : tronquée
+                if (cellLen <= 1e-6) break;
+
+                var segs = Segments(project, resolve, moduleStartBeat + cellStart, cellLen);
+                if (segs.Count == 0) continue;                      // aucun accord actif ici → silence
+
+                foreach (var s in segs)
+                {
                 double segBeats = s.Len;
                 if (segBeats <= 1e-6) continue;
 
-                // Le moteur de styles raisonne en mesures ENTIÈRES : on génère au moins la durée du segment puis on
-                // rogne ce qui déborde, pour qu'un accord de durée fractionnaire ne fasse pas déborder le bloc.
-                int genBeats = Math.Max(1, (int)Math.Ceiling(segBeats - 1e-9));
                 var pg = new PatternGeneratorModule
                 {
                     Root = s.Root, Quality = s.Quality,
@@ -57,7 +74,7 @@ namespace MusicTracker.Engine.Timeline
                     Style = m.Style, Bass = m.Bass, BassPerBeat = m.BassPerBeat,
                     HeldMode = m.HeldMode, ClimbMode = m.ClimbMode, HalveDurations = m.HalveDurations,
                     OpenVoicing = m.OpenVoicing,
-                    PatternCellOffset = i,                 // fait tourner le motif « mixte » d'un accord à l'autre
+                    PatternCellOffset = c,                 // fait tourner le motif « mixte » d'une cellule à l'autre
                     BeatsPerBar = genBeats, Repeats = 1,
                     CustomSlices = m.CustomSlices, CustomSlicesPerQuarter = m.CustomSlicesPerQuarter,
                     CustomNotes = m.CustomNotes,
@@ -80,40 +97,37 @@ namespace MusicTracker.Engine.Timeline
                 int srcSpq = r.SlicesPerQuarter > 0 ? r.SlicesPerQuarter : spq;
                 double scale = (double)spq / srcSpq;
 
-                int off = (int)Math.Round((s.Start - moduleStartBeat) * spq);
-                int segSlices = (int)Math.Round(segBeats * spq);
-                foreach (var n in r.Notes)
+                // Fenêtre de CET accord À L'INTÉRIEUR de la cellule : le motif étant rendu depuis le début de la
+                // cellule, on ne retient que les notes qui tombent dans cette fenêtre (les autres appartiennent aux
+                // accords voisins et seront produites par leur propre passage).
+                int cellOff = (int)Math.Round(cellStart * spq);                              // début de cellule / module
+                int winStart = (int)Math.Round((s.Start - (moduleStartBeat + cellStart)) * spq);
+                int winEnd = winStart + (int)Math.Round(segBeats * spq);
+
+                void Place(Riff src, double srcScale)
                 {
-                    int nStart = (int)Math.Round(n.Start * scale);
-                    int nLen = Math.Max(1, (int)Math.Round(n.Length * scale));
-                    if (nStart >= segSlices) continue;                        // déborde le segment → ignoré
-                    int len = Math.Min(nLen, segSlices - nStart);             // rogné à la frontière d'accord
-                    int start = off + nStart;
-                    if (len <= 0 || start >= totalSlices) continue;
-                    len = Math.Min(len, totalSlices - start);                 // rogné à la fin du bloc
-                    if (len > 0) notes.Add(new RiffNote(n.Note, start, len));
+                    if (src?.Notes == null) return;
+                    foreach (var n in src.Notes)
+                    {
+                        int nStart = (int)Math.Round(n.Start * srcScale);
+                        int nLen = Math.Max(1, (int)Math.Round(n.Length * srcScale));
+                        if (nStart < winStart || nStart >= winEnd) continue;   // hors de l'accord courant
+                        int len = Math.Min(nLen, winEnd - nStart);             // rogné à la frontière d'accord
+                        int start = cellOff + nStart;
+                        if (len <= 0 || start >= totalSlices) continue;
+                        len = Math.Min(len, totalSlices - start);              // rogné à la fin du module (troncature)
+                        if (len > 0) notes.Add(new RiffNote(n.Note, start, len));
+                    }
                 }
 
-                // La cellule mélodique est un riff SÉPARÉ (autre résolution possible) : même rognage, même rééchelonnage.
+                Place(r, scale);
+
+                // La cellule mélodique est un riff SÉPARÉ (autre résolution possible) : même fenêtrage.
                 if (m.HasMelodic)
                 {
                     var mel = PatternGenerator.GenerateMelodic(pg, project?.Key ?? new Engine.Score.KeySignature());
-                    if (mel?.Notes != null)
-                    {
-                        int mSpq = mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : spq;
-                        double mScale = (double)spq / mSpq;
-                        foreach (var n in mel.Notes)
-                        {
-                            int nStart = (int)Math.Round(n.Start * mScale);
-                            int nLen = Math.Max(1, (int)Math.Round(n.Length * mScale));
-                            if (nStart >= segSlices) continue;
-                            int len = Math.Min(nLen, segSlices - nStart);
-                            int start = off + nStart;
-                            if (len <= 0 || start >= totalSlices) continue;
-                            len = Math.Min(len, totalSlices - start);
-                            if (len > 0) notes.Add(new RiffNote(n.Note, start, len));
-                        }
-                    }
+                    if (mel != null) Place(mel, (double)spq / (mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : spq));
+                }
                 }
             }
 

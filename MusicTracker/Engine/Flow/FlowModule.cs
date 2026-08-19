@@ -189,7 +189,8 @@ namespace MusicTracker.Engine.Flow
     /// </summary>
     public class ChordArticulationModule : FlowModule
     {
-        double beats = 4;         // durée TOTALE du bloc en temps (indépendante des accords qu'il couvre)
+        double beats = 4;         // longueur de la CELLULE (le motif rythmique), en temps
+        double lengthBeats;       // durée TOTALE du module ; 0 = une seule cellule
         int style = 0;            // index into PatternGenerator.StyleNames
         int octave = 4;
         int inversion = 0;
@@ -201,8 +202,13 @@ namespace MusicTracker.Engine.Flow
         int climbMode = 0;
         bool halveDurations = false;
 
-        /// <summary>Durée totale du bloc, en temps (noires). Indépendante du découpage en accords.</summary>
+        /// <summary>Longueur de la CELLULE — le motif rythmique qui se répète, en temps (noires).</summary>
         public double Beats { get { return beats; } set { double v = Math.Max(0.25, value); if (beats != v) { beats = v; OnChanged(nameof(Beats)); } } }
+
+        /// <summary>Durée TOTALE du module sur la timeline, en temps. La cellule (<see cref="Beats"/>) se répète
+        /// autant de fois que nécessaire pour la remplir, la dernière répétition étant TRONQUÉE si elle déborde ;
+        /// chaque répétition relit les accords actifs sous elle. 0 = une seule cellule (longueur = Beats).</summary>
+        public double LengthBeats { get { return lengthBeats; } set { double v = value <= 0 ? 0 : Math.Max(0.25, value); if (lengthBeats != v) { lengthBeats = v; OnChanged(nameof(LengthBeats)); } } }
         public int Style { get { return style; } set { if (style != value) { style = value; OnChanged(nameof(Style)); } } }
         public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
         public int Inversion { get { return inversion; } set { int v = Math.Max(0, value); if (inversion != v) { inversion = v; OnChanged(nameof(Inversion)); } } }
