@@ -36,11 +36,13 @@ namespace KotonPluginRandomWalk
                     case "seed": SeedSlider.Value = kp.Value; SeedValue.Text = kp.Value.ToString("F0"); break;
                     case "velocity": VelSlider.Value = kp.Value; VelValue.Text = kp.Value.ToString("F0"); break;
                     case "articulation": ArtCombo.SelectedIndex = (int)Math.Round(kp.Value); break;
+                    case "chord_aware": ChordAwareCheck.IsChecked = kp.Value >= 0.5; break;
                 }
             _syncing = false;
         }
         void Scale_Changed(object sender, SelectionChangedEventArgs e) { if (_loading || _syncing) return; _plugin.SetParam("scale", ScaleCombo.SelectedIndex); }
         void Art_Changed(object sender, SelectionChangedEventArgs e) { if (_loading || _syncing) return; _plugin.SetParam("articulation", ArtCombo.SelectedIndex); }
+        void Chord_Click(object sender, System.Windows.RoutedEventArgs e) { if (_loading || _syncing) return; _plugin.SetParam("chord_aware", ChordAwareCheck.IsChecked == true ? 1 : 0); }
         public void OnContextUpdated(KotonRenderContext ctx) { }
     }
 }

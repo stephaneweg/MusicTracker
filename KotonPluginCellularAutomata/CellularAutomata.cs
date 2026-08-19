@@ -32,10 +32,11 @@ namespace KotonPluginCellularAutomata
         readonly KotonParameter _density      = new KotonParameter("density",       "Init density",0.0, 1.0, 0.3);
         readonly KotonParameter _velocity     = new KotonParameter("velocity",      "Velocity",    1, 127, 90);
         readonly KotonParameter _articulation = new KotonParameter("articulation",  "Articulation",0, 3, 2);
+        readonly KotonParameter _chordAware   = new KotonParameter("chord_aware",   "Chord-aware", 0, 1, 1);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
-        public CellularAutomata() { _params = new List<KotonParameter> { _notesPerBeat, _rule, _width, _scale, _baseOctave, _octRange, _seed, _seedMode, _density, _velocity, _articulation }; }
+        public CellularAutomata() { _params = new List<KotonParameter> { _notesPerBeat, _rule, _width, _scale, _baseOctave, _octRange, _seed, _seedMode, _density, _velocity, _articulation, _chordAware }; }
 
         public KotonGeneratorType GeneratorType => KotonGeneratorType.Melody;
         double _durationBeats = 4.0;
@@ -95,6 +96,7 @@ namespace KotonPluginCellularAutomata
             double density = _density.Value;
             int velocity = Math.Max(1, Math.Min(127, (int)_velocity.Value));
             int art = Math.Max(0, Math.Min(3, (int)_articulation.Value));
+            bool chordAware = _chordAware.Value >= 0.5;
             double gate = GateFor(art);
 
             int tsNum = ctx?.TimeSigNum > 0 ? ctx.TimeSigNum : 4;
@@ -103,27 +105,60 @@ namespace KotonPluginCellularAutomata
             double tick = (ternary ? 1.5 : 1.0) / notesPerBeat;
             if (tick <= 0) yield break;
             double duration = Math.Max(0.25, DurationBeats);
+            double blockStart = ctx?.BlockStartBeat ?? 0.0;
 
-            var degrees = ScaleDegrees[scaleIdx];
-            int poolSize = degrees.Length * octRange;
+            var scaleDegs = ScaleDegrees[scaleIdx];
             int baseMidi = 12 + baseOct * 12;
+            // Pool par defaut = gamme
+            int[] pool = BuildScalePool(scaleDegs, octRange, baseMidi);
 
             var row = InitRow(width, seed, mode, density);
             for (double t = 0; t < duration - 1e-9; t += tick)
             {
+                // Chord-aware : reconstruire le pool depuis l'accord courant
+                if (chordAware && KotonHost.GetChordAt != null)
+                {
+                    var ch = KotonHost.GetChordAt(blockStart + t);
+                    if (ch.HasValue)
+                    {
+                        int rootBase = baseMidi + ch.Value.Root;
+                        var chordNotes = ch.Value.GetMidiNotes(rootBase);
+                        pool = BuildOctaveReplicated(chordNotes, octRange);
+                    }
+                }
+                int poolSize = pool.Length;
+
                 // Chaque cellule active = une note simultanee
                 for (int i = 0; i < width; i++)
                 {
                     if (row[i] == 0) continue;
                     int idx = (i * poolSize) / width;   // mapping lineaire cell -> pool
                     if (idx >= poolSize) idx = poolSize - 1;
-                    int oct = idx / degrees.Length;
-                    int deg = idx % degrees.Length;
-                    int midi = baseMidi + oct * 12 + degrees[deg];
+                    int midi = pool[idx];
                     yield return new KotonGeneratedNote { StartBeat = t, DurationBeats = tick * gate, MidiNote = midi, Velocity = velocity };
                 }
                 row = StepRule(row, rule);
             }
+        }
+
+        static int[] BuildScalePool(int[] degrees, int octRange, int baseMidi)
+        {
+            var pool = new int[degrees.Length * octRange];
+            int k = 0;
+            for (int oct = 0; oct < octRange; oct++)
+                for (int d = 0; d < degrees.Length; d++)
+                    pool[k++] = baseMidi + oct * 12 + degrees[d];
+            return pool;
+        }
+        static int[] BuildOctaveReplicated(int[] chordNotes, int octRange)
+        {
+            if (chordNotes == null || chordNotes.Length == 0) return new int[] { 60 };
+            var pool = new int[chordNotes.Length * octRange];
+            int k = 0;
+            for (int oct = 0; oct < octRange; oct++)
+                for (int i = 0; i < chordNotes.Length; i++)
+                    pool[k++] = chordNotes[i] + oct * 12;
+            return pool;
         }
 
         public byte[] SaveState() { try { var d = new Dictionary<string, object>(); foreach (var kp in _params) d[kp.Id] = kp.Value; d["_dur"] = _durationBeats; return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(d)); } catch { return Array.Empty<byte>(); } }

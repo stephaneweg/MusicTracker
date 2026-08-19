@@ -20,7 +20,10 @@
             <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Seed" Foreground="{DynamicResource KotonText}"/><Slider x:Name="SeedSlider" Minimum="0" Maximum="999" TickFrequency="10"/><TextBlock x:Name="SeedValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
             <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Velocity" Foreground="{DynamicResource KotonText}"/><Slider x:Name="VelSlider" Minimum="1" Maximum="127" TickFrequency="5"/><TextBlock x:Name="VelValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
             <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="Articulation" Foreground="{DynamicResource KotonText}"/><ComboBox x:Name="ArtCombo" SelectionChanged="Art_Changed"><ComboBoxItem Content="Legato"/><ComboBoxItem Content="Normal"/><ComboBoxItem Content="Détaché"/><ComboBoxItem Content="Staccato"/></ComboBox></StackPanel>
-            <TextBlock Grid.Row="5" Grid.Column="2" FontSize="10" FontStyle="Italic" Foreground="{DynamicResource KotonTextLo}" TextWrapping="Wrap" Text="Rules connues: 30=chaotique, 90=Sierpinski, 110=Turing-complet, 45/60/150=fractales."/>
+            <StackPanel Grid.Row="5" Grid.Column="2">
+                <CheckBox x:Name="ChordAwareCheck" Content="Chord-aware (notes de l'accord)" Foreground="{DynamicResource KotonAccent}" FontSize="11" Margin="0,0,0,4" Click="Chord_Click" ToolTip="Utilise les notes de l'accord courant au lieu de la gamme"/>
+                <TextBlock FontSize="10" FontStyle="Italic" Foreground="{DynamicResource KotonTextLo}" TextWrapping="Wrap" Text="Rules connues: 30=chaotique, 90=Sierpinski, 110=Turing-complet."/>
+            </StackPanel>
         </Grid>
     </Border>
 </UserControl>

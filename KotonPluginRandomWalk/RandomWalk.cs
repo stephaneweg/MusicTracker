@@ -27,10 +27,11 @@ namespace KotonPluginRandomWalk
         readonly KotonParameter _seed         = new KotonParameter("seed",          "Seed",         0, 999, 42);
         readonly KotonParameter _velocity     = new KotonParameter("velocity",      "Velocity",     1, 127, 100);
         readonly KotonParameter _articulation = new KotonParameter("articulation",  "Articulation", 0, 3, 1);
+        readonly KotonParameter _chordAware   = new KotonParameter("chord_aware",   "Chord-aware",  0, 1, 1);   // 0=gamme fixe, 1=notes de l'accord courant
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
-        public RandomWalk() { _params = new List<KotonParameter> { _notesPerBeat, _stepMax, _scale, _octRange, _baseOctave, _seed, _velocity, _articulation }; }
+        public RandomWalk() { _params = new List<KotonParameter> { _notesPerBeat, _stepMax, _scale, _octRange, _baseOctave, _seed, _velocity, _articulation, _chordAware }; }
 
         public KotonGeneratorType GeneratorType => KotonGeneratorType.Melody;
         double _durationBeats = 4.0;
@@ -61,6 +62,7 @@ namespace KotonPluginRandomWalk
             int seed = (int)_seed.Value;
             int velocity = Math.Max(1, Math.Min(127, (int)_velocity.Value));
             int art = Math.Max(0, Math.Min(3, (int)_articulation.Value));
+            bool chordAware = _chordAware.Value >= 0.5;
             double gate = GateFor(art);
             int tsNum = ctx?.TimeSigNum > 0 ? ctx.TimeSigNum : 4;
             int tsDen = ctx?.TimeSigDen > 0 ? ctx.TimeSigDen : 4;
@@ -68,26 +70,61 @@ namespace KotonPluginRandomWalk
             double tick = (ternary ? 1.5 : 1.0) / notesPerBeat;
             if (tick <= 0) yield break;
             double duration = Math.Max(0.25, DurationBeats);
+            double blockStart = ctx?.BlockStartBeat ?? 0.0;
 
-            var degrees = ScaleDegrees[scaleIdx];
-            int poolSize = degrees.Length * octRange;
+            var scaleDegs = ScaleDegrees[scaleIdx];
             int baseMidi = 12 + baseOct * 12;
             var rnd = new Random(seed);
-            int idx = poolSize / 2;   // demarre au milieu
+            int idx = 0;   // sera recalcule dynamiquement selon le pool
+
+            // Pool initial (fallback : gamme)
+            int[] pool = BuildScalePool(scaleDegs, octRange, baseMidi);
+            idx = pool.Length / 2;
 
             for (double t = 0; t < duration - 1e-9; t += tick)
             {
-                // Step aleatoire ±1..±stepMax
+                // Chord-aware : recuperer l'accord courant, construire le pool a partir de ses notes
+                if (chordAware && KotonHost.GetChordAt != null)
+                {
+                    var ch = KotonHost.GetChordAt(blockStart + t);
+                    if (ch.HasValue)
+                    {
+                        // Notes de l'accord (root position) → repliquer sur octRange octaves
+                        int rootBase = baseMidi + ch.Value.Root;
+                        var chordNotes = ch.Value.GetMidiNotes(rootBase);
+                        pool = BuildOctaveReplicated(chordNotes, octRange);
+                        if (idx >= pool.Length) idx = pool.Length - 1;
+                    }
+                    // Sinon on garde le pool existant (gamme fallback)
+                }
+
                 int step = rnd.Next(-stepMax, stepMax + 1);
                 idx += step;
                 if (idx < 0) idx = 0;
-                if (idx >= poolSize) idx = poolSize - 1;
-                int oct = idx / degrees.Length;
-                int deg = idx % degrees.Length;
-                int midi = baseMidi + oct * 12 + degrees[deg];
+                if (idx >= pool.Length) idx = pool.Length - 1;
                 double len = tick * gate;
-                yield return new KotonGeneratedNote { StartBeat = t, DurationBeats = len, MidiNote = midi, Velocity = velocity };
+                yield return new KotonGeneratedNote { StartBeat = t, DurationBeats = len, MidiNote = pool[idx], Velocity = velocity };
             }
+        }
+
+        static int[] BuildScalePool(int[] degrees, int octRange, int baseMidi)
+        {
+            var pool = new int[degrees.Length * octRange];
+            int k = 0;
+            for (int oct = 0; oct < octRange; oct++)
+                for (int d = 0; d < degrees.Length; d++)
+                    pool[k++] = baseMidi + oct * 12 + degrees[d];
+            return pool;
+        }
+        static int[] BuildOctaveReplicated(int[] chordNotes, int octRange)
+        {
+            if (chordNotes == null || chordNotes.Length == 0) return new int[] { 60 };
+            var pool = new int[chordNotes.Length * octRange];
+            int k = 0;
+            for (int oct = 0; oct < octRange; oct++)
+                for (int i = 0; i < chordNotes.Length; i++)
+                    pool[k++] = chordNotes[i] + oct * 12;
+            return pool;
         }
 
         public byte[] SaveState()

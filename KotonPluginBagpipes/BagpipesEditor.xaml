@@ -9,7 +9,12 @@
         <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="Drone pitch (MIDI)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S1" Minimum="24" Maximum="60" TickFrequency="1"/><TextBlock x:Name="V1" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="0">
+                <TextBlock Text="Drone source" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                <ComboBox x:Name="DroneSrcCombo" SelectionChanged="DroneSrc_Changed"><ComboBoxItem Content="MIDI fixe"/><ComboBoxItem Content="Fondamentale de l'accord"/></ComboBox>
+                <TextBlock Text="Drone pitch (MIDI, fallback)" Foreground="{DynamicResource KotonText}" Margin="0,6,0,0"/>
+                <Slider x:Name="S1" Minimum="24" Maximum="60" TickFrequency="1"/><TextBlock x:Name="V1" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+            </StackPanel>
             <StackPanel Grid.Row="1" Grid.Column="0"><TextBlock Text="Drone mix" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S2" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V2" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
             <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Reed formant (Hz)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S3" Minimum="1000" Maximum="4000" TickFrequency="50"/><TextBlock x:Name="V3" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
             <StackPanel Grid.Row="3" Grid.Column="0"><TextBlock Text="Reed Q" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S4" Minimum="2" Maximum="12" TickFrequency="0.5"/><TextBlock x:Name="V4" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>

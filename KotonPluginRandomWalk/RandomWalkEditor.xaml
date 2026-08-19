@@ -16,7 +16,9 @@
             <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Range (octaves)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="RangeSlider" Minimum="1" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/><TextBlock x:Name="RangeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
             <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Seed" Foreground="{DynamicResource KotonText}"/><Slider x:Name="SeedSlider" Minimum="0" Maximum="999" TickFrequency="10"/><TextBlock x:Name="SeedValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
             <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Velocity" Foreground="{DynamicResource KotonText}"/><Slider x:Name="VelSlider" Minimum="1" Maximum="127" TickFrequency="5"/><TextBlock x:Name="VelValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Articulation" Foreground="{DynamicResource KotonText}"/><ComboBox x:Name="ArtCombo" SelectionChanged="Art_Changed"><ComboBoxItem Content="Legato"/><ComboBoxItem Content="Normal"/><ComboBoxItem Content="Détaché"/><ComboBoxItem Content="Staccato"/></ComboBox></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Articulation" Foreground="{DynamicResource KotonText}"/><ComboBox x:Name="ArtCombo" SelectionChanged="Art_Changed"><ComboBoxItem Content="Legato"/><ComboBoxItem Content="Normal"/><ComboBoxItem Content="Détaché"/><ComboBoxItem Content="Staccato"/></ComboBox>
+                <CheckBox x:Name="ChordAwareCheck" Content="Chord-aware (notes de l'accord)" Foreground="{DynamicResource KotonAccent}" FontSize="11" Margin="0,8,0,0" Click="Chord_Click" ToolTip="Utilise les notes de l'accord courant au lieu de la gamme fixe"/>
+            </StackPanel>
         </Grid>
     </Border>
 </UserControl>

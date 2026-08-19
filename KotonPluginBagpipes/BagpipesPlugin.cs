@@ -18,6 +18,7 @@ namespace KotonPluginBagpipes
         public string Id => "koton.bagpipes";
         public string DisplayName => "Bagpipes";
 
+        readonly KotonParameter _droneSource= new KotonParameter("drone_source","Drone source", 0, 1, 1);   // 0=MIDI fixe, 1=fondamentale accord
         readonly KotonParameter _dronePitch = new KotonParameter("drone_pitch","Drone pitch (MIDI)", 24, 60, 46);
         readonly KotonParameter _droneMix   = new KotonParameter("drone_mix",  "Drone mix",   0.0, 1.0, 0.55);
         readonly KotonParameter _reedHz     = new KotonParameter("reed_hz",    "Reed formant", 1000, 4000, 2200, "Hz");
@@ -30,7 +31,7 @@ namespace KotonPluginBagpipes
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
-        public BagpipesPlugin() { _params = new List<KotonParameter> { _dronePitch, _droneMix, _reedHz, _reedQ, _reedNoise, _brightness, _attack, _release, _volumeDb }; }
+        public BagpipesPlugin() { _params = new List<KotonParameter> { _droneSource, _dronePitch, _droneMix, _reedHz, _reedQ, _reedNoise, _brightness, _attack, _release, _volumeDb }; }
         public bool HasEditor => true;
         public UserControl CreateEditor() => new BagpipesEditor(this);
 
@@ -58,10 +59,31 @@ namespace KotonPluginBagpipes
             if (t == null) { t = _voices[0]; t.Kill(); }
             t.NoteOn(note, velocity / 127f, (float)_attack.Value);
             _activeCount++;
-            // Setup drone freqs when first note starts
+            // Setup drone freqs when first note starts.
+            // Si drone_source = 1, on prend la fondamentale de l'accord courant (via KotonHost),
+            // sinon la note MIDI configuree (fallback quand pas de piste d'accords sous le bloc).
             if (_activeCount == 1)
             {
-                double baseF = 440.0 * Math.Pow(2.0, (_dronePitch.Value - 69) / 12.0);
+                int droneMidi = (int)Math.Round(_dronePitch.Value);
+                if (_droneSource.Value >= 0.5 && KotonHost.GetChordAt != null)
+                {
+                    var ch = KotonHost.GetChordAt(0);   // approx : on lit l'accord au debut du morceau (le drone est fixe pendant la duree active)
+                    if (ch.HasValue)
+                    {
+                        // Recale la fondamentale de l'accord dans l'octave demandee : on prend
+                        // la classe de hauteur de l'accord et l'octave la plus proche du dronePitch
+                        // configure (par defaut 46 = Bb1). Ainsi changer d'accord = changer de drone
+                        // dans le meme registre.
+                        int rootPc = ch.Value.Root % 12;
+                        int refPc = droneMidi % 12;
+                        int refOct = droneMidi / 12;
+                        int candidate = refOct * 12 + rootPc;
+                        while (candidate - droneMidi > 6) candidate -= 12;
+                        while (candidate - droneMidi < -6) candidate += 12;
+                        droneMidi = candidate;
+                    }
+                }
+                double baseF = 440.0 * Math.Pow(2.0, (droneMidi - 69) / 12.0);
                 _droneInc1 = baseF / _sr;
                 _droneInc2 = baseF * 2 / _sr;
                 _droneInc3 = baseF * 3 / _sr;  // 12eme (quinte sur octave)

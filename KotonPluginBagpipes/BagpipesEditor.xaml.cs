@@ -25,8 +25,10 @@ namespace KotonPluginBagpipes
             var sliders = new[] { S1, S2, S3, S4, S5, S6, S7, S8, S9 };
             var vals = new[] { V1, V2, V3, V4, V5, V6, V7, V8, V9 };
             for (int i = 0; i < 9; i++) { foreach (var kp in _p.Parameters) if (kp.Id == Ids[i]) { sliders[i].Value = kp.Value; vals[i].Text = Fmt(kp.Value, Fmts[i]); break; } }
+            foreach (var kp in _p.Parameters) if (kp.Id == "drone_source") { DroneSrcCombo.SelectedIndex = (int)Math.Round(kp.Value); break; }
             _s = false;
         }
+        void DroneSrc_Changed(object sender, SelectionChangedEventArgs e) { if (_l || _s) return; _p.SetParam("drone_source", DroneSrcCombo.SelectedIndex); }
         public void OnContextUpdated(KotonRenderContext ctx) { }
     }
 }
