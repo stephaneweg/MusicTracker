@@ -345,8 +345,13 @@ namespace MusicTracker.Engine.Flow
         // (Etait 14 = 2 octaves ; passe a 21 pour laisser une melodie plus ample.)
         public const int MelodicRowCount = 21;
 
-        // Concert MIDI for a melodic grid row, given the key scale/tonic, the anchor pitch-class and the melody octave.
-        static int MelodicPitch(int[] scale, int tonicPc, int anchorPc, int melodicOctave, int row)
+        // Concert MIDI for a melodic grid row, given the key scale/tonic, the anchor pitch-class, the melody octave,
+        // et OPTIONNELLEMENT les intervalles de l'accord (depuis l'anchor). Quand chordIntervalsFromAnchor est fourni,
+        // une note diatonique qui tombe a 1 semi-ton d'une note de l'accord est snappee sur cette note d'accord :
+        // ex tonalite La mineur (G naturel dans la gamme) + accord E majeur (V/i, G# dans l'accord) → un degre de la
+        // cellule qui tombe sur G est remplace par G# pour respecter l'harmonie. Preserve la couleur diatonique
+        // ailleurs (les degres etrangers a l'accord restent conformes a la tonalite).
+        static int MelodicPitch(int[] scale, int tonicPc, int anchorPc, int melodicOctave, int row, int[] chordIntervalsFromAnchor = null)
         {
             if (scale == null || scale.Length < 7) return 60;
             int degree = ((row % 7) + 7) % 7, oct = row / 7;
@@ -356,7 +361,30 @@ namespace MusicTracker.Engine.Flow
             int anchorMidi = 12 * (melodicOctave + 1) + anchorPc;
             int pos = idx + degree + 7 * oct;
             int delta = (scale[pos % 7] + 12 * (pos / 7)) - scale[idx];   // semitones above the anchor along the scale
-            return Math.Max(0, Math.Min(127, anchorMidi + delta));
+            int midi = Math.Max(0, Math.Min(127, anchorMidi + delta));
+
+            // Snap chord tones : ajuste les alterations pour respecter l'accord (secondaires dominantes etc.)
+            if (chordIntervalsFromAnchor != null && chordIntervalsFromAnchor.Length > 0)
+            {
+                int pc = ((midi % 12) + 12) % 12;
+                int bestDist = 2, bestPc = -1;
+                for (int i = 0; i < chordIntervalsFromAnchor.Length; i++)
+                {
+                    int chordPc = ((anchorPc + chordIntervalsFromAnchor[i]) % 12 + 12) % 12;
+                    int dist = Math.Abs(pc - chordPc);
+                    if (dist > 6) dist = 12 - dist;
+                    if (dist > 0 && dist <= 1 && dist < bestDist) { bestDist = dist; bestPc = chordPc; }
+                }
+                if (bestPc >= 0)
+                {
+                    // Snap vers la note d'accord la plus proche, en preservant l'octave (shortest signed shift)
+                    int diff = ((bestPc - pc + 6) % 12) - 6;
+                    midi += diff;
+                    if (midi < 0) midi = 0;
+                    if (midi > 127) midi = 127;
+                }
+            }
+            return midi;
         }
 
         /// <summary>Render a chord's optional MELODIC CELL to a Riff (its own voice/staff), or null if it has none. Needs
@@ -369,11 +397,16 @@ namespace MusicTracker.Engine.Flow
             int tonicPc = MusicTheory.TonicPc(key ?? new KeySignature());
             int rootPc = ((m.Root % 12) + 12) % 12;
             int anchorPc = rootPc;
+            var quality = QualityIntervals[Clamp(m.Quality, 0, QualityIntervals.Length - 1)];
             if (m.MelodicAnchor == 1)
-            {
-                var iv = QualityIntervals[Clamp(m.Quality, 0, QualityIntervals.Length - 1)];
-                anchorPc = (rootPc + iv[m.Inversion % iv.Length]) % 12;    // bass = root/3rd/5th/7th per inversion
-            }
+                anchorPc = (rootPc + quality[m.Inversion % quality.Length]) % 12;    // bass = root/3rd/5th/7th per inversion
+
+            // Intervalles de l'accord DEPUIS L'ANCRE. Anchor = root : identiques a QualityIntervals.
+            // Anchor = bass d'inversion : on soustrait l'interval de l'anchor pour tout ramener depuis l'anchor.
+            int anchorInterval = m.MelodicAnchor == 1 ? quality[m.Inversion % quality.Length] : 0;
+            var chordIntervalsFromAnchor = new int[quality.Length];
+            for (int i = 0; i < quality.Length; i++) chordIntervalsFromAnchor[i] = ((quality[i] - anchorInterval) % 12 + 12) % 12;
+
             int melSpq = m.MelodicSlicesPerQuarter > 0 ? m.MelodicSlicesPerQuarter : SlicesPerQuarter;
             int barSlices = Math.Max(1, m.BeatsPerBar) * melSpq;
             int repeats = Math.Max(1, m.Repeats);
@@ -384,7 +417,7 @@ namespace MusicTracker.Engine.Flow
                 foreach (var mn in m.MelodicNotes)
                 {
                     if (mn.Note < 0 || mn.Note >= MelodicRowCount) continue;
-                    int noteRow = MelodicPitch(scale, tonicPc, anchorPc, m.MelodicOctave, mn.Note) - 12; // app convention: note 0 = MIDI 12
+                    int noteRow = MelodicPitch(scale, tonicPc, anchorPc, m.MelodicOctave, mn.Note, chordIntervalsFromAnchor) - 12;
                     if (noteRow >= 0 && noteRow < 96) outNotes.Add(new RiffNote(noteRow, off + mn.Start, mn.Length));
                 }
             }
