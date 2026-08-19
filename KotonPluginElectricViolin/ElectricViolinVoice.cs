@@ -73,6 +73,12 @@ namespace KotonPluginElectricViolin
         // === Compressor simple ===
         float _compEnv;   // envelope follower level
 
+        // === Transient shaper : boost brillance sur les premieres ~40 ms d'attaque ===
+        // Ouvre le LP final de 4800 → 6500 Hz pendant l'attaque puis revient. Donne le "mordant"
+        // caracteristique d'un solo sans laisser un pic aigu perpetuel.
+        float _attackBoost;    // 1.0 au NoteOn → decroit exp vers 0 en ~40 ms
+        float _attackDecayCoef;
+
         bool _active;
         int _note;
         float _velocity;
@@ -89,12 +95,13 @@ namespace KotonPluginElectricViolin
             // Formants avec gains REDUITS et Q ELARGIS (2026-08-03 : v8 avait +4/+3dB Q=2/2.5
             // → sonnait comme une seconde voix aux fréquences boostees). Version douce : +2/+1.5dB
             // Q=1.2/1.4 = bosses larges qui colorent sans creer de pics identifiables.
-            SetBiquadPeaking(ref _formant1, sampleRate, 600f, 1.2f, 2.0f);
-            // Formant 2 (3 kHz) descendu de +1.5 -> +0.3 dB (2026-08-04 : responsable du "frottement
-            // d'archet" percu — un pic haute-mid qui donne un cote rugueux/rape aux saw+tanh).
+            // Formant 1 (600Hz) : Q resserre 1.2 -> 0.8 (2026-08-04 : bosse plus focused,
+            // moins d'harmoniques accentuees → sonne moins "ensemble/unisson").
+            SetBiquadPeaking(ref _formant1, sampleRate, 600f, 0.8f, 2.0f);
+            // Formant 2 (3 kHz) descendu de +1.5 -> +0.3 dB (frottement d'archet).
             SetBiquadPeaking(ref _formant2, sampleRate, 3000f, 1.4f, 0.3f);
-            // LP final descendu de 7 kHz -> 4.8 kHz : coupe le sifflement "scratchy" aigu qui restait
-            // apres le tanh + formant. Le violon garde sa presence sans le "grain de crin/corde".
+            // LP final dynamique : peut osciller entre 4800Hz (sustain) et 6500Hz (attaque) selon
+            // _attackBoost. Init a 4800.
             SetBiquadLP(ref _lpFinal, sampleRate, 4800f, 0.707f);
         }
 
@@ -129,6 +136,10 @@ namespace KotonPluginElectricViolin
 
             _peakEnvelope = 1f;
             _active = true;
+
+            // Transient boost : plein au NoteOn, decroit exp vers 0 en ~40 ms → mordant sur attaque
+            _attackBoost = 1f;
+            _attackDecayCoef = (float)Math.Exp(-1.0 / (0.040 * _sr));   // tau ~40 ms
         }
 
         public void NoteOff()
@@ -198,9 +209,9 @@ namespace KotonPluginElectricViolin
             _phase += _phaseInc;
             if (_phase >= 1.0) _phase -= 1.0;
 
-            // Amplitude modulation légère (AM du vibrato) — 5% de depth quand vibrato pleine
-            float amMod = 1f - 0.05f * _vibFadeIn * (float)Math.Sin(_vibPhase);
-            saw *= amMod * _env * _velocity;
+            // AM du vibrato RETIREE (2026-08-04) : donnait un effet "ensemble/unisson desaccorde"
+            // qui faisait sonner le violon comme un string ensemble. Instrument solo = FM seul.
+            saw *= _env * _velocity;
 
             // --- 2) LP DYNAMIQUE 24dB (cascade 2 biquads LP 12dB) ---
             // Cutoff = f(velocity, BowForce, BowPosition)
@@ -248,7 +259,12 @@ namespace KotonPluginElectricViolin
             }
             float compressed = withFormants * compGain * 1.1f;   // makeup discret
 
-            // --- 6) LP FINAL 7 kHz (élimine "froid numérique") ---
+            // --- 6) LP FINAL DYNAMIQUE : 4800Hz sustain, s'ouvre vers 6500Hz pendant l'attaque
+            // (transient shaper) puis se referme. Donne le "mordant" du solo sans laisser un pic
+            // aigu perpetuel qui evoquerait un ensemble. Recalcul chaque sample = pas d'artefact.
+            _attackBoost *= _attackDecayCoef;
+            float lpCutoff = 4800f + _attackBoost * 1700f;
+            SetBiquadLP(ref _lpFinal, _sr, lpCutoff, 0.707f);
             float final = BiquadProcess(ref _lpFinal, compressed);
 
             // --- 7) TREMOLO en sortie (subtil) ---
