@@ -2,6 +2,7 @@ using MusicTracker.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -1310,6 +1311,7 @@ namespace MusicTracker.Screens
             if (dp.Tracks != null) foreach (var t in dp.Tracks) project.Tracks.Add(t);
             TimelineHelper.SyncUserStyleRefs(project);   // make chords that reference a user style authoritative from it
             TimelineHelper.EnsureChordTrack(project);    // adopt/create the permanent chords track (bottom-pinned)
+            MigratePolyChordOffChordLane();              // PolyChord dans la lane Accords → deplacer vers piste Instrument
             SyncKeyToolbar();
             scoreTracks.Clear(); activeScore = null;
             selectedTrack = project.Tracks.Count > 0 ? project.Tracks[0] : null;
@@ -4512,6 +4514,90 @@ namespace MusicTracker.Screens
             menu.Items.Add(del);
             menu.PlacementTarget = anchor;
             menu.IsOpen = true;
+        }
+
+        // A l'ouverture d'un projet, si la piste Accords (Chord) contient un ou plusieurs PolyChordModule
+        // (usage historique quand PolyChord etait pose sur la lane d'accords), on migre :
+        //   1. Chaque PolyChordItem devient un PatternGeneratorModule "accord plaque" avec sa duree, insere
+        //      dans la lane Chord a la place du PolyChordModule original — la piste d'accords conserve
+        //      les MEMES accords, juste rendus simplement.
+        //   2. Le PolyChordModule original migre sur une nouvelle piste Instrument (creee juste avant la
+        //      piste Chord dans la liste, donc juste au-dessus visuellement), avec l'instrument de la
+        //      piste Chord (patch MIDI) pour garder le meme timbre.
+        // Idempotent : si aucun PolyChord dans la lane Chord, no-op. Fait avant SyncKeyToolbar/Render, donc
+        // invisible pour l'user (le doc "reformate" ne modifie pas le fichier tant qu'il n'est pas save).
+        void MigratePolyChordOffChordLane()
+        {
+            TimelineTrack chordTrack = null;
+            foreach (var t in project.Tracks) if (t != null && t.Type == TimelineTrackType.Chord) { chordTrack = t; break; }
+            if (chordTrack?.Items == null) return;
+
+            // Collect PolyChord items with their absolute start beat (before mutation).
+            var toMigrate = new System.Collections.Generic.List<(int idx, TimelineItem item, Engine.Flow.PolyChordModule pcm, double absStart)>();
+            double cursor = 0;
+            for (int i = 0; i < chordTrack.Items.Count; i++)
+            {
+                var it = chordTrack.Items[i];
+                if (it == null) continue;
+                cursor += it.SilenceBefore;
+                if (it.Module is Engine.Flow.PolyChordModule pcm) toMigrate.Add((i, it, pcm, cursor));
+                cursor += it.Module != null ? Engine.Flow.ModuleDuration.Beats(it.Module, project.RiffById) : 0;
+            }
+            if (toMigrate.Count == 0) return;
+
+            int chordInstrument = chordTrack.Instrument;
+
+            // Iterer en ordre inverse pour ne pas decaler les index en cours de mutation.
+            foreach (var (idx, item, pcm, absStart) in toMigrate.OrderByDescending(x => x.idx))
+            {
+                // 1) Construire les modules "accord plaque" (style 0) pour chaque PolyChordItem.
+                var replacements = new System.Collections.Generic.List<TimelineItem>();
+                for (int k = 0; k < pcm.Chords.Count; k++)
+                {
+                    var ch = pcm.Chords[k];
+                    if (ch == null) continue;
+                    var pgm = new Engine.Flow.PatternGeneratorModule
+                    {
+                        Root = ch.Root,
+                        Quality = ch.Quality,
+                        Degree = ch.Degree,
+                        Inversion = ch.Inversion,
+                        DiatonicColour = ch.DiatonicColour,
+                        Suspension = ch.Suspension,
+                        ModeOverride = ch.ModeOverride,
+                        Octave = pcm.Octave,
+                        Style = 0,                            // "Accords plaqués (tenu)"
+                        BeatsPerBar = Math.Max(1, ch.Beats),
+                        Repeats = 1,
+                        OpenVoicing = pcm.OpenVoicing,
+                    };
+                    replacements.Add(new TimelineItem
+                    {
+                        Module = pgm,
+                        SilenceBefore = k == 0 ? item.SilenceBefore : 0,
+                    });
+                }
+
+                // 2) Remplacer l'item PolyChord par les N modules "accord plaque" dans la lane Chord.
+                chordTrack.Items.RemoveAt(idx);
+                for (int k = replacements.Count - 1; k >= 0; k--) chordTrack.Items.Insert(idx, replacements[k]);
+
+                // 3) Nouvelle piste Instrument JUSTE AVANT la piste Chord (Chord reste bottom-pinned).
+                //    On y met le PolyChordModule original a son offset absolu d'origine.
+                int chordPos = project.Tracks.IndexOf(chordTrack);
+                var instrTrack = new TimelineTrack
+                {
+                    Name = "Poly accords",
+                    Type = TimelineTrackType.Instrument,
+                    Instrument = chordInstrument,
+                };
+                project.Tracks.Insert(chordPos, instrTrack);
+                instrTrack.Items.Add(new TimelineItem
+                {
+                    Module = pcm,
+                    SilenceBefore = absStart,
+                });
+            }
         }
 
         // Convertit tous les blocs PolyChord de <paramref name="source"/> en une NOUVELLE piste Instrument
