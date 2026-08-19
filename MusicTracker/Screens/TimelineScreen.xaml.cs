@@ -4302,23 +4302,41 @@ namespace MusicTracker.Screens
                 m.ClimbMode = prev.ClimbMode;
                 m.HalveDurations = prev.HalveDurations;
                 m.UserStyleName = prev.UserStyleName;
-                // Motif d'accompagnement custom : copie des notes + slices
-                if (prev.CustomNotes != null && prev.CustomNotes.Count > 0)
+                // Motif d'accompagnement custom : copier DIRECTEMENT les 2 representations (Notes + Slices)
+                // car une articulation peut avoir CustomSlices sans CustomNotes (anciens .sq / grille slice-based).
+                // Utiliser SetCustomNotes recomputerait les slices depuis les notes (vide → slices vide) ce qui
+                // desactive le "custom" cote renderer : Style=CustomStyle mais slices vides → fallback accord
+                // plaque. On copie donc les 2 en direct.
+                m.CustomSlicesPerQuarter = prev.CustomSlicesPerQuarter;
+                if (prev.CustomSlices != null)
                 {
-                    var copy = new List<RiffNote>(prev.CustomNotes.Count);
-                    foreach (var n in prev.CustomNotes) copy.Add(new RiffNote(n.Note, n.Start, n.Length));
-                    m.SetCustomNotes(copy, prev.CustomSlicesPerQuarter, RiffNotes.LengthOf(copy));
+                    var slicesCopy = new SequencerSlice[prev.CustomSlices.Length];
+                    Array.Copy(prev.CustomSlices, slicesCopy, prev.CustomSlices.Length);
+                    m.CustomSlices = slicesCopy;
                 }
-                // Cellule melodique
+                if (prev.CustomNotes != null)
+                {
+                    var notesCopy = new List<RiffNote>(prev.CustomNotes.Count);
+                    foreach (var n in prev.CustomNotes) notesCopy.Add(new RiffNote(n.Note, n.Start, n.Length));
+                    m.CustomNotes = notesCopy;
+                }
+                // Cellule melodique — meme logique : copie directe des 2 representations.
                 m.MelodicOctave = prev.MelodicOctave;
                 m.MelodicAnchor = prev.MelodicAnchor;
                 m.MelodicOpenVoicing = prev.MelodicOpenVoicing;
                 m.MelodicVoiceLead = prev.MelodicVoiceLead;
-                if (prev.MelodicNotes != null && prev.MelodicNotes.Count > 0)
+                m.MelodicSlicesPerQuarter = prev.MelodicSlicesPerQuarter;
+                if (prev.MelodicSlices != null)
                 {
-                    var mcopy = new List<RiffNote>(prev.MelodicNotes.Count);
-                    foreach (var n in prev.MelodicNotes) mcopy.Add(new RiffNote(n.Note, n.Start, n.Length));
-                    m.SetMelodicNotes(mcopy, prev.MelodicSlicesPerQuarter, RiffNotes.LengthOf(mcopy));
+                    var mSlicesCopy = new SequencerSlice[prev.MelodicSlices.Length];
+                    Array.Copy(prev.MelodicSlices, mSlicesCopy, prev.MelodicSlices.Length);
+                    m.MelodicSlices = mSlicesCopy;
+                }
+                if (prev.MelodicNotes != null)
+                {
+                    var mNotesCopy = new List<RiffNote>(prev.MelodicNotes.Count);
+                    foreach (var n in prev.MelodicNotes) mNotesCopy.Add(new RiffNote(n.Note, n.Start, n.Length));
+                    m.MelodicNotes = mNotesCopy;
                 }
             }
             AppendModule(m);
