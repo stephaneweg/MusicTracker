@@ -346,45 +346,32 @@ namespace MusicTracker.Engine.Flow
         public const int MelodicRowCount = 21;
 
         // Concert MIDI for a melodic grid row, given the key scale/tonic, the anchor pitch-class, the melody octave,
-        // et OPTIONNELLEMENT les intervalles de l'accord (depuis l'anchor). Quand chordIntervalsFromAnchor est fourni,
-        // une note diatonique qui tombe a 1 semi-ton d'une note de l'accord est snappee sur cette note d'accord :
-        // ex tonalite La mineur (G naturel dans la gamme) + accord E majeur (V/i, G# dans l'accord) → un degre de la
-        // cellule qui tombe sur G est remplace par G# pour respecter l'harmonie. Preserve la couleur diatonique
-        // ailleurs (les degres etrangers a l'accord restent conformes a la tonalite).
+        // et OPTIONNELLEMENT les intervalles de l'accord (depuis l'anchor, TRIES CROISSANTS). Les degres PAIRS
+        // (0/2/4/6) correspondent aux notes de l'accord (root/3/5/7) et prennent l'intervalle de l'accord (donc
+        // les alterations : ex E Maj en La min → degre 2 depuis E = G# et non G). Les degres IMPAIRS (1/3/5)
+        // restent diatoniques (couleur de la tonalite preservee sur les notes de passage).
         static int MelodicPitch(int[] scale, int tonicPc, int anchorPc, int melodicOctave, int row, int[] chordIntervalsFromAnchor = null)
         {
             if (scale == null || scale.Length < 7) return 60;
             int degree = ((row % 7) + 7) % 7, oct = row / 7;
             anchorPc = ((anchorPc % 12) + 12) % 12; tonicPc = ((tonicPc % 12) + 12) % 12;
-            int idx = 0;                                                  // scale index of the anchor (0 if chromatic → tonic)
-            for (int i = 0; i < 7; i++) if ((((tonicPc + scale[i]) % 12) + 12) % 12 == anchorPc) { idx = i; break; }
             int anchorMidi = 12 * (melodicOctave + 1) + anchorPc;
-            int pos = idx + degree + 7 * oct;
-            int delta = (scale[pos % 7] + 12 * (pos / 7)) - scale[idx];   // semitones above the anchor along the scale
-            int midi = Math.Max(0, Math.Min(127, anchorMidi + delta));
 
-            // Snap chord tones : ajuste les alterations pour respecter l'accord (secondaires dominantes etc.)
-            if (chordIntervalsFromAnchor != null && chordIntervalsFromAnchor.Length > 0)
+            // Chord tone : degre pair et un chord tone existe a cet index → prend l'intervalle exact de l'accord.
+            int chordIdx = degree / 2;
+            if (degree % 2 == 0 && chordIntervalsFromAnchor != null && chordIdx < chordIntervalsFromAnchor.Length)
             {
-                int pc = ((midi % 12) + 12) % 12;
-                int bestDist = 2, bestPc = -1;
-                for (int i = 0; i < chordIntervalsFromAnchor.Length; i++)
-                {
-                    int chordPc = ((anchorPc + chordIntervalsFromAnchor[i]) % 12 + 12) % 12;
-                    int dist = Math.Abs(pc - chordPc);
-                    if (dist > 6) dist = 12 - dist;
-                    if (dist > 0 && dist <= 1 && dist < bestDist) { bestDist = dist; bestPc = chordPc; }
-                }
-                if (bestPc >= 0)
-                {
-                    // Snap vers la note d'accord la plus proche, en preservant l'octave (shortest signed shift)
-                    int diff = ((bestPc - pc + 6) % 12) - 6;
-                    midi += diff;
-                    if (midi < 0) midi = 0;
-                    if (midi > 127) midi = 127;
-                }
+                int cInterval = chordIntervalsFromAnchor[chordIdx];
+                int midi = anchorMidi + cInterval + oct * 12;
+                return Math.Max(0, Math.Min(127, midi));
             }
-            return midi;
+
+            // Sinon : degre diatonique classique (positions passing 1/3/5, ou 7e absent d'une triade).
+            int idx = 0;
+            for (int i = 0; i < 7; i++) if ((((tonicPc + scale[i]) % 12) + 12) % 12 == anchorPc) { idx = i; break; }
+            int pos = idx + degree + 7 * oct;
+            int delta = (scale[pos % 7] + 12 * (pos / 7)) - scale[idx];
+            return Math.Max(0, Math.Min(127, anchorMidi + delta));
         }
 
         /// <summary>Render a chord's optional MELODIC CELL to a Riff (its own voice/staff), or null if it has none. Needs
@@ -401,11 +388,13 @@ namespace MusicTracker.Engine.Flow
             if (m.MelodicAnchor == 1)
                 anchorPc = (rootPc + quality[m.Inversion % quality.Length]) % 12;    // bass = root/3rd/5th/7th per inversion
 
-            // Intervalles de l'accord DEPUIS L'ANCRE. Anchor = root : identiques a QualityIntervals.
-            // Anchor = bass d'inversion : on soustrait l'interval de l'anchor pour tout ramener depuis l'anchor.
+            // Intervalles de l'accord DEPUIS L'ANCRE, tries CROISSANTS. Anchor = root : identiques a
+            // QualityIntervals. Anchor = bass d'inversion : on soustrait l'interval de l'anchor puis on
+            // trie (pour que index 0 = anchor lui-meme, index 1 = note suivante en montant, etc.).
             int anchorInterval = m.MelodicAnchor == 1 ? quality[m.Inversion % quality.Length] : 0;
             var chordIntervalsFromAnchor = new int[quality.Length];
             for (int i = 0; i < quality.Length; i++) chordIntervalsFromAnchor[i] = ((quality[i] - anchorInterval) % 12 + 12) % 12;
+            Array.Sort(chordIntervalsFromAnchor);
 
             int melSpq = m.MelodicSlicesPerQuarter > 0 ? m.MelodicSlicesPerQuarter : SlicesPerQuarter;
             int barSlices = Math.Max(1, m.BeatsPerBar) * melSpq;
