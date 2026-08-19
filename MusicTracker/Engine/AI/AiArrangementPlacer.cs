@@ -192,6 +192,13 @@ namespace MusicTracker.Engine.AI
                     else prevPg = ChordModelOps.AddAiChord(project, barTemps, chordTrack, lastSingle, barTemps, style, motif, artSpq, prevPg, silentChords, artName, cell);
                 }
             }
+            // L'ARTICULATION des accords vit désormais sur sa propre piste instrument : la lane Accords est muette et
+            // ne fournit que l'harmonie. On y pose un bloc par SECTION (c'est la section qui porte style / motif /
+            // cellule mélodique), calé sur ses mesures. Le chemin polyrythmique a déjà ses propres modules sonores.
+            if (chordPlan == null && totalMeasures > 0)
+                AddAccompaniment(project, a, barTemps, totalMeasures, secOfMeasure,
+                                 styleOfSection, motifOfSection, nameOfSection, cellOfSection, artSpq);
+
             if (chordPlan != null)
             {
                 // Les blocs sont posés à leur mesure exacte : chaque module est CALÉ sur la longueur de sa plage
@@ -440,6 +447,78 @@ namespace MusicTracker.Engine.AI
             var t = new TimelineTrack { Name = "Batterie", Type = TimelineTrackType.Drum, Instrument = InstrumentCatalog.DrumIndex };
             project.Tracks.Add(t);
             return t;
+        }
+
+        /// <summary>
+        /// Pose l'ACCOMPAGNEMENT sur une piste instrument dédiée : un <see cref="ChordArticulationModule"/> par
+        /// section (c'est la section qui porte style / motif / cellule mélodique), calé sur ses mesures. Les accords
+        /// eux-mêmes restent sur la lane Accords, silencieux — l'articulation lit l'harmonie active sous elle.
+        /// </summary>
+        static void AddAccompaniment(TimelineProject project, AiArrangement a, int barTemps, int totalMeasures,
+                                     Dictionary<int, string> secOfMeasure, Dictionary<string, int> styleOfSection,
+                                     Dictionary<string, List<RiffNote>> motifOfSection, Dictionary<string, string> nameOfSection,
+                                     Dictionary<string, List<RiffNote>> cellOfSection, int artSpq)
+        {
+            TimelineTrack track = null;
+            int meas = 1;
+            while (meas <= totalMeasures)
+            {
+                // Plage de mesures consécutives partageant la même section (null = hors section : on avance).
+                secOfMeasure.TryGetValue(meas, out string sec);
+                int run = 1;
+                while (meas + run <= totalMeasures
+                       && (secOfMeasure.TryGetValue(meas + run, out string s2) ? s2 : null) == sec) run++;
+
+                if (sec != null)
+                {
+                    styleOfSection.TryGetValue(sec, out int style);
+                    if (!styleOfSection.ContainsKey(sec)) style = -1;
+                    motifOfSection.TryGetValue(sec, out var motif);
+                    nameOfSection.TryGetValue(sec, out var userStyle);
+                    cellOfSection.TryGetValue(sec, out var cell);
+
+                    int totalBeats = run * barTemps;
+                    var ca = new ChordArticulationModule
+                    {
+                        Beats = barTemps,          // le motif de l'IA est écrit sur UNE mesure → il boucle
+                        LengthBeats = totalBeats,
+                        Style = motif != null && motif.Count > 0 ? PatternGenerator.CustomStyle : Math.Max(0, style),
+                        VoiceLeadMode = 1,         // enchaînement fluide d'un accord à l'autre (mouvement minimal)
+                    };
+                    if (motif != null && motif.Count > 0)
+                    {
+                        ca.SetCustomNotes(new List<RiffNote>(motif), artSpq, barTemps * artSpq);
+                        ca.UserStyleName = userStyle;
+                    }
+                    // La cellule mélodique couvre TOUT le bloc : le motif d'une mesure est répété sur chaque mesure
+                    // de la section, ce qui reproduit l'ancien comportement (une cellule par accord).
+                    if (cell != null && cell.Count > 0)
+                    {
+                        int barSlices = barTemps * artSpq;
+                        var tiled = new List<RiffNote>();
+                        for (int b = 0; b < run; b++)
+                            foreach (var n in cell)
+                            {
+                                if (n.Start >= barSlices) continue;
+                                int len = Math.Min(n.Length, barSlices - n.Start);
+                                if (len >= 1) tiled.Add(new RiffNote(n.Note, b * barSlices + n.Start, len));
+                            }
+                        if (tiled.Count > 0) ca.SetMelodicNotes(tiled, artSpq, run * barSlices);
+                    }
+
+                    if (track == null)
+                    {
+                        int instr = a.chordInstrument >= 0 && a.chordInstrument <= 127 ? a.chordInstrument : 0;
+                        track = GetOrCreateInstrTrack(project, "Accompagnement", instr, reuse: true);
+                    }
+                    // SilenceBefore rattrape les mesures sans section, pour que chaque bloc tombe sur SA mesure.
+                    double startBeats = (meas - 1) * (double)barTemps;
+                    double already = TrackEndBeats(track, project.RiffById);
+                    var item = new TimelineItem { Module = ca, SilenceBefore = Math.Max(0, startBeats - already) };
+                    track.Items.Add(item);
+                }
+                meas += run;
+            }
         }
 
         // Reuse an existing instrument track with this role name (develop/append mode), else create a new one.

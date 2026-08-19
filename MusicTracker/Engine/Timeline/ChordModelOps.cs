@@ -69,51 +69,10 @@ namespace MusicTracker.Engine.Timeline
                     pg.Suspension = trio.suspension;
                 }
             }
-            if (silent)
-            {
-                // "Accords en voix dédiée" : custom style with an EMPTY motif → the chord plays nothing but still carries
-                // its degree/quality so MelodicLineModule (and the riff harmony fix) know the harmony under each bar.
-                int chordSlices = System.Math.Max(1, pg.BeatsPerBar * artSpq);
-                pg.Style = PatternGenerator.CustomStyle;
-                pg.CustomSlicesPerQuarter = artSpq;
-                pg.CustomNotes = new List<RiffNote>();
-                pg.CustomSlices = RiffNotes.ToSlices(pg.CustomNotes, chordSlices);
-            }
-            else if (motifNotes != null && motifNotes.Count > 0)
-            {
-                // Custom voiced articulation: trim the one-bar motif to this chord's length, set the "Personnalisé" style.
-                int chordSlices = System.Math.Max(1, pg.BeatsPerBar * artSpq);
-                var mnotes = new List<RiffNote>();
-                foreach (var n in motifNotes)
-                {
-                    if (n.Start >= chordSlices) continue;
-                    int len = System.Math.Min(n.Length, chordSlices - n.Start);
-                    if (len >= 1) mnotes.Add(new RiffNote(n.Note, n.Start, len));
-                }
-                pg.Style = PatternGenerator.CustomStyle;
-                pg.CustomSlicesPerQuarter = artSpq;
-                pg.CustomNotes = mnotes;
-                pg.CustomSlices = RiffNotes.ToSlices(mnotes, chordSlices);
-                // Reference the shared, project-saved articulation: the grid above stays per-chord (each chord may be
-                // trimmed to its own length), but the name links them so a later edit propagates over the whole section.
-                pg.UserStyleName = userStyleName;
-            }
-            else if (style >= 0) pg.Style = style;
-
-            // Melodic cell: the SAME diatonic-degree phrase on every chord of the section. It is stored as grid rows
-            // (degrees), so GenerateMelodic resolves it against THIS chord's anchor — i.e. it transposes modally.
-            if (melodicCell != null && melodicCell.Count > 0 && !silent)
-            {
-                int cellSlices = System.Math.Max(1, pg.BeatsPerBar * artSpq);
-                var cnotes = new List<RiffNote>();
-                foreach (var n in melodicCell)
-                {
-                    if (n.Start >= cellSlices) continue;
-                    int len = System.Math.Min(n.Length, cellSlices - n.Start);
-                    if (len >= 1) cnotes.Add(new RiffNote(n.Note, n.Start, len));
-                }
-                if (cnotes.Count > 0) pg.SetMelodicNotes(cnotes, artSpq, cellSlices);
-            }
+            // Un accord ne décrit plus QUE l'harmonie : ni style, ni motif, ni basse, ni cellule mélodique. La lane
+            // Accords est silencieuse — c'est le module « Articulation d'accord », posé sur la piste Accompagnement,
+            // qui porte tout cela (voir AiArrangementPlacer.AddAccompaniment). Les paramètres d'articulation reçus
+            // ici sont donc ignorés ; ils restent dans la signature pour ne pas casser les appelants.
 
             chordTrack.Items.Add(new TimelineItem { Module = pg });
             return pg;
