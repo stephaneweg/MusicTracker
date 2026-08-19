@@ -1,4 +1,4 @@
-﻿using MusicTracker.Dialogs;
+using MusicTracker.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -4150,7 +4150,7 @@ namespace MusicTracker.Screens
         void RefreshArticulationMelodicGrid(ContentControl host, TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca)
         {
             var labels = new[] { "1", "2", "3", "4", "5", "6", "7", "1'", "2'", "3'", "4'", "5'", "6'", "7'" };
-            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.TotalBeats(ca)));
+            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.CellBeats(ca)));   // la grille dessine LA CELLULE, pas la durée totale
             var key = project.Key ?? new Engine.Score.KeySignature();
 
             double startBeat = project.ItemStartBeat(track, item);
@@ -4203,7 +4203,7 @@ namespace MusicTracker.Screens
             if (segs.Count > 0) { root = segs[0].Root; quality = segs[0].Quality; }
             else { var d = Engine.Flow.MusicTheory.DiatonicChord(project.Key ?? new Engine.Score.KeySignature(), 0); root = d.root; quality = d.quality; }
 
-            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.TotalBeats(ca)));
+            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.CellBeats(ca)));   // la grille dessine LA CELLULE, pas la durée totale
             var chord = PatternGenerator.ChordNotes(root, ca.Octave, quality, ca.Inversion);
             var labels = new[] { Loc.T("Basse"), "1", "3", "5", "7", "1'", "9", "3'", "5'", "7'", "9'" };  // rangées en ordre de HAUTEUR
 
