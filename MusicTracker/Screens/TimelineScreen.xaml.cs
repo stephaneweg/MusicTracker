@@ -2353,10 +2353,16 @@ namespace MusicTracker.Screens
             switch (item.Module) // cached mini-preview (orange = riff, red = chords, yellow = drums)
             {
                 case PlayRiffModule pr: box.SetThumbnail(Controls.RiffThumbnail.Get(project.RiffById(pr.RiffId))); break;
-                case PatternGeneratorModule pg:
-                    box.SetThumbnail(pg.HasMelodic
-                        ? Controls.RiffThumbnail.GetCombined(PatternGenerator.Generate(pg), Controls.RiffThumbnail.Chords, PatternGenerator.GenerateMelodic(pg, project.Key ?? new Engine.Score.KeySignature()), Controls.RiffThumbnail.Melodic)
-                        : Controls.RiffThumbnail.Get(PatternGenerator.Generate(pg), Controls.RiffThumbnail.Chords));
+                // ACCORD : aucune vignette de notes. Le module ne produit plus de son (il ne décrit que l'harmonie),
+                // donc dessiner un rythme laisserait croire qu'il joue quelque chose. La case ne montre que son nom
+                // et son degré en gros — l'articulation, elle, garde sa vignette puisque c'est elle qui sonne.
+                case PatternGeneratorModule pg: break;
+                // ARTICULATION : c'est elle qui sonne → sa vignette montre le rythme réellement joué, accords
+                // de la piste Accords compris (cellule répétée sur toute la durée du bloc).
+                case Engine.Flow.ChordArticulationModule cam:
+                    box.SetThumbnail(Controls.RiffThumbnail.Get(
+                        Engine.Timeline.ChordArticulation.Generate(cam, project, project.RiffById, startBeat),
+                        Controls.RiffThumbnail.Chords));
                     break;
                 case CadenceModule cm: box.SetThumbnail(Controls.RiffThumbnail.Get(PatternGenerator.GenerateCadence(cm), Controls.RiffThumbnail.Chords)); break;
                 case DrumPatternModule dp: box.SetThumbnail(Controls.RiffThumbnail.GetDrums(DrumPattern.Generate(dp))); break;
