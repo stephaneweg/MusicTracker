@@ -4173,7 +4173,8 @@ namespace MusicTracker.Screens
             rg.Configure(labels, beats, ca.MelodicSlicesPerQuarter > 0 ? ca.MelodicSlicesPerQuarter : 4, ca.MelodicSlices,
                          new string[0], (st, b) => null, PatternGenerator.SlicesPerQuarter, mk,
                          InstrumentCatalog.GetPreset(track.Instrument),
-                         noteList: true, existingNotes: ca.MelodicNotes);
+                         noteList: true, existingNotes: ca.MelodicNotes,
+                         showBeats: false);   // longueur = « Durée totale » du panneau de gauche
 
             bool dirty = false;
             rg.GridChanged += () => { ca.SetMelodicNotes(rg.CurrentNotes(), rg.Spb, rg.Beats * rg.Spb); dirty = true; };
@@ -4249,13 +4250,15 @@ namespace MusicTracker.Screens
                          builtin, seedFunc, PatternGenerator.SlicesPerQuarter, mk,
                          InstrumentCatalog.GetPreset(track.Instrument),
                          seedSpbFunc: null, onSaveStyle: onSaveStyle,
-                         noteList: true, existingNotes: ca.CustomNotes);
+                         noteList: true, existingNotes: ca.CustomNotes,
+                         showBeats: false);   // longueur = « Longueur de la cellule » du panneau de gauche
 
             bool dirty = false;
             rg.GridChanged += () =>
             {
+                // La longueur de cellule vient du panneau de gauche, plus de la grille : ne pas la réécrire ici
+                // (c'est cette réécriture qui pouvait écraser la valeur saisie par l'utilisateur).
                 ca.SetCustomNotes(rg.CurrentNotes(), rg.Spb, rg.Beats * rg.Spb);
-                if (rg.Beats > 0) ca.Beats = rg.Beats;     // le motif porte la longueur du bloc
                 dirty = true;
             };
             rg.Unloaded += (s, e) => { if (dirty) { dirty = false; Render(); } };

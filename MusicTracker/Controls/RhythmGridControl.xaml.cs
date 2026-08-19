@@ -77,8 +77,11 @@ namespace MusicTracker.Controls
                               Func<int, int> seedSpbFunc = null, Action onSaveStyle = null,
                               bool noteList = false, System.Collections.Generic.List<RiffNote> existingNotes = null,
                               Action onApplyToSection = null, Func<int, System.Collections.Generic.List<RiffNote>> seedNotesFunc = null,
-                              Func<int, Color> rowColor = null)
+                              Func<int, Color> rowColor = null, bool showBeats = true)
         {
+            // showBeats = false : l'hôte fixe lui-même la longueur (cf. l'articulation d'accord, dont la cellule et la
+            // durée totale se règlent dans son panneau) — le champ ferait alors doublon et pourrait la contredire.
+            beatsBox.Visibility = showBeats ? Visibility.Visible : Visibility.Collapsed;
             this.seedNotesFunc = seedNotesFunc;
             this.rowColor = rowColor;
             this.rowLabels = (rowLabels != null && rowLabels.Length > 0) ? rowLabels : new[] { "1" };
