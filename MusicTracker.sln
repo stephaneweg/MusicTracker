@@ -87,6 +87,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFairyVoices", "K
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginGuqin", "KotonPluginGuqin\KotonPluginGuqin.csproj", "{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginSitar", "KotonPluginSitar\KotonPluginSitar.csproj", "{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginErhu", "KotonPluginErhu\KotonPluginErhu.csproj", "{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginHarpsichord", "KotonPluginHarpsichord\KotonPluginHarpsichord.csproj", "{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBanjo", "KotonPluginBanjo\KotonPluginBanjo.csproj", "{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -553,6 +561,54 @@ Global
 		{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D}.Release|x64.Build.0 = Release|x64
 		{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D}.Release|x86.ActiveCfg = Release|x64
 		{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D}.Release|x86.Build.0 = Release|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Debug|Any CPU.Build.0 = Debug|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Debug|x64.ActiveCfg = Debug|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Debug|x64.Build.0 = Debug|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Debug|x86.ActiveCfg = Debug|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Debug|x86.Build.0 = Debug|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Release|Any CPU.ActiveCfg = Release|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Release|Any CPU.Build.0 = Release|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Release|x64.ActiveCfg = Release|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Release|x64.Build.0 = Release|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Release|x86.ActiveCfg = Release|x64
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}.Release|x86.Build.0 = Release|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Debug|Any CPU.Build.0 = Debug|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Debug|x64.ActiveCfg = Debug|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Debug|x64.Build.0 = Debug|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Debug|x86.ActiveCfg = Debug|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Debug|x86.Build.0 = Debug|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Release|Any CPU.ActiveCfg = Release|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Release|Any CPU.Build.0 = Release|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Release|x64.ActiveCfg = Release|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Release|x64.Build.0 = Release|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Release|x86.ActiveCfg = Release|x64
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}.Release|x86.Build.0 = Release|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Debug|Any CPU.Build.0 = Debug|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Debug|x64.ActiveCfg = Debug|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Debug|x64.Build.0 = Debug|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Debug|x86.ActiveCfg = Debug|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Debug|x86.Build.0 = Debug|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Release|Any CPU.ActiveCfg = Release|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Release|Any CPU.Build.0 = Release|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Release|x64.ActiveCfg = Release|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Release|x64.Build.0 = Release|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Release|x86.ActiveCfg = Release|x64
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}.Release|x86.Build.0 = Release|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Debug|Any CPU.Build.0 = Debug|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Debug|x64.ActiveCfg = Debug|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Debug|x64.Build.0 = Debug|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Debug|x86.ActiveCfg = Debug|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Debug|x86.Build.0 = Debug|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Release|Any CPU.ActiveCfg = Release|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Release|Any CPU.Build.0 = Release|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Release|x64.ActiveCfg = Release|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Release|x64.Build.0 = Release|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Release|x86.ActiveCfg = Release|x64
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}.Release|x86.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

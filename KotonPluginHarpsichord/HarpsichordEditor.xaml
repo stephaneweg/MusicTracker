@@ -1,0 +1,42 @@
+<UserControl x:Class="KotonPluginHarpsichord.HarpsichordEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="640" MinHeight="360" Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary><ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+        </ResourceDictionary.MergedDictionaries></ResourceDictionary>
+    </UserControl.Resources>
+    <Border BorderThickness="0" Padding="16">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Grid Grid.Row="0" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Preset :" VerticalAlignment="Center" Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1" x:Name="PresetCombo" Width="240" HorizontalAlignment="Left" SelectionChanged="PresetCombo_SelectionChanged"/>
+                <TextBlock Grid.Column="2" Text="Harpsichord · plectre + 2 chœurs" Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" VerticalAlignment="Center"/>
+            </Grid>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Sustain" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="SustainSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="SustainValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Brightness" Foreground="{DynamicResource KotonText}"/><Slider x:Name="BrightSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="BrightValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Pluck click" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="ClickSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="ClickValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Body resonance" Foreground="{DynamicResource KotonText}"/><Slider x:Name="BodySlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="BodyValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10"><TextBlock Text="Choir detune (cent)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="DetuneSlider" Minimum="0" Maximum="12" TickFrequency="0.5"/><TextBlock x:Name="DetuneValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10"><TextBlock Text="Choir mix" Foreground="{DynamicResource KotonText}"/><Slider x:Name="MixSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="MixValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Registre" Foreground="{DynamicResource KotonText}"/>
+                    <ComboBox x:Name="RegisterCombo" SelectionChanged="RegisterCombo_SelectionChanged">
+                        <ComboBoxItem Content="8'+8' (choir classique)"/>
+                        <ComboBoxItem Content="8'+4' (choir + octave)"/>
+                    </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10"><TextBlock Text="Polyphony" Foreground="{DynamicResource KotonText}"/><Slider x:Name="PolySlider" Minimum="2" Maximum="12" TickFrequency="1" IsSnapToTickEnabled="True"/><TextBlock x:Name="PolyValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="4" Margin="0,0,0,10"><TextBlock Text="Attack (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="AttackSlider" Minimum="0.5" Maximum="20" TickFrequency="0.5"/><TextBlock x:Name="AttackValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="4" Margin="0,0,0,10"><TextBlock Text="Release (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="ReleaseSlider" Minimum="50" Maximum="2000" TickFrequency="50"/><TextBlock x:Name="ReleaseValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="4" Margin="0,0,0,10"><TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/><TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

@@ -1,0 +1,39 @@
+<UserControl x:Class="KotonPluginSitar.SitarEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="640" MinHeight="380" Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Border BorderThickness="0" Padding="16">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Grid Grid.Row="0" Margin="0,0,0,14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Preset :" VerticalAlignment="Center" Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
+                <ComboBox Grid.Column="1" x:Name="PresetCombo" Width="240" HorizontalAlignment="Left" SelectionChanged="PresetCombo_SelectionChanged"/>
+                <TextBlock Grid.Column="2" Text="Sitar · raga (jawari + tarab)" Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" VerticalAlignment="Center"/>
+            </Grid>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Sustain" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="SustainSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="SustainValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Jawari (buzz)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="JawariSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="JawariValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Brightness" Foreground="{DynamicResource KotonText}"/><Slider x:Name="BrightSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="BrightValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10"><TextBlock Text="Pluck length (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="PluckLenSlider" Minimum="3" Maximum="40" TickFrequency="1"/><TextBlock x:Name="PluckLenValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10"><TextBlock Text="Sympathy (tarab)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="SympLvlSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="SympLvlValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10"><TextBlock Text="Sympathy decay" Foreground="{DynamicResource KotonText}"/><Slider x:Name="SympDecSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="SympDecValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10"><TextBlock Text="Vibrato rate (Hz)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="VibRateSlider" Minimum="0" Maximum="8" TickFrequency="0.25"/><TextBlock x:Name="VibRateValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10"><TextBlock Text="Vibrato depth (cent)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="VibDepthSlider" Minimum="0" Maximum="60" TickFrequency="1"/><TextBlock x:Name="VibDepthValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="4" Margin="0,0,0,10"><TextBlock Text="Polyphony" Foreground="{DynamicResource KotonText}"/><Slider x:Name="PolySlider" Minimum="1" Maximum="6" TickFrequency="1" IsSnapToTickEnabled="True"/><TextBlock x:Name="PolyValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="4" Margin="0,0,0,10"><TextBlock Text="Attack (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="AttackSlider" Minimum="1" Maximum="100" TickFrequency="1"/><TextBlock x:Name="AttackValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="4" Margin="0,0,0,10"><TextBlock Text="Release (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="ReleaseSlider" Minimum="50" Maximum="3000" TickFrequency="50"/><TextBlock x:Name="ReleaseValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="3" Grid.Column="4" Margin="0,0,0,10"><TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/><TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
