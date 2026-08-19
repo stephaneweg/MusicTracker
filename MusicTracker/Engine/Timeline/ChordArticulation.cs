@@ -119,16 +119,6 @@ namespace MusicTracker.Engine.Timeline
                     CustomNotes = m.CustomNotes,
                 };
 
-                // Cellule mélodique optionnelle : 2e voix en DEGRÉS diatoniques, transposée sur chaque accord.
-                if (m.HasMelodic)
-                {
-                    pg.MelodicOctave = m.MelodicOctave;
-                    pg.MelodicAnchor = m.MelodicAnchor;
-                    pg.MelodicSlicesPerQuarter = m.MelodicSlicesPerQuarter;
-                    pg.MelodicNotes = m.MelodicNotes;
-                    pg.MelodicSlices = m.MelodicSlices;
-                }
-
                 var r = PatternGenerator.Generate(pg);
                 // Le riff rendu N'EST PAS forcément à la résolution canonique : un style « Personnalisé » revient à la
                 // résolution de SA grille (4 slices/temps par défaut) et les styles arpégés peuvent halver la valeur.
@@ -160,13 +150,43 @@ namespace MusicTracker.Engine.Timeline
                 }
 
                 Place(r, scale);
-
-                // La cellule mélodique est un riff SÉPARÉ (autre résolution possible) : même fenêtrage.
-                if (m.HasMelodic)
-                {
-                    var mel = PatternGenerator.GenerateMelodic(pg, project?.Key ?? new Engine.Score.KeySignature());
-                    if (mel != null) Place(mel, (double)spq / (mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : spq));
                 }
+            }
+
+            // ---- CELLULE MÉLODIQUE : une PHRASE sur toute la durée du module, pas un motif qui boucle. Elle est
+            // donc dessinée et rendue sur la durée TOTALE (contrairement à l'accompagnement, dont la cellule se
+            // répète). Ses hauteurs restent des DEGRÉS : on la rend une fois par accord traversé et on ne garde
+            // de chaque rendu que la portion couverte par cet accord — la phrase se transpose donc au fil de la grille.
+            if (m.HasMelodic)
+            {
+                var melSegs = Segments(project, resolve, moduleStartBeat, total);
+                int melGenBeats = Math.Max(1, (int)Math.Ceiling(total - 1e-9));
+                foreach (var s in melSegs)
+                {
+                    var mpg = new PatternGeneratorModule
+                    {
+                        Root = s.Root, Quality = s.Quality, Inversion = s.Inversion,
+                        MelodicOctave = m.MelodicOctave, MelodicAnchor = m.MelodicAnchor,
+                        MelodicSlicesPerQuarter = m.MelodicSlicesPerQuarter,
+                        MelodicNotes = m.MelodicNotes, MelodicSlices = m.MelodicSlices,
+                        BeatsPerBar = melGenBeats, Repeats = 1,
+                    };
+                    var mel = PatternGenerator.GenerateMelodic(mpg, project?.Key ?? new Engine.Score.KeySignature());
+                    if (mel?.Notes == null) continue;
+
+                    double mScale = (double)spq / (mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : spq);
+                    int winStart = (int)Math.Round((s.Start - moduleStartBeat) * spq);   // fenêtre de CET accord
+                    int winEnd = winStart + (int)Math.Round(s.Len * spq);
+                    foreach (var n in mel.Notes)
+                    {
+                        int nStart = (int)Math.Round(n.Start * mScale);
+                        int nLen = Math.Max(1, (int)Math.Round(n.Length * mScale));
+                        if (nStart < winStart || nStart >= winEnd) continue;
+                        int len = Math.Min(nLen, winEnd - nStart);
+                        if (len <= 0 || nStart >= totalSlices) continue;
+                        len = Math.Min(len, totalSlices - nStart);
+                        if (len > 0) notes.Add(new RiffNote(n.Note, nStart, len));
+                    }
                 }
             }
 
