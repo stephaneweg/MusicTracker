@@ -66,8 +66,14 @@ namespace MusicTracker.Engine.Timeline
             // voicing précédent (au lieu de repartir en position fondamentale). L'état traverse les cellules, sinon
             // la conduite des voix repartirait de zéro à chaque répétition du motif. Tant que l'accord ne change pas,
             // on rejoue le MÊME voicing — sans cela il dériverait d'une cellule à l'autre.
-            int[] prevVoicing = null;
+            // La chaîne est calculée UNE FOIS sur toute la suite d'accords du module, puis consommée par les deux
+            // passes (accompagnement et cellule mélodique). Sans ce partage, l'ancrage mélodique « suit le
+            // renversement » se baserait sur l'inversion brute de l'accord et contredirait le voicing réellement joué.
+            var chordRun = ChordRun(Segments(project, resolve, moduleStartBeat, total));
+            var chain = VoicingChain(m, chordRun);
+
             int lastRoot = int.MinValue, lastQuality = int.MinValue;
+            int chainIdx = -1;
             int curInv = m.Inversion, curOct = m.Octave;
 
             for (int c = 0; c < cellCount; c++)
@@ -84,21 +90,11 @@ namespace MusicTracker.Engine.Timeline
                 double segBeats = s.Len;
                 if (segBeats <= 1e-6) continue;
 
-                if (s.Root != lastRoot || s.Quality != lastQuality)      // l'accord a changé → (re)choisir le voicing
+                if (s.Root != lastRoot || s.Quality != lastQuality)      // l'accord a changé → voicing suivant
                 {
-                    // « Selon l'accord » : le module délègue sa conduite des voix à l'intention portée par l'accord.
-                    int vl = m.VoiceLeadMode == VlFixedOrFromChord ? s.ChordVoiceLead : m.VoiceLeadMode;
-                    // Côté ACCORD, 4 signifie « fixe » : renversement imposé par l'accord, pas de conduite.
-                    if (vl == VlFixedOrFromChord) { curInv = s.Inversion; curOct = m.Octave; }
-                    else if (vl > VlNone && prevVoicing != null)
-                    {
-                        int dir = m.VoiceLeadDirection == 1 ? 1 : m.VoiceLeadDirection == 2 ? -1 : 0;  // 0 auto
-                        var v = Engine.Flow.MusicTheory.VoiceLeadStep(prevVoicing, s.Root, s.Quality, m.Octave, vl - 1, dir);
-                        curInv = v.inversion; curOct = v.octave;
-                    }
-                    else { curInv = m.Inversion; curOct = m.Octave; }
+                    chainIdx++;
+                    if (chainIdx >= 0 && chainIdx < chain.Count) { curInv = chain[chainIdx].inv; curOct = chain[chainIdx].oct; }
                     lastRoot = s.Root; lastQuality = s.Quality;
-                    prevVoicing = PatternGenerator.ChordNotes(s.Root, curOct, s.Quality, curInv);
                 }
 
                 // Voicing ouvert : oui / non / hérité de l'accord.
@@ -161,11 +157,17 @@ namespace MusicTracker.Engine.Timeline
             {
                 var melSegs = Segments(project, resolve, moduleStartBeat, total);
                 int melGenBeats = Math.Max(1, (int)Math.Ceiling(total - 1e-9));
+                int mLastRoot = int.MinValue, mLastQuality = int.MinValue, mIdx = -1;
                 foreach (var s in melSegs)
                 {
+                    // Même progression que l'accompagnement dans la chaîne de voicing : l'ancrage « suit le
+                    // renversement » reflète ainsi le voicing RÉELLEMENT joué, et non l'inversion brute de l'accord.
+                    if (s.Root != mLastRoot || s.Quality != mLastQuality) { mIdx++; mLastRoot = s.Root; mLastQuality = s.Quality; }
+                    int melInv = (mIdx >= 0 && mIdx < chain.Count) ? chain[mIdx].inv : s.Inversion;
+
                     var mpg = new PatternGeneratorModule
                     {
-                        Root = s.Root, Quality = s.Quality, Inversion = s.Inversion,
+                        Root = s.Root, Quality = s.Quality, Inversion = melInv,
                         MelodicOctave = m.MelodicOctave, MelodicAnchor = m.MelodicAnchor,
                         MelodicSlicesPerQuarter = m.MelodicSlicesPerQuarter,
                         MelodicNotes = m.MelodicNotes, MelodicSlices = m.MelodicSlices,
@@ -277,6 +279,46 @@ namespace MusicTracker.Engine.Timeline
 
             list.Sort((a, b) => a.Start.CompareTo(b.Start));
             return list;
+        }
+
+        /// <summary>Suite des accords DISTINCTS CONSÉCUTIFS du module (un accord tenu sur plusieurs segments ne compte
+        /// qu'une fois) — c'est sur elle que la conduite des voix progresse.</summary>
+        static List<Segment> ChordRun(List<Segment> segs)
+        {
+            var run = new List<Segment>();
+            int lr = int.MinValue, lq = int.MinValue;
+            foreach (var s in segs)
+            {
+                if (s.Root == lr && s.Quality == lq) continue;
+                run.Add(s); lr = s.Root; lq = s.Quality;
+            }
+            return run;
+        }
+
+        /// <summary>Voicing (renversement + octave) retenu pour chaque accord de la suite, selon le mode de conduite
+        /// des voix du module — ou celui délégué par l'accord en mode « selon l'accord ».</summary>
+        static List<(int inv, int oct)> VoicingChain(ChordArticulationModule m, List<Segment> run)
+        {
+            var chain = new List<(int inv, int oct)>();
+            int[] prev = null;
+            int dir = m.VoiceLeadDirection == 1 ? 1 : m.VoiceLeadDirection == 2 ? -1 : 0;   // 0 = auto
+            foreach (var s in run)
+            {
+                int inv, oct;
+                // « Selon l'accord » : le module délègue sa conduite à l'intention portée par l'accord.
+                int vl = m.VoiceLeadMode == VlFixedOrFromChord ? s.ChordVoiceLead : m.VoiceLeadMode;
+                // Côté ACCORD, 4 signifie « fixe » : renversement imposé, pas de conduite.
+                if (vl == VlFixedOrFromChord) { inv = s.Inversion; oct = m.Octave; }
+                else if (vl > VlNone && prev != null)
+                {
+                    var v = Engine.Flow.MusicTheory.VoiceLeadStep(prev, s.Root, s.Quality, m.Octave, vl - 1, dir);
+                    inv = v.inversion; oct = v.octave;
+                }
+                else { inv = m.Inversion; oct = m.Octave; }
+                chain.Add((inv, oct));
+                prev = PatternGenerator.ChordNotes(s.Root, oct, s.Quality, inv);
+            }
+            return chain;
         }
 
         static void Add(List<Segment> list, double s, double e, double from, double to, int root, int quality, int inversion,
