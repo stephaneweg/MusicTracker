@@ -1,0 +1,26 @@
+<UserControl x:Class="KotonPluginCellularAutomata.CellularEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="560" MinHeight="340" Background="Transparent">
+    <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+    </ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+    <Border Padding="16">
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="Rule (Wolfram 0-255)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="RuleSlider" Minimum="0" Maximum="255" TickFrequency="1"/><TextBlock x:Name="RuleValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="0"><TextBlock Text="Notes/temps" Foreground="{DynamicResource KotonText}"/><Slider x:Name="NpbSlider" Minimum="1" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/><TextBlock x:Name="NpbValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Width (cellules)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="WidthSlider" Minimum="8" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True"/><TextBlock x:Name="WidthValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="0"><TextBlock Text="Gamme" Foreground="{DynamicResource KotonText}"/><ComboBox x:Name="ScaleCombo" SelectionChanged="Scale_Changed"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="0"><TextBlock Text="Base octave" Foreground="{DynamicResource KotonText}"/><Slider x:Name="OctSlider" Minimum="0" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/><TextBlock x:Name="OctValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="5" Grid.Column="0"><TextBlock Text="Range (octaves)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="RangeSlider" Minimum="1" Maximum="3" TickFrequency="1" IsSnapToTickEnabled="True"/><TextBlock x:Name="RangeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Init mode" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><ComboBox x:Name="ModeCombo" SelectionChanged="Mode_Changed"/></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Init density" Foreground="{DynamicResource KotonText}"/><Slider x:Name="DensitySlider" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="DensityValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Seed" Foreground="{DynamicResource KotonText}"/><Slider x:Name="SeedSlider" Minimum="0" Maximum="999" TickFrequency="10"/><TextBlock x:Name="SeedValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Velocity" Foreground="{DynamicResource KotonText}"/><Slider x:Name="VelSlider" Minimum="1" Maximum="127" TickFrequency="5"/><TextBlock x:Name="VelValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="Articulation" Foreground="{DynamicResource KotonText}"/><ComboBox x:Name="ArtCombo" SelectionChanged="Art_Changed"><ComboBoxItem Content="Legato"/><ComboBoxItem Content="Normal"/><ComboBoxItem Content="Détaché"/><ComboBoxItem Content="Staccato"/></ComboBox></StackPanel>
+            <TextBlock Grid.Row="5" Grid.Column="2" FontSize="10" FontStyle="Italic" Foreground="{DynamicResource KotonTextLo}" TextWrapping="Wrap" Text="Rules connues: 30=chaotique, 90=Sierpinski, 110=Turing-complet, 45/60/150=fractales."/>
+        </Grid>
+    </Border>
+</UserControl>

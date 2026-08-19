@@ -1,0 +1,28 @@
+<UserControl x:Class="KotonPluginAdditive.AdditiveEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="560" MinHeight="280" Background="Transparent">
+    <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+    </ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+    <Border Padding="16">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,14">
+                <TextBlock Text="Preset :" VerticalAlignment="Center" Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
+                <ComboBox x:Name="PresetCombo" Width="200" SelectionChanged="Preset_Changed"/>
+                <TextBlock Text="Additive · 16 harmoniques" Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" VerticalAlignment="Center" Margin="20,0,0,0"/>
+            </StackPanel>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="Tilt (dark/bright)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S1" Minimum="-1" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V1" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0"><TextBlock Text="Harmonics detune" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S2" Minimum="0" Maximum="0.02" TickFrequency="0.001"/><TextBlock x:Name="V2" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S5" Minimum="-30" Maximum="6" TickFrequency="1"/><TextBlock x:Name="V5" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Attack (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S3" Minimum="1" Maximum="2000" TickFrequency="10"/><TextBlock x:Name="V3" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Release (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S4" Minimum="50" Maximum="3000" TickFrequency="50"/><TextBlock x:Name="V4" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+                <TextBlock Grid.Row="2" Grid.Column="2" FontStyle="Italic" FontSize="10" Foreground="{DynamicResource KotonTextLo}" TextWrapping="Wrap" Text="Le preset définit le profil harmonique. Tilt module la brillance : +1 accentue les hauts, -1 les basses."/>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

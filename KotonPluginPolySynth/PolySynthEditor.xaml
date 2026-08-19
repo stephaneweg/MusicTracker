@@ -1,0 +1,27 @@
+<UserControl x:Class="KotonPluginPolySynth.PolySynthEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="640" MinHeight="360" Background="Transparent">
+    <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+    </ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+    <Border Padding="16">
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="OSC detune (cent)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S1" Minimum="0" Maximum="20" TickFrequency="0.5"/><TextBlock x:Name="V1" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="0"><TextBlock Text="OSC 2 mix" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S2" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V2" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Cutoff (Hz)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S3" Minimum="100" Maximum="8000" TickFrequency="100"/><TextBlock x:Name="V3" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="0"><TextBlock Text="Resonance" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S4" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V4" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="0"><TextBlock Text="Env → cutoff" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S5" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V5" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Filt attack (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S6" Minimum="1" Maximum="500" TickFrequency="5"/><TextBlock x:Name="V6" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Filt decay (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S7" Minimum="20" Maximum="3000" TickFrequency="50"/><TextBlock x:Name="V7" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Amp attack (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S8" Minimum="1" Maximum="2000" TickFrequency="10"/><TextBlock x:Name="V8" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Amp release (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S9" Minimum="20" Maximum="3000" TickFrequency="50"/><TextBlock x:Name="V9" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S10" Minimum="-30" Maximum="6" TickFrequency="1"/><TextBlock x:Name="V10" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="4"><TextBlock Text="LFO rate (Hz)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S11" Minimum="0" Maximum="12" TickFrequency="0.25"/><TextBlock x:Name="V11" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="4"><TextBlock Text="LFO → pitch (cent)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S12" Minimum="0" Maximum="50" TickFrequency="1"/><TextBlock x:Name="V12" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="4"><TextBlock Text="LFO → cutoff (Hz)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S13" Minimum="0" Maximum="2000" TickFrequency="50"/><TextBlock x:Name="V13" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

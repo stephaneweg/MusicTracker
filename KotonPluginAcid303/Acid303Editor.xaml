@@ -1,0 +1,24 @@
+<UserControl x:Class="KotonPluginAcid303.Acid303Editor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="560" MinHeight="300" Background="Transparent">
+    <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+    </ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+    <Border Padding="16">
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="Wave" Foreground="{DynamicResource KotonText}"/><ComboBox x:Name="WaveCombo" SelectionChanged="Wave_Changed"><ComboBoxItem Content="Saw"/><ComboBoxItem Content="Square"/></ComboBox></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="0"><TextBlock Text="Cutoff (Hz)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S1" Minimum="100" Maximum="8000" TickFrequency="100"/><TextBlock x:Name="V1" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Resonance" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S2" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V2" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="0"><TextBlock Text="Env mod" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S3" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V3" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="0"><TextBlock Text="Env decay (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S4" Minimum="50" Maximum="1500" TickFrequency="25"/><TextBlock x:Name="V4" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Accent" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S5" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V5" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Slide time (ms)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S6" Minimum="0" Maximum="300" TickFrequency="10"/><TextBlock x:Name="V6" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Distortion" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S7" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V7" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S8" Minimum="-30" Maximum="6" TickFrequency="1"/><TextBlock x:Name="V8" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <TextBlock Grid.Row="4" Grid.Column="2" FontStyle="Italic" FontSize="10" TextWrapping="Wrap" Foreground="{DynamicResource KotonTextLo}" Text="Mono synth : joue en legato (notes chevauchées) pour entendre le slide. Res+EnvMod = squelch acid."/>
+        </Grid>
+    </Border>
+</UserControl>
