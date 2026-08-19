@@ -124,18 +124,34 @@ namespace KotonPluginGuqin
             else
             {
                 // Interpolation en LOG : on avance de log-samples par sample sur GlideMs.
-                // logDist = log2(target/current). Etendre au curve (0 = linear, 1 = exp).
-                // Simplification : on interpole en log2(delay) linearement dans le temps, ce qui
-                // donne un glide constant en semi-tons/sec — c'est le comportement naturel de
-                // pitch glide, direction correcte (monter/descendre selon signe de logDist).
+                // Interpolation lineaire en log2(delay) → glide constant en semi-tons/sec, direction
+                // correcte (monter/descendre selon signe de logDist).
                 double logDist = Math.Log(_targetOffsetSamples / _readOffsetSamples, 2);
                 double glideSamples = p.GlideMs * _sr / 1000.0;
                 _glideStepPerSample = logDist / glideSamples;
                 _gliding = true;
             }
-            // Envelope : on RESET l'attack, mais legere (moins fort qu'un vrai pluck)
-            // → on reprend a env courant (pas de re-attack complete pour eviter le click)
             _velocity = velocity;
+
+            // Si la voix etait en RELEASE (note precedente NoteOff-ee), la nouvelle note serait
+            // etouffee par l'env qui continue de descendre. On la "revive" : retour a Sustain, env
+            // remonte a la velocity de la nouvelle note. Sans ce revive, une melodie legato ne
+            // jouait que les notes qui tombent avant NoteOff → user rapportait "des notes manquent".
+            // Si toujours en Sustain (chevauchement pur), on garde l'env courant intact.
+            if (_stage == EnvStage.Release)
+            {
+                _stage = EnvStage.Sustain;
+                if (_env < velocity) _env = velocity;
+                // Re-injecte un peu d'energie dans la delay-line pour eviter le glide vers le silence
+                // quand la boucle avait deja perdu presque toute son amplitude.
+                var rng = new Random(note * 7919 + Environment.TickCount);
+                float boost = velocity * 0.25f;
+                for (int i = 0; i < 32; i++)
+                {
+                    int idx = (_writePos - i + DlSize) % DlSize;
+                    _dl[idx] += (float)(rng.NextDouble() * 2 - 1) * boost;
+                }
+            }
         }
 
         public void NoteOff()
