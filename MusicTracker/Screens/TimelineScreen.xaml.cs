@@ -4275,7 +4275,53 @@ namespace MusicTracker.Screens
             if (selectedTrack == null || selectedTrack.Type == TimelineTrackType.Chord)
             { MessageBox.Show(Loc.T("SelectionneDAbordUnePisteInstrument")); return; }
             int bpb = Math.Max(1, TimelineHelper.RulerBeatsPerBar(project));
-            AppendModule(new Engine.Flow.ChordArticulationModule { Beats = bpb });
+
+            // Si la piste contient deja une articulation, on clone ses parametres + motif custom
+            // + cellule melodique (workflow : ajouter une articulation "a la suite" continue
+            // musicalement avec la meme voix / meme motif).
+            Engine.Flow.ChordArticulationModule prev = null;
+            if (selectedTrack.Items != null)
+                for (int i = selectedTrack.Items.Count - 1; i >= 0; i--)
+                    if (selectedTrack.Items[i]?.Module is Engine.Flow.ChordArticulationModule ca) { prev = ca; break; }
+
+            var m = new Engine.Flow.ChordArticulationModule { Beats = bpb };
+            if (prev != null)
+            {
+                m.Beats = prev.Beats;
+                m.LengthBeats = prev.LengthBeats;
+                m.Style = prev.Style;
+                m.Octave = prev.Octave;
+                m.Inversion = prev.Inversion;
+                m.VoiceLeadMode = prev.VoiceLeadMode;
+                m.VoiceLeadDirection = prev.VoiceLeadDirection;
+                m.OpenVoicingMode = prev.OpenVoicingMode;
+                m.OpenVoicing = prev.OpenVoicing;
+                m.Bass = prev.Bass;
+                m.BassPerBeat = prev.BassPerBeat;
+                m.HeldMode = prev.HeldMode;
+                m.ClimbMode = prev.ClimbMode;
+                m.HalveDurations = prev.HalveDurations;
+                m.UserStyleName = prev.UserStyleName;
+                // Motif d'accompagnement custom : copie des notes + slices
+                if (prev.CustomNotes != null && prev.CustomNotes.Count > 0)
+                {
+                    var copy = new List<RiffNote>(prev.CustomNotes.Count);
+                    foreach (var n in prev.CustomNotes) copy.Add(new RiffNote(n.Note, n.Start, n.Length));
+                    m.SetCustomNotes(copy, prev.CustomSlicesPerQuarter, RiffNotes.LengthOf(copy));
+                }
+                // Cellule melodique
+                m.MelodicOctave = prev.MelodicOctave;
+                m.MelodicAnchor = prev.MelodicAnchor;
+                m.MelodicOpenVoicing = prev.MelodicOpenVoicing;
+                m.MelodicVoiceLead = prev.MelodicVoiceLead;
+                if (prev.MelodicNotes != null && prev.MelodicNotes.Count > 0)
+                {
+                    var mcopy = new List<RiffNote>(prev.MelodicNotes.Count);
+                    foreach (var n in prev.MelodicNotes) mcopy.Add(new RiffNote(n.Note, n.Start, n.Length));
+                    m.SetMelodicNotes(mcopy, prev.MelodicSlicesPerQuarter, RiffNotes.LengthOf(mcopy));
+                }
+            }
+            AppendModule(m);
         }
 
         private void btnAddPolyChord_Click(object sender, RoutedEventArgs e)
