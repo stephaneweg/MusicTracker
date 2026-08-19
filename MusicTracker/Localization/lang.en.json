@@ -1,5 +1,9 @@
 {
   "ChordArticulation": "Chord articulation",
+  "Fixe": "Fixed (forced inversion)",
+  "Non": "No",
+  "Oui": "Yes",
+  "SelonLAccord": "From the chord",
   "TendanceDirection": "Tendency (when equally close)",
   "Monter": "Upward",
   "Descendre": "Downward",

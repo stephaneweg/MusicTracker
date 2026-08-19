@@ -110,7 +110,7 @@ namespace MusicTracker.Engine.Flow
         public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
         public int Quality { get { return quality; } set { if (quality != value) { quality = value; OnChanged(nameof(Quality)); } } }
         public int Inversion { get { return inversion; } set { int v = Math.Max(0, value); if (inversion != v) { inversion = v; OnChanged(nameof(Inversion)); } } }
-        public int VoiceLeadMode { get { return voiceLeadMode; } set { int v = Math.Max(0, Math.Min(3, value)); if (voiceLeadMode != v) { voiceLeadMode = v; OnChanged(nameof(VoiceLeadMode)); } } }
+        public int VoiceLeadMode { get { return voiceLeadMode; } set { int v = Math.Max(0, Math.Min(4, value)); if (voiceLeadMode != v) { voiceLeadMode = v; OnChanged(nameof(VoiceLeadMode)); } } }
         public int DiatonicColour { get { return diatonicColour; } set { int v = Math.Max(0, Math.Min(MusicTheory.DiatonicColourNames.Length - 1, value)); if (diatonicColour != v) { diatonicColour = v; OnChanged(nameof(DiatonicColour)); } } }
         public int Suspension { get { return suspension; } set { int v = Math.Max(0, Math.Min(MusicTheory.SuspensionNames.Length - 1, value)); if (suspension != v) { suspension = v; OnChanged(nameof(Suspension)); } } }
         public int ModeOverride { get { return modeOverride; } set { int v = Math.Max(0, Math.Min(MusicTheory.ModeOverrideNames.Length - 1, value)); if (modeOverride != v) { modeOverride = v; OnChanged(nameof(ModeOverride)); } } }
@@ -196,6 +196,7 @@ namespace MusicTracker.Engine.Flow
         int inversion = 0;
         int voiceLeadMode = 0;    // renversement auto d'après l'accord précédent
         int voiceLeadDirection = 0; // tendance : 0 auto / 1 monter / 2 descendre
+        int openVoicingMode = 0;    // 0 non / 1 oui / 2 selon l'accord
         bool openVoicing = false;
         bool bass = false;
         bool bassPerBeat = false;
@@ -213,12 +214,16 @@ namespace MusicTracker.Engine.Flow
         public int Style { get { return style; } set { if (style != value) { style = value; OnChanged(nameof(Style)); } } }
         public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
         public int Inversion { get { return inversion; } set { int v = Math.Max(0, value); if (inversion != v) { inversion = v; OnChanged(nameof(Inversion)); } } }
-        public int VoiceLeadMode { get { return voiceLeadMode; } set { int v = Math.Max(0, Math.Min(3, value)); if (voiceLeadMode != v) { voiceLeadMode = v; OnChanged(nameof(VoiceLeadMode)); } } }
+        public int VoiceLeadMode { get { return voiceLeadMode; } set { int v = Math.Max(0, Math.Min(4, value)); if (voiceLeadMode != v) { voiceLeadMode = v; OnChanged(nameof(VoiceLeadMode)); } } }
 
         /// <summary>Tendance de direction de la conduite des voix : 0 = auto (aucun biais), 1 = monter, 2 = descendre.
         /// Départage les voicings AUSSI PROCHES l'un que l'autre — n'impose jamais un voicing nettement plus éloigné.
         /// S'applique à la voix privilégiée par <see cref="VoiceLeadMode"/> (basse, note du haut, ou l'ensemble).</summary>
         public int VoiceLeadDirection { get { return voiceLeadDirection; } set { int v = Math.Max(0, Math.Min(2, value)); if (voiceLeadDirection != v) { voiceLeadDirection = v; OnChanged(nameof(VoiceLeadDirection)); } } }
+
+        /// <summary>Voicing ouvert : 0 = non, 1 = oui, 2 = selon l'accord (on lit l'option portée par l'accord actif).
+        /// L'ancien booléen <see cref="OpenVoicing"/> reste lu quand ce mode vaut 0, pour ne pas perdre les blocs déjà réglés.</summary>
+        public int OpenVoicingMode { get { return openVoicingMode; } set { int v = Math.Max(0, Math.Min(2, value)); if (openVoicingMode != v) { openVoicingMode = v; OnChanged(nameof(OpenVoicingMode)); } } }
 
         public bool OpenVoicing { get { return openVoicing; } set { if (openVoicing != value) { openVoicing = value; OnChanged(nameof(OpenVoicing)); } } }
         public bool Bass { get { return bass; } set { if (bass != value) { bass = value; OnChanged(nameof(Bass)); } } }

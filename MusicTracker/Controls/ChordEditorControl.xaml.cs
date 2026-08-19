@@ -89,7 +89,11 @@ namespace MusicTracker.Controls
         public IReadOnlyList<string> ColourNames => MusicTheory.DiatonicColourNames;
         public IReadOnlyList<string> SuspensionNames => MusicTheory.SuspensionNames;
         public IReadOnlyList<string> ModeNames => MusicTheory.ModeOverrideNames;
-        public IReadOnlyList<string> VoiceLeadNames { get; } = new[] { Loc.T("AucunPositionFond"), Loc.T("AutoMouvementMini"), Loc.T("BasseProche"), Loc.T("HautProche") };
+        // Ordre d'AFFICHAGE demandé : aucun / auto / haut proche / bas proche / fixe. La numérotation du MODÈLE reste
+        // celle d'origine (0 aucun, 1 auto, 2 basse, 3 haut, 4 fixe) pour ne pas réinterpréter les projets existants —
+        // d'où la table de correspondance ci-dessous plutôt qu'un simple index.
+        public IReadOnlyList<string> VoiceLeadNames { get; } = new[] { Loc.T("AucunPositionFond"), Loc.T("AutoMouvementMini"), Loc.T("HautProche"), Loc.T("BasseProche"), Loc.T("Fixe") };
+        static readonly int[] VlUiToModel = { 0, 1, 3, 2, 4 };
         public IReadOnlyList<string> BassNames { get; } = new[] { Loc.T("Aucune"), Loc.T("ParMesureTenue"), Loc.T("ParTemps") };
         public IReadOnlyList<string> ClimbNames { get; } = new[] { Loc.T("ArpegeMontant"), Loc.T("ArpegeDescendant"), Loc.T("Alberti153"), Loc.T("Mixte") };
         public IReadOnlyList<string> HeldNames { get; } = new[] { Loc.T("NoteSeule"), Loc.T("AccordPlaque"), Loc.T("FondamentaleQuinte"), Loc.T("FondamentaleTierce") };
@@ -156,7 +160,22 @@ namespace MusicTracker.Controls
         public int Inversion { get => pg.Inversion; set { if (pg.Inversion == value) return; pg.Inversion = Math.Max(0, value); Changed(); } }
 
         // ---- other options ----
-        public int VoiceLeadIndex { get => pg.VoiceLeadMode; set { if (pg.VoiceLeadMode == value) return; pg.VoiceLeadMode = value; Changed(); } }
+        public int VoiceLeadIndex
+        {
+            get { int i = Array.IndexOf(VlUiToModel, pg.VoiceLeadMode); return i < 0 ? 0 : i; }
+            set
+            {
+                if (value < 0 || value >= VlUiToModel.Length) return;
+                int m = VlUiToModel[value];
+                if (pg.VoiceLeadMode == m) return;
+                pg.VoiceLeadMode = m;
+                Raise(nameof(FixedInversionVisibility));
+                Changed();
+            }
+        }
+
+        /// <summary>Le renversement manuel n'est proposé que dans le mode « fixe ».</summary>
+        public Visibility FixedInversionVisibility => pg.VoiceLeadMode == 4 ? Visibility.Visible : Visibility.Collapsed;
         public bool OpenVoicing { get => pg.OpenVoicing; set { if (pg.OpenVoicing == value) return; pg.OpenVoicing = value; Changed(); } }
         public int BassIndex { get => !pg.Bass ? 0 : (pg.BassPerBeat ? 2 : 1); set { pg.Bass = value > 0; pg.BassPerBeat = value == 2; Changed(); } }
         public int ClimbIndex { get => pg.ClimbMode; set { if (pg.ClimbMode == value) return; pg.ClimbMode = value; Changed(); } }

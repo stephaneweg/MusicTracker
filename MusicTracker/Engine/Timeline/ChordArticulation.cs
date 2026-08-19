@@ -22,7 +22,17 @@ namespace MusicTracker.Engine.Timeline
         {
             public double Start, Len;
             public int Root, Quality, Inversion;
+            /// <summary>Intention de voicing PORTÉE PAR L'ACCORD, dont un module peut hériter (« selon l'accord »).</summary>
+            public bool ChordOpenVoicing;
+            public int ChordVoiceLead;      // 0 aucun / 1 auto / 2 basse proche / 3 haut proche / 4 fixe (→ ChordInversion)
         }
+
+        // ---- modes partagés (accord ET modules consommateurs) ----------------------------------------------
+        /// <summary>Voicing ouvert d'un module : 0 = non, 1 = oui, 2 = selon l'accord.</summary>
+        public const int OpenNo = 0, OpenYes = 1, OpenFromChord = 2;
+        /// <summary>Conduite des voix : 0 aucun / 1 auto / 2 basse proche / 3 haut proche, puis
+        /// 4 = « fixe » (accord, utilise son renversement) ou « selon l'accord » (module).</summary>
+        public const int VlNone = 0, VlAuto = 1, VlBassClose = 2, VlTopClose = 3, VlFixedOrFromChord = 4;
 
         /// <summary>Durée occupée sur la timeline : la durée totale si elle est fixée, sinon une seule cellule.</summary>
         public static double TotalBeats(ChordArticulationModule m)
@@ -76,16 +86,24 @@ namespace MusicTracker.Engine.Timeline
 
                 if (s.Root != lastRoot || s.Quality != lastQuality)      // l'accord a changé → (re)choisir le voicing
                 {
-                    if (m.VoiceLeadMode > 0 && prevVoicing != null)
+                    // « Selon l'accord » : le module délègue sa conduite des voix à l'intention portée par l'accord.
+                    int vl = m.VoiceLeadMode == VlFixedOrFromChord ? s.ChordVoiceLead : m.VoiceLeadMode;
+                    // Côté ACCORD, 4 signifie « fixe » : renversement imposé par l'accord, pas de conduite.
+                    if (vl == VlFixedOrFromChord) { curInv = s.Inversion; curOct = m.Octave; }
+                    else if (vl > VlNone && prevVoicing != null)
                     {
                         int dir = m.VoiceLeadDirection == 1 ? 1 : m.VoiceLeadDirection == 2 ? -1 : 0;  // 0 auto
-                        var v = Engine.Flow.MusicTheory.VoiceLeadStep(prevVoicing, s.Root, s.Quality, m.Octave, m.VoiceLeadMode - 1, dir);
+                        var v = Engine.Flow.MusicTheory.VoiceLeadStep(prevVoicing, s.Root, s.Quality, m.Octave, vl - 1, dir);
                         curInv = v.inversion; curOct = v.octave;
                     }
                     else { curInv = m.Inversion; curOct = m.Octave; }
                     lastRoot = s.Root; lastQuality = s.Quality;
                     prevVoicing = PatternGenerator.ChordNotes(s.Root, curOct, s.Quality, curInv);
                 }
+
+                // Voicing ouvert : oui / non / hérité de l'accord.
+                bool open = m.OpenVoicingMode == OpenFromChord ? s.ChordOpenVoicing
+                          : m.OpenVoicingMode == OpenYes || (m.OpenVoicingMode == OpenNo && m.OpenVoicing);
 
                 var pg = new PatternGeneratorModule
                 {
@@ -94,7 +112,7 @@ namespace MusicTracker.Engine.Timeline
                     Octave = curOct,
                     Style = m.Style, Bass = m.Bass, BassPerBeat = m.BassPerBeat,
                     HeldMode = m.HeldMode, ClimbMode = m.ClimbMode, HalveDurations = m.HalveDurations,
-                    OpenVoicing = m.OpenVoicing,
+                    OpenVoicing = open,
                     PatternCellOffset = c,                 // fait tourner le motif « mixte » d'une cellule à l'autre
                     BeatsPerBar = genBeats, Repeats = 1,
                     CustomSlices = m.CustomSlices, CustomSlicesPerQuarter = m.CustomSlicesPerQuarter,
@@ -207,7 +225,7 @@ namespace MusicTracker.Engine.Timeline
                     if (e <= from + 1e-9 || s >= to - 1e-9) continue;         // hors fenêtre
 
                     if (item.Module is PatternGeneratorModule pg)
-                    { Add(list, s, e, from, to, pg.Root, pg.Quality, pg.Inversion); any = true; }
+                    { Add(list, s, e, from, to, pg.Root, pg.Quality, pg.Inversion, pg.OpenVoicing, pg.VoiceLeadMode); any = true; }
                     else if (item.Module is CadenceModule cm && cm.Chords != null && cm.Chords.Count > 0)
                     {
                         double cell = Math.Max(1, cm.BeatsPerBar);
@@ -241,11 +259,16 @@ namespace MusicTracker.Engine.Timeline
             return list;
         }
 
-        static void Add(List<Segment> list, double s, double e, double from, double to, int root, int quality, int inversion)
+        static void Add(List<Segment> list, double s, double e, double from, double to, int root, int quality, int inversion,
+                        bool chordOpen = false, int chordVoiceLead = 0)
         {
             double cs = Math.Max(s, from), ce = Math.Min(e, to);
             if (ce - cs <= 1e-6) return;
-            list.Add(new Segment { Start = cs, Len = ce - cs, Root = root, Quality = quality, Inversion = inversion });
+            list.Add(new Segment
+            {
+                Start = cs, Len = ce - cs, Root = root, Quality = quality, Inversion = inversion,
+                ChordOpenVoicing = chordOpen, ChordVoiceLead = chordVoiceLead,
+            });
         }
     }
 }

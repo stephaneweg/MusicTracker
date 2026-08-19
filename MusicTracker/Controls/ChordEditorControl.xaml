@@ -43,6 +43,16 @@
             <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'NombreDeTemps'}"/>
             <TextBox Style="{StaticResource Num}" Text="{Binding Beats, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
 
+            <!-- INTENTION DE VOICING portée par l'accord : elle ne sonne pas ici (la lane est muette) mais les
+                 modules qui l'articulent peuvent s'y référer via leur option « selon l'accord ». -->
+            <CheckBox Style="{StaticResource Chk}" Content="{loc:Tr 'VoicingOuvertEcarte'}" IsChecked="{Binding OpenVoicing, Mode=TwoWay}"/>
+            <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'RenversementAutoVoiceLeading'}"/>
+            <ComboBox Style="{StaticResource Cb}" ItemsSource="{Binding VoiceLeadNames}" SelectedIndex="{Binding VoiceLeadIndex, Mode=TwoWay}"/>
+            <StackPanel Visibility="{Binding FixedInversionVisibility}">
+                <TextBlock Style="{StaticResource Lbl}" Text="{loc:Tr 'Renversement0Fondamental'}"/>
+                <TextBox Style="{StaticResource Num}" Text="{Binding Inversion, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"/>
+            </StackPanel>
+
             <TextBlock Foreground="#888888" FontSize="10" TextWrapping="Wrap" Margin="0,12,0,0" MaxWidth="210"
                        Text="{loc:Tr 'AccordHarmonieSeuleTip'}"/>
         </StackPanel>

@@ -1,5 +1,9 @@
 {
   "ChordArticulation": "Articulation d'accord",
+  "Fixe": "Fixe (renversement imposé)",
+  "Non": "Non",
+  "Oui": "Oui",
+  "SelonLAccord": "Selon l'accord",
   "TendanceDirection": "Tendance (à proximité égale)",
   "Monter": "Monter",
   "Descendre": "Descendre",

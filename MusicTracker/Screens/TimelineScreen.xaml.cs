@@ -3999,6 +3999,10 @@ namespace MusicTracker.Screens
         // « Insérer ▸ Accords polyrythmiques » : crée un nouveau module PolyChord AVEC un premier accord (I) et
         // deux anneaux de longueurs différentes, comme les autres modules polyrythmiques (un seul anneau n'a rien
         // à déphaser). Va TOUJOURS sur la piste Accords (via AppendChord).
+        // Onglet actif de l'éditeur d'articulation (accompagnement / cellule mélodique), conservé entre deux
+        // reconstructions de l'éditeur pour ne pas éjecter l'utilisateur de l'onglet où il travaille.
+        int articulationTabIndex;
+
         // Éditeur du bloc d'articulation : uniquement des paramètres de RÉALISATION (aucun paramètre d'accord —
         // l'harmonie vient de la piste Accords). Durée libre, donc « Durée du bloc » est un réglage de premier plan.
         UIElement BuildChordArticulationEditor(TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca)
@@ -4067,10 +4071,12 @@ namespace MusicTracker.Screens
             bassBeat.Unchecked += (s, e) => { ca.BassPerBeat = false; refresh(); };
             left.Children.Add(bassBeat);
 
-            var open = new CheckBox { Content = Loc.T("VoicingOuvert"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = ca.OpenVoicing };
-            open.Checked += (s, e) => { ca.OpenVoicing = true; refresh(); };
-            open.Unchecked += (s, e) => { ca.OpenVoicing = false; refresh(); };
-            left.Children.Add(open);
+            // Voicing ouvert : oui / non / hérité de l'intention portée par l'accord.
+            left.Children.Add(EdLabel(Loc.T("VoicingOuvert")));
+            int openSel = ca.OpenVoicingMode == 0 && ca.OpenVoicing ? 1 : ca.OpenVoicingMode;   // ancien booléen respecté
+            left.Children.Add(ParamCombo(
+                new[] { Loc.T("Non"), Loc.T("Oui"), Loc.T("SelonLAccord") },
+                openSel, v => { ca.OpenVoicingMode = v; ca.OpenVoicing = v == 1; }, refresh));
 
             var halve = new CheckBox { Content = Loc.T("HalveDurations"), Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(0, 6, 0, 0), IsChecked = ca.HalveDurations };
             halve.Checked += (s, e) => { ca.HalveDurations = true; refresh(); };
@@ -4079,10 +4085,14 @@ namespace MusicTracker.Screens
 
             // Conduite des voix : appliquée à chaque CHANGEMENT d'accord sous le bloc. « Aucun » garde le
             // renversement fixe ci-dessous ; les autres modes choisissent le voicing le plus proche du précédent.
+            // Ordre d'affichage : aucun / auto / haut proche / bas proche / selon l'accord. La numérotation du modèle
+            // (0 aucun, 1 auto, 2 basse, 3 haut, 4 selon l'accord) est conservée — d'où la table de correspondance.
+            var vlUiToModel = new[] { 0, 1, 3, 2, 4 };
+            int vlSel = Array.IndexOf(vlUiToModel, ca.VoiceLeadMode); if (vlSel < 0) vlSel = 0;
             left.Children.Add(EdLabel(Loc.T("RenversementAutoVoiceLeading")));
             left.Children.Add(ParamCombo(
-                new[] { Loc.T("AucunPositionFond"), Loc.T("AutoMouvementMini"), Loc.T("BasseProche"), Loc.T("HautProche") },
-                ca.VoiceLeadMode, v => ca.VoiceLeadMode = v, rebuild));
+                new[] { Loc.T("AucunPositionFond"), Loc.T("AutoMouvementMini"), Loc.T("HautProche"), Loc.T("BasseProche"), Loc.T("SelonLAccord") },
+                vlSel, v => { if (v >= 0 && v < vlUiToModel.Length) ca.VoiceLeadMode = vlUiToModel[v]; }, rebuild));
 
             if (ca.VoiceLeadMode == 0)   // le renversement manuel n'a de sens que sans conduite automatique
             {
@@ -4104,7 +4114,12 @@ namespace MusicTracker.Screens
             var accompHost = new ContentControl();
             var melodicHost = new ContentControl();
             tabs.Items.Add(new TabItem { Header = Loc.T("Accompagnement"), Content = accompHost });
-            tabs.Items.Add(new TabItem { Header = Loc.T("CelluleMelodique"), Content = MelodicTab(melodicHost, track, item, ca, rebuild) });
+            // Les réglages de l'onglet mélodique utilisent `refresh` (et non `rebuild`) : reconstruire l'éditeur
+            // recréerait le TabControl et ramènerait l'utilisateur sur « Accompagnement » au moindre clic.
+            tabs.Items.Add(new TabItem { Header = Loc.T("CelluleMelodique"), Content = MelodicTab(melodicHost, track, item, ca, refresh) });
+            // L'onglet actif SURVIT aux reconstructions de l'éditeur (changement de style, Render…).
+            tabs.SelectedIndex = Math.Max(0, Math.Min(1, articulationTabIndex));
+            tabs.SelectionChanged += (s, e) => { if (ReferenceEquals(e.OriginalSource, tabs)) articulationTabIndex = tabs.SelectedIndex; };
             host.Content = tabs;
 
             RefreshArticulationGrid(accompHost, track, item, ca);
