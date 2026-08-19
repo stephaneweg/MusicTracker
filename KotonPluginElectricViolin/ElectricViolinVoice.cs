@@ -90,8 +90,12 @@ namespace KotonPluginElectricViolin
             // → sonnait comme une seconde voix aux fréquences boostees). Version douce : +2/+1.5dB
             // Q=1.2/1.4 = bosses larges qui colorent sans creer de pics identifiables.
             SetBiquadPeaking(ref _formant1, sampleRate, 600f, 1.2f, 2.0f);
-            SetBiquadPeaking(ref _formant2, sampleRate, 3000f, 1.4f, 1.5f);
-            SetBiquadLP(ref _lpFinal, sampleRate, 7000f, 0.707f);
+            // Formant 2 (3 kHz) descendu de +1.5 -> +0.3 dB (2026-08-04 : responsable du "frottement
+            // d'archet" percu — un pic haute-mid qui donne un cote rugueux/rape aux saw+tanh).
+            SetBiquadPeaking(ref _formant2, sampleRate, 3000f, 1.4f, 0.3f);
+            // LP final descendu de 7 kHz -> 4.8 kHz : coupe le sifflement "scratchy" aigu qui restait
+            // apres le tanh + formant. Le violon garde sa presence sans le "grain de crin/corde".
+            SetBiquadLP(ref _lpFinal, sampleRate, 4800f, 0.707f);
         }
 
         public void NoteOn(int note, float velocity, in EvParams p)
