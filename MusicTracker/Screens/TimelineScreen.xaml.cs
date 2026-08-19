@@ -4014,8 +4014,35 @@ namespace MusicTracker.Screens
             left.Children.Add(EdLabel(Loc.T("DureeDuBlocTemps")));
             left.Children.Add(ParamNum((int)Math.Round(ca.Beats), v => { if (v > 0) ca.Beats = v; }, refresh));
 
+            // Styles intégrés PUIS styles utilisateur enregistrés dans le projet : choisir un style utilisateur
+            // recharge son motif (et sa longueur) dans le bloc, exactement comme sur l'ancien éditeur d'accord.
+            var userStyles = project.UserChordStyles ?? (project.UserChordStyles = new System.Collections.Generic.List<UserChordStyle>());
+            var styleNames = new System.Collections.Generic.List<string>(PatternGenerator.StyleNames);
+            foreach (var us in userStyles) styleNames.Add(us.Name);
+            int styleSel = ca.Style;
+            if (ca.Style == PatternGenerator.CustomStyle && !string.IsNullOrEmpty(ca.UserStyleName))
+            {
+                int u = userStyles.FindIndex(s => s.Name == ca.UserStyleName);
+                if (u >= 0) styleSel = PatternGenerator.StyleNames.Length + u;
+            }
             left.Children.Add(EdLabel(Loc.T("Style")));
-            left.Children.Add(ParamCombo(PatternGenerator.StyleNames, ca.Style, v => ca.Style = v, rebuild));
+            left.Children.Add(ParamCombo(styleNames.ToArray(), styleSel, v =>
+            {
+                if (v < PatternGenerator.StyleNames.Length) { ca.Style = v; ca.UserStyleName = null; }
+                else
+                {
+                    int u = v - PatternGenerator.StyleNames.Length;
+                    if (u >= 0 && u < userStyles.Count)
+                    {
+                        var us = userStyles[u];
+                        ca.Style = PatternGenerator.CustomStyle;
+                        ca.UserStyleName = us.Name;
+                        ca.SetCustomNotes(us.Notes != null ? new System.Collections.Generic.List<RiffNote>(us.Notes) : null, us.Spb, us.Beats * us.Spb);
+                        if (us.Slices != null && us.Slices.Length > 0) ca.CustomSlices = (SequencerSlice[])us.Slices.Clone();
+                        if (us.Beats > 0) ca.Beats = us.Beats;
+                    }
+                }
+            }, rebuild));
 
             left.Children.Add(EdLabel(Loc.T("Octave")));
             left.Children.Add(ParamNum(ca.Octave, v => ca.Octave = v, refresh));
@@ -4043,8 +4070,72 @@ namespace MusicTracker.Screens
             left.Children.Add(EdLabel(Loc.T("Renversement")));
             left.Children.Add(ParamNum(ca.Inversion, v => ca.Inversion = v, refresh));
 
-            RefreshArticulationGrid(host, track, item, ca);
+            // Panneau droit : accompagnement (grille du style « Personnalisé ») + cellule mélodique, comme l'éditeur
+            // d'accord d'origine — ces deux grilles décrivent COMMENT on joue, elles appartiennent donc à l'articulation.
+            var tabs = new TabControl { Margin = new Thickness(4, 0, 0, 0) };
+            var accompHost = new ContentControl();
+            var melodicHost = new ContentControl();
+            tabs.Items.Add(new TabItem { Header = Loc.T("Accompagnement"), Content = accompHost });
+            tabs.Items.Add(new TabItem { Header = Loc.T("CelluleMelodique"), Content = MelodicTab(melodicHost, track, item, ca, rebuild) });
+            host.Content = tabs;
+
+            RefreshArticulationGrid(accompHost, track, item, ca);
+            RefreshArticulationMelodicGrid(melodicHost, track, item, ca);
             return grid;
+        }
+
+        // En-tête de l'onglet mélodique (octave + ancrage du degré 1) au-dessus de sa grille.
+        UIElement MelodicTab(ContentControl gridHost, TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca, Action rebuild)
+        {
+            var dock = new DockPanel();
+            var bar = new WrapPanel { Margin = new Thickness(4, 4, 4, 6) };
+            DockPanel.SetDock(bar, Dock.Top);
+
+            bar.Children.Add(new TextBlock { Text = Loc.T("OctaveMelodie"), Foreground = "#AAAAAA".ToBrush(), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
+            bar.Children.Add(ParamNum(ca.MelodicOctave, v => ca.MelodicOctave = v, rebuild));
+
+            bar.Children.Add(new TextBlock { Text = Loc.T("AncrageDegre1"), Foreground = "#AAAAAA".ToBrush(), FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0) });
+            bar.Children.Add(ParamCombo(new[] { Loc.T("Tonique"), Loc.T("Renversement") }, ca.MelodicAnchor, v => ca.MelodicAnchor = v, rebuild));
+
+            dock.Children.Add(bar);
+            dock.Children.Add(gridHost);
+            return dock;
+        }
+
+        // Grille de la CELLULE MÉLODIQUE : 14 rangées = degrés diatoniques 1..7 sur deux octaves, polyphonique.
+        // Elle ne dépend pas de l'accord (les degrés se transposent sur chaque accord traversé), d'où des rangées fixes.
+        void RefreshArticulationMelodicGrid(ContentControl host, TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca)
+        {
+            var labels = new[] { "1", "2", "3", "4", "5", "6", "7", "1'", "2'", "3'", "4'", "5'", "6'", "7'" };
+            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.TotalBeats(ca)));
+            var key = project.Key ?? new Engine.Score.KeySignature();
+
+            double startBeat = project.ItemStartBeat(track, item);
+            var segs = Engine.Timeline.ChordArticulation.Segments(project, project.RiffById, startBeat, Engine.Timeline.ChordArticulation.TotalBeats(ca));
+            int root = segs.Count > 0 ? segs[0].Root : Engine.Flow.MusicTheory.DiatonicChord(key, 0).root;
+            int quality = segs.Count > 0 ? segs[0].Quality : Engine.Flow.MusicTheory.DiatonicChord(key, 0).quality;
+
+            var rg = new Controls.RhythmGridControl();
+            Func<SequencerSlice[], int, Riff> mk = (gr, gs) =>
+            {
+                var t = new PatternGeneratorModule
+                {
+                    Root = root, Quality = quality, Inversion = ca.Inversion,
+                    MelodicOctave = ca.MelodicOctave, MelodicAnchor = ca.MelodicAnchor,
+                    BeatsPerBar = beats, Repeats = 1,
+                };
+                t.SetMelodicNotes(rg.CurrentNotes(), gs, rg.Beats * gs);
+                return PatternGenerator.GenerateMelodic(t, key);
+            };
+            rg.Configure(labels, beats, ca.MelodicSlicesPerQuarter > 0 ? ca.MelodicSlicesPerQuarter : 4, ca.MelodicSlices,
+                         new string[0], (st, b) => null, PatternGenerator.SlicesPerQuarter, mk,
+                         InstrumentCatalog.GetPreset(track.Instrument),
+                         noteList: true, existingNotes: ca.MelodicNotes);
+
+            bool dirty = false;
+            rg.GridChanged += () => { ca.SetMelodicNotes(rg.CurrentNotes(), rg.Spb, rg.Beats * rg.Spb); dirty = true; };
+            rg.Unloaded += (s, e) => { if (dirty) { dirty = false; Render(); } };
+            host.Content = rg;
         }
 
         // Panneau droit de l'articulation : la grille de motif du style « Personnalisé » (rangées = voix de l'accord),
@@ -4091,16 +4182,36 @@ namespace MusicTracker.Screens
             for (int i = 0; i < builtin.Length && i < PatternGenerator.StyleNames.Length; i++) builtin[i] = PatternGenerator.StyleNames[i];
             Func<int, int, SequencerSlice[]> seedFunc = (st, b) => PatternGenerator.VoiceBarForCustom(st, b, chord.Length);
 
+            // « Enregistrer ce style » : mémorise le motif dans le projet sous un nom, réutilisable sur d'autres blocs
+            // (il apparaît alors en fin de liste des styles).
+            Action onSaveStyle = () =>
+            {
+                string name = TimelineHelper.PromptText(Loc.T("EnregistrerLeStyleDAccompagnement"), Loc.T("MonStyle"));
+                if (string.IsNullOrWhiteSpace(name)) return;
+                name = name.Trim();
+                var us = project.UserChordStyles ?? (project.UserChordStyles = new System.Collections.Generic.List<UserChordStyle>());
+                var entry = new UserChordStyle
+                {
+                    Name = name, Slices = rg.CurrentGrid(), Spb = rg.Spb, Beats = rg.Beats,
+                    Notes = new System.Collections.Generic.List<RiffNote>(rg.CurrentNotes()),
+                };
+                int existing = us.FindIndex(u => u.Name == name);
+                if (existing >= 0) us[existing] = entry; else us.Add(entry);
+                ca.UserStyleName = name;
+                editorHost.Content = BuildChordArticulationEditor(track, item, ca);   // la liste des styles se rafraîchit
+                Render();
+            };
+
             rg.Configure(labels, beats, ca.CustomSlicesPerQuarter > 0 ? ca.CustomSlicesPerQuarter : 4, ca.CustomSlices,
                          builtin, seedFunc, PatternGenerator.SlicesPerQuarter, mk,
                          InstrumentCatalog.GetPreset(track.Instrument),
+                         seedSpbFunc: null, onSaveStyle: onSaveStyle,
                          noteList: true, existingNotes: ca.CustomNotes);
 
             bool dirty = false;
             rg.GridChanged += () =>
             {
-                ca.SetCustomNotes(rg.CurrentNotes(), rg.Spb);
-                ca.CustomSlices = rg.CurrentGrid();
+                ca.SetCustomNotes(rg.CurrentNotes(), rg.Spb, rg.Beats * rg.Spb);
                 if (rg.Beats > 0) ca.Beats = rg.Beats;     // le motif porte la longueur du bloc
                 dirty = true;
             };

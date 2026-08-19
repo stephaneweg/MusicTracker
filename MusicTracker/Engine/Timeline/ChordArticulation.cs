@@ -63,6 +63,16 @@ namespace MusicTracker.Engine.Timeline
                     CustomNotes = m.CustomNotes,
                 };
 
+                // Cellule mélodique optionnelle : 2e voix en DEGRÉS diatoniques, transposée sur chaque accord.
+                if (m.HasMelodic)
+                {
+                    pg.MelodicOctave = m.MelodicOctave;
+                    pg.MelodicAnchor = m.MelodicAnchor;
+                    pg.MelodicSlicesPerQuarter = m.MelodicSlicesPerQuarter;
+                    pg.MelodicNotes = m.MelodicNotes;
+                    pg.MelodicSlices = m.MelodicSlices;
+                }
+
                 var r = PatternGenerator.Generate(pg);
                 // Le riff rendu N'EST PAS forcément à la résolution canonique : un style « Personnalisé » revient à la
                 // résolution de SA grille (4 slices/temps par défaut) et les styles arpégés peuvent halver la valeur.
@@ -82,6 +92,28 @@ namespace MusicTracker.Engine.Timeline
                     if (len <= 0 || start >= totalSlices) continue;
                     len = Math.Min(len, totalSlices - start);                 // rogné à la fin du bloc
                     if (len > 0) notes.Add(new RiffNote(n.Note, start, len));
+                }
+
+                // La cellule mélodique est un riff SÉPARÉ (autre résolution possible) : même rognage, même rééchelonnage.
+                if (m.HasMelodic)
+                {
+                    var mel = PatternGenerator.GenerateMelodic(pg, project?.Key ?? new Engine.Score.KeySignature());
+                    if (mel?.Notes != null)
+                    {
+                        int mSpq = mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : spq;
+                        double mScale = (double)spq / mSpq;
+                        foreach (var n in mel.Notes)
+                        {
+                            int nStart = (int)Math.Round(n.Start * mScale);
+                            int nLen = Math.Max(1, (int)Math.Round(n.Length * mScale));
+                            if (nStart >= segSlices) continue;
+                            int len = Math.Min(nLen, segSlices - nStart);
+                            int start = off + nStart;
+                            if (len <= 0 || start >= totalSlices) continue;
+                            len = Math.Min(len, totalSlices - start);
+                            if (len > 0) notes.Add(new RiffNote(n.Note, start, len));
+                        }
+                    }
                 }
             }
 

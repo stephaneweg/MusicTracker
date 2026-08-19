@@ -236,11 +236,22 @@ namespace MusicTracker.Engine.Flow
         [JsonIgnore] public bool HasMelodic =>
             (MelodicNotes != null && MelodicNotes.Count > 0) || (MelodicSlices != null && MelodicSlices.Length > 0);
 
-        public void SetCustomNotes(List<RiffNote> notes, int slicesPerQuarter)
+        public void SetCustomNotes(List<RiffNote> notes, int slicesPerQuarter, int lengthSlices = 0)
         {
-            CustomNotes = notes;
+            CustomNotes = notes ?? new List<RiffNote>();
+            int len = Math.Max(lengthSlices, RiffNotes.LengthOf(CustomNotes));
+            CustomSlices = RiffNotes.ToSlices(CustomNotes, len);
             CustomSlicesPerQuarter = Math.Max(1, slicesPerQuarter);
             OnChanged(nameof(CustomNotes));
+        }
+
+        public void SetMelodicNotes(List<RiffNote> notes, int slicesPerQuarter, int lengthSlices)
+        {
+            MelodicNotes = notes ?? new List<RiffNote>();
+            int len = Math.Max(lengthSlices, RiffNotes.LengthOf(MelodicNotes));
+            MelodicSlices = RiffNotes.ToSlices(MelodicNotes, len);
+            MelodicSlicesPerQuarter = Math.Max(1, slicesPerQuarter);
+            OnChanged(nameof(MelodicNotes));
         }
 
         [JsonIgnore] public override string Title { get { return "Articulation d'accord"; } }

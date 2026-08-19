@@ -1,5 +1,6 @@
 {
   "ChordArticulation": "Articulation d'accord",
+  "Tonique": "Tonique",
   "PisteAccordsSilencieuse": "Piste silencieuse — fournit l'accord courant",
   "AccordHarmonieSeuleTip": "Cet accord ne décrit que l'harmonie. Pour l'entendre, pose un module « Articulation d'accord » sur une piste instrument : c'est lui qui porte le style, la basse et le voicing.",
   "BasseParTemps": "Basse à chaque temps",
