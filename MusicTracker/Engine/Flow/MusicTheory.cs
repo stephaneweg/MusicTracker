@@ -223,16 +223,38 @@ namespace MusicTracker.Engine.Flow
         }
 
         /// <summary>The diatonic chord at a scale degree in the key (root pitch-class + quality). The tonic is a
-        /// triad (no 7th). Used so a chord can be stored as a DEGREE and re-resolved when the key changes.</summary>
+        /// triad (no 7th). Used so a chord can be stored as a DEGREE and re-resolved when the key changes.
+        ///
+        /// La qualite est calculee DYNAMIQUEMENT depuis la gamme du mode COMPLET (FullMode), pas depuis les
+        /// tableaux MajorQual/MinorQual du mineur naturel. Consequence : en mineur harmonique / melodique, le V
+        /// devient naturellement MAJEUR (sensible haussee), et vii° devient diminué au lieu de bVII majeur.
+        /// Comportement musicalement attendu ; l'ancien code fixait V mineur pour tout mode mineur.</summary>
         public static (int root, int quality) DiatonicChord(KeySignature key, int degree)
         {
-            bool minor = key?.Mode == 1;
             int tonic = TonicPc(key);
-            var pcs = minor ? MinorPcs : MajorPcs;
-            var qual = minor ? MinorQual : MajorQual;
+            var scale = MusicalMode.Scale(MusicalMode.Effective(key ?? new KeySignature()));
             int d = ((degree % 7) + 7) % 7;
-            int q = (d == 0) ? (minor ? 1 : 0) : qual[d]; // tonic = triad
-            return ((tonic + pcs[d]) % 12, q);
+            int root = (tonic + scale[d]) % 12;
+            int quality = TriadQualityFromScale(scale, d);
+            return (root, quality);
+        }
+
+        /// <summary>Determine la qualite d'une triade (0 maj / 1 min / 2 dim / 3 aug) construite sur le degre
+        /// <paramref name="degree"/> d'une gamme (7 semi-tons offsets depuis le tonique). Calcul par intervalles
+        /// : tierce (3 = min, 4 = maj), quinte (6 = dim, 7 = juste, 8 = aug).</summary>
+        static int TriadQualityFromScale(int[] scale, int degree)
+        {
+            if (scale == null || scale.Length < 7) return 0;
+            int d = ((degree % 7) + 7) % 7;
+            int r = scale[d];
+            int t = scale[(d + 2) % 7]; if (t < r) t += 12;
+            int f = scale[(d + 4) % 7]; if (f < r) f += 12;
+            int third = t - r;
+            int fifth = f - r;
+            if (third == 3 && fifth == 6) return 2;   // diminished
+            if (third == 4 && fifth == 8) return 3;   // augmented
+            if (third == 3 && fifth == 7) return 1;   // minor
+            return 0;                                  // major (defaut / +4 +7)
         }
 
         // ---- chord FUNCTION (secondary dominants & co) ---------------------------------------------------------
@@ -342,10 +364,10 @@ namespace MusicTracker.Engine.Flow
         {
             bool minor = key?.Mode == 1;
             int tonic = TonicPc(key);
-            var pcs = minor ? MinorPcs : MajorPcs;
+            var scale = MusicalMode.Scale(MusicalMode.Effective(key ?? new KeySignature()));
             int d = ((degree % 7) + 7) % 7;
-            int root = (tonic + pcs[d]) % 12;
-            int triad = (minor ? MinorTriadQual : MajorTriadQual)[d];         // 0 maj / 1 min / 2 dim
+            int root = (tonic + scale[d]) % 12;
+            int triad = TriadQualityFromScale(scale, d);                      // 0 maj / 1 min / 2 dim / 3 aug (dynamique)
             int seventh = (d == 0) ? (minor ? 7 : 6) : (minor ? MinorQual : MajorQual)[d]; // 6 Maj7,7 m7,8 dom7,9 ø7
             if (mode == 1) { triad = 0; seventh = 6; }                        // force MAJOR: maj triad + Maj7
             else if (mode == 2) { triad = 1; seventh = 7; }                   // force MINOR: min triad + m7
