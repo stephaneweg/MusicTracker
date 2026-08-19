@@ -52,6 +52,14 @@ namespace MusicTracker.Engine.Timeline
             int cellCount = Math.Max(1, (int)Math.Ceiling(total / cell - 1e-9));
             int genBeats = Math.Max(1, (int)Math.Ceiling(cell - 1e-9));
 
+            // VOICE LEADING : à chaque CHANGEMENT d'accord, on choisit le renversement/registre le plus proche du
+            // voicing précédent (au lieu de repartir en position fondamentale). L'état traverse les cellules, sinon
+            // la conduite des voix repartirait de zéro à chaque répétition du motif. Tant que l'accord ne change pas,
+            // on rejoue le MÊME voicing — sans cela il dériverait d'une cellule à l'autre.
+            int[] prevVoicing = null;
+            int lastRoot = int.MinValue, lastQuality = int.MinValue;
+            int curInv = m.Inversion, curOct = m.Octave;
+
             for (int c = 0; c < cellCount; c++)
             {
                 double cellStart = c * cell;                       // relatif au module
@@ -66,11 +74,23 @@ namespace MusicTracker.Engine.Timeline
                 double segBeats = s.Len;
                 if (segBeats <= 1e-6) continue;
 
+                if (s.Root != lastRoot || s.Quality != lastQuality)      // l'accord a changé → (re)choisir le voicing
+                {
+                    if (m.VoiceLeadMode > 0 && prevVoicing != null)
+                    {
+                        var v = Engine.Flow.MusicTheory.VoiceLeadStep(prevVoicing, s.Root, s.Quality, m.Octave, m.VoiceLeadMode - 1);
+                        curInv = v.inversion; curOct = v.octave;
+                    }
+                    else { curInv = m.Inversion; curOct = m.Octave; }
+                    lastRoot = s.Root; lastQuality = s.Quality;
+                    prevVoicing = PatternGenerator.ChordNotes(s.Root, curOct, s.Quality, curInv);
+                }
+
                 var pg = new PatternGeneratorModule
                 {
                     Root = s.Root, Quality = s.Quality,
-                    Inversion = m.VoiceLeadMode > 0 ? s.Inversion : m.Inversion,
-                    Octave = m.Octave,
+                    Inversion = curInv,
+                    Octave = curOct,
                     Style = m.Style, Bass = m.Bass, BassPerBeat = m.BassPerBeat,
                     HeldMode = m.HeldMode, ClimbMode = m.ClimbMode, HalveDurations = m.HalveDurations,
                     OpenVoicing = m.OpenVoicing,

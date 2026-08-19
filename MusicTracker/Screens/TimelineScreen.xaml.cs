@@ -4077,8 +4077,18 @@ namespace MusicTracker.Screens
             halve.Unchecked += (s, e) => { ca.HalveDurations = false; refresh(); };
             left.Children.Add(halve);
 
-            left.Children.Add(EdLabel(Loc.T("Renversement")));
-            left.Children.Add(ParamNum(ca.Inversion, v => ca.Inversion = v, refresh));
+            // Conduite des voix : appliquée à chaque CHANGEMENT d'accord sous le bloc. « Aucun » garde le
+            // renversement fixe ci-dessous ; les autres modes choisissent le voicing le plus proche du précédent.
+            left.Children.Add(EdLabel(Loc.T("RenversementAutoVoiceLeading")));
+            left.Children.Add(ParamCombo(
+                new[] { Loc.T("AucunPositionFond"), Loc.T("AutoMouvementMini"), Loc.T("BasseProche"), Loc.T("HautProche") },
+                ca.VoiceLeadMode, v => ca.VoiceLeadMode = v, rebuild));
+
+            if (ca.VoiceLeadMode == 0)   // le renversement manuel n'a de sens que sans conduite automatique
+            {
+                left.Children.Add(EdLabel(Loc.T("Renversement")));
+                left.Children.Add(ParamNum(ca.Inversion, v => ca.Inversion = v, refresh));
+            }
 
             // Panneau droit : accompagnement (grille du style « Personnalisé ») + cellule mélodique, comme l'éditeur
             // d'accord d'origine — ces deux grilles décrivent COMMENT on joue, elles appartiennent donc à l'articulation.
