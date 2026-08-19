@@ -1,5 +1,8 @@
 {
   "ChordArticulation": "Chord articulation",
+  "TendanceDirection": "Tendency (when equally close)",
+  "Monter": "Upward",
+  "Descendre": "Downward",
   "CelluleTemps": "Cell length (beats)",
   "DureeTotaleTemps": "Total length (beats)",
   "Tonique": "Tonic",

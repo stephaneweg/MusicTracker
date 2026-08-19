@@ -461,7 +461,7 @@ namespace MusicTracker.Engine.Flow
         /// octave) for this chord (root/quality) that moves the least from it. <paramref name="anchor"/>: 0 = auto
         /// (total movement), 1 = bass close (smooth lowest voice), 2 = top close (smooth highest voice). Octave search
         /// is ±1 around <paramref name="baseOctave"/>. Used to voice-lead a sequence of stand-alone chord modules.</summary>
-        public static (int inversion, int octave) VoiceLeadStep(int[] prevNotes, int root, int quality, int baseOctave, int anchor)
+        public static (int inversion, int octave) VoiceLeadStep(int[] prevNotes, int root, int quality, int baseOctave, int anchor, int direction = 0)
         {
             int voices = Math.Max(1, PatternGenerator.ChordNotes(root, baseOctave, quality, 0).Length);
             int bestInv = 0, bestOct = baseOctave; double bestCost = double.MaxValue;
@@ -475,6 +475,20 @@ namespace MusicTracker.Engine.Flow
                     if (anchor == 1) cost += 100 * Math.Abs(notes[0] - prevNotes[0]);
                     else if (anchor == 2) cost += 100 * Math.Abs(notes[notes.Length - 1] - prevNotes[prevNotes.Length - 1]);
                     if ((((notes[0] % 12) - (root % 12)) + 12) % 12 == 7) cost += 3; // avoid landing on a 6/4 (fifth in bass = unstable)
+
+                    // TENDANCE de direction : quand deux voicings sont aussi proches l'un que l'autre, préférer celui
+                    // qui va dans le sens demandé (+1 monter / −1 descendre). Pénalité VOLONTAIREMENT petite devant le
+                    // poids d'ancrage (100 par demi-ton) : elle départage les ex æquo sans jamais imposer un voicing
+                    // franchement plus éloigné. La voix observée est celle que l'ancrage privilégie.
+                    if (direction != 0)
+                    {
+                        double delta = anchor == 1 ? notes[0] - prevNotes[0]
+                                     : anchor == 2 ? notes[notes.Length - 1] - prevNotes[prevNotes.Length - 1]
+                                     : Avg(notes) - Avg(prevNotes);
+                        if (delta * direction < 0) cost += 25;     // va à contresens
+                        else if (delta * direction > 0) cost -= 5; // léger encouragement dans le bon sens
+                    }
+
                     if (cost < bestCost) { bestCost = cost; bestInv = k; bestOct = baseOctave + sh; }
                 }
             return (bestInv, bestOct);

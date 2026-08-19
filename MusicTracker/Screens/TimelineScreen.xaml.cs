@@ -4089,6 +4089,14 @@ namespace MusicTracker.Screens
                 left.Children.Add(EdLabel(Loc.T("Renversement")));
                 left.Children.Add(ParamNum(ca.Inversion, v => ca.Inversion = v, refresh));
             }
+            else
+            {
+                // Tendance : départage deux voicings aussi proches l'un que l'autre.
+                left.Children.Add(EdLabel(Loc.T("TendanceDirection")));
+                left.Children.Add(ParamCombo(
+                    new[] { Loc.T("Auto"), Loc.T("Monter"), Loc.T("Descendre") },
+                    ca.VoiceLeadDirection, v => ca.VoiceLeadDirection = v, refresh));
+            }
 
             // Panneau droit : accompagnement (grille du style « Personnalisé ») + cellule mélodique, comme l'éditeur
             // d'accord d'origine — ces deux grilles décrivent COMMENT on joue, elles appartiennent donc à l'articulation.

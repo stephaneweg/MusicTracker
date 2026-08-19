@@ -195,6 +195,7 @@ namespace MusicTracker.Engine.Flow
         int octave = 4;
         int inversion = 0;
         int voiceLeadMode = 0;    // renversement auto d'après l'accord précédent
+        int voiceLeadDirection = 0; // tendance : 0 auto / 1 monter / 2 descendre
         bool openVoicing = false;
         bool bass = false;
         bool bassPerBeat = false;
@@ -213,6 +214,12 @@ namespace MusicTracker.Engine.Flow
         public int Octave { get { return octave; } set { if (octave != value) { octave = value; OnChanged(nameof(Octave)); } } }
         public int Inversion { get { return inversion; } set { int v = Math.Max(0, value); if (inversion != v) { inversion = v; OnChanged(nameof(Inversion)); } } }
         public int VoiceLeadMode { get { return voiceLeadMode; } set { int v = Math.Max(0, Math.Min(3, value)); if (voiceLeadMode != v) { voiceLeadMode = v; OnChanged(nameof(VoiceLeadMode)); } } }
+
+        /// <summary>Tendance de direction de la conduite des voix : 0 = auto (aucun biais), 1 = monter, 2 = descendre.
+        /// Départage les voicings AUSSI PROCHES l'un que l'autre — n'impose jamais un voicing nettement plus éloigné.
+        /// S'applique à la voix privilégiée par <see cref="VoiceLeadMode"/> (basse, note du haut, ou l'ensemble).</summary>
+        public int VoiceLeadDirection { get { return voiceLeadDirection; } set { int v = Math.Max(0, Math.Min(2, value)); if (voiceLeadDirection != v) { voiceLeadDirection = v; OnChanged(nameof(VoiceLeadDirection)); } } }
+
         public bool OpenVoicing { get { return openVoicing; } set { if (openVoicing != value) { openVoicing = value; OnChanged(nameof(OpenVoicing)); } } }
         public bool Bass { get { return bass; } set { if (bass != value) { bass = value; OnChanged(nameof(Bass)); } } }
         public bool BassPerBeat { get { return bassPerBeat; } set { if (bassPerBeat != value) { bassPerBeat = value; OnChanged(nameof(BassPerBeat)); } } }

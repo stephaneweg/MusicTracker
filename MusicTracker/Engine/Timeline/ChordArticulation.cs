@@ -78,7 +78,8 @@ namespace MusicTracker.Engine.Timeline
                 {
                     if (m.VoiceLeadMode > 0 && prevVoicing != null)
                     {
-                        var v = Engine.Flow.MusicTheory.VoiceLeadStep(prevVoicing, s.Root, s.Quality, m.Octave, m.VoiceLeadMode - 1);
+                        int dir = m.VoiceLeadDirection == 1 ? 1 : m.VoiceLeadDirection == 2 ? -1 : 0;  // 0 auto
+                        var v = Engine.Flow.MusicTheory.VoiceLeadStep(prevVoicing, s.Root, s.Quality, m.Octave, m.VoiceLeadMode - 1, dir);
                         curInv = v.inversion; curOct = v.octave;
                     }
                     else { curInv = m.Inversion; curOct = m.Octave; }

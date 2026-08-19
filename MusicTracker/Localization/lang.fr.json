@@ -1,5 +1,8 @@
 {
   "ChordArticulation": "Articulation d'accord",
+  "TendanceDirection": "Tendance (à proximité égale)",
+  "Monter": "Monter",
+  "Descendre": "Descendre",
   "CelluleTemps": "Longueur de la cellule (temps)",
   "DureeTotaleTemps": "Durée totale (temps)",
   "Tonique": "Tonique",
