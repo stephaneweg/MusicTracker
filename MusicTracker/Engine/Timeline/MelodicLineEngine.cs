@@ -173,11 +173,19 @@ namespace MusicTracker.Engine.Timeline
                 {
                     if (!ok[i] || pitch[i] == int.MinValue || pitch[i] < 0) continue;
                     int midi = pitch[i];
-                    if (prevEmit >= 0 && continuity > 0 && cls[i] <= 2)
+                    if (prevEmit >= 0 && continuity > 0)
                     {
                         int maxLeap = 12 - continuity * 11 / 100;                    // 0 → 12 (free) … 100 → 1 (very smooth)
-                        var capPcs = chords[i].Count > 0 ? chords[i] : scalePcs;
-                        if (Math.Abs(midi - prevEmit) > maxLeap) { int near = NearestTone(prevEmit, capPcs, bandOf[i]); if (near >= 0) midi = near; }
+                        // Passing (cls==3) : puise dans la scale ; notes structurelles : dans l'accord (fallback scale si vide).
+                        var capPcs = (cls[i] == 3 || chords[i].Count == 0) ? scalePcs : chords[i];
+                        if (Math.Abs(midi - prevEmit) > maxLeap)
+                        {
+                            // 1) chercher STRICTEMENT dans ±maxLeap de prevEmit, indépendamment de la bande de registre
+                            int near = NearestToneWithinLeap(prevEmit, capPcs, maxLeap);
+                            // 2) sinon, fallback ancien : le nearest dans la bande (peut dépasser maxLeap, mais reste le moins pire)
+                            if (near < 0) near = NearestTone(prevEmit, capPcs, bandOf[i]);
+                            if (near >= 0) midi = near;
+                        }
                     }
                     prevEmit = midi;
                     gen.Add((vnotes[i].Start, vnotes[i].Length, midi));
@@ -506,6 +514,22 @@ namespace MusicTracker.Engine.Timeline
             if (pcs.Count == 0) return -1;
             int best = SearchNearest(prevMidi, pcs, bandCenter, halfBand);
             if (best < 0 && halfBand < 12) best = SearchNearest(prevMidi, pcs, bandCenter, 12);
+            return best;
+        }
+
+        // Chercher le ton le plus proche de prevMidi dans une fenetre ±maxLeap centree sur prevMidi
+        // (pas sur la bande) — sert au cap de Continuite pour garantir un vrai mouvement conjoint.
+        static int NearestToneWithinLeap(int prevMidi, HashSet<int> pcs, int maxLeap)
+        {
+            if (pcs.Count == 0 || prevMidi < 0) return -1;
+            int best = -1, bestDist = int.MaxValue;
+            int lo = Math.Max(0, prevMidi - maxLeap), hi = Math.Min(127, prevMidi + maxLeap);
+            for (int mi = lo; mi <= hi; mi++)
+            {
+                if (!pcs.Contains((((mi % 12) + 12) % 12))) continue;
+                int d = Math.Abs(mi - prevMidi);
+                if (d < bestDist) { bestDist = d; best = mi; }
+            }
             return best;
         }
 
