@@ -49,8 +49,11 @@ namespace KotonPluginBrass
     internal sealed class BrassVoice
     {
         readonly int _sr;
-        double _carrierPhase, _modPhase;
-        double _carrierInc;
+        // UNE SEULE phase pour les 2 operateurs (ratio 1:1 exact) — evite la derive de phase
+        // cumulative qu'auraient 2 phases modulo separement (le timbre changerait au fil de la
+        // tenue de note). Merci Gemini pour le catch.
+        double _phase, _phaseInc;
+        float _prevModOut;              // memoire pour le feedback FM du modulateur
 
         float _vibPhase, _vibInc;
         Random _rng;
@@ -61,7 +64,8 @@ namespace KotonPluginBrass
         float _amp;
         float _ampAttackRate, _ampReleaseRate;
 
-        // Overshoot : env secondaire, 1 au NoteOn puis decay exp vers 0 apres attack complete
+        // Overshoot : env secondaire, 1 au NoteOn puis decay exp vers 0 (des le NoteOn, pas apres
+        // l'attack — sinon sur un cor a attack lent le pic tomberait trop tard dans la note).
         float _overshootEnv;
         float _overshootRate;
         float _overshootAmount;
@@ -76,9 +80,6 @@ namespace KotonPluginBrass
         int _note;
         float _velocity;
 
-        const float SilenceThreshold = 1e-5f;
-        float _peakEnvelope;
-
         public bool IsActive => _active;
         public int Note => _note;
 
@@ -89,9 +90,9 @@ namespace KotonPluginBrass
             _note = note;
             _velocity = velocity;
             double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            _carrierInc = 2.0 * Math.PI * freq / _sr;
-            _carrierPhase = 0;
-            _modPhase = 0;
+            _phaseInc = 2.0 * Math.PI * freq / _sr;
+            _phase = 0;
+            _prevModOut = 0f;
             _rng = new Random(note * 7919 + Environment.TickCount);
             _vibPhase = (float)(_rng.NextDouble() * 2 * Math.PI);
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
@@ -115,7 +116,6 @@ namespace KotonPluginBrass
             _pitchBendCents = -18f * velocity * p.Overshoot;
             _pitchBendRate = (float)Math.Exp(-1.0 / (0.040 * _sr));
 
-            _peakEnvelope = 1f;
             _active = true;
         }
 
@@ -130,7 +130,6 @@ namespace KotonPluginBrass
             _stage = EnvStage.Idle;
             _amp = 0f;
             _overshootEnv = 0f;
-            _peakEnvelope = 0f;
         }
 
         public float RenderSample(in BrassParams p)
@@ -145,12 +144,15 @@ namespace KotonPluginBrass
                     break;
                 case EnvStage.Release:
                     _amp -= _ampReleaseRate;
-                    if (_amp <= 0f) _amp = 0f;
+                    if (_amp <= 0f) { _amp = 0f; _active = false; _stage = EnvStage.Idle; return 0f; }
                     break;
             }
 
-            // L'overshoot commence a decroitre des l'attack terminee
-            if (_stage != EnvStage.Attack) _overshootEnv *= _overshootRate;
+            // Overshoot decroit DES le NoteOn (pas apres l'attack) : sinon sur un cor a attack lent
+            // (60 ms), le pic d'index tomberait a la fin de l'attaque au lieu d'etre synchrone
+            // avec l'impact d'air initial. Le pic doit etre SIMULTANE au "coup de langue" du
+            // cuivriste, pas 60 ms plus tard.
+            _overshootEnv *= _overshootRate;
 
             // Vibrato couple pitch + amp : sur un cuivre, le vibrato vient des levres/diaphragme
             // et module SIMULTANEMENT le pitch et l'amplitude (contrairement au violon = pitch pur).
@@ -164,8 +166,8 @@ namespace KotonPluginBrass
             // Amp modulation : proportionnelle au vibrato depth, max ~8% de swing
             float vibAmp = 1f + vibSin * (p.VibratoDepthCents / 30f) * 0.08f;
 
-            // FM 2-op ratio 1:1
-            double inc = _carrierInc * pitchMul;
+            // FM 2-op ratio 1:1 : phase UNIQUE partagee entre porteuse et modulateur
+            double inc = _phaseInc * pitchMul;
 
             // Index de modulation : pilote par velocity, ampEnvelope, brightness et overshoot.
             // baseIdx : steady-state, brightness rehausse (0.4x..1.0x du max).
@@ -174,13 +176,16 @@ namespace KotonPluginBrass
             float overBoost = 1f + _overshootAmount * _overshootEnv;
             float I = baseIdx * overBoost;
 
-            float modOut = (float)Math.Sin(_modPhase);
-            float sample = (float)Math.Sin(_carrierPhase + I * modOut);
+            // Feedback FM sur le modulateur : introduit un leger comportement chaotique / bruit de
+            // pression caracteristique des fortes pressions d'air (grit fortissimo). Proportionnel
+            // a velocity × brightness → nul sur pianissimo doux, marque sur brass fortissimo.
+            float fb = 0.15f * _velocity * p.Brightness;
+            float modOut = (float)Math.Sin(_phase + _prevModOut * fb);
+            _prevModOut = modOut;
+            float sample = (float)Math.Sin(_phase + I * modOut);
 
-            _carrierPhase += inc;
-            _modPhase += inc;
-            if (_carrierPhase > 2 * Math.PI) _carrierPhase -= 2 * Math.PI;
-            if (_modPhase > 2 * Math.PI) _modPhase -= 2 * Math.PI;
+            _phase += inc;
+            if (_phase > 2 * Math.PI) _phase -= 2 * Math.PI;
 
             float outValue = sample * _amp * p.BreathPressure * _velocity * vibAmp;
 
@@ -191,15 +196,6 @@ namespace KotonPluginBrass
                 float alpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 5000f / _sr);
                 _noiseLp += alpha * (raw - _noiseLp);
                 outValue += _noiseLp * p.BreathNoise * _amp * p.BreathPressure * 0.15f;
-            }
-
-            float absOut = Math.Abs(outValue);
-            _peakEnvelope = Math.Max(_peakEnvelope * 0.9998f, absOut);
-            if (_stage == EnvStage.Release && _amp <= 0f && _peakEnvelope < SilenceThreshold)
-            {
-                _active = false;
-                _stage = EnvStage.Idle;
-                return 0f;
             }
 
             return outValue;
