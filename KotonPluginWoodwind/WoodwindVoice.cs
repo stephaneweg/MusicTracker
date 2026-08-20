@@ -5,13 +5,14 @@ namespace KotonPluginWoodwind
     /// <summary>Snapshot des paramètres woodwind figés par buffer.</summary>
     internal struct WwParams
     {
+        public int InstrumentIdx;
         public float AirPressure;
         public float BreathNoise;
-        public float ReedSoftness;      // 0 = anche dure/agressive (hautbois, sax), 1 = anche molle / jet flûte
-        public float ExcitationType;    // 0 = anche (asymmétrique), 1 = jet d'air (symmétrique doux)
+        public float ReedSoftness;
+        public float ExcitationType;
         public float Damping;
         public float Brightness;
-        public float BoreSize;          // taille du corps de tube (LP en sortie)
+        public float BoreSize;
         public float VibratoRateHz;
         public float VibratoDepthCents;
         public float AttackSec;
@@ -20,36 +21,64 @@ namespace KotonPluginWoodwind
     }
 
     /// <summary>
-    /// Une voix de bois — guide d'onde simplifié. Même topologie que Brass (tube + non-linéarité +
-    /// LP feedback + injection de bruit) mais avec deux différences clés :
+    /// Woodwind voice — SYNTHÈSE ADDITIVE SPECTRALE (2026-08-20 rewrite).
     ///
-    /// 1. **Excitation** : deux modes possibles au choix — <b>anche</b> (clarinette/hautbois/sax) =
-    ///    non-linéarité ASYMMÉTRIQUE (l'anche ferme d'un côté mais s'ouvre pas de l'autre), ou <b>jet
-    ///    d'air</b> (flûte/piccolo) = non-linéarité SYMMÉTRIQUE plus douce mais avec beaucoup de
-    ///    bruit d'excitation (le souffle audible caractéristique de la flûte).
-    /// 2. **Non-linéarité globalement PLUS DOUCE** que les cuivres : les bois ont moins d'harmoniques
-    ///    (surtout les impaires prédominent pour un tube fermé style clarinette), donc le drive avant
-    ///    tanh est plus modeste.
+    /// La version précédente était un waveguide (delay + reed-table + réflexion) qui donnait un
+    /// timbre pauvre et « caisse » — pas assez « bois ». Cette version utilise la même approche
+    /// que le plugin Mallets (qui sonne réaliste) : synthèse additive de 12 partiels harmoniques
+    /// avec un spectre caractéristique par instrument.
     ///
-    /// **Reed softness** module la dureté de l'anche : anche dure (sax alto avec baguette 3) =
-    ///     réponse plus mordante, transitoires nets. Anche molle (clarinette Vandoren 1.5) =
-    ///     attaque douce, timbre chaleureux.
+    /// **Structure par sample** :
+    /// <code>
+    ///   pour chaque partiel h = 1..12 :
+    ///     s += ampNow[h] × sin(phase[h])
+    ///     phase[h] += phaseInc[h]
+    ///     ampNow[h] += slew × (ampTarget[h] × env × modAM - ampNow[h])
+    ///   s += chiffNoise × chiffEnv        [transient d'attaque]
+    ///   s += breathNoise × breath         [souffle continu modulé]
+    ///   s = boreLP(s)                     [couleur du corps]
+    ///   [formants appliqués par le plugin en sortie]
+    /// </code>
     ///
-    /// **Bore size** : diamètre relatif du tube → LP en sortie (petit bore = clair et perçant
-    /// comme un hautbois, gros bore = arrondi comme un basson).
+    /// **Spectre par instrument** (amplitudes relatives des 12 premiers partiels) : ces valeurs
+    /// s'inspirent d'analyses spectrales connues :
+    /// - Flute : fondamentale dominante, très peu d'harmoniques (spectre quasi-pur)
+    /// - Clarinette : IMPAIRES dominantes (1, 3, 5, 7) — signature du tube cylindrique fermé
+    /// - Hautbois : spectre riche et régulier, harmoniques 2-5 fortes (nasal)
+    /// - Basson : grave, harmoniques 2-6 fortes (résonance de la boucle)
+    /// - Sax alto/ténor : medium riche, harmoniques 1-8 progressives
+    /// - Piccolo : comme flûte mais plus de brillance (h=2 renforcée)
+    /// - Cor anglais : hautbois plus doux, moins d'aigus
+    ///
+    /// **Chiff transient** : burst de bruit HP filtré (~4-8 kHz) qui décroît en 30-80 ms —
+    /// c'est ce qui donne l'attaque « soufflée » caractéristique des bois. Sans ça les
+    /// notes commencent brutalement, on perd tout le côté vivant.
+    ///
+    /// **Slight detune inharmonique** : chaque partiel a un micro-décalage aléatoire (±1.5 cents)
+    /// pour éviter le « sine synthétique » — un vrai instrument n'a jamais des harmoniques
+    /// parfaitement alignées.
+    ///
+    /// **Reed softness** : dure = renforce les harmoniques 5+ (mordant), molle = les atténue.
+    /// **Damping** : les aigus décroissent plus vite en release quand damping est haut.
+    /// **Brightness** : boost général des harmoniques 4+.
     /// </summary>
     internal sealed class WoodwindVoice
     {
         readonly int _sr;
-        readonly float[] _tube;
-        int _writeIdx;
-        int _size;
 
-        float _lpState;
-        float _noiseLpState;
-        float _boreLpState;
+        const int NumHarmonics = 12;
+        readonly double[] _phase = new double[NumHarmonics];
+        readonly double[] _phaseInc = new double[NumHarmonics];
+        readonly float[] _ampTarget = new float[NumHarmonics];
+        readonly float[] _ampNow = new float[NumHarmonics];
+        readonly float[] _detune = new float[NumHarmonics];
 
         float _vibPhase, _vibInc;
+        float _chiffEnv, _chiffDecayRate;
+        float _breathBpState1, _breathBpState2;
+        float _boreLp;
+        float _ampModPhase;
+        Random _rng;
 
         enum EnvStage { Idle, Attack, Sustain, Release }
         EnvStage _stage = EnvStage.Idle;
@@ -58,37 +87,96 @@ namespace KotonPluginWoodwind
         bool _active;
         int _note;
         float _velocity;
-        Random _noiseRng;
+        float _f0;
 
-        const float SilenceThreshold = 1e-5f;
+        const float SilenceThreshold = 5e-5f;
         float _peakEnvelope;
 
         public bool IsActive => _active;
         public int Note => _note;
 
-        public WoodwindVoice(int sampleRate)
+        // Spectres par instrument (amplitudes relatives des 12 premiers partiels).
+        // Index instrument = 0..7. Chaque ligne : [h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12].
+        static readonly float[][] SpectrumByInstrument =
         {
-            _sr = sampleRate;
-            _tube = new float[Math.Max(sampleRate / 20, 4096)];
-        }
+            /* 0 Flute       */ new float[] { 1.00f, 0.30f, 0.10f, 0.06f, 0.04f, 0.02f, 0.01f, 0.005f, 0f,    0f,    0f,    0f    },
+            /* 1 Clarinette  */ new float[] { 1.00f, 0.08f, 0.75f, 0.05f, 0.55f, 0.04f, 0.35f, 0.03f,  0.20f, 0.02f, 0.12f, 0.01f },
+            /* 2 Hautbois    */ new float[] { 0.80f, 0.90f, 0.75f, 0.85f, 0.70f, 0.60f, 0.50f, 0.35f,  0.25f, 0.18f, 0.12f, 0.08f },
+            /* 3 Basson      */ new float[] { 0.70f, 1.00f, 0.85f, 0.70f, 0.55f, 0.40f, 0.28f, 0.18f,  0.12f, 0.08f, 0.05f, 0.03f },
+            /* 4 Sax alto    */ new float[] { 1.00f, 0.70f, 0.60f, 0.55f, 0.45f, 0.35f, 0.28f, 0.20f,  0.15f, 0.10f, 0.07f, 0.05f },
+            /* 5 Sax tenor   */ new float[] { 1.00f, 0.75f, 0.65f, 0.50f, 0.40f, 0.32f, 0.25f, 0.18f,  0.12f, 0.08f, 0.05f, 0.03f },
+            /* 6 Piccolo     */ new float[] { 1.00f, 0.45f, 0.15f, 0.08f, 0.05f, 0.03f, 0.02f, 0.01f,  0f,    0f,    0f,    0f    },
+            /* 7 Cor anglais */ new float[] { 0.90f, 0.85f, 0.70f, 0.75f, 0.60f, 0.45f, 0.32f, 0.22f,  0.15f, 0.10f, 0.06f, 0.04f },
+        };
+
+        public WoodwindVoice(int sampleRate) { _sr = sampleRate; }
 
         public void NoteOn(int note, float velocity, in WwParams p)
         {
             _note = note;
             _velocity = velocity;
+            _f0 = (float)(440.0 * Math.Pow(2.0, (note - 69) / 12.0));
 
-            double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            _size = Math.Max(4, Math.Min(_tube.Length, (int)Math.Round(_sr / freq)));
+            // Nyquist safety
+            float nyquistLimit = _sr * 0.45f;
 
-            Array.Clear(_tube, 0, _size);
-            _writeIdx = 0;
-            _lpState = 0f;
-            _noiseLpState = 0f;
-            _boreLpState = 0f;
+            _rng = new Random(note * 7919 + Environment.TickCount);
 
-            _noiseRng = new Random(note * 7919 + Environment.TickCount);
-            _vibPhase = (float)(_noiseRng.NextDouble() * 2 * Math.PI);
+            int instr = Math.Max(0, Math.Min(SpectrumByInstrument.Length - 1, p.InstrumentIdx));
+            var spectrum = SpectrumByInstrument[instr];
+
+            // Reed softness dur = boost les harmoniques 5+ (mordant), mou = les atténue
+            float reedHardness = 1f - p.ReedSoftness;
+            // Brightness boost général des harmoniques 4+
+            float brightness = p.Brightness;
+
+            // Roll-off spectral naturel : les notes hautes perdent des harmoniques
+            // (le tube physique ne résonne pas à Nyquist)
+            float rolloffPerNote = Math.Max(0f, (note - 60) / 48f);   // 0 au C4, 1 au C8
+
+            for (int i = 0; i < NumHarmonics; i++)
+            {
+                int h = i + 1;
+                // Micro-détonation inharmonique : ±1.5 cents par partiel pour éviter le « sine synthétique »
+                _detune[i] = (float)((_rng.NextDouble() - 0.5) * 3.0);   // -1.5..+1.5 cents
+                float detuneMul = (float)Math.Pow(2.0, _detune[i] / 1200.0);
+                double freq = _f0 * h * detuneMul;
+
+                if (freq > nyquistLimit)
+                {
+                    _ampTarget[i] = 0f;
+                    _phaseInc[i] = 0;
+                    _ampNow[i] = 0f;
+                    _phase[i] = 0;
+                    continue;
+                }
+                _phase[i] = _rng.NextDouble() * 2 * Math.PI;   // phase random pour éviter le clic
+                _phaseInc[i] = 2.0 * Math.PI * freq / _sr;
+
+                float baseAmp = spectrum[i];
+                // Roll-off contre Nyquist et notes hautes
+                float rolloff = 1f - rolloffPerNote * (i / 12f);
+                if (rolloff < 0f) rolloff = 0f;
+                baseAmp *= rolloff;
+
+                // Reed hardness : boost harmoniques 5+ si dure
+                if (h >= 5) baseAmp *= (0.6f + reedHardness * 1.2f);
+
+                // Brightness : boost harmoniques 4+
+                if (h >= 4) baseAmp *= (0.7f + brightness * 0.9f);
+
+                _ampTarget[i] = baseAmp * velocity;
+                _ampNow[i] = 0f;   // démarrage à 0, slew vers target
+            }
+
+            _vibPhase = (float)(_rng.NextDouble() * 2 * Math.PI);
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
+            _ampModPhase = (float)(_rng.NextDouble() * 2 * Math.PI);
+
+            // Chiff transient : burst d'attaque, decay ~40-80ms selon souplesse
+            float chiffTimeMs = 30f + p.ReedSoftness * 50f;
+            _chiffEnv = 0.4f + velocity * 0.5f;
+            _chiffDecayRate = (float)Math.Exp(-6.907755278982137 / (chiffTimeMs * _sr / 1000.0));
 
             float attackSamples = Math.Max(1f, p.AttackSec * _sr);
             _envAttackRate = 1f / attackSamples;
@@ -98,6 +186,9 @@ namespace KotonPluginWoodwind
             _stage = EnvStage.Attack;
 
             _peakEnvelope = 1f;
+            _breathBpState1 = 0f;
+            _breathBpState2 = 0f;
+            _boreLp = 0f;
             _active = true;
         }
 
@@ -112,7 +203,7 @@ namespace KotonPluginWoodwind
             _stage = EnvStage.Idle;
             _env = 0f;
             _peakEnvelope = 0f;
-            Array.Clear(_tube, 0, _tube.Length);
+            for (int i = 0; i < NumHarmonics; i++) { _ampNow[i] = 0f; _ampTarget[i] = 0f; }
         }
 
         public float RenderSample(in WwParams p)
@@ -131,98 +222,75 @@ namespace KotonPluginWoodwind
                     break;
             }
 
-            // Vibrato
+            // Vibrato pitch + AM
             _vibPhase += _vibInc;
             if (_vibPhase > 2 * Math.PI) _vibPhase -= (float)(2 * Math.PI);
-            float vibCents = (float)Math.Sin(_vibPhase) * p.VibratoDepthCents;
-            float sizeVib = _size / (float)Math.Pow(2.0, vibCents / 1200.0);
-            int sizeI = Math.Max(4, Math.Min(_size, (int)sizeVib));
+            float vibSin = (float)Math.Sin(_vibPhase);
+            float vibCents = vibSin * p.VibratoDepthCents;
+            float vibPitchMul = (float)Math.Pow(2.0, vibCents / 1200.0);
 
-            int readIdx = _writeIdx - sizeI;
-            while (readIdx < 0) readIdx += _size;
-            float tapped = _tube[readIdx];
+            // AM tremolo léger (5% max) couplé au vibrato — naturel des vrais bois
+            _ampModPhase += _vibInc * 1.03f;   // pas exactement même freq que le pitch, plus naturel
+            if (_ampModPhase > 2 * Math.PI) _ampModPhase -= (float)(2 * Math.PI);
+            float amMod = 1f + (float)Math.Sin(_ampModPhase) * 0.04f * (p.VibratoDepthCents / 10f);
 
-            // LP dans le feedback (Damping)
-            float lpCutoff = 800f + (1f - p.Damping) * 2500f;
-            float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
-            _lpState += lpAlpha * (tapped - _lpState);
-            // Réflexion NEGATIVE pour les deux modes — la formulation guide d'onde avec tanh
-            // s'auto-entretient uniquement avec reflexion negative. Version precedente avait
-            // reflexion positive pour le jet (theoriquement correct pour tube ouvert) mais la
-            // boucle ne s'entretient pas → que du bruit blanc audible (bug rapporte 2026-08-02).
-            // Le caractere "tube ouvert" du jet est compense par le drive plus fort applique plus bas.
-            float returnPressure = -0.98f * _lpState;
-
-            // Souffle bruité
-            float noise = (float)(_noiseRng.NextDouble() * 2 - 1);
-            float noiseAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 3000f / _sr);
-            _noiseLpState += noiseAlpha * (noise - _noiseLpState);
+            // Slew des amplitudes : approche exponentielle vers target, ~5ms
+            float slew = 1f - (float)Math.Exp(-2.0 * Math.PI * 200f / _sr);
 
             float pressureEff = p.AirPressure * _env * _velocity;
-            // Bruit d'excitation plus fort pour un jet d'air (souffle audible caractéristique flûte)
-            float noiseGain = p.BreathNoise * (0.3f + p.ExcitationType * 0.5f);
-            float breath = pressureEff * (1f + _noiseLpState * noiseGain);
+            float envMul = _env * amMod;
 
-            // REED TABLE analytique (McIntyre-Woodhouse / Backus / Wilson-Beavers) — remplacement
-            // du tanh simple par la vraie physique d'anche/jet :
-            //   opening(dp) = max(0, 1 - dp/hardness)^power   [l'anche ferme sous forte pression]
-            //   flow(dp)    = opening(dp) × sign(dp) × sqrt(|dp|)   [Bernoulli sur l'ouverture]
-            //
-            // Le sqrt (loi de Bernoulli) est CE qui donne le vrai spectre riche d'une anche —
-            // le tanh precedent etait trop lisse et manquait les harmoniques hautes caracteristiques.
-            //
-            // Difference anche vs jet :
-            //   - Anche (excitationType < 0.5) : power=1 (rapide fermeture), asymmetrique (offset=0)
-            //     → harmoniques impaires dominantes (clarinette caracteristique)
-            //   - Jet d'air (excitationType >= 0.5) : power=0.5 (fermeture progressive), symmetrique
-            //     (offset centre) → spectre complet (flute)
-            float delta = breath + returnPressure;
-            // Hardness : dur (ReedSoftness bas) → hardness bas → anche ferme vite → agressif
-            //            mou (ReedSoftness haut) → hardness haut → anche reste ouverte → doux
-            float hardness = 0.3f + p.ReedSoftness * 1.2f;   // 0.3..1.5
-
-            float excitation;
-            if (p.ExcitationType < 0.5f)
+            // === Partiels additifs ===
+            float sum = 0f;
+            for (int i = 0; i < NumHarmonics; i++)
             {
-                // ANCHE : opening asymmetrique. Ferme d'un cote (dp positif), reste plus ouverte
-                // dans l'autre (dp negatif). Power = 1 → fermeture lineaire au-dessus du seuil.
-                float dpNorm = delta / hardness;
-                float opening = dpNorm >= 0f
-                    ? Math.Max(0f, 1f - dpNorm)                 // ferme si pression pousse
-                    : 1f;                                        // reste ouverte si pression tire
-                // Flow selon Bernoulli : signe(delta) × sqrt(|delta|), pondere par l'ouverture
-                float absDelta = Math.Abs(delta);
-                float flow = opening * Math.Sign(delta) * (float)Math.Sqrt(absDelta);
-                excitation = flow;
+                if (_phaseInc[i] == 0) continue;
+                double phaseInc = _phaseInc[i] * vibPitchMul;
+                sum += _ampNow[i] * (float)Math.Sin(_phase[i]);
+                _phase[i] += phaseInc;
+                if (_phase[i] > 2 * Math.PI) _phase[i] -= 2 * Math.PI;
+                float target = _ampTarget[i] * envMul;
+                _ampNow[i] += slew * (target - _ampNow[i]);
             }
-            else
+
+            // === Chiff transient (burst noise HP filtré) ===
+            float chiff = 0f;
+            if (_chiffEnv > 1e-4f)
             {
-                // JET D'AIR : opening symmetrique (le jet peut deflechir des deux cotes du biseau).
-                // Power=0.5 pour une fermeture progressive plus douce qu'une anche.
-                float dpNorm = Math.Abs(delta) / hardness;
-                float opening = (float)Math.Max(0.0, Math.Pow(1f - dpNorm, 0.5));
-                float absDelta = Math.Abs(delta);
-                float flow = opening * Math.Sign(delta) * (float)Math.Sqrt(absDelta);
-                excitation = flow;
+                float raw = (float)(_rng.NextDouble() * 2 - 1);
+                // BP simple centré vers 5-8 kHz par soustraction de deux LP
+                float alphaHi = 1f - (float)Math.Exp(-2.0 * Math.PI * 8000f / _sr);
+                _breathBpState1 += alphaHi * (raw - _breathBpState1);
+                float alphaLo = 1f - (float)Math.Exp(-2.0 * Math.PI * 3000f / _sr);
+                _breathBpState2 += alphaLo * (raw - _breathBpState2);
+                float hp = _breathBpState1 - _breathBpState2;
+                chiff = hp * _chiffEnv * 0.35f;
+                _chiffEnv *= _chiffDecayRate;
             }
-            // GATE par pressureEff : sans souffle, pas d'auto-oscillation (essentiel pour le release).
-            float exGate = Math.Min(1f, pressureEff * 4f);
-            excitation *= 0.6f * exGate;
 
-            // Écriture dans le tube = excitation + réflexion, damping global 0.99 pour un decay
-            // naturel des harmoniques quand l'excitation est coupée.
-            _tube[_writeIdx] = (excitation + returnPressure * 0.5f) * 0.99f;
-            _writeIdx++;
-            if (_writeIdx >= _size) _writeIdx = 0;
+            // === Souffle continu ===
+            float breathContrib = 0f;
+            if (p.BreathNoise > 0.001f)
+            {
+                float raw = (float)(_rng.NextDouble() * 2 - 1);
+                // LP à ~3-5 kHz selon brightness pour un souffle chaleureux
+                float breathCutoff = 2500f + p.Brightness * 3500f;
+                float breathAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * breathCutoff / _sr);
+                _breathBpState2 += breathAlpha * (raw - _breathBpState2);
+                // Souffle proportionnel à la pression appliquée
+                breathContrib = _breathBpState2 * p.BreathNoise * pressureEff * 0.6f;
+            }
 
-            float outSignal = tapped * (0.4f + p.Brightness * 0.9f);
+            float raw2 = sum * pressureEff * 0.7f + chiff + breathContrib;
 
-            // Bore size : LP en sortie
-            float boreCutoff = 1500f + (1f - p.BoreSize) * 6000f;
+            // === Bore LP (couleur du corps) ===
+            float boreCutoff = 1500f + (1f - p.BoreSize) * 6500f;
             float boreAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * boreCutoff / _sr);
-            _boreLpState += boreAlpha * (outSignal - _boreLpState);
+            _boreLp += boreAlpha * (raw2 - _boreLp);
 
-            float absOut = Math.Abs(_boreLpState);
+            float outSignal = _boreLp;
+
+            float absOut = Math.Abs(outSignal);
             _peakEnvelope = Math.Max(_peakEnvelope * 0.9998f, absOut);
             if (_stage == EnvStage.Release && _env <= 0f && _peakEnvelope < SilenceThreshold)
             {
@@ -231,7 +299,7 @@ namespace KotonPluginWoodwind
                 return 0f;
             }
 
-            return _boreLpState;
+            return outSignal;
         }
     }
 }

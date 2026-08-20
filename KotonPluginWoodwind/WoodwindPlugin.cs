@@ -267,6 +267,7 @@ namespace KotonPluginWoodwind
 
         WwParams ToVoiceParams() => new WwParams
         {
+            InstrumentIdx     = (int)_instrument.Value,
             AirPressure       = (float)_airPressure.Value,
             BreathNoise       = (float)_breathNoise.Value,
             ExcitationType    = (float)_excitationType.Value,
