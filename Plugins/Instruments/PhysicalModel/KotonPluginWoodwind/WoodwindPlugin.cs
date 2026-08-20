@@ -53,9 +53,17 @@ namespace KotonPluginWoodwind
 
         int _sampleRate;
         int _maxBlockSize;
+        // Deux pools de voix : additif (flute/piccolo, quasi-sinusoide) et guide d'onde (clarinette,
+        // sax, hautbois, basson, cor anglais — anche non-lineaire qui saturent naturellement quand
+        // on souffle fort). Selon l'instrument, le NoteOn choisit le pool approprie.
         WoodwindVoice[] _voices;
-        int _stealCursor;
+        ReedWaveguideVoice[] _reedVoices;
+        int _stealCursor, _reedStealCursor;
         const int Polyphony = 8;
+
+        // Retourne true pour clarinette/sax/hautbois/basson/cor anglais (instruments a anche).
+        // Flute (0) et Piccolo (6) restent en additif (leur son quasi-sinusoidal est bien rendu).
+        static bool IsReedInstrument(int idx) => idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 5 || idx == 7;
 
         // Formant filter caractéristique du bois : DEUX peak biquads en série en sortie pour
         // simuler correctement la "voyelle" spectrale de chaque bois. Le vrai timbre nasal du
@@ -142,12 +150,18 @@ namespace KotonPluginWoodwind
             _sampleRate = sampleRate;
             _maxBlockSize = maxBlockSize;
             _voices = new WoodwindVoice[Polyphony];
-            for (int i = 0; i < Polyphony; i++) _voices[i] = new WoodwindVoice(sampleRate);
+            _reedVoices = new ReedWaveguideVoice[Polyphony];
+            for (int i = 0; i < Polyphony; i++)
+            {
+                _voices[i] = new WoodwindVoice(sampleRate);
+                _reedVoices[i] = new ReedWaveguideVoice(sampleRate);
+            }
         }
 
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            if (_reedVoices != null) foreach (var v in _reedVoices) v.Kill();
         }
 
         // =============================================================================================
@@ -159,26 +173,29 @@ namespace KotonPluginWoodwind
             var p = ToVoiceParams();
             float vel = velocity / 127f;
 
-            WoodwindVoice target = null;
-            for (int i = 0; i < _voices.Length; i++)
-                if (_voices[i].IsActive && _voices[i].Note == note) { target = _voices[i]; break; }
-            if (target == null)
-                for (int i = 0; i < _voices.Length; i++) if (!_voices[i].IsActive) { target = _voices[i]; break; }
-            if (target == null)
+            if (IsReedInstrument(p.InstrumentIdx))
             {
-                target = _voices[_stealCursor];
-                _stealCursor = (_stealCursor + 1) % _voices.Length;
-                target.Kill();
+                ReedWaveguideVoice t = null;
+                for (int i = 0; i < _reedVoices.Length; i++) if (_reedVoices[i].IsActive && _reedVoices[i].Note == note) { t = _reedVoices[i]; break; }
+                if (t == null) for (int i = 0; i < _reedVoices.Length; i++) if (!_reedVoices[i].IsActive) { t = _reedVoices[i]; break; }
+                if (t == null) { t = _reedVoices[_reedStealCursor]; _reedStealCursor = (_reedStealCursor + 1) % _reedVoices.Length; t.Kill(); }
+                t.NoteOn(note, vel, p);
             }
-            target.NoteOn(note, vel, p);
+            else
+            {
+                WoodwindVoice t = null;
+                for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) { t = _voices[i]; break; }
+                if (t == null) for (int i = 0; i < _voices.Length; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
+                if (t == null) { t = _voices[_stealCursor]; _stealCursor = (_stealCursor + 1) % _voices.Length; t.Kill(); }
+                t.NoteOn(note, vel, p);
+            }
         }
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
             if (_voices == null) return;
-            for (int i = 0; i < _voices.Length; i++)
-                if (_voices[i].IsActive && _voices[i].Note == note)
-                    _voices[i].NoteOff();
+            for (int i = 0; i < _voices.Length; i++)     if (_voices[i].IsActive     && _voices[i].Note     == note) _voices[i].NoteOff();
+            for (int i = 0; i < _reedVoices.Length; i++) if (_reedVoices[i].IsActive && _reedVoices[i].Note == note) _reedVoices[i].NoteOff();
         }
 
         public void MidiCC(int cc, int value, int sampleOffset = 0)
@@ -220,6 +237,17 @@ namespace KotonPluginWoodwind
                 for (int v = 0; v < _voices.Length; v++)
                 {
                     var voice = _voices[v];
+                    if (!voice.IsActive) continue;
+                    float s = voice.RenderSample(p);
+                    float noteNorm = (voice.Note - 60) / 24f;
+                    if (noteNorm < -1f) noteNorm = -1f; else if (noteNorm > 1f) noteNorm = 1f;
+                    float p01 = 0.5f + noteNorm * width * 0.5f;
+                    sumL += s * (1f - p01);
+                    sumR += s * p01;
+                }
+                for (int v = 0; v < _reedVoices.Length; v++)
+                {
+                    var voice = _reedVoices[v];
                     if (!voice.IsActive) continue;
                     float s = voice.RenderSample(p);
                     float noteNorm = (voice.Note - 60) / 24f;
