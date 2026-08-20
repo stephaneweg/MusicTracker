@@ -28,7 +28,7 @@
                            Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
                 <ComboBox Grid.Column="1" x:Name="InstrumentCombo" Width="220" HorizontalAlignment="Left"
                           SelectionChanged="InstrumentCombo_SelectionChanged"/>
-                <TextBlock Grid.Column="2" Text="Brass · guide d'onde + levres"
+                <TextBlock Grid.Column="2" Text="Brass · FM 2-op + overshoot + formant"
                            Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic"
                            VerticalAlignment="Center"/>
             </Grid>
@@ -61,7 +61,7 @@
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,0,10">
                     <TextBlock Text="Attack" Foreground="{DynamicResource KotonText}"/>
-                    <Slider x:Name="AttackSlider" Minimum="0" Maximum="1" TickFrequency="0.02"/>
+                    <Slider x:Name="AttackSlider" Minimum="0.005" Maximum="0.5" TickFrequency="0.01"/>
                     <TextBlock x:Name="AttackValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
                 <StackPanel Grid.Row="3" Grid.Column="0" Margin="0,0,0,10">
@@ -70,16 +70,16 @@
                     <TextBlock x:Name="ReleaseValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
 
-                <!-- Colonne 2 : COULEUR (lèvres, damping, brightness, bell) -->
+                <!-- Colonne 2 : COULEUR FM (overshoot, index, brightness, damping) -->
                 <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,10">
-                    <TextBlock Text="Lip tension" Foreground="{DynamicResource KotonText}"/>
-                    <Slider x:Name="LipTensionSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
-                    <TextBlock x:Name="LipTensionValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                    <TextBlock Text="Overshoot (attaque)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="OvershootSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="OvershootValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
                 <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,0,10">
-                    <TextBlock Text="Damping" Foreground="{DynamicResource KotonText}"/>
-                    <Slider x:Name="DampingSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
-                    <TextBlock x:Name="DampingValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                    <TextBlock Text="FM max index" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="FmMaxIndexSlider" Minimum="0.5" Maximum="8" TickFrequency="0.25"/>
+                    <TextBlock x:Name="FmMaxIndexValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
                 <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,0,10">
                     <TextBlock Text="Brightness" Foreground="{DynamicResource KotonText}"/>
@@ -87,9 +87,9 @@
                     <TextBlock x:Name="BrightnessValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
                 <StackPanel Grid.Row="3" Grid.Column="2" Margin="0,0,0,10">
-                    <TextBlock Text="Bell size" Foreground="{DynamicResource KotonText}"/>
-                    <Slider x:Name="BellSizeSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
-                    <TextBlock x:Name="BellSizeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                    <TextBlock Text="Damping (overshoot decay)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="DampingSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="DampingValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
 
                 <!-- Colonne 3 : VIBRATO + SORTIE -->

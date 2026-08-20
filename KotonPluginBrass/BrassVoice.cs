@@ -2,15 +2,16 @@ using System;
 
 namespace KotonPluginBrass
 {
-    /// <summary>Snapshot des paramètres brass, figés par buffer.</summary>
+    /// <summary>Snapshot des parametres brass figes par buffer.</summary>
     internal struct BrassParams
     {
-        public float BreathPressure;    // 0..1 → force de l'insufflation (excitation)
-        public float BreathNoise;       // 0..1 → part de bruit dans l'excitation (souffle audible)
-        public float LipTension;        // 0..1 → non-linéarité des lèvres (doux → agressif/screaming)
-        public float Damping;           // 0..1 → LP feedback dans le tube (color de la queue)
-        public float Brightness;        // 0..1 → gain global sur les hautes (compensation LP)
-        public float BellSize;          // 0..1 → filtre passe-bas en sortie (pavillon petit vs gros)
+        public int   InstrumentIdx;      // 0=Trompette 1=Cor 2=Trombone 3=Tuba (info : le plugin l'utilise pour le formant)
+        public float BreathPressure;     // 0..1 : amplitude generale de la voix
+        public float BreathNoise;        // 0..1 : noise additif proportionnel au souffle
+        public float Overshoot;          // 0..1 : intensite du pic initial d'index (20-40 ms apres attack)
+        public float FmMaxIndex;         // 0..8 : index FM max (pilote par vel x envelope)
+        public float Brightness;         // 0..1 : offset general de l'index (plus haut = plus brillant en steady state)
+        public float Damping;            // 0..1 : rapidite du decay de l'overshoot (0 = decay lent, 1 = rapide)
         public float VibratoRateHz;
         public float VibratoDepthCents;
         public float AttackSec;
@@ -19,58 +20,61 @@ namespace KotonPluginBrass
     }
 
     /// <summary>
-    /// Une voix de cuivre — modèle physique par guide d'onde simplifié. Un tube unidimensionnel
-    /// (ligne à retard) avec une non-linéarité "lèvres" à l'embouchure : la pression du souffle
-    /// module l'ouverture des lèvres qui réinjecte dans le tube, créant une auto-oscillation à
-    /// la fréquence de résonance du tube.
+    /// Voix cuivre — synthese FM 2 operateurs ratio 1:1 (approche recommandee pour les cuivres,
+    /// popularisee par le Yamaha DX7). La refonte 2026-08-21 remplace le waveguide tube+lip du
+    /// modele physique (jamais vraiment realiste) par une synthese FM plus efficace et plus
+    /// controlable.
     ///
-    /// **Implémentation** :
-    /// - Ligne à retard de longueur N = SR/f (une période fondamentale)
-    /// - Feedback avec LP (mort progressive des aigus, damping)
-    /// - Non-linéarité tanh sur la boucle (les lèvres compressent le signal) modulée par
-    ///   BreathPressure × envelope
-    /// - Injection continue : bruit filtré (souffle) + composante DC (pression stable)
-    /// - LipTension amplifie la non-linéarité (dur = attack agressive, cuivré / doux = mellow)
-    /// - Bell size = LP en sortie (petit pavillon = mordant, gros = arrondi)
+    /// **Principe** :
+    ///   output = sin(carrier_phase + I(t) * sin(modulator_phase))
+    ///   avec carrier_freq = modulator_freq = f0 (ratio 1:1)
     ///
-    /// **Différence avec un vrai modèle de cuivre** (Cook 2002, Adachi-Sato 1996) : ici on utilise
-    /// une non-linéarité algorithmique simple (tanh) au lieu de résoudre l'équation de Bernoulli
-    /// sur les lèvres. Ça marche moins bien pour les transitoires d'attaque (le "brûle" du démarrage
-    /// d'un cuivre naturel) mais reste très musical et facile à contrôler.
+    /// La modulation cree des SIDEBANDS a chaque n × f0 : plus l'index I augmente, plus les
+    /// harmoniques hautes apparaissent → le son devient "cuivre" (crenele riche). Un cuivre joue
+    /// pianissimo (I ~ 0.3) sonne presque sinus doux ; joue fortissimo (I ~ 6) devient franchement
+    /// brass avec toute la brillance.
+    ///
+    /// **Overshoot d'attaque** : quand un cuivriste demarre une note, la pression d'air initiale
+    /// depasse la pression de croisiere → l'index FM fait un pic de 20-40 ms puis retombe vers le
+    /// steady state. C'est L'INGREDIENT qui donne le "wah" caracteristique d'un cuivre. Modelise
+    /// par une enveloppe secondaire (_overshootEnv) qui multiplie l'index pendant la fin d'attaque
+    /// et decroit exponentiellement.
+    ///
+    /// **Velocity tracking** : l'index est pilote par velocity × ampEnvelope × Brightness. Vel
+    /// bas = son doux/rond, vel eleve = son incisif/agressif.
+    ///
+    /// Le plugin ajoute par-dessus le FORMANT DE PAVILLON (bandpass biquad par instrument) qui
+    /// donne la signature vocale specifique (trompette = 1500-2000 Hz, cor = 500 Hz, etc.).
     /// </summary>
     internal sealed class BrassVoice
     {
         readonly int _sr;
-        readonly float[] _tube;
-        int _writeIdx;
-        int _size;
-
-        float _lpState;
-        float _noiseLpState;
-        float _bellLpStateL, _bellLpStateR;
+        double _carrierPhase, _modPhase;
+        double _carrierInc;
 
         float _vibPhase, _vibInc;
+        Random _rng;
+        float _noiseLp;
 
         enum EnvStage { Idle, Attack, Sustain, Release }
         EnvStage _stage = EnvStage.Idle;
-        float _env, _envAttackRate, _envReleaseRate;
+        float _amp;
+        float _ampAttackRate, _ampReleaseRate;
+
+        // Overshoot : env secondaire, 1 au NoteOn puis decay exp vers 0 apres attack complete
+        float _overshootEnv;
+        float _overshootRate;
+        float _overshootAmount;
+
+        // Pitch envelope d'attaque : la note demarre ~15 cents trop bas puis se stabilise en ~40 ms.
+        // C'est le "growl" caracteristique d'un cuivriste qui trouve la note en soufflant. Decay exp
+        // du bend vers 0 (semitones = 0).
+        float _pitchBendCents;    // fige au NoteOn, decroit vers 0
+        float _pitchBendRate;
 
         bool _active;
         int _note;
         float _velocity;
-        Random _noiseRng;
-
-        // 2-mass lip model (Adachi-Sato 1996) : deux masses (superieure + inferieure) reliees par
-        // ressort+friction, alimentees par la difference de pression bouche-tube. Vraie physique
-        // des levres qui vibrent — donne l'attaque "buzz" progressive et la stabilisation
-        // harmonique naturelle qu'un simple tanh ne peut pas reproduire.
-        float _lipY1, _lipY1v;   // position + vitesse masse superieure
-        float _lipY2, _lipY2v;   // position + vitesse masse inferieure
-        // Frequence de resonance des levres (~fondamentale de la note, avec un peu de bias
-        // selon la tension). Rigidite = m × omega² ; friction ~ 2 × zeta × omega × m.
-        float _lipOmega;
-        float _lipDamping;
-        float _lipMass;   // = 1.0 par convention, absorbe dans les autres coeffs
 
         const float SilenceThreshold = 1e-5f;
         float _peakEnvelope;
@@ -78,52 +82,38 @@ namespace KotonPluginBrass
         public bool IsActive => _active;
         public int Note => _note;
 
-        public BrassVoice(int sampleRate)
-        {
-            _sr = sampleRate;
-            _tube = new float[Math.Max(sampleRate / 20, 4096)];
-        }
+        public BrassVoice(int sampleRate) { _sr = sampleRate; }
 
         public void NoteOn(int note, float velocity, in BrassParams p)
         {
             _note = note;
             _velocity = velocity;
-
             double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            _size = Math.Max(4, Math.Min(_tube.Length, (int)Math.Round(_sr / freq)));
-
-            Array.Clear(_tube, 0, _size);
-            _writeIdx = 0;
-            _lpState = 0f;
-            _noiseLpState = 0f;
-            _bellLpStateL = _bellLpStateR = 0f;
-
-            _noiseRng = new Random(note * 7919 + Environment.TickCount);
-            _vibPhase = (float)(_noiseRng.NextDouble() * 2 * Math.PI);
+            _carrierInc = 2.0 * Math.PI * freq / _sr;
+            _carrierPhase = 0;
+            _modPhase = 0;
+            _rng = new Random(note * 7919 + Environment.TickCount);
+            _vibPhase = (float)(_rng.NextDouble() * 2 * Math.PI);
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
+            _noiseLp = 0f;
 
-            // Setup 2-mass lip model : la frequence de resonance des levres doit etre proche de
-            // la fondamentale du tube pour que l'oscillation s'installe (lock-in acoustique reel).
-            // LipTension biaise legerement pour permettre le "pitch bend par levres" que fait un
-            // vrai trompettiste (accroche l'harmonique voulu du tube).
-            double lipFreq = freq * (0.9 + p.LipTension * 0.2);   // 0.9×..1.1× freq du tube
-            _lipOmega = (float)(2.0 * Math.PI * lipFreq / _sr);
-            // Damping (zeta) : dur = damping bas = lock-in rapide et agressif ; mou = damping haut =
-            // lock-in progressif doux. Typiquement 0.05..0.3 pour des levres.
-            _lipDamping = 0.30f - p.LipTension * 0.22f;
-            _lipMass = 1f;
-            // Kickstart : petite deflection initiale pour amorcer l'oscillation
-            _lipY1 = 0.01f;
-            _lipY2 = -0.01f;
-            _lipY1v = 0f;
-            _lipY2v = 0f;
-
-            float attackSamples = Math.Max(1f, p.AttackSec * _sr);
-            _envAttackRate = 1f / attackSamples;
-            float releaseSamples = Math.Max(1f, p.ReleaseSec * _sr);
-            _envReleaseRate = 1f / releaseSamples;
-            _env = 0f;
+            float attSamples = Math.Max(1f, p.AttackSec * _sr);
+            _ampAttackRate = 1f / attSamples;
+            float relSamples = Math.Max(1f, p.ReleaseSec * _sr);
+            _ampReleaseRate = 1f / relSamples;
+            _amp = 0f;
             _stage = EnvStage.Attack;
+
+            // Overshoot decay : 15 ms (dur, damp=1) a 60 ms (long, damp=0)
+            float overshootMs = 60f - p.Damping * 45f;
+            _overshootRate = (float)Math.Exp(-1.0 / (overshootMs * _sr / 1000.0));
+            _overshootEnv = 1f;
+            _overshootAmount = p.Overshoot;
+
+            // Pitch envelope d'attaque : proportionnelle a velocity (jouer fort = bend plus marque)
+            // et a overshoot (relie a l'intensite de l'attaque). Decay exp ~40 ms.
+            _pitchBendCents = -18f * velocity * p.Overshoot;
+            _pitchBendRate = (float)Math.Exp(-1.0 / (0.040 * _sr));
 
             _peakEnvelope = 1f;
             _active = true;
@@ -138,9 +128,9 @@ namespace KotonPluginBrass
         {
             _active = false;
             _stage = EnvStage.Idle;
-            _env = 0f;
+            _amp = 0f;
+            _overshootEnv = 0f;
             _peakEnvelope = 0f;
-            Array.Clear(_tube, 0, _tube.Length);
         }
 
         public float RenderSample(in BrassParams p)
@@ -150,106 +140,69 @@ namespace KotonPluginBrass
             switch (_stage)
             {
                 case EnvStage.Attack:
-                    _env += _envAttackRate;
-                    if (_env >= 1f) { _env = 1f; _stage = EnvStage.Sustain; }
+                    _amp += _ampAttackRate;
+                    if (_amp >= 1f) { _amp = 1f; _stage = EnvStage.Sustain; }
                     break;
                 case EnvStage.Release:
-                    _env -= _envReleaseRate;
-                    if (_env <= 0f) _env = 0f;
+                    _amp -= _ampReleaseRate;
+                    if (_amp <= 0f) _amp = 0f;
                     break;
             }
 
-            // Vibrato : longueur de délai modulée
+            // L'overshoot commence a decroitre des l'attack terminee
+            if (_stage != EnvStage.Attack) _overshootEnv *= _overshootRate;
+
+            // Vibrato couple pitch + amp : sur un cuivre, le vibrato vient des levres/diaphragme
+            // et module SIMULTANEMENT le pitch et l'amplitude (contrairement au violon = pitch pur).
             _vibPhase += _vibInc;
             if (_vibPhase > 2 * Math.PI) _vibPhase -= (float)(2 * Math.PI);
-            float vibCents = (float)Math.Sin(_vibPhase) * p.VibratoDepthCents;
-            float sizeVib = _size / (float)Math.Pow(2.0, vibCents / 1200.0);
-            int sizeI = Math.Max(4, Math.Min(_size, (int)sizeVib));
+            float vibSin = (float)Math.Sin(_vibPhase);
+            float vibCents = vibSin * p.VibratoDepthCents;
+            // Pitch bend d'attaque decroit exp vers 0
+            _pitchBendCents *= _pitchBendRate;
+            double pitchMul = Math.Pow(2.0, (vibCents + _pitchBendCents) / 1200.0);
+            // Amp modulation : proportionnelle au vibrato depth, max ~8% de swing
+            float vibAmp = 1f + vibSin * (p.VibratoDepthCents / 30f) * 0.08f;
 
-            // Lecture au bout du tube = pression réfléchie
-            int readIdx = _writeIdx - sizeI;
-            while (readIdx < 0) readIdx += _size;
-            float tapped = _tube[readIdx];
+            // FM 2-op ratio 1:1
+            double inc = _carrierInc * pitchMul;
 
-            // Filtre LP dans la boucle (le tube absorbe les aigus au retour)
-            float lpCutoff = 800f + (1f - p.Damping) * 3000f;
-            float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
-            _lpState += lpAlpha * (tapped - _lpState);
-            // Réflexion négative aux lèvres (tube fermé) avec petit damping global (0.995 = ~-0.04dB par aller-retour)
-            float returnPressure = -0.995f * _lpState;
+            // Index de modulation : pilote par velocity, ampEnvelope, brightness et overshoot.
+            // baseIdx : steady-state, brightness rehausse (0.4x..1.0x du max).
+            // overshoot : bonus multiplicatif 0..+overshootAmount au tout debut.
+            float baseIdx = p.FmMaxIndex * (0.4f + p.Brightness * 0.6f) * _velocity * _amp;
+            float overBoost = 1f + _overshootAmount * _overshootEnv;
+            float I = baseIdx * overBoost;
 
-            // Souffle : bruit blanc filtré LP à 4000 Hz
-            float noise = (float)(_noiseRng.NextDouble() * 2 - 1);
-            float noiseAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 4000f / _sr);
-            _noiseLpState += noiseAlpha * (noise - _noiseLpState);
+            float modOut = (float)Math.Sin(_modPhase);
+            float sample = (float)Math.Sin(_carrierPhase + I * modOut);
 
-            // Pression du souffle (insufflation continue) — modulée par l'enveloppe et la vélocité,
-            // bruit ajouté selon BreathNoise (composante audible du souffle).
-            float pressureEff = p.BreathPressure * _env * _velocity;
-            float breath = pressureEff * (1f + _noiseLpState * p.BreathNoise * 0.5f);
+            _carrierPhase += inc;
+            _modPhase += inc;
+            if (_carrierPhase > 2 * Math.PI) _carrierPhase -= 2 * Math.PI;
+            if (_modPhase > 2 * Math.PI) _modPhase -= 2 * Math.PI;
 
-            // 2-MASS LIP MODEL (Adachi-Sato 1996) — vraie physique des levres qui vibrent.
-            // Deux masses reliees par ressort+friction, alimentees par la difference de pression :
-            //   m·ÿ1 + r·ẏ1 + k·y1 = P_bouche - P_tube - offset1
-            //   m·ÿ2 + r·ẏ2 + k·y2 = P_bouche - P_tube + offset2
-            // Les deux masses oscillent en opposition (haut = ouvre, bas = ferme), leur difference
-            // module l'ouverture des levres. Beaucoup plus riche qu'un tanh — donne l'attaque
-            // "buzz" progressif naturel + la possibilite de crack sur souffle excessif.
-            float delta = breath + returnPressure;
-            // Force appliquee : difference de pression module la pression alveolaire des levres
-            // (le vrai driver physique). Positive = pousse ouverture, negative = tire vers fermeture.
-            float force = delta * 3f;
+            float outValue = sample * _amp * p.BreathPressure * _velocity * vibAmp;
 
-            // Integration Euler explicite (dt = 1 sample) sur les 2 masses.
-            // Systeme masse-ressort-friction : ẋ = v ; v̇ = -omega²·x - 2·zeta·omega·v + F/m
-            float k = _lipOmega * _lipOmega;   // rigidite (omega² × m, m=1)
-            float rDamp = 2f * _lipDamping * _lipOmega;   // friction
+            // Breath noise additif proportionnel au volume (le souffle audible du cuivriste)
+            if (p.BreathNoise > 0.001f)
+            {
+                float raw = (float)(_rng.NextDouble() * 2 - 1);
+                float alpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 5000f / _sr);
+                _noiseLp += alpha * (raw - _noiseLp);
+                outValue += _noiseLp * p.BreathNoise * _amp * p.BreathPressure * 0.15f;
+            }
 
-            // Masse 1 (superieure) : reçoit +force et un petit offset qui la garde legerement fermee au repos
-            float acc1 = -k * (_lipY1 - 0.1f) - rDamp * _lipY1v + force / _lipMass;
-            _lipY1v += acc1;
-            _lipY1  += _lipY1v;
-
-            // Masse 2 (inferieure) : reçoit -force et un offset symmetrique
-            float acc2 = -k * (_lipY2 + 0.1f) - rDamp * _lipY2v - force / _lipMass;
-            _lipY2v += acc2;
-            _lipY2  += _lipY2v;
-
-            // Ouverture = distance entre les 2 masses, clampee a >=0 (si masses se croisent = ferme)
-            float lipOpening = Math.Max(0f, (_lipY1 - _lipY2 + 0.3f) * 0.4f);
-            if (lipOpening > 2f) lipOpening = 2f;   // saturation physique
-
-            // Flow = opening × sign(delta) × sqrt(|delta|) selon Bernoulli
-            float absDelta = Math.Abs(delta);
-            float lipsAction = lipOpening * Math.Sign(delta) * (float)Math.Sqrt(absDelta) * 0.4f;
-            // GATE par pressureEff (comme avant) pour couper le release
-            float lipsGate = Math.Min(1f, pressureEff * 4f);
-            lipsAction *= lipsGate;
-
-            // Écriture dans le tube : action des lèvres + réflexion. Damping global 0.995.
-            _tube[_writeIdx] = (lipsAction + returnPressure * 0.5f) * 0.995f;
-            _writeIdx++;
-            if (_writeIdx >= _size) _writeIdx = 0;
-
-            // Sortie audio = pression au niveau du pavillon (= tap, la pression sortant du tube)
-            float outSignal = tapped * (0.5f + p.Brightness * 0.8f);
-
-            // Bell size : LP en sortie (petit pavillon = mordant, gros = arrondi)
-            float bellCutoff = 1500f + (1f - p.BellSize) * 6500f;
-            float bellAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * bellCutoff / _sr);
-            _bellLpStateL += bellAlpha * (outSignal - _bellLpStateL);
-
-            // Détection d'énergie pour libération
-            float absOut = Math.Abs(_bellLpStateL);
+            float absOut = Math.Abs(outValue);
             _peakEnvelope = Math.Max(_peakEnvelope * 0.9998f, absOut);
-            if (_stage == EnvStage.Release && _env <= 0f && _peakEnvelope < SilenceThreshold)
+            if (_stage == EnvStage.Release && _amp <= 0f && _peakEnvelope < SilenceThreshold)
             {
                 _active = false;
                 _stage = EnvStage.Idle;
                 return 0f;
             }
 
-            return _bellLpStateL;
+            return outValue;
         }
     }
 }

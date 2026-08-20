@@ -32,10 +32,10 @@ namespace KotonPluginBrass
         {
             Wire(BreathPressureSlider, BreathPressureValue, "breath_pressure", v => v.ToString("F2"));
             Wire(BreathNoiseSlider,    BreathNoiseValue,    "breath_noise",    v => v.ToString("F2"));
-            Wire(LipTensionSlider,     LipTensionValue,     "lip_tension",     v => v.ToString("F2"));
-            Wire(DampingSlider,        DampingValue,        "damping",         v => v.ToString("F2"));
+            Wire(OvershootSlider,      OvershootValue,      "overshoot",       v => v.ToString("F2"));
+            Wire(FmMaxIndexSlider,     FmMaxIndexValue,     "fm_max_index",    v => v.ToString("F1"));
             Wire(BrightnessSlider,     BrightnessValue,     "brightness",      v => v.ToString("F2"));
-            Wire(BellSizeSlider,       BellSizeValue,       "bell_size",       v => v.ToString("F2"));
+            Wire(DampingSlider,        DampingValue,        "damping",         v => v.ToString("F2"));
             Wire(VibratoRateSlider,    VibratoRateValue,    "vibrato_rate",    v => v.ToString("F1") + " Hz");
             Wire(VibratoDepthSlider,   VibratoDepthValue,   "vibrato_depth",   v => v.ToString("F0") + " ct");
             Wire(AttackSlider,         AttackValue,         "attack_time",     v => v.ToString("F2") + " s");
@@ -64,10 +64,10 @@ namespace KotonPluginBrass
                     case "instrument":       InstrumentCombo.SelectedIndex = (int)kp.Value; break;
                     case "breath_pressure":  BreathPressureSlider.Value = kp.Value; BreathPressureValue.Text = kp.Value.ToString("F2"); break;
                     case "breath_noise":     BreathNoiseSlider.Value    = kp.Value; BreathNoiseValue.Text    = kp.Value.ToString("F2"); break;
-                    case "lip_tension":      LipTensionSlider.Value     = kp.Value; LipTensionValue.Text     = kp.Value.ToString("F2"); break;
-                    case "damping":          DampingSlider.Value        = kp.Value; DampingValue.Text        = kp.Value.ToString("F2"); break;
+                    case "overshoot":        OvershootSlider.Value      = kp.Value; OvershootValue.Text      = kp.Value.ToString("F2"); break;
+                    case "fm_max_index":     FmMaxIndexSlider.Value     = kp.Value; FmMaxIndexValue.Text     = kp.Value.ToString("F1"); break;
                     case "brightness":       BrightnessSlider.Value     = kp.Value; BrightnessValue.Text     = kp.Value.ToString("F2"); break;
-                    case "bell_size":        BellSizeSlider.Value       = kp.Value; BellSizeValue.Text       = kp.Value.ToString("F2"); break;
+                    case "damping":          DampingSlider.Value        = kp.Value; DampingValue.Text        = kp.Value.ToString("F2"); break;
                     case "vibrato_rate":     VibratoRateSlider.Value    = kp.Value; VibratoRateValue.Text    = kp.Value.ToString("F1") + " Hz"; break;
                     case "vibrato_depth":    VibratoDepthSlider.Value   = kp.Value; VibratoDepthValue.Text   = kp.Value.ToString("F0") + " ct"; break;
                     case "attack_time":      AttackSlider.Value         = kp.Value; AttackValue.Text         = kp.Value.ToString("F2") + " s"; break;

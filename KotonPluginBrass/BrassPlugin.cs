@@ -47,17 +47,17 @@ namespace KotonPluginBrass
         // =============================================================================================
         // Paramètres
         // =============================================================================================
-        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",      0, 6, 0);
-        readonly KotonParameter _breathPressure = new KotonParameter("breath_pressure",  "Breath pressure", 0.0, 1.0, 0.55);
-        readonly KotonParameter _breathNoise    = new KotonParameter("breath_noise",     "Breath noise",    0.0, 1.0, 0.20);
-        readonly KotonParameter _lipTension     = new KotonParameter("lip_tension",      "Lip tension",     0.0, 1.0, 0.50);
+        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",      0, 3, 0);
+        readonly KotonParameter _breathPressure = new KotonParameter("breath_pressure",  "Breath pressure", 0.0, 1.0, 0.65);
+        readonly KotonParameter _breathNoise    = new KotonParameter("breath_noise",     "Breath noise",    0.0, 1.0, 0.15);
+        readonly KotonParameter _overshoot      = new KotonParameter("overshoot",        "Overshoot",       0.0, 1.0, 0.60);
+        readonly KotonParameter _fmMaxIndex     = new KotonParameter("fm_max_index",     "FM max index",    0.5, 8.0, 6.0);
+        readonly KotonParameter _brightness     = new KotonParameter("brightness",       "Brightness",      0.0, 1.0, 0.70);
         readonly KotonParameter _damping        = new KotonParameter("damping",          "Damping",         0.0, 1.0, 0.35);
-        readonly KotonParameter _brightness     = new KotonParameter("brightness",       "Brightness",      0.0, 1.0, 0.55);
-        readonly KotonParameter _bellSize       = new KotonParameter("bell_size",        "Bell size",       0.0, 1.0, 0.40);
         readonly KotonParameter _vibratoRate    = new KotonParameter("vibrato_rate",     "Vibrato rate",    0.0, 8.0, 4.5, "Hz");
         readonly KotonParameter _vibratoDepth   = new KotonParameter("vibrato_depth",    "Vibrato depth",   0.0, 30.0, 6.0, "ct");
-        readonly KotonParameter _attackTime     = new KotonParameter("attack_time",      "Attack",          0.0, 1.0, 0.08, "s");
-        readonly KotonParameter _releaseTime    = new KotonParameter("release_time",     "Release",         0.0, 1.5, 0.15, "s");
+        readonly KotonParameter _attackTime     = new KotonParameter("attack_time",      "Attack",          0.005, 0.5, 0.020, "s");
+        readonly KotonParameter _releaseTime    = new KotonParameter("release_time",     "Release",         0.02, 1.5, 0.15, "s");
         readonly KotonParameter _stereoWidth    = new KotonParameter("stereo_width",     "Stereo width",    0.0, 1.0, 0.30);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",           "Volume",          -30.0, 6.0, -6.0, "dB");
 
@@ -80,23 +80,22 @@ namespace KotonPluginBrass
 
         // Table par instrument : (freq Hz, Q, gain dB). Approximation des mesures acoustiques
         // réelles des cuivres (Fletcher & Rossing "Physics of Musical Instruments").
+        // Formant de PAVILLON par instrument (mesures Fletcher & Rossing, plage recommandee par
+        // l'approche FM Gemini). Peak biquad applique en sortie du mix.
         static readonly (float freq, float q, float gainDb)[] FormantByInstrument = new (float, float, float)[]
         {
-            /* Trompette      */ (1500f, 2.0f, 7f),
-            /* Trombone       */ ( 700f, 2.0f, 5f),
-            /* Cor d'harmonie */ ( 450f, 2.2f, 6f),
-            /* Tuba           */ ( 200f, 1.8f, 7f),
-            /* Bugle doux     */ ( 800f, 1.2f, 3f),
-            /* Fanfare        */ (2000f, 3.0f, 9f),
-            /* Section unison */ (1200f, 1.0f, 3f),
+            /* 0 Trompette */ (1800f, 2.0f, 8f),   // 1.2-2.5 kHz : incisif/brillant
+            /* 1 Cor       */ ( 600f, 2.0f, 5f),   // 400-800 Hz : chaud/rond/veloute
+            /* 2 Trombone  */ ( 900f, 2.0f, 6f),   // 600-1200 Hz : puissant/mediator
+            /* 3 Tuba      */ ( 300f, 1.8f, 7f),   // 200-400 Hz : profond/massif
         };
 
         public BrassPlugin()
         {
             _params = new List<KotonParameter>
             {
-                _instrument, _breathPressure, _breathNoise, _lipTension,
-                _damping, _brightness, _bellSize,
+                _instrument, _breathPressure, _breathNoise, _overshoot, _fmMaxIndex,
+                _brightness, _damping,
                 _vibratoRate, _vibratoDepth, _attackTime, _releaseTime,
                 _stereoWidth, _volumeDb,
             };
@@ -110,20 +109,17 @@ namespace KotonPluginBrass
         // =============================================================================================
         public static readonly string[] InstrumentNames =
         {
-            "Trompette", "Trombone", "Cor d'harmonie", "Tuba",
-            "Bugle doux", "Cuivres fanfare", "Section unison",
+            "Trompette", "Cor", "Trombone", "Tuba",
         };
 
+        // Valeurs preset selon recommandations Gemini (attack/index/formant) + ajustements
+        //                        breath brNoi overs fmMax bright damp vibR vibD  attk    rel   wid volDb
         static readonly double[,] PresetValues =
         {
-            //          breath brNoi lipT damp brgh bell vibR vibD attk rel  width vol
-            /*Trompette*/{ 0.60, 0.18, 0.65, 0.30, 0.65, 0.35, 5.0, 8.0, 0.06, 0.15, 0.20, -6.0 },
-            /*Trombone*/ { 0.55, 0.22, 0.55, 0.35, 0.55, 0.45, 4.5, 6.0, 0.09, 0.20, 0.20, -5.0 },
-            /*Cor*/      { 0.45, 0.15, 0.35, 0.30, 0.45, 0.60, 4.0, 5.0, 0.12, 0.25, 0.15, -6.0 },
-            /*Tuba*/     { 0.65, 0.25, 0.30, 0.45, 0.35, 0.85, 3.5, 4.0, 0.15, 0.30, 0.10, -4.0 },
-            /*Bugle*/    { 0.40, 0.20, 0.25, 0.40, 0.50, 0.55, 4.0, 8.0, 0.20, 0.35, 0.15, -6.0 },
-            /*Fanfare*/  { 0.85, 0.30, 0.85, 0.25, 0.75, 0.30, 5.5, 12.0, 0.03, 0.10, 0.30, -3.0 },
-            /*Section*/  { 0.60, 0.20, 0.55, 0.35, 0.60, 0.45, 4.8, 7.0, 0.10, 0.25, 0.75, -5.0 },
+            /* 0 Trompette */    { 0.65, 0.15, 0.70, 6.0,  0.80,  0.35, 5.0, 8.0,  0.015, 0.15, 0.20, -6.0 },
+            /* 1 Cor       */    { 0.55, 0.10, 0.35, 3.0,  0.55,  0.30, 4.0, 5.0,  0.060, 0.30, 0.15, -6.0 },
+            /* 2 Trombone  */    { 0.60, 0.15, 0.55, 5.0,  0.70,  0.30, 4.5, 6.0,  0.025, 0.25, 0.20, -5.0 },
+            /* 3 Tuba      */    { 0.70, 0.20, 0.30, 2.5,  0.35,  0.40, 3.5, 4.0,  0.075, 0.35, 0.10, -4.0 },
         };
 
         public void ApplyInstrumentDefaults(int index)
@@ -131,10 +127,10 @@ namespace KotonPluginBrass
             if (index < 0 || index >= PresetValues.GetLength(0)) return;
             _breathPressure.Value = PresetValues[index, 0];
             _breathNoise.Value    = PresetValues[index, 1];
-            _lipTension.Value     = PresetValues[index, 2];
-            _damping.Value        = PresetValues[index, 3];
+            _overshoot.Value      = PresetValues[index, 2];
+            _fmMaxIndex.Value     = PresetValues[index, 3];
             _brightness.Value     = PresetValues[index, 4];
-            _bellSize.Value       = PresetValues[index, 5];
+            _damping.Value        = PresetValues[index, 5];
             _vibratoRate.Value    = PresetValues[index, 6];
             _vibratoDepth.Value   = PresetValues[index, 7];
             _attackTime.Value     = PresetValues[index, 8];
@@ -272,12 +268,13 @@ namespace KotonPluginBrass
 
         BrassParams ToVoiceParams() => new BrassParams
         {
+            InstrumentIdx     = (int)_instrument.Value,
             BreathPressure    = (float)_breathPressure.Value,
             BreathNoise       = (float)_breathNoise.Value,
-            LipTension        = (float)_lipTension.Value,
-            Damping           = (float)_damping.Value,
+            Overshoot         = (float)_overshoot.Value,
+            FmMaxIndex        = (float)_fmMaxIndex.Value,
             Brightness        = (float)_brightness.Value,
-            BellSize          = (float)_bellSize.Value,
+            Damping           = (float)_damping.Value,
             VibratoRateHz     = (float)_vibratoRate.Value,
             VibratoDepthCents = (float)_vibratoDepth.Value,
             AttackSec         = (float)_attackTime.Value,
