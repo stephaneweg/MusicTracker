@@ -47,43 +47,59 @@ namespace KotonPluginPiano
             _buf = new float[Math.Max(sampleRate / 20, 4096)];
         }
 
-        public void Pluck(int note, float velocity, float detuneCents, PianoParams p, Random rng)
+        public void Strike(int note, float velocity, float detuneCents, PianoParams p, Random rng)
         {
             _velocity = velocity;
             double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
             if (detuneCents != 0f) freq *= Math.Pow(2.0, detuneCents / 1200.0);
             _size = Math.Max(4, Math.Min(_buf.Length, (int)Math.Round(_sr / freq)));
 
-            // Excitation : bruit blanc
-            for (int i = 0; i < _size; i++) _buf[i] = (float)(rng.NextDouble() * 2.0 - 1.0);
+            // === EXCITATION "MARTEAU FEUTRE" (pas pluck) =========================================
+            // Un vrai piano n'est PAS excite par une impulsion instantanee (comme un pluck) : le
+            // marteau reste en CONTACT avec la corde pendant 2-6 ms (feutre dur -> court, mou -> long)
+            // et applique une FORCE en cloche pendant ce temps. Consequences audibles :
+            //   1. Le contenu spectral de l'excitation est FORTEMENT low-pass (le contact prolonge =
+            //      filtre naturel), donc peu d'aigus dans l'attaque = son "mat" pas "clic".
+            //   2. L'energie n'est pas repartie uniformement sur la periode fondamentale : elle est
+            //      CONCENTREE dans les premiers samples (le contact marteau) puis decroit vite.
+            //   3. Pas de comb pluck-position — le marteau distribue l'energie sur une largeur
+            //      physique de contact, pas un point comme un mediator.
+            //
+            // Implementation :
+            //  a) LP FORT sur le bruit d'excitation (cutoff 300-1500 Hz selon hardness × velocity).
+            //  b) Enveloppe temporelle EXPONENTIELLE decroissante appliquee au buffer (temps de
+            //     decroissance principal 15-40 ms) → concentre l'energie dans l'attaque.
+            //  c) Petit fade-in de contact 1-3 ms au tout debut (le marteau touche puis appuie) pour
+            //     supprimer le "click" numerique du bruit blanc brut.
 
-            // Comb pluck-position (position du marteau ~1/7 - 1/9 sur un piano)
-            int np = Math.Max(1, (int)Math.Round(_size * 0.13));   // ~1/8 du string length
-            if (np < _size)
+            float hardnessEff = p.HammerHardness * 0.5f + 0.3f + velocity * 0.2f;  // 0.3..1.0
+
+            // (a) Bruit blanc filtre LP fort : cutoff bas = feutre mou = attaque mate
+            float lpCutoff = 300f + hardnessEff * 1500f;    // 300 Hz (mou) .. 1800 Hz (dur)
+            float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
+            float lp = 0f;
+            for (int i = 0; i < _size; i++)
             {
-                var scratch = new float[_size];
-                for (int i = 0; i < _size; i++)
-                {
-                    float x = _buf[i];
-                    float xPrev = i - np >= 0 ? _buf[i - np] : 0f;
-                    scratch[i] = x - xPrev;
-                }
-                Array.Copy(scratch, _buf, _size);
+                float raw = (float)(rng.NextDouble() * 2.0 - 1.0);
+                lp += lpAlpha * (raw - lp);
+                _buf[i] = lp;
             }
 
-            // Hardness → durete du "pluck" (LP plus ou moins fort)
-            float hardness = p.HammerHardness * 0.5f + 0.3f + velocity * 0.2f;  // 0.3..1.0
-            if (hardness < 0.999f)
+            // (b) Enveloppe temporelle : decay exponentiel principal ~15-40 ms selon hardness
+            //     (mou = decay plus lent = plus rond, dur = court = plus percussif)
+            float decayMs = 40f - hardnessEff * 25f;        // 15..40 ms
+            float decayRate = (float)Math.Exp(-1.0 / (decayMs * _sr / 1000.0));
+            float env = 1f;
+            for (int i = 0; i < _size; i++)
             {
-                float coef = 1f - hardness;
-                float alpha = 0.15f + 0.6f * coef;
-                float lp = 0f;
-                for (int i = 0; i < _size; i++)
-                {
-                    lp += alpha * (_buf[i] - lp);
-                    _buf[i] = hardness * _buf[i] + coef * lp;
-                }
+                _buf[i] *= env;
+                env *= decayRate;
             }
+
+            // (c) Fade-in de contact 1-3 ms (evite le "tic" numerique du sample 0)
+            int fadeInSamples = Math.Max(4, (int)(2.0 * _sr / 1000.0));
+            for (int i = 0; i < Math.Min(fadeInSamples, _size); i++)
+                _buf[i] *= (float)Math.Sin(Math.PI * 0.5 * i / fadeInSamples);
 
             // Normalisation + velocity
             float peak = 0.001f;
@@ -212,7 +228,7 @@ namespace KotonPluginPiano
                 float centered = _stringCount == 1 ? 0f
                                 : _stringCount == 2 ? (i == 0 ? -detuneAmt : +detuneAmt)
                                 : (i == 0 ? -detuneAmt : i == 1 ? 0f : +detuneAmt);
-                _strings[i].Pluck(note, velocity, centered + stereoDetune, p, _rng);
+                _strings[i].Strike(note, velocity, centered + stereoDetune, p, _rng);
             }
             for (int i = _stringCount; i < 3; i++) _strings[i].Kill();
 
