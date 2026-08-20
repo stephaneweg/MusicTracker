@@ -38,7 +38,9 @@ namespace KotonPluginBanjo
         {
             _note = note; _velocity = vel;
             double f = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            _len = Math.Max(2, (int)Math.Round(_sr / f));
+            // Compensation du retard de groupe du LP 1-pole dans la boucle (~0.5 sample) : sans
+            // ca les notes aigues (thumb string 5) sonnent 30-100 cents trop bas.
+            _len = Math.Max(2, (int)Math.Round(_sr / f - 0.5));
             if (_len > DlSize - 4) _len = DlSize - 4;
 
             _feedback = 0.90f + p.Sustain * 0.06f;   // banjo sustain court : max 0.96
@@ -46,9 +48,13 @@ namespace KotonPluginBanjo
             _twangMix = p.Twang;
             _headMix = p.DrumHead;
 
+            // Twang chevalet (mordant onglette) : 2.5 kHz. Peau de banjo (tres tendue vs djembe) :
+            // mode principal 500 Hz (resonance "canard/boite de conserve" caracteristique) + mode
+            // secondaire harmonique membrane 1.2 kHz. Anciennes valeurs 90/250 Hz correspondaient
+            // a un bodhran ou djembe grave, pas au banjo.
             SetBqPeaking(ref _twangBq, _sr, 2500f, 3f, 4f);
-            SetBqPeaking(ref _head1, _sr, 90f, 2f, 5f);
-            SetBqPeaking(ref _head2, _sr, 250f, 3f, 3f);
+            SetBqPeaking(ref _head1, _sr, 500f, 2.5f, 5f);
+            SetBqPeaking(ref _head2, _sr, 1200f, 2f, 3f);
 
             // Excitation HP (bruit filtre par HP simple par derivation)
             int burst = Math.Max(2, (int)(p.PluckLenMs * _sr / 1000f));
@@ -102,6 +108,9 @@ namespace KotonPluginBanjo
             double w0 = 2.0 * Math.PI * freq / sr, alpha = Math.Sin(w0) / (2.0 * q), cosw0 = Math.Cos(w0), a0 = 1.0 + alpha / A;
             s.b0 = (float)((1.0 + alpha * A) / a0); s.b1 = (float)(-2.0 * cosw0 / a0); s.b2 = (float)((1.0 - alpha * A) / a0);
             s.a1 = (float)(-2.0 * cosw0 / a0); s.a2 = (float)((1.0 - alpha / A) / a0);
+            // Vider la memoire : sinon a chaque re-frappe (voice reuse) le biquad reinjecte l'energie
+            // residuelle de la note precedente = "pop"/"clic" numerique en attaque.
+            s.x1 = s.x2 = s.y1 = s.y2 = 0f;
         }
         static float BiquadProcess(ref BiquadState s, float x)
         {
