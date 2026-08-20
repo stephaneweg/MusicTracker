@@ -72,7 +72,7 @@ namespace KotonPluginWoodwind
         {
             /* Flute       */ (1200f, 1.0f, 3f,    0f, 1f, 0f),      // aérien, souffle audible, un seul pic
             /* Clarinette  */ (1500f, 2.0f, 5f,    3000f, 2f, 3f),   // mordant + pic aigu impair
-            /* Hautbois    */ (1200f, 3.0f, 8f,    2700f, 3f, 10f),  // NASAL : 2 pics comme "in", très marqué
+            /* Hautbois    */ (1100f, 4.5f, 12f,   2900f, 4.5f, 14f), // NASAL : 2 pics étroits, gains renforcés (voyelle "in" marquée)
             /* Basson      */ ( 350f, 2.0f, 6f,    900f, 2f, 4f),    // roulé grave + medium
             /* Sax alto    */ (1400f, 1.5f, 5f,    2500f, 1.5f, 3f), // riche medium + brillance
             /* Sax tenor   */ ( 800f, 1.5f, 5f,    2000f, 1.5f, 3f), // gras medium-grave + presence
