@@ -3111,6 +3111,34 @@ namespace MusicTracker.Screens
             return t;
         }
 
+        StackPanel ParamSlider(int val, int min, int max, Action<int> set, Action changed)
+        {
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left };
+            int clamped = Math.Max(min, Math.Min(max, val));
+            var slider = new Slider
+            {
+                Minimum = min, Maximum = max, Value = clamped,
+                Width = 160, VerticalAlignment = VerticalAlignment.Center,
+                IsSnapToTickEnabled = true, TickFrequency = 1,
+                SmallChange = 1, LargeChange = Math.Max(1, (max - min) / 10)
+            };
+            var lbl = new TextBlock
+            {
+                Text = clamped.ToString(), Foreground = Brushes.White,
+                VerticalAlignment = VerticalAlignment.Center, MinWidth = 32,
+                TextAlignment = TextAlignment.Right, Margin = new Thickness(6, 0, 0, 0)
+            };
+            slider.ValueChanged += (s, e) =>
+            {
+                int v = (int)Math.Round(slider.Value);
+                if (lbl.Text != v.ToString()) lbl.Text = v.ToString();
+                set(v); changed();
+            };
+            sp.Children.Add(slider);
+            sp.Children.Add(lbl);
+            return sp;
+        }
+
         UIElement BuildRepeatEditor(RepeatGroup g)
         {
             var sp = new StackPanel { Margin = new Thickness(2) };
@@ -5351,17 +5379,17 @@ namespace MusicTracker.Screens
             left.Children.Add(EdLabel(Loc.T("AncrageNoteDeDepartDeLa")));
             left.Children.Add(ParamCombo(Engine.Timeline.MelodicLineEngine.AnchorNames, Math.Max(0, Math.Min(Engine.Timeline.MelodicLineEngine.AnchorNames.Length - 1, ml.Anchor)), v => ml.Anchor = v, refresh));
             left.Children.Add(EdLabel(Loc.T("ContinuiteLissageVoiceLeading0100")));
-            left.Children.Add(ParamNum(ml.Continuity, v => ml.Continuity = Math.Max(0, Math.Min(100, v)), refresh));
+            left.Children.Add(ParamSlider(ml.Continuity, 0, 100, v => ml.Continuity = v, refresh));
             left.Children.Add(EdLabel(Loc.T("VariationTransformationDuMotif")));
             left.Children.Add(ParamCombo(Engine.Timeline.MelodicLineEngine.VariationNames, Math.Max(0, Math.Min(Engine.Timeline.MelodicLineEngine.VariationNames.Length - 1, ml.Variation)), v => ml.Variation = v, refresh));
             left.Children.Add(EdLabel(Loc.T("TensionPenteDeRegistreDemiTons")));
-            left.Children.Add(ParamNum(ml.TensionSlope, v => ml.TensionSlope = v, refresh));
+            left.Children.Add(ParamSlider(ml.TensionSlope, -12, 12, v => ml.TensionSlope = v, refresh));
             left.Children.Add(EdLabel(Loc.T("AmplitudeTessitureDemiTons224")));
-            left.Children.Add(ParamNum(ml.Amplitude, v => ml.Amplitude = Math.Max(2, Math.Min(24, v)), refresh));
+            left.Children.Add(ParamSlider(ml.Amplitude, 2, 24, v => ml.Amplitude = v, refresh));
             left.Children.Add(EdLabel(Loc.T("OrnementationRetardsAppoggiatures0100")));
-            left.Children.Add(ParamNum(ml.Ornaments, v => ml.Ornaments = Math.Max(0, Math.Min(100, v)), refresh));
+            left.Children.Add(ParamSlider(ml.Ornaments, 0, 100, v => ml.Ornaments = v, refresh));
             left.Children.Add(EdLabel(Loc.T("VagueNotesParArc0Auto")));
-            left.Children.Add(ParamNum(ml.WaveLength, v => ml.WaveLength = Math.Max(0, Math.Min(32, v)), refresh));
+            left.Children.Add(ParamSlider(ml.WaveLength, 0, 32, v => ml.WaveLength = v, refresh));
             // ---- Décalage + génération euclidienne (rythme seul : le moteur choisit les hauteurs) ---------------
             int mlVoice = 0, mlK = 3, mlN = 8, mlRot = 0, mlUnit = 0;
             var mlStepNames = new[] { Loc.T("Croche"), Loc.T("DoubleCroche"), Loc.T("TrioletDeCroche") };
