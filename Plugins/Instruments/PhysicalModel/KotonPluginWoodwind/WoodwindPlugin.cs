@@ -61,10 +61,12 @@ namespace KotonPluginWoodwind
         int _stealCursor, _reedStealCursor;
         const int Polyphony = 8;
 
-        // Route clarinette/sax/hautbois/basson/cor anglais vers le waveguide ReedWaveguideVoice
-        // (auto-oscillation reelle avec formulation STK). Flute (0) et Piccolo (6) restent
-        // sur l'additif WoodwindVoice (leur son quasi-sinusoidal est bien rendu par les partiels).
-        static bool IsReedInstrument(int idx) => idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 5 || idx == 7;
+        // TOUS les instruments sont routes vers l'additif WoodwindVoice. Le waveguide reed
+        // (ReedWaveguideVoice) reste dans le repo pour reprise ulterieure : marche par
+        // intermittence, comportement instable selon les params → pas assez fiable en prod.
+        // A rejouer avec un modele STK Cook vraiment complet (peut-etre integrer le code
+        // STK original en directement en C# via un port fidele).
+        static bool IsReedInstrument(int idx) => false;
 
         // Formant filter caractéristique du bois : DEUX peak biquads en série en sortie pour
         // simuler correctement la "voyelle" spectrale de chaque bois. Le vrai timbre nasal du
