@@ -25,7 +25,7 @@
     <!-- The ONLY reference: the public Koton plugin contract. Deliberately NO ProjectReference to
          MusicTracker itself — a plugin must be able to compile from just this library, exactly as a
          third-party plugin author would. -->
-    <ProjectReference Include="..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+    <ProjectReference Include="..\..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
   </ItemGroup>
 
   <!-- ================= Post-build copy to the host's plugins folder =================
@@ -37,12 +37,12 @@
   <Target Name="CopyKslToHostBinPluginsDir" AfterTargets="Build">
     <PropertyGroup>
       <KslArtifact>$(TargetPath)</KslArtifact>
-      <HostBinPluginsDir>$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)\plugins\</HostBinPluginsDir>
+      <HostBinPluginsDir>$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)\plugins\</HostBinPluginsDir>
     </PropertyGroup>
-    <MakeDir Directories="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')" />
+    <MakeDir Directories="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)')" />
     <Copy SourceFiles="$(KslArtifact)"
           DestinationFolder="$(HostBinPluginsDir)"
-          Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)')"
           SkipUnchangedFiles="true" />
   </Target>
 

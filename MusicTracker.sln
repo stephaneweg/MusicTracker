@@ -13,61 +13,61 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonStudioUpdater", "Koton
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonStudioLibrary", "KotonStudioLibrary\KotonStudioLibrary.csproj", "{D2E8F5A7-1B4C-4D3E-9F6A-8C7B2E5D9A0F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFmSynth", "KotonPluginFmSynth\KotonPluginFmSynth.csproj", "{A3F7C912-4D8B-4E5A-9C6F-1D2E3B4A5F60}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFmSynth", "Plugins\Instruments\Synth\KotonPluginFmSynth\KotonPluginFmSynth.csproj", "{A3F7C912-4D8B-4E5A-9C6F-1D2E3B4A5F60}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginArpeggiator", "KotonPluginArpeggiator\KotonPluginArpeggiator.csproj", "{B4A9E123-5C7D-4E2F-9B1A-2F8D3E6C7B01}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginArpeggiator", "Plugins\Generators\KotonPluginArpeggiator\KotonPluginArpeggiator.csproj", "{B4A9E123-5C7D-4E2F-9B1A-2F8D3E6C7B01}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWaveMorph", "KotonPluginWaveMorph\KotonPluginWaveMorph.csproj", "{C5B0D234-6E8F-4A3B-8D2C-3F9E4A6D5C82}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWaveMorph", "Plugins\Instruments\Synth\KotonPluginWaveMorph\KotonPluginWaveMorph.csproj", "{C5B0D234-6E8F-4A3B-8D2C-3F9E4A6D5C82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginKarplusStrong", "KotonPluginKarplusStrong\KotonPluginKarplusStrong.csproj", "{D8C1F5A9-3E7B-4A2C-8D6F-9E1B2C4A7F82}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginKarplusStrong", "Plugins\Instruments\PhysicalModel\KotonPluginKarplusStrong\KotonPluginKarplusStrong.csproj", "{D8C1F5A9-3E7B-4A2C-8D6F-9E1B2C4A7F82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFractal", "KotonPluginFractal\KotonPluginFractal.csproj", "{E7A3B9C4-1F5D-4E8B-9C6A-2F8B3E4A5C93}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFractal", "Plugins\Generators\KotonPluginFractal\KotonPluginFractal.csproj", "{E7A3B9C4-1F5D-4E8B-9C6A-2F8B3E4A5C93}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBowedStrings", "KotonPluginBowedStrings\KotonPluginBowedStrings.csproj", "{F4B2E7A6-8C3D-4F1B-9E2A-5D7C8B4F3A15}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBowedStrings", "Plugins\Instruments\PhysicalModel\KotonPluginBowedStrings\KotonPluginBowedStrings.csproj", "{F4B2E7A6-8C3D-4F1B-9E2A-5D7C8B4F3A15}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginStringMachine", "KotonPluginStringMachine\KotonPluginStringMachine.csproj", "{A6F8D3B9-2E5C-4B7A-8D1F-3C9E6B4A2F87}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginStringMachine", "Plugins\Instruments\Ensemble\KotonPluginStringMachine\KotonPluginStringMachine.csproj", "{A6F8D3B9-2E5C-4B7A-8D1F-3C9E6B4A2F87}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginMallets", "KotonPluginMallets\KotonPluginMallets.csproj", "{B2E5F7A1-9C4D-4B8E-A3F6-5D8C1B4E9F72}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginMallets", "Plugins\Instruments\PhysicalModel\KotonPluginMallets\KotonPluginMallets.csproj", "{B2E5F7A1-9C4D-4B8E-A3F6-5D8C1B4E9F72}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginOceanReverb", "KotonPluginOceanReverb\KotonPluginOceanReverb.csproj", "{C9E4A7B3-5F8D-4A2E-8B1C-6E9F3D2A4C87}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginOceanReverb", "Plugins\Effects\KotonPluginOceanReverb\KotonPluginOceanReverb.csproj", "{C9E4A7B3-5F8D-4A2E-8B1C-6E9F3D2A4C87}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBrass", "KotonPluginBrass\KotonPluginBrass.csproj", "{D4B7E2A6-9F3C-4B1E-8D5A-2C7F8B4E9A31}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBrass", "Plugins\Instruments\PhysicalModel\KotonPluginBrass\KotonPluginBrass.csproj", "{D4B7E2A6-9F3C-4B1E-8D5A-2C7F8B4E9A31}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWoodwind", "KotonPluginWoodwind\KotonPluginWoodwind.csproj", "{A8F3D5B2-4E9C-4B7A-8D6F-3C5E7A2B9F41}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWoodwind", "Plugins\Instruments\PhysicalModel\KotonPluginWoodwind\KotonPluginWoodwind.csproj", "{A8F3D5B2-4E9C-4B7A-8D6F-3C5E7A2B9F41}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginForest", "KotonPluginForest\KotonPluginForest.csproj", "{7A2E9F5C-4B8D-4A1E-9C6F-3D8B5E4A7C21}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginForest", "Plugins\Effects\KotonPluginForest\KotonPluginForest.csproj", "{7A2E9F5C-4B8D-4A1E-9C6F-3D8B5E4A7C21}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWaterdrops", "KotonPluginWaterdrops\KotonPluginWaterdrops.csproj", "{E3A5F8B4-2C7D-4B9E-8A1F-6D4C3B5E7A82}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWaterdrops", "Plugins\Instruments\Synth\KotonPluginWaterdrops\KotonPluginWaterdrops.csproj", "{E3A5F8B4-2C7D-4B9E-8A1F-6D4C3B5E7A82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginHandpan", "KotonPluginHandpan\KotonPluginHandpan.csproj", "{B4C7E9A2-3F5D-4A8B-9E1C-7A3D8B4C5F92}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginHandpan", "Plugins\Instruments\PhysicalModel\KotonPluginHandpan\KotonPluginHandpan.csproj", "{B4C7E9A2-3F5D-4A8B-9E1C-7A3D8B4C5F92}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginCaveReverb", "KotonPluginCaveReverb\KotonPluginCaveReverb.csproj", "{C5D8F2A4-6E9B-4B2C-8F1E-9A3C7D5B4E82}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginCaveReverb", "Plugins\Effects\KotonPluginCaveReverb\KotonPluginCaveReverb.csproj", "{C5D8F2A4-6E9B-4B2C-8F1E-9A3C7D5B4E82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBlownFlute", "KotonPluginBlownFlute\KotonPluginBlownFlute.csproj", "{D8E4A6C7-1F5B-4C9E-8B3A-5D7C9F4E2A81}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBlownFlute", "Plugins\Instruments\PhysicalModel\KotonPluginBlownFlute\KotonPluginBlownFlute.csproj", "{D8E4A6C7-1F5B-4C9E-8B3A-5D7C9F4E2A81}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginUnderwater", "KotonPluginUnderwater\KotonPluginUnderwater.csproj", "{A9E3F5C7-4B8D-4A2E-9C6F-3D8B5E4A7C31}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginUnderwater", "Plugins\Effects\KotonPluginUnderwater\KotonPluginUnderwater.csproj", "{A9E3F5C7-4B8D-4A2E-9C6F-3D8B5E4A7C31}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginStorm", "KotonPluginStorm\KotonPluginStorm.csproj", "{B8F4A6C7-5C9E-4B3F-8D7A-4E9C6F5B8D42}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginStorm", "Plugins\Effects\KotonPluginStorm\KotonPluginStorm.csproj", "{B8F4A6C7-5C9E-4B3F-8D7A-4E9C6F5B8D42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginSpace", "KotonPluginSpace\KotonPluginSpace.csproj", "{C7E5B7D8-6DAE-4C4A-9E8B-5FAD7C6E9E53}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginSpace", "Plugins\Effects\KotonPluginSpace\KotonPluginSpace.csproj", "{C7E5B7D8-6DAE-4C4A-9E8B-5FAD7C6E9E53}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginNightCrickets", "KotonPluginNightCrickets\KotonPluginNightCrickets.csproj", "{D6F6C8E9-7EBF-4D5B-AF9C-6BEB8D7FAF64}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginNightCrickets", "Plugins\Effects\KotonPluginNightCrickets\KotonPluginNightCrickets.csproj", "{D6F6C8E9-7EBF-4D5B-AF9C-6BEB8D7FAF64}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFreeze", "KotonPluginFreeze\KotonPluginFreeze.csproj", "{E5A7D9FA-8FCA-4E6C-BAAD-7CFC9E8AB075}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFreeze", "Plugins\Effects\KotonPluginFreeze\KotonPluginFreeze.csproj", "{E5A7D9FA-8FCA-4E6C-BAAD-7CFC9E8AB075}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginReverseReverb", "KotonPluginReverseReverb\KotonPluginReverseReverb.csproj", "{F4B8EA0B-9ADB-4F7D-CBBE-8DAD0F9BC186}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginReverseReverb", "Plugins\Effects\KotonPluginReverseReverb\KotonPluginReverseReverb.csproj", "{F4B8EA0B-9ADB-4F7D-CBBE-8DAD0F9BC186}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginTapeDelay", "KotonPluginTapeDelay\KotonPluginTapeDelay.csproj", "{A3C9FB1C-0BEC-4A8E-DCCF-9EBE1A0CD297}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginTapeDelay", "Plugins\Effects\KotonPluginTapeDelay\KotonPluginTapeDelay.csproj", "{A3C9FB1C-0BEC-4A8E-DCCF-9EBE1A0CD297}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginElectricViolin", "KotonPluginElectricViolin\KotonPluginElectricViolin.csproj", "{D2A5F8C7-4B9E-4B3A-8D2F-6C4E7B5D8A93}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginElectricViolin", "Plugins\Instruments\PhysicalModel\KotonPluginElectricViolin\KotonPluginElectricViolin.csproj", "{D2A5F8C7-4B9E-4B3A-8D2F-6C4E7B5D8A93}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWindchimes", "KotonPluginWindchimes\KotonPluginWindchimes.csproj", "{E5B9F3A2-4C8D-4B7E-9F1A-6D3C8E5B4A72}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginWindchimes", "Plugins\Instruments\PhysicalModel\KotonPluginWindchimes\KotonPluginWindchimes.csproj", "{E5B9F3A2-4C8D-4B7E-9F1A-6D3C8E5B4A72}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginElectricGuitar", "KotonPluginElectricGuitar\KotonPluginElectricGuitar.csproj", "{A7F5B3E9-2C8D-4A6B-9E4F-6D2C8B5E4A83}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginElectricGuitar", "Plugins\Instruments\PhysicalModel\KotonPluginElectricGuitar\KotonPluginElectricGuitar.csproj", "{A7F5B3E9-2C8D-4A6B-9E4F-6D2C8B5E4A83}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginPiano", "KotonPluginPiano\KotonPluginPiano.csproj", "{E3D8A2F5-4B7C-4E9A-B1D6-8C3F2E5D9A47}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginPiano", "Plugins\Instruments\PhysicalModel\KotonPluginPiano\KotonPluginPiano.csproj", "{E3D8A2F5-4B7C-4E9A-B1D6-8C3F2E5D9A47}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginJewsHarp", "KotonPluginJewsHarp\KotonPluginJewsHarp.csproj", "{F6C4D8B7-3E9A-4B2C-8F5D-7C4E9B3A5D62}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginJewsHarp", "Plugins\Instruments\PhysicalModel\KotonPluginJewsHarp\KotonPluginJewsHarp.csproj", "{F6C4D8B7-3E9A-4B2C-8F5D-7C4E9B3A5D62}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{5E93B4FE-A830-4316-92FC-21597036472B}"
 EndProject
@@ -77,39 +77,49 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Generators", "Generators", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Effects", "Effects", "{FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginVowelSynth", "KotonPluginVowelSynth\KotonPluginVowelSynth.csproj", "{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginVowelSynth", "Plugins\Instruments\Synth\KotonPluginVowelSynth\KotonPluginVowelSynth.csproj", "{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginInstrumentMorph", "KotonPluginInstrumentMorph\KotonPluginInstrumentMorph.csproj", "{B3D5E7F9-1A2C-4B4D-8E5F-6A7B8C9D0E1F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginInstrumentMorph", "Plugins\Instruments\Meta\KotonPluginInstrumentMorph\KotonPluginInstrumentMorph.csproj", "{B3D5E7F9-1A2C-4B4D-8E5F-6A7B8C9D0E1F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginShimmerSparkle", "KotonPluginShimmerSparkle\KotonPluginShimmerSparkle.csproj", "{C4E6F8A0-2B4D-4C6E-9F1A-3B5D7E9F1A2B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginShimmerSparkle", "Plugins\Effects\KotonPluginShimmerSparkle\KotonPluginShimmerSparkle.csproj", "{C4E6F8A0-2B4D-4C6E-9F1A-3B5D7E9F1A2B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFairyVoices", "KotonPluginFairyVoices\KotonPluginFairyVoices.csproj", "{D5F7A9B1-3C5E-4D7F-8A0B-4C6D8E0F1B2C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFairyVoices", "Plugins\Instruments\Pad\KotonPluginFairyVoices\KotonPluginFairyVoices.csproj", "{D5F7A9B1-3C5E-4D7F-8A0B-4C6D8E0F1B2C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginGuqin", "KotonPluginGuqin\KotonPluginGuqin.csproj", "{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginGuqin", "Plugins\Instruments\PhysicalModel\KotonPluginGuqin\KotonPluginGuqin.csproj", "{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginSitar", "KotonPluginSitar\KotonPluginSitar.csproj", "{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginSitar", "Plugins\Instruments\PhysicalModel\KotonPluginSitar\KotonPluginSitar.csproj", "{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginErhu", "KotonPluginErhu\KotonPluginErhu.csproj", "{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginErhu", "Plugins\Instruments\PhysicalModel\KotonPluginErhu\KotonPluginErhu.csproj", "{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginHarpsichord", "KotonPluginHarpsichord\KotonPluginHarpsichord.csproj", "{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginHarpsichord", "Plugins\Instruments\PhysicalModel\KotonPluginHarpsichord\KotonPluginHarpsichord.csproj", "{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBanjo", "KotonPluginBanjo\KotonPluginBanjo.csproj", "{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBanjo", "Plugins\Instruments\PhysicalModel\KotonPluginBanjo\KotonPluginBanjo.csproj", "{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginRandomWalk", "KotonPluginRandomWalk\KotonPluginRandomWalk.csproj", "{D5E6F7A8-9182-4A0B-8C1D-9E0F1A2B3C8B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginRandomWalk", "Plugins\Generators\KotonPluginRandomWalk\KotonPluginRandomWalk.csproj", "{D5E6F7A8-9182-4A0B-8C1D-9E0F1A2B3C8B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginCellularAutomata", "KotonPluginCellularAutomata\KotonPluginCellularAutomata.csproj", "{E6F7A8B9-1234-4A0B-8C1D-9E0F1A2B3C9C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginCellularAutomata", "Plugins\Generators\KotonPluginCellularAutomata\KotonPluginCellularAutomata.csproj", "{E6F7A8B9-1234-4A0B-8C1D-9E0F1A2B3C9C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginDidgeridoo", "KotonPluginDidgeridoo\KotonPluginDidgeridoo.csproj", "{F7A8B9C0-2345-4A0B-8C1D-9E0F1A2B3CAD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginDidgeridoo", "Plugins\Instruments\PhysicalModel\KotonPluginDidgeridoo\KotonPluginDidgeridoo.csproj", "{F7A8B9C0-2345-4A0B-8C1D-9E0F1A2B3CAD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBagpipes", "KotonPluginBagpipes\KotonPluginBagpipes.csproj", "{A8B9C0D1-3456-4A0B-8C1D-9E0F1A2B3CBE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginBagpipes", "Plugins\Instruments\PhysicalModel\KotonPluginBagpipes\KotonPluginBagpipes.csproj", "{A8B9C0D1-3456-4A0B-8C1D-9E0F1A2B3CBE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginChoir", "KotonPluginChoir\KotonPluginChoir.csproj", "{B9C0D1E2-4567-4A0B-8C1D-9E0F1A2B3CCF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginChoir", "Plugins\Instruments\Pad\KotonPluginChoir\KotonPluginChoir.csproj", "{B9C0D1E2-4567-4A0B-8C1D-9E0F1A2B3CCF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginAcid303", "KotonPluginAcid303\KotonPluginAcid303.csproj", "{C0D1E2F3-5678-4A0B-8C1D-9E0F1A2B3CD0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginAcid303", "Plugins\Instruments\Synth\KotonPluginAcid303\KotonPluginAcid303.csproj", "{C0D1E2F3-5678-4A0B-8C1D-9E0F1A2B3CD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginPolySynth", "KotonPluginPolySynth\KotonPluginPolySynth.csproj", "{D1E2F304-6789-4A0B-8C1D-9E0F1A2B3CE1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginPolySynth", "Plugins\Instruments\Synth\KotonPluginPolySynth\KotonPluginPolySynth.csproj", "{D1E2F304-6789-4A0B-8C1D-9E0F1A2B3CE1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginAdditive", "KotonPluginAdditive\KotonPluginAdditive.csproj", "{E2F30415-789A-4A0B-8C1D-9E0F1A2B3CF2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginAdditive", "Plugins\Instruments\Synth\KotonPluginAdditive\KotonPluginAdditive.csproj", "{E2F30415-789A-4A0B-8C1D-9E0F1A2B3CF2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Synth", "Synth", "{5763254C-398F-4007-A720-5A616F982BB5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PhysicalModel", "PhysicalModel", "{889DB615-F312-4D86-93B9-C8B14D19544E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Pad", "Pad", "{A4F1BAB7-8536-4099-AE38-36D4ACA2B050}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Meta", "Meta", "{EB8B4CD8-7CB7-419E-97CF-C1AB638A4C5C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Ensemble", "Ensemble", "{6F45E5CF-7E0F-401B-B2EA-E120A10C05B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -726,22 +736,22 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{A3F7C912-4D8B-4E5A-9C6F-1D2E3B4A5F60} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{A3F7C912-4D8B-4E5A-9C6F-1D2E3B4A5F60} = {5763254C-398F-4007-A720-5A616F982BB5}
 		{B4A9E123-5C7D-4E2F-9B1A-2F8D3E6C7B01} = {4A5E99B3-DFAD-436F-9D72-0AB3CC831537}
-		{C5B0D234-6E8F-4A3B-8D2C-3F9E4A6D5C82} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{D8C1F5A9-3E7B-4A2C-8D6F-9E1B2C4A7F82} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{C5B0D234-6E8F-4A3B-8D2C-3F9E4A6D5C82} = {5763254C-398F-4007-A720-5A616F982BB5}
+		{D8C1F5A9-3E7B-4A2C-8D6F-9E1B2C4A7F82} = {889DB615-F312-4D86-93B9-C8B14D19544E}
 		{E7A3B9C4-1F5D-4E8B-9C6A-2F8B3E4A5C93} = {4A5E99B3-DFAD-436F-9D72-0AB3CC831537}
-		{F4B2E7A6-8C3D-4F1B-9E2A-5D7C8B4F3A15} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{A6F8D3B9-2E5C-4B7A-8D1F-3C9E6B4A2F87} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{B2E5F7A1-9C4D-4B8E-A3F6-5D8C1B4E9F72} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{F4B2E7A6-8C3D-4F1B-9E2A-5D7C8B4F3A15} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{A6F8D3B9-2E5C-4B7A-8D1F-3C9E6B4A2F87} = {6F45E5CF-7E0F-401B-B2EA-E120A10C05B7}
+		{B2E5F7A1-9C4D-4B8E-A3F6-5D8C1B4E9F72} = {889DB615-F312-4D86-93B9-C8B14D19544E}
 		{C9E4A7B3-5F8D-4A2E-8B1C-6E9F3D2A4C87} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
-		{D4B7E2A6-9F3C-4B1E-8D5A-2C7F8B4E9A31} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{A8F3D5B2-4E9C-4B7A-8D6F-3C5E7A2B9F41} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{D4B7E2A6-9F3C-4B1E-8D5A-2C7F8B4E9A31} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{A8F3D5B2-4E9C-4B7A-8D6F-3C5E7A2B9F41} = {889DB615-F312-4D86-93B9-C8B14D19544E}
 		{7A2E9F5C-4B8D-4A1E-9C6F-3D8B5E4A7C21} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
-		{E3A5F8B4-2C7D-4B9E-8A1F-6D4C3B5E7A82} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{B4C7E9A2-3F5D-4A8B-9E1C-7A3D8B4C5F92} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{E3A5F8B4-2C7D-4B9E-8A1F-6D4C3B5E7A82} = {5763254C-398F-4007-A720-5A616F982BB5}
+		{B4C7E9A2-3F5D-4A8B-9E1C-7A3D8B4C5F92} = {889DB615-F312-4D86-93B9-C8B14D19544E}
 		{C5D8F2A4-6E9B-4B2C-8F1E-9A3C7D5B4E82} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
-		{D8E4A6C7-1F5B-4C9E-8B3A-5D7C9F4E2A81} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{D8E4A6C7-1F5B-4C9E-8B3A-5D7C9F4E2A81} = {889DB615-F312-4D86-93B9-C8B14D19544E}
 		{A9E3F5C7-4B8D-4A2E-9C6F-3D8B5E4A7C31} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
 		{B8F4A6C7-5C9E-4B3F-8D7A-4E9C6F5B8D42} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
 		{C7E5B7D8-6DAE-4C4A-9E8B-5FAD7C6E9E53} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
@@ -749,13 +759,36 @@ Global
 		{E5A7D9FA-8FCA-4E6C-BAAD-7CFC9E8AB075} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
 		{F4B8EA0B-9ADB-4F7D-CBBE-8DAD0F9BC186} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
 		{A3C9FB1C-0BEC-4A8E-DCCF-9EBE1A0CD297} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
-		{D2A5F8C7-4B9E-4B3A-8D2F-6C4E7B5D8A93} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{E5B9F3A2-4C8D-4B7E-9F1A-6D3C8E5B4A72} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{A7F5B3E9-2C8D-4A6B-9E4F-6D2C8B5E4A83} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
-		{F6C4D8B7-3E9A-4B2C-8F5D-7C4E9B3A5D62} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{D2A5F8C7-4B9E-4B3A-8D2F-6C4E7B5D8A93} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{E5B9F3A2-4C8D-4B7E-9F1A-6D3C8E5B4A72} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{A7F5B3E9-2C8D-4A6B-9E4F-6D2C8B5E4A83} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{E3D8A2F5-4B7C-4E9A-B1D6-8C3F2E5D9A47} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{F6C4D8B7-3E9A-4B2C-8F5D-7C4E9B3A5D62} = {889DB615-F312-4D86-93B9-C8B14D19544E}
 		{25AC2E8B-D380-40E1-854E-4F78BCDFCCE2} = {5E93B4FE-A830-4316-92FC-21597036472B}
 		{4A5E99B3-DFAD-436F-9D72-0AB3CC831537} = {5E93B4FE-A830-4316-92FC-21597036472B}
 		{FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E} = {5E93B4FE-A830-4316-92FC-21597036472B}
+		{A7B2C4D6-8E1F-4A3B-9C5D-6E7F8A9B0C1D} = {5763254C-398F-4007-A720-5A616F982BB5}
+		{B3D5E7F9-1A2C-4B4D-8E5F-6A7B8C9D0E1F} = {EB8B4CD8-7CB7-419E-97CF-C1AB638A4C5C}
+		{C4E6F8A0-2B4D-4C6E-9F1A-3B5D7E9F1A2B} = {FBEAAC0C-9ED2-45B3-AE3F-3EC54B77AC0E}
+		{D5F7A9B1-3C5E-4D7F-8A0B-4C6D8E0F1B2C} = {A4F1BAB7-8536-4099-AE38-36D4ACA2B050}
+		{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{A2B3C4D5-6E7F-4A0B-8C1D-9E0F1A2B3C5E} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{B3C4D5E6-7F80-4A0B-8C1D-9E0F1A2B3C6F} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{C4D5E6F7-8091-4A0B-8C1D-9E0F1A2B3C7A} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{D5E6F7A8-9182-4A0B-8C1D-9E0F1A2B3C8B} = {4A5E99B3-DFAD-436F-9D72-0AB3CC831537}
+		{E6F7A8B9-1234-4A0B-8C1D-9E0F1A2B3C9C} = {4A5E99B3-DFAD-436F-9D72-0AB3CC831537}
+		{F7A8B9C0-2345-4A0B-8C1D-9E0F1A2B3CAD} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{A8B9C0D1-3456-4A0B-8C1D-9E0F1A2B3CBE} = {889DB615-F312-4D86-93B9-C8B14D19544E}
+		{B9C0D1E2-4567-4A0B-8C1D-9E0F1A2B3CCF} = {A4F1BAB7-8536-4099-AE38-36D4ACA2B050}
+		{C0D1E2F3-5678-4A0B-8C1D-9E0F1A2B3CD0} = {5763254C-398F-4007-A720-5A616F982BB5}
+		{D1E2F304-6789-4A0B-8C1D-9E0F1A2B3CE1} = {5763254C-398F-4007-A720-5A616F982BB5}
+		{E2F30415-789A-4A0B-8C1D-9E0F1A2B3CF2} = {5763254C-398F-4007-A720-5A616F982BB5}
+		{5763254C-398F-4007-A720-5A616F982BB5} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{889DB615-F312-4D86-93B9-C8B14D19544E} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{A4F1BAB7-8536-4099-AE38-36D4ACA2B050} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{EB8B4CD8-7CB7-419E-97CF-C1AB638A4C5C} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
+		{6F45E5CF-7E0F-401B-B2EA-E120A10C05B7} = {25AC2E8B-D380-40E1-854E-4F78BCDFCCE2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {84080D45-5D75-4E00-BF05-2B47F6060EBF}

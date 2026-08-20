@@ -15,14 +15,14 @@
     <TargetExt>.ksl</TargetExt>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+    <ProjectReference Include="..\..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
   </ItemGroup>
   <Target Name="CopyKslToHostBinPluginsDir" AfterTargets="Build">
     <PropertyGroup>
       <KslArtifact>$(TargetPath)</KslArtifact>
-      <HostBinPluginsDir>$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)\plugins\</HostBinPluginsDir>
+      <HostBinPluginsDir>$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)\plugins\</HostBinPluginsDir>
     </PropertyGroup>
-    <MakeDir Directories="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')" />
-    <Copy SourceFiles="$(KslArtifact)" DestinationFolder="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)')" SkipUnchangedFiles="true" />
+    <MakeDir Directories="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)')" />
+    <Copy SourceFiles="$(KslArtifact)" DestinationFolder="$(HostBinPluginsDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)')" SkipUnchangedFiles="true" />
   </Target>
 </Project>
