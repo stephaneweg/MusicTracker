@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -200,15 +201,31 @@ namespace MusicTracker.Screens
             }
             else
             {
-                foreach (var p in kotons)
+                // Regroupement par Category (attribut KotonInstrument) : evite un menu a rallonge quand
+                // la liste depasse ~15 plugins. Groupes tries alphabetiquement, "Autres" (sans category) en fin.
+                var groups = kotons.GroupBy(p => string.IsNullOrWhiteSpace(p.Category) ? "Autres" : p.Category)
+                                   .OrderBy(g => g.Key == "Autres" ? "zzz" : g.Key, StringComparer.CurrentCultureIgnoreCase)
+                                   .ToList();
+                bool useSubmenus = groups.Count > 1;
+                foreach (var g in groups)
                 {
-                    var it = new MenuItem { Header = p.DisplayName, IsCheckable = false };
-                    if (!string.IsNullOrEmpty(track.KotonInstrumentId) &&
-                        string.Equals(track.KotonInstrumentId, p.Id, StringComparison.Ordinal))
-                        it.Icon = new TextBlock { Text = "✓", FontWeight = FontWeights.Bold };
-                    string id = p.Id;
-                    it.Click += (s, e) => SelectKoton(track, id);
-                    kotonBrowse.Items.Add(it);
+                    ItemsControl target = kotonBrowse;
+                    if (useSubmenus)
+                    {
+                        var sub = new MenuItem { Header = g.Key };
+                        kotonBrowse.Items.Add(sub);
+                        target = sub;
+                    }
+                    foreach (var p in g.OrderBy(x => x.DisplayName, StringComparer.CurrentCultureIgnoreCase))
+                    {
+                        var it = new MenuItem { Header = p.DisplayName, IsCheckable = false };
+                        if (!string.IsNullOrEmpty(track.KotonInstrumentId) &&
+                            string.Equals(track.KotonInstrumentId, p.Id, StringComparison.Ordinal))
+                            it.Icon = new TextBlock { Text = "✓", FontWeight = FontWeights.Bold };
+                        string id = p.Id;
+                        it.Click += (s, e) => SelectKoton(track, id);
+                        target.Items.Add(it);
+                    }
                 }
             }
             kotonBrowse.Items.Add(new Separator());
