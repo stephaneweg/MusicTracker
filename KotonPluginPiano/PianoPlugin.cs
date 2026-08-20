@@ -83,12 +83,15 @@ namespace KotonPluginPiano
             _maxBlockSize = maxBlockSize;
             _voices = new PianoVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new PianoVoice(sampleRate);
-            SetBiquadBandpass(ref _body1L, sampleRate, 120f,  3f);
-            SetBiquadBandpass(ref _body1R, sampleRate, 120f,  3f);
-            SetBiquadBandpass(ref _body2L, sampleRate, 500f,  3f);
-            SetBiquadBandpass(ref _body2R, sampleRate, 500f,  3f);
-            SetBiquadBandpass(ref _body3L, sampleRate, 1500f, 3f);
-            SetBiquadBandpass(ref _body3R, sampleRate, 1500f, 3f);
+            // Q reduit de 3 a 2 : les Q eleves ringent trop sur des attaques repetees et
+            // accumulent du "wash" resonant qui vient s'ajouter aux parasites. Q=2 garde le
+            // caractere "bois" sans ringing genant.
+            SetBiquadBandpass(ref _body1L, sampleRate, 120f,  2f);
+            SetBiquadBandpass(ref _body1R, sampleRate, 120f,  2f);
+            SetBiquadBandpass(ref _body2L, sampleRate, 500f,  2f);
+            SetBiquadBandpass(ref _body2R, sampleRate, 500f,  2f);
+            SetBiquadBandpass(ref _body3L, sampleRate, 1500f, 2f);
+            SetBiquadBandpass(ref _body3R, sampleRate, 1500f, 2f);
         }
 
         public void Reset()
@@ -191,6 +194,11 @@ namespace KotonPluginPiano
                 float bodyOutR = (b1R * 0.6f + b2R * 0.5f + b3R * 0.4f);
                 float wetL = sum * dry + bodyOutL * body;
                 float wetR = sum * dry + bodyOutR * body;
+
+                // Soft-clip final post-body : les peaks resonants peuvent facilement pousser au-dela
+                // de 1.0 sur des attaques accumulees → clipping du buffer WPF = parasites.
+                wetL = (float)Math.Tanh(wetL * 0.85);
+                wetR = (float)Math.Tanh(wetR * 0.85);
 
                 float mid = 0.5f * (wetL + wetR);
                 float side = wetL - wetR;

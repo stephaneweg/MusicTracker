@@ -33,6 +33,12 @@ namespace KotonPluginPiano
         float _lpPrev;            // LP moyen classique KS
         float _tonePrev;          // LP variable (Brightness)
         float _apPrevIn, _apPrevOut;  // All-pass 1er ordre (Inharmonicity)
+        // DC blocker HP 1er ordre : y[n] = x[n] - x[n-1] + R*y[n-1] (gain DC = 0, plat ailleurs).
+        // INDISPENSABLE : la demi-onde sin(pi*t/T) du marteau a une valeur moyenne POSITIVE (le
+        // feutre ne peut que POUSSER la corde, pas la tirer) → injecte du DC dans la boucle KS.
+        // Le LP moyen KS + l'all-pass Inharmonicity ont GAIN DC = 1 (ne bloquent pas le DC), donc
+        // ce DC s'accumule dans la ligne a retard entre les attaques → parasites qui montent.
+        float _dcPrevIn, _dcPrevOut;
 
         // Etats de la voix
         bool _active;
@@ -116,6 +122,7 @@ namespace KotonPluginPiano
             // progressivement plus etouffee. C'est exactement le "de plus en plus etouffe" rapporte
             // par l'utilisateur.
             _lpPrev = _tonePrev = _apPrevIn = _apPrevOut = 0f;
+            _dcPrevIn = _dcPrevOut = 0f;
             _damperActive = false;
             _damperMul = 1f;
             _damperLpCurrent = 6000f;
@@ -158,6 +165,8 @@ namespace KotonPluginPiano
             _damperMul = 1f;
             _damperLpCurrent = 6000f;
             _damperLpState = 0f;
+            _dcPrevIn = _dcPrevOut = 0f;
+            _lpPrev = _tonePrev = _apPrevIn = _apPrevOut = 0f;
             Array.Clear(_buf, 0, _buf.Length);
         }
 
@@ -184,11 +193,19 @@ namespace KotonPluginPiano
             _apPrevIn = toned;
             _apPrevOut = apOut;
 
+            // 3b) DC BLOCKER (indispensable) : y[n] = x[n] - x[n-1] + R*y[n-1]
+            //     R = 0.995 → gain DC = 0, gain plat au-dessus de ~35 Hz (a 44.1 kHz).
+            //     Sans ce filtre, le DC injecte par la demi-onde du marteau s'accumule dans la
+            //     boucle KS → sature progressivement → parasites qui montent.
+            float dcOut = apOut - _dcPrevIn + 0.995f * _dcPrevOut;
+            _dcPrevIn = apOut;
+            _dcPrevOut = dcOut;
+
             // 4) Feedback avec decay naturel (une note piano tient 5-20 s selon note)
             // gBase = 0.998 (tres long) car sans damper le piano soutient longtemps
             // gEff compense pour la longueur du delay (aigus sinon meurent trop vite)
             float gEff = (float)Math.Pow(0.9975f, _size / 1000.0);
-            float outValue = apOut * gEff;
+            float outValue = dcOut * gEff;
 
             _buf[_writeIdx] = outValue;
             _writeIdx++;
