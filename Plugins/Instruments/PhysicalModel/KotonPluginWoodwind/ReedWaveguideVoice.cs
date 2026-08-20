@@ -99,16 +99,16 @@ namespace KotonPluginWoodwind
             _releasing = false;
         }
 
-        /// <summary>Table d'anche : reflexion non-lineaire. Cubic soft-clip normalise → sinusoide
-        /// pure a faible dP, saturation progressive quand la pression augmente (harmoniques hautes
-        /// apparaissent naturellement, c'est CE qui differencie du modele additif "orgue").</summary>
-        static float ReedTable(float deltaP, float softness)
+        /// <summary>Table d'anche STK Cook (Perry Cook 1996 Clarinet.cpp) : coefficient de
+        /// reflexion lineaire clippee. La "vraie" formule d'auto-oscillation qui marche
+        /// (verifiee en production dans Synthesis Toolkit depuis 25 ans). Softness pilote
+        /// le taux de fermeture (0.30 = dure/mordante, 0.55 = douce/chantante).</summary>
+        static float ReedTable(float pDiff, float softness)
         {
-            float pClamp = 0.6f + softness * 0.6f;   // 0.6..1.2 : anche dure ferme plus vite
-            if (deltaP <= -pClamp) return -1f;
-            if (deltaP >= +pClamp) return +1f;
-            float n = deltaP / pClamp;
-            return n - n * n * n / 3f;                // cubic soft-clip
+            float rt = 0.85f - softness * 0.35f - pDiff * (0.60f + softness * 0.40f);
+            if (rt > 1f) return 1f;
+            if (rt < -1f) return -1f;
+            return rt;
         }
 
         float ReadDelay(float delaySamples)
@@ -137,31 +137,37 @@ namespace KotonPluginWoodwind
                 if (_breathEnv <= 0f) { _breathEnv = 0f; _active = false; return 0f; }
             }
 
-            // Pression bouche (pm) : air + petit bruit de souffle
-            float noise = (float)(_rng.NextDouble() * 2 - 1) * p.BreathNoise * 0.08f;
-            float pm = p.AirPressure * _breathEnv * _velocity + noise;
+            // Pression bouche (pm) : air × velocity × env + petit noise
+            float noise = (float)(_rng.NextDouble() * 2 - 1) * p.BreathNoise * 0.05f;
+            float pm = p.AirPressure * _breathEnv * _velocity * 1.4f + noise;
 
-            // Onde retour depuis le tube (interpolation lineaire pour tuning fractionnaire)
+            // === Formulation STK Cook Clarinet (proven to auto-oscillate) ==============
+            // 1) Lire l'onde retour au bout de la ligne
             float waveFromBore = ReadDelay(_delayLen);
 
-            // Filtre LP au pavillon (les aigus s'echappent, les graves reviennent) + reflexion
+            // 2) LP au pavillon + reflexion (negative clari, positive sax/hautbois/basson/cor)
             float cutoff = 1500f + p.Brightness * 4500f;
             float alpha = 1f - (float)Math.Exp(-2.0 * Math.PI * cutoff / _sr);
             _lpState += alpha * (waveFromBore - _lpState);
-            float returned = _lpState * _reflectSign;
+            float reflected = _lpState * _reflectSign;
 
-            // Table d'anche : delta de pression → reflexion non-lineaire
-            float deltaP = pm - returned;
-            float reedRefl = ReedTable(deltaP, p.ReedSoftness);
-            float waveToBore = pm + deltaP * reedRefl;
+            // 3) Difference de pression au niveau de l'anche : pDiff = pm/2 - reflected
+            float pDiff = 0.5f * pm - reflected;
 
-            // UNE SEULE ecriture par sample (bug Gemini : le code d'origine faisait 2 writes,
-            // faisant avancer le pointer 2x trop vite → frequence divisee par 2).
+            // 4) Table d'anche → coefficient de reflexion (adimensionnel dans [-1, +1])
+            float rt = ReedTable(pDiff, p.ReedSoftness);
+
+            // 5) Onde entrante dans le tube : pin = -rt * pDiff + pm/2
+            //    (formule Cook : le -rt * pDiff est la contribution "anche qui bouge",
+            //    le +pm/2 est la pression de souffle qui pousse dans le tube)
+            float waveToBore = -rt * pDiff + 0.5f * pm;
+
+            // 6) UNE SEULE ecriture par sample
             _bore[_writeIdx] = waveToBore;
             _writeIdx = (_writeIdx + 1) & _boreMask;
 
-            // Sortie audio = onde qui s'echappe du pavillon (approx : waveToBore filtre LP)
-            return waveToBore - _lpState;
+            // 7) Sortie audio = pression totale a l'embouchure (approx : waveToBore + reflected)
+            return waveToBore + reflected;
         }
     }
 }
