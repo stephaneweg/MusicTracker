@@ -43,18 +43,22 @@ namespace KotonPluginBanjo
             _len = Math.Max(2, (int)Math.Round(_sr / f - 0.5));
             if (_len > DlSize - 4) _len = DlSize - 4;
 
-            _feedback = 0.90f + p.Sustain * 0.06f;   // banjo sustain court : max 0.96
+            // Feedback : 0.985..0.998 (avant 0.90..0.96 = beaucoup trop bas, faisait mourir toutes
+            // les notes en < 1s independamment de la duree). Pour A4 (440 Hz) : feedback=0.992
+            // (Sustain=0.55 default) → decay a -60 dB en ~2s = sustain banjo realiste.
+            _feedback = 0.985f + p.Sustain * 0.013f;
             _brightCoef = 0.02f + (1f - p.Brightness) * 0.50f;
             _twangMix = p.Twang;
             _headMix = p.DrumHead;
 
-            // Twang chevalet (mordant onglette) : 2.5 kHz. Peau de banjo (tres tendue vs djembe) :
-            // mode principal 500 Hz (resonance "canard/boite de conserve" caracteristique) + mode
-            // secondaire harmonique membrane 1.2 kHz. Anciennes valeurs 90/250 Hz correspondaient
-            // a un bodhran ou djembe grave, pas au banjo.
+            // Twang chevalet (mordant onglette) : 2.5 kHz. Modes de peau : 90 Hz (sub-bass qui
+            // renforce la fondamentale des notes graves — donne le sustain audible caracteristique
+            // du banjo) + 250 Hz (bas-medium qui donne le "boom" percussif). Retour aux valeurs
+            // d'origine apres tentative Gemini 500/1200 Hz qui rendait plus percussif mais faisait
+            // perdre le sustain (la basse ne trainait plus, note grave paraissait coupee net).
             SetBqPeaking(ref _twangBq, _sr, 2500f, 3f, 4f);
-            SetBqPeaking(ref _head1, _sr, 500f, 2.5f, 5f);
-            SetBqPeaking(ref _head2, _sr, 1200f, 2f, 3f);
+            SetBqPeaking(ref _head1, _sr, 90f, 2f, 5f);
+            SetBqPeaking(ref _head2, _sr, 250f, 3f, 3f);
 
             // Excitation HP (bruit filtre par HP simple par derivation)
             int burst = Math.Max(2, (int)(p.PluckLenMs * _sr / 1000f));

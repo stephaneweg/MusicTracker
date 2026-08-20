@@ -36,10 +36,22 @@ namespace KotonPluginBagpipes
         public UserControl CreateEditor() => new BagpipesEditor(this);
 
         int _sr;
-        int _activeCount;
-        // Drone tone : 2 sines (Bb0 = base, Bb1 = octave) + sine 5th (F1) pour epaissir
+        // Drone tone : 3 SAW (fondamentale + octave + douzieme) filtrees LP ~800 Hz.
+        // Anciennement 3 sines pures → son "flute lisse" pas cornemuse. Un vrai bourdon a une
+        // anche riche en harmoniques (paires+impaires) filtrees par le tube.
         double _drone1, _drone2, _drone3;
         double _droneInc1, _droneInc2, _droneInc3;
+        float _droneLp;                   // LP 1-pole state pour filtrer les saw drones
+        float _droneLpAlpha;
+        // Enveloppe drone : fade in rapide (5ms), fade out lent (400ms) quand toutes les voix
+        // sont eteintes → recree l'inertie de l'air dans la poche du cornemuseur (au lieu d'un
+        // cut net qui casse le "legato de bourdon" caracteristique de l'instrument).
+        float _droneEnv;
+        float _droneEnvUpRate, _droneEnvDownRate;
+        // Compteur de samples ecoules depuis Prepare : sert a estimer le beat courant pour
+        // relire KotonHost.GetChordAt(beat) — sans ca on lisait toujours l'accord au beat 0
+        // du morceau (drone fixe meme quand l'harmonie evolue).
+        long _samplesElapsed;
         // Chanterelle voices (poly 4 pour permettre les ornements courts)
         ChanterelleVoice[] _voices;
 
@@ -48,51 +60,61 @@ namespace KotonPluginBagpipes
             _sr = sampleRate;
             _voices = new ChanterelleVoice[4];
             for (int i = 0; i < 4; i++) _voices[i] = new ChanterelleVoice(sampleRate);
-            _activeCount = 0;
+            _droneLpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * 800.0 / sampleRate);
+            _droneEnvUpRate   = 1f / Math.Max(1, 0.005f * sampleRate);   // 5 ms attack
+            _droneEnvDownRate = 1f / Math.Max(1, 0.400f * sampleRate);   // 400 ms release
+            _droneEnv = 0f;
         }
-        public void Reset() { if (_voices != null) foreach (var v in _voices) v.Kill(); _activeCount = 0; }
+        public void Reset() { if (_voices != null) foreach (var v in _voices) v.Kill(); _droneEnv = 0f; _droneLp = 0f; _samplesElapsed = 0; }
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
             if (_voices == null || velocity == 0) return;
+            // Detecte a la volee "premier NoteOn sans voix active" AVANT d'allouer la voix cible.
+            // Remplace le _activeCount qui derivait via le voice stealing (steal ecrasait une voix
+            // active sans decrement du compteur → drift +1 a chaque steal).
+            bool wasSilent = true;
+            for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive) { wasSilent = false; break; }
             ChanterelleVoice t = null;
             for (int i = 0; i < _voices.Length; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
             if (t == null) { t = _voices[0]; t.Kill(); }
             t.NoteOn(note, velocity / 127f, (float)_attack.Value);
-            _activeCount++;
-            // Setup drone freqs when first note starts.
-            // Si drone_source = 1, on prend la fondamentale de l'accord courant (via KotonHost),
-            // sinon la note MIDI configuree (fallback quand pas de piste d'accords sous le bloc).
-            if (_activeCount == 1)
+            // Setup/re-setup du drone A CHAQUE NoteOn (pas seulement au premier). Ainsi si
+            // l'harmonie change entre 2 notes tenues, le drone glisse vers la nouvelle fondamentale
+            // au lieu de rester bloque sur l'accord initial.
+            UpdateDrone();
+        }
+
+        void UpdateDrone()
+        {
+            int droneMidi = (int)Math.Round(_dronePitch.Value);
+            if (_droneSource.Value >= 0.5 && KotonHost.GetChordAt != null)
             {
-                int droneMidi = (int)Math.Round(_dronePitch.Value);
-                if (_droneSource.Value >= 0.5 && KotonHost.GetChordAt != null)
+                // Beat courant estime depuis le compteur de samples ecoules + tempo courant du
+                // projet. Sans ca on lisait toujours l'accord au beat 0.
+                double tempo = 120.0;
+                try { var ctx = KotonHost.CurrentContext?.Invoke(); if (ctx != null && ctx.Tempo > 0) tempo = ctx.Tempo; } catch { }
+                double currentBeat = _samplesElapsed / (double)_sr * (tempo / 60.0);
+                var ch = KotonHost.GetChordAt(currentBeat);
+                if (ch.HasValue)
                 {
-                    var ch = KotonHost.GetChordAt(0);   // approx : on lit l'accord au debut du morceau (le drone est fixe pendant la duree active)
-                    if (ch.HasValue)
-                    {
-                        // Recale la fondamentale de l'accord dans l'octave demandee : on prend
-                        // la classe de hauteur de l'accord et l'octave la plus proche du dronePitch
-                        // configure (par defaut 46 = Bb1). Ainsi changer d'accord = changer de drone
-                        // dans le meme registre.
-                        int rootPc = ch.Value.Root % 12;
-                        int refPc = droneMidi % 12;
-                        int refOct = droneMidi / 12;
-                        int candidate = refOct * 12 + rootPc;
-                        while (candidate - droneMidi > 6) candidate -= 12;
-                        while (candidate - droneMidi < -6) candidate += 12;
-                        droneMidi = candidate;
-                    }
+                    int rootPc = ch.Value.Root % 12;
+                    int refPc = droneMidi % 12;
+                    int refOct = droneMidi / 12;
+                    int candidate = refOct * 12 + rootPc;
+                    while (candidate - droneMidi > 6) candidate -= 12;
+                    while (candidate - droneMidi < -6) candidate += 12;
+                    droneMidi = candidate;
                 }
-                double baseF = 440.0 * Math.Pow(2.0, (droneMidi - 69) / 12.0);
-                _droneInc1 = baseF / _sr;
-                _droneInc2 = baseF * 2 / _sr;
-                _droneInc3 = baseF * 3 / _sr;  // 12eme (quinte sur octave)
             }
+            double baseF = 440.0 * Math.Pow(2.0, (droneMidi - 69) / 12.0);
+            _droneInc1 = baseF / _sr;
+            _droneInc2 = baseF * 2 / _sr;
+            _droneInc3 = baseF * 3 / _sr;
         }
         public void NoteOff(int note, int sampleOffset = 0)
         {
             if (_voices == null) return;
-            for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) { _voices[i].NoteOff((float)_release.Value); _activeCount = Math.Max(0, _activeCount - 1); }
+            for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff((float)_release.Value);
         }
         public void MidiCC(int cc, int value, int sampleOffset = 0) { if (cc == 123) Reset(); }
         public void SetPitchBend(float value, int sampleOffset = 0) { }
@@ -100,6 +122,7 @@ namespace KotonPluginBagpipes
         public void Render(Span<float> left, Span<float> right)
         {
             if (_voices == null) { left.Clear(); right.Clear(); return; }
+            _samplesElapsed += left.Length;   // compteur pour estimation du beat courant
             float volLin = (float)Math.Pow(10.0, _volumeDb.Value / 20.0);
             float dMix = (float)_droneMix.Value;
             float reedHz = (float)_reedHz.Value, reedQ = (float)_reedQ.Value, reedNoise = (float)_reedNoise.Value, bright = (float)_brightness.Value;
@@ -111,13 +134,28 @@ namespace KotonPluginBagpipes
                 float chSum = 0;
                 for (int v = 0; v < _voices.Length; v++) if (_voices[v].IsActive) chSum += _voices[v].RenderSample(reedHz, reedQ, reedNoise, bright);
 
+                // Enveloppe drone : rise rapide quand une voix demarre, fall lent quand toutes
+                // s'eteignent (simule l'air dans la poche du cornemuseur — plus de cut net).
+                float droneTarget = anyActive ? 1f : 0f;
+                if (droneTarget > _droneEnv) _droneEnv = Math.Min(droneTarget, _droneEnv + _droneEnvUpRate);
+                else if (droneTarget < _droneEnv) _droneEnv = Math.Max(droneTarget, _droneEnv - _droneEnvDownRate);
+
                 float drone = 0;
-                if (anyActive)
+                if (_droneEnv > 1e-4f)
                 {
                     _drone1 += _droneInc1; if (_drone1 >= 1) _drone1 -= 1;
                     _drone2 += _droneInc2; if (_drone2 >= 1) _drone2 -= 1;
                     _drone3 += _droneInc3; if (_drone3 >= 1) _drone3 -= 1;
-                    drone = (float)(Math.Sin(_drone1 * 2 * Math.PI) * 0.5 + Math.Sin(_drone2 * 2 * Math.PI) * 0.3 + Math.Sin(_drone3 * 2 * Math.PI) * 0.2);
+                    // 3 SAW (fondamentale + octave + douzieme) au lieu de sines : anche double du
+                    // bourdon = spectre riche paires+impaires, pas onde pure.
+                    float saw1 = (float)(2.0 * _drone1 - 1.0);
+                    float saw2 = (float)(2.0 * _drone2 - 1.0);
+                    float saw3 = (float)(2.0 * _drone3 - 1.0);
+                    float sawMix = saw1 * 0.5f + saw2 * 0.3f + saw3 * 0.2f;
+                    // LP 1-pole a 800 Hz : coupe les aigues des saw (anti-aliasing + coloration
+                    // "guttural/boisee" de l'anche filtree par le tube du bourdon).
+                    _droneLp += _droneLpAlpha * (sawMix - _droneLp);
+                    drone = _droneLp * _droneEnv;
                 }
 
                 float s = (chSum + drone * dMix * 0.6f) * volLin;
@@ -140,6 +178,7 @@ namespace KotonPluginBagpipes
         float _env, _atkR, _relR;
         int _stage;
         Random _rng; float _noiseSt;
+        float _cachedReedHz = -1f, _cachedReedQ = -1f;   // pour eviter le recalcul biquad par sample
         int _note; float _vel; bool _active;
         public bool IsActive => _active;
         public int Note => _note;
@@ -153,6 +192,7 @@ namespace KotonPluginBagpipes
             _atkR = 1f / Math.Max(1, atkMs * _sr / 1000f);
             _env = 0; _stage = 1;
             SetLP(ref _lp, _sr, 4500, 0.707f);
+            _cachedReedHz = -1f; _cachedReedQ = -1f;   // force le premier setup du biquad reed
             _active = true;
         }
         public void NoteOff(float relMs) { _relR = 1f / Math.Max(1, relMs * _sr / 1000f); _stage = 3; }
@@ -167,7 +207,14 @@ namespace KotonPluginBagpipes
             float noise = (float)(_rng.NextDouble() * 2 - 1);
             _noiseSt = _noiseSt * 0.85f + noise * 0.15f;
             float src = saw + _noiseSt * noiseAmt * 0.2f;
-            SetBP(ref _reed, _sr, reedHz, reedQ);
+            // Ne recalcule le biquad reed que quand les params changent (etait recalcule
+            // 44100 fois/sec/voix = 8 Math.Sin+Math.Cos par sample par voix, catastrophe CPU
+            // et artefacts sur les slides continus).
+            if (reedHz != _cachedReedHz || reedQ != _cachedReedQ)
+            {
+                SetBP(ref _reed, _sr, reedHz, reedQ);
+                _cachedReedHz = reedHz; _cachedReedQ = reedQ;
+            }
             float f = BiquadProcess(ref _reed, src) * (0.6f + brightness * 0.5f);
             float mix = src * 0.3f + f * 0.9f;
             float outv = BiquadProcess(ref _lp, mix);
