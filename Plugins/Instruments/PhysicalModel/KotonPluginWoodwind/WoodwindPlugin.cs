@@ -61,8 +61,9 @@ namespace KotonPluginWoodwind
         int _stealCursor, _reedStealCursor;
         const int Polyphony = 8;
 
-        // Retourne true pour clarinette/sax/hautbois/basson/cor anglais (instruments a anche).
-        // Flute (0) et Piccolo (6) restent en additif (leur son quasi-sinusoidal est bien rendu).
+        // Route clarinette/sax/hautbois/basson/cor anglais vers le waveguide ReedWaveguideVoice
+        // (auto-oscillation reelle avec formulation STK). Flute (0) et Piccolo (6) restent
+        // sur l'additif WoodwindVoice (leur son quasi-sinusoidal est bien rendu par les partiels).
         static bool IsReedInstrument(int idx) => idx == 1 || idx == 2 || idx == 3 || idx == 4 || idx == 5 || idx == 7;
 
         // Formant filter caractéristique du bois : DEUX peak biquads en série en sortie pour

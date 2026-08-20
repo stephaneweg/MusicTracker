@@ -2,15 +2,6 @@ using System;
 
 namespace KotonPluginWoodwind
 {
-    /// <summary>
-    /// Guide d'onde numerique pour instruments A ANCHE (clarinette, sax alto/tenor, hautbois,
-    /// basson, cor anglais). Formulation STK Cook Clarinet + IMPULSION D'ATTAQUE au NoteOn
-    /// pour amorcer l'auto-oscillation (sans impulsion initiale, le systeme reste en equilibre
-    /// stable = pas de son).
-    ///
-    /// Une SEULE ecriture par sample dans la delay line (le pointer doit avancer d'un sample
-    /// par sample rendu, sinon frequence effective divisee par 2).
-    /// </summary>
     internal sealed class ReedWaveguideVoice
     {
         readonly int _sr;
@@ -19,7 +10,7 @@ namespace KotonPluginWoodwind
         int _writeIdx;
 
         float _delayLen;
-        float _reflectSign;    // -0.95 clarinette, +0.95 sax/hautbois/basson/cor
+        float _reflectSign;
 
         bool _active;
         int _note;
@@ -29,12 +20,31 @@ namespace KotonPluginWoodwind
         float _attackRate, _releaseRate;
         bool _releasing;
 
-        // Transient de pression au NoteOn : amorce l'auto-oscillation. Sans ca, le systeme reste
-        // en equilibre stable (breath progressive + tube vide = pas d'accrochage anche).
-        float _attackPulse;
-
         Random _rng;
-        float _lpState;
+
+        // --- Modélisation acoustique avancée ---
+        // 1. Filtre du pavillon (Tonehole/Bell filter : LP + HP)
+        float _bellLpState;
+        float _bellHpState;
+
+        // 2. Résonance mécanique de l'anche (2-pole filter pour simuler la masse/élasticité)
+        float _reedState1, _reedState2;
+
+        // 3. Formant du corps (Biquad Bandpass)
+        float _fmB0, _fmA1, _fmA2;
+        float _fmX1, _fmX2, _fmY1, _fmY2;
+
+        // Fréquences de formant caractéristiques (Hz)
+        static readonly float[] InstrumentFormants = {
+            0000f, // 0: Flûte (non utilisé ici)
+            1500f, // 1: Clarinette (creux caractéristique vers 1.5 kHz)
+            1100f, // 2: Hautbois (formant très serré et nasal)
+            0500f, // 3: Basson (formant grave très chaleureux)
+            0900f, // 4: Sax Alto (corps en cuivre medium)
+            0650f, // 5: Sax Ténor (chaleur plus basse)
+            3000f, // 6: Piccolo
+            0950f  // 7: Cor Anglais
+        };
 
         public bool IsActive => _active;
         public int Note => _note;
@@ -43,7 +53,7 @@ namespace KotonPluginWoodwind
         {
             _sr = sampleRate;
             int size = 1;
-            int need = Math.Max(sampleRate / 20, 4096);
+            int need = Math.Max(sampleRate / 10, 8192);
             while (size < need) size <<= 1;
             _bore = new float[size];
             _boreMask = size - 1;
@@ -55,21 +65,47 @@ namespace KotonPluginWoodwind
             _velocity = velocity;
 
             double f0 = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            _delayLen = (float)(_sr / (2.0 * f0));
-
-            int instr = p.InstrumentIdx;
+            int instr = Math.Max(0, Math.Min(InstrumentFormants.Length - 1, p.InstrumentIdx));
             bool isClarinette = (instr == 1);
-            _reflectSign = isClarinette ? -0.95f : +0.95f;
+
+            // Ajustement de longueur physique avec correction de bout (end-correction)
+            if (isClarinette)
+            {
+                _delayLen = (float)(_sr / (4.0 * f0)) - 0.5f;
+                _reflectSign = -0.96f;
+            }
+            else
+            {
+                _delayLen = (float)(_sr / (2.0 * f0)) - 0.5f;
+                _reflectSign = +0.93f;
+            }
+
+            // Configuration du formant du corps (RBJ Bandpass)
+            float formantFreq = InstrumentFormants[instr];
+            if (formantFreq > 0)
+            {
+                float q = 2.0f + p.BoreSize * 2.0f;
+                double w0 = 2.0 * Math.PI * formantFreq / _sr;
+                double alpha = Math.Sin(w0) / (2.0 * q);
+                double cosw0 = Math.Cos(w0);
+                double a0 = 1.0 + alpha;
+                _fmB0 = (float)(alpha / a0);
+                _fmA1 = (float)(-2.0 * cosw0 / a0);
+                _fmA2 = (float)((1.0 - alpha) / a0);
+            }
+            else
+            {
+                _fmB0 = 1f; _fmA1 = _fmA2 = 0f;
+            }
 
             Array.Clear(_bore, 0, _bore.Length);
             _writeIdx = 0;
-            _lpState = 0f;
+            _bellLpState = _bellHpState = 0f;
+            _reedState1 = _reedState2 = 0f;
+            _fmX1 = _fmX2 = _fmY1 = _fmY2 = 0f;
+
             _breathEnv = 0f;
             _releasing = false;
-
-            // Impulsion initiale : magnitude 0.4-0.8 selon velocity, decay exp ~0.992/sample
-            // (~250 samples pour tomber a 0.1 → 5-6 ms a 44.1 kHz, comme un "coup de langue")
-            _attackPulse = 0.4f + velocity * 0.4f;
 
             _attackRate = 1f / Math.Max(1f, p.AttackSec * _sr);
             _releaseRate = 1f / Math.Max(1f, p.ReleaseSec * _sr);
@@ -85,22 +121,20 @@ namespace KotonPluginWoodwind
             _active = false;
             _breathEnv = 0f;
             _releasing = false;
-            _attackPulse = 0f;
         }
 
-        // Reed table : rt = offset + slope*pDiff, clip ±1. Slope NEGATIVE : la reed ferme quand
-        // la difference de pression grandit (comportement physique reel).
-        static float ReedTable(float pDiff, float softness)
+        // Table d'anche avec saturation non-linéaire douce (Tangente hyperbolique)
+        private static float ReedTableSoft(float pDiff, float softness)
         {
-            float offset = 0.70f + softness * 0.10f;
-            float slope = -0.40f;
-            float rt = offset + slope * pDiff;
-            if (rt > 1f) return 1f;
-            if (rt < -1f) return -1f;
-            return rt;
+            float offset = 0.65f + softness * 0.15f;
+            float slope = -0.75f - (1f - softness) * 0.25f;
+
+            float raw = offset + slope * pDiff;
+            // Sature en douceur pour éviter les bruits de hachage trop synthétiques
+            return (float)Math.Tanh(raw);
         }
 
-        float ReadDelay(float delaySamples)
+        private float ReadDelay(float delaySamples)
         {
             float readPos = _writeIdx - delaySamples;
             while (readPos < 0) readPos += _bore.Length;
@@ -115,6 +149,7 @@ namespace KotonPluginWoodwind
         {
             if (!_active) return 0f;
 
+            // 1. Enveloppe du souffle
             if (!_releasing)
             {
                 _breathEnv += _attackRate;
@@ -126,36 +161,58 @@ namespace KotonPluginWoodwind
                 if (_breathEnv <= 0f) { _breathEnv = 0f; _active = false; return 0f; }
             }
 
-            // Decroissance de l'impulsion d'attaque
-            if (_attackPulse > 0f)
-            {
-                _attackPulse *= 0.992f;
-                if (_attackPulse < 0.001f) _attackPulse = 0f;
-            }
+            // Pression d'injection avec instabilités naturelles du souffle (bruit rose bas-médium)
+            float breathNoise = (float)(_rng.NextDouble() * 2 - 1) * (p.BreathNoise * 0.06f + 0.008f);
+            float pm = (Math.Max(0.15f, p.AirPressure) * _breathEnv * _velocity) + breathNoise;
 
-            // Pression totale : souffle continu + transient d'attaque + petit bruit
-            float noise = (float)(_rng.NextDouble() * 2 - 1) * (p.BreathNoise * 0.05f + 0.01f);
-            float userPressure = Math.Max(0.2f, p.AirPressure) * _breathEnv * _velocity;
-            float pm = userPressure + _attackPulse + noise;
-
-            // Lire onde retour + LP au pavillon (aigus s'echappent, graves reviennent)
+            // 2. Onde provenant de la colonne d'air
             float waveFromBore = ReadDelay(_delayLen);
-            float cutoff = 1500f + p.Brightness * 7000f;
-            float alpha = 1f - (float)Math.Exp(-2.0 * Math.PI * cutoff / _sr);
-            _lpState += alpha * (waveFromBore - _lpState);
-            float reflected = _lpState * _reflectSign;
 
-            // Table d'anche + injection tube
-            float pDiff = pm - reflected;
-            float rt = ReedTable(pDiff, p.ReedSoftness);
-            float waveToBore = 0.5f * pm + rt * pDiff;
+            // 3. Acoustique du Pavillon (Combinaison Passe-Bas + Passe-Haut)
+            // Passe-bas (absorption de l'air/bois)
+            float lpCutoff = 1800f + p.Brightness * 6000f;
+            float alphaLp = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
+            _bellLpState += alphaLp * (waveFromBore - _bellLpState);
 
-            // Ecriture unique
+            // Passe-haut (les fréquences sous la coupure du pavillon s'échappent moins)
+            float hpCutoff = 150f + (1f - p.BoreSize) * 200f;
+            float alphaHp = 1f - (float)Math.Exp(-2.0 * Math.PI * hpCutoff / _sr);
+            _bellHpState += alphaHp * (_bellLpState - _bellHpState);
+
+            // Onde réfléchie vers l'anche
+            float reflected = (_bellLpState - _bellHpState) * _reflectSign;
+
+            // 4. Modélisation de la dynamique de l'anche (Inertie mécanique)
+            float pDiffTarget = reflected - pm;
+
+            // L'anche agit comme un filtre passe-bas sur la variation de pression (inertie de la lamelle)
+            float reedFreq = 2500f + (1f - p.ReedSoftness) * 3500f; // Résonance propre de l'anche
+            float alphaReed = 1f - (float)Math.Exp(-2.0 * Math.PI * reedFreq / _sr);
+            _reedState1 += alphaReed * (pDiffTarget - _reedState1);
+
+            // 5. Injection de la nouvelle onde dans le tube
+            float reedReflection = ReedTableSoft(_reedState1, p.ReedSoftness);
+            float waveToBore = pm + _reedState1 * reedReflection;
+
+            // Écriture unique dans la delay line
             _bore[_writeIdx] = waveToBore;
             _writeIdx = (_writeIdx + 1) & _boreMask;
 
-            // Sortie audio : pression rayonnee au pavillon, x1.5 pour matcher volume additif
-            return (waveToBore - reflected) * 1.5f;
+            // 6. Rayonnement sonore extérieur = Onde transmise hors du tube
+            float radiatedSignal = waveToBore - reflected;
+
+            // 7. Infiltration des formants du corps de l'instrument
+            if (_fmB0 != 1f)
+            {
+                float filtered = _fmB0 * (radiatedSignal - _fmX2) - _fmA1 * _fmY1 - _fmA2 * _fmY2;
+                _fmX2 = _fmX1; _fmX1 = radiatedSignal;
+                _fmY2 = _fmY1; _fmY1 = filtered;
+
+                // Mix entre le signal pur du tube et la résonance du corps
+                radiatedSignal = (radiatedSignal * 0.65f) + (filtered * 0.35f);
+            }
+
+            return radiatedSignal * 1.2f;
         }
     }
 }
