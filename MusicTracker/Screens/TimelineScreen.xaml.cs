@@ -196,6 +196,7 @@ namespace MusicTracker.Screens
             SyncMeterCombo();
             SyncPickupCombo();
             SyncSwingCombo();
+            SyncExpressionSliders();
             UpdateKeySummary();
             UpdateMeterSummary();
         }
@@ -308,6 +309,34 @@ namespace MusicTracker.Screens
             PushUndo("swing"); // stable op key (coalescing) — not a localized label
             project.SwingPercent = pct;
             UpdateMeterSummary(); // the collapsed chip shows the swing, since the notes look unchanged
+        }
+
+        bool syncingHumanize, syncingAgogic;
+
+        void SyncExpressionSliders()
+        {
+            if (sldHumanize != null) { syncingHumanize = true; sldHumanize.Value = project.HumanizePercent; txtHumanize.Text = project.HumanizePercent.ToString(); syncingHumanize = false; }
+            if (sldAgogic != null) { syncingAgogic = true; sldAgogic.Value = project.AgogicPercent; txtAgogic.Text = project.AgogicPercent.ToString(); syncingAgogic = false; }
+        }
+
+        private void Humanize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (syncingHumanize || sldHumanize == null) return;
+            int v = (int)Math.Round(sldHumanize.Value);
+            if (v == project.HumanizePercent) return;
+            PushUndo("humanize");
+            project.HumanizePercent = v;
+            txtHumanize.Text = v.ToString();
+        }
+
+        private void Agogic_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (syncingAgogic || sldAgogic == null) return;
+            int v = (int)Math.Round(sldAgogic.Value);
+            if (v == project.AgogicPercent) return;
+            PushUndo("agogic");
+            project.AgogicPercent = v;
+            txtAgogic.Text = v.ToString();
         }
 
         private void Pickup_Changed(object sender, SelectionChangedEventArgs e)

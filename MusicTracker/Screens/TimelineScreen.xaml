@@ -337,6 +337,8 @@
                                 <RowDefinition Height="auto"/>
                                 <RowDefinition Height="auto"/>
                                 <RowDefinition Height="auto"/>
+                                <RowDefinition Height="auto"/>
+                                <RowDefinition Height="auto"/>
                             </Grid.RowDefinitions>
                             <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2">
                                 <ComboBox x:Name="cboMeter" Width="62" VerticalAlignment="Center" Margin="0,0,8,0" SelectionChanged="Meter_Changed" ToolTip="{loc:Tr 'TimeSignatureChangingTheNumberOf'}"/>
@@ -346,6 +348,16 @@
                             <ComboBox x:Name="cboPickup" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Center" SelectionChanged="Pickup_Changed" ToolTip="{loc:Tr 'PickupLengthOfTheIncompleteOpening'}"/>
                             <TextBlock Text="{loc:Tr 'Swing'}" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="2"/>
                             <ComboBox x:Name="cboSwing" Grid.Column="1" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Center" SelectionChanged="Swing_Changed" ToolTip="{loc:Tr 'SwingDelaysTheOffEighths'}"/>
+                            <TextBlock Text="{loc:Tr 'Humanize'}" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="3"/>
+                            <StackPanel Grid.Column="1" Grid.Row="3" Orientation="Horizontal" MinWidth="180">
+                                <Slider x:Name="sldHumanize" Width="140" Minimum="0" Maximum="100" TickFrequency="10" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Humanize_Changed" ToolTip="{loc:Tr 'HumanizeTip'}"/>
+                                <TextBlock x:Name="txtHumanize" Text="0" Foreground="{StaticResource CommonForeground}" MinWidth="30" TextAlignment="Right" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="{loc:Tr 'Agogic'}" Style="{StaticResource ToolLabel}" Grid.Column="0" Grid.Row="4"/>
+                            <StackPanel Grid.Column="1" Grid.Row="4" Orientation="Horizontal" MinWidth="180">
+                                <Slider x:Name="sldAgogic" Width="140" Minimum="0" Maximum="100" TickFrequency="10" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Agogic_Changed" ToolTip="{loc:Tr 'AgogicTip'}"/>
+                                <TextBlock x:Name="txtAgogic" Text="0" Foreground="{StaticResource CommonForeground}" MinWidth="30" TextAlignment="Right" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                            </StackPanel>
                         </Grid>
                     </Border>
                 </Popup>

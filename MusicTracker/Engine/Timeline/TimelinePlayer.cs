@@ -426,18 +426,38 @@ namespace MusicTracker.Engine.Timeline
             int spq = riff.SlicesPerQuarter > 0 ? riff.SlicesPerQuarter : 4;
             double scale = (double)Spb / spq;             // riff slices -> global slices
             int off = (int)Math.Round(startBeat * Spb);
+            int hv = Math.Max(0, Math.Min(100, melodyProject?.HumanizePercent ?? 0));
+            int ha = Math.Max(0, Math.Min(100, melodyProject?.AgogicPercent ?? 0));
             foreach (var n in riff.Notes)
             {
                 if (n.Note < 0 || n.Note >= NoteCount) continue;
                 int straight = off + (int)Math.Round(n.Start * scale); // metric position (accent), before the swing delay
-                int s = SwingSlice(straight);
-                int e = SwingSlice(off + (int)Math.Round(n.End * scale));
+                int vel = MetricVelocity(straight);
+                bool isDown = (vel == 118);        // downbeat de mesure (voir MetricVelocity)
+                bool isStrong = (vel >= 108);      // downbeat ou temps fort secondaire
+                int timingShift = 0, endExt = 0;
+                if (hv > 0)
+                {
+                    // Random deterministe par note+position → reproductibilite (rejouer donne le meme feel)
+                    var rng = new Random(unchecked(n.Note * 7919 + n.Start * 131 + off + 17));
+                    int magV = hv * 8 / 100;       // ±8 vel max
+                    int magT = hv * 2 / 100;       // ±2 slices max
+                    if (magV > 0) vel = Math.Max(1, Math.Min(127, vel + rng.Next(-magV, magV + 1)));
+                    if (magT > 0 && !isDown) timingShift = rng.Next(-magT, magT + 1);
+                }
+                if (ha > 0 && isStrong)
+                {
+                    double factor = isDown ? 0.10 : 0.05;
+                    endExt = (int)Math.Round(Spb * factor * ha / 100.0);
+                }
+                int s = SwingSlice(straight + timingShift);
+                int e = SwingSlice(off + (int)Math.Round(n.End * scale)) + endExt;
                 if (e <= s) e = s + 1;
                 if (s < 0) s = 0;
                 if (s >= totalSlices) continue;
                 if (e > totalSlices) e = totalSlices;
                 (tr.AttackAt[s] ?? (tr.AttackAt[s] = new List<int>())).Add(n.Note);
-                (tr.AttackVel[s] ?? (tr.AttackVel[s] = new List<int>())).Add(MetricVelocity(straight));
+                (tr.AttackVel[s] ?? (tr.AttackVel[s] = new List<int>())).Add(vel);
                 (tr.ReleaseAt[e] ?? (tr.ReleaseAt[e] = new List<int>())).Add(n.Note);
             }
         }

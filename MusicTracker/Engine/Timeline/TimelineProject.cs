@@ -230,6 +230,16 @@ namespace MusicTracker.Engine.Timeline
         /// the written notes / score / MIDI export stay straight eighths, as a DAW does.</summary>
         public double SwingPercent { get; set; } = 50;
 
+        /// <summary>HUMANISATION (0..100) : petit random deterministe sur la velocity (jusqu'a ±8) et le timing
+        /// (jusqu'a ±2 slices, JAMAIS sur un downbeat pour preserver le groove). 0 = off (defaut, comportement
+        /// mecanique historique). 40-60 = feel naturel. Ne touche que le playback, pas la partition.</summary>
+        public int HumanizePercent { get; set; } = 0;
+
+        /// <summary>MICRO-AGOGIQUE (0..100) : allonge legerement la duree des notes sur les temps forts
+        /// (downbeat +10% max, temps fort secondaire +5% max, echelle par ce pourcentage). 0 = off (defaut).
+        /// Rend une phrase vivante en respirant sur les points d'appui, sans decaler les attaques. Playback seul.</summary>
+        public int AgogicPercent { get; set; } = 0;
+
         /// <summary>Named section markers (see <see cref="SectionMarker"/>), kept sorted by Beat. Empty by default:
         /// a project created, imported or generated before/without this feature simply has none. A PROPERTY with an
         /// initialiser on purpose — opening a .sq written before this feature leaves the list empty, never null.</summary>
