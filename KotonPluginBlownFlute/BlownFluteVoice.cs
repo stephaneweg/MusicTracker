@@ -95,9 +95,23 @@ namespace KotonPluginBlownFlute
             _vibPhase = (float)(_rng.NextDouble() * 2 * Math.PI);
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
 
+            // KICK-START du tube : petite impulsion de bruit filtre pour amorcer la resonance
+            // en ~3 ms au lieu que la boucle mette 20-200 ms a s'etablir depuis un tube vide (les
+            // notes courtes < 200 ms n'avaient pas le temps de sonner). Amplitude modeste
+            // (velocity * 0.15) — le jet prendra le relais pour maintenir l'oscillation.
+            int kickSamples = Math.Min(_size, (int)(0.003 * _sr));
+            float kickAmp = velocity * 0.15f;
+            for (int i = 0; i < kickSamples; i++)
+            {
+                float decay = 1f - (float)i / kickSamples;
+                _tube[i] = (float)(_rng.NextDouble() * 2 - 1) * kickAmp * decay;
+            }
+
             // Enveloppe : BreathAttack contrôle la courbe (exponentielle vs linéaire)
-            // 0..1 → constante de temps 30 ms → 2 s. Attaque très progressive typique méditation.
-            double attackSec = 0.03 + p.BreathAttack * 1.97;
+            // 0..1 → constante de temps 8 ms → 2 s. Le 8 ms minimum (avant 30 ms) evite que
+            // les notes courtes soient etoufees par l'attaque exponentielle qui n'atteignait
+            // pas la pression suffisante pour amorcer le jet.
+            double attackSec = 0.008 + p.BreathAttack * 1.992;
             _envAttackCurve = (float)(1.0 - Math.Exp(-1.0 / (attackSec * _sr)));
             _envReleaseRate = 1f / Math.Max(1f, p.ReleaseSec * _sr);
             _env = 0f;
@@ -130,7 +144,10 @@ namespace KotonPluginBlownFlute
             {
                 case EnvStage.Attack:
                     _env += _envAttackCurve * (1f - _env);
-                    if (_env >= 0.995f) { _env = 1f; _stage = EnvStage.Sustain; }
+                    // Bascule en Sustain a 0.8 (au lieu de 0.995) : l'attaque exponentielle asymptote
+                    // vers 1 et prend ~5 tau pour atteindre 0.995. A 0.8 c'est ~1.6 tau, largement
+                    // audible et la note peut atteindre son sustain avant un release rapide.
+                    if (_env >= 0.8f) { _env = 1f; _stage = EnvStage.Sustain; }
                     break;
                 case EnvStage.Release:
                     _env -= _envReleaseRate;
