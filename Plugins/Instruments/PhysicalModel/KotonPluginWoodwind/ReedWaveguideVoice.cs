@@ -29,7 +29,7 @@ namespace KotonPluginWoodwind
         readonly int _boreMask;
         int _writeIdx;
 
-        // (LP filter state est _lpPrevIn en bas du fichier — filtre averaged STK simple)
+        // LP state pour le filtre passe-bas au pavillon (declare en bas de la classe).
         float _delayLen;                // en samples (fractionnaire)
         float _reflectSign;             // -0.98 clarinette (invers), +0.90 sax/hautbois/basson
 
@@ -75,7 +75,7 @@ namespace KotonPluginWoodwind
 
             Array.Clear(_bore, 0, _bore.Length);
             _writeIdx = 0;
-            _lpPrevIn = 0f;
+            _lpState = 0f;
             _breathEnv = 0f;
             _releasing = false;
 
@@ -99,8 +99,7 @@ namespace KotonPluginWoodwind
             _releasing = false;
         }
 
-        // Reed table STK : rt = offset + slope * pDiff, clippee. Offset piloté par softness :
-        // hard reed = offset plus bas (ferme plus vite), soft reed = offset plus haut.
+        // Reed table STK : rt = offset + slope * pDiff, clippee. Offset piloté par softness.
         static float ReedTable(float pDiff, float softness)
         {
             float offset = 0.60f + softness * 0.20f;   // 0.60..0.80
@@ -110,17 +109,18 @@ namespace KotonPluginWoodwind
             return rt;
         }
 
-        // LP passe-bas 1er ordre averaged (STK utilise `y = 0.5*(x + prevX)` — filtre simple
-        // sans coefs à calculer, tres stable, cutoff nyquist/2).
-        float _lpPrevIn;
+        float _lpState;
 
+        // Lecture interpolee lineaire avec Math.Floor explicite pour eviter la troncation vers
+        // zero (bug quand readPos peut passer par valeurs proches de 0 apres le wrap while).
         float ReadDelay(float delaySamples)
         {
             float readPos = _writeIdx - delaySamples;
             while (readPos < 0) readPos += _bore.Length;
-            int i1 = ((int)readPos) & _boreMask;
+            int i1 = (int)Math.Floor(readPos);
+            float frac = readPos - i1;
+            i1 &= _boreMask;
             int i2 = (i1 + 1) & _boreMask;
-            float frac = readPos - (int)readPos;
             return _bore[i1] + frac * (_bore[i2] - _bore[i1]);
         }
 
@@ -128,7 +128,6 @@ namespace KotonPluginWoodwind
         {
             if (!_active) return 0f;
 
-            // Enveloppe pression
             if (!_releasing)
             {
                 _breathEnv += _attackRate;
@@ -140,39 +139,37 @@ namespace KotonPluginWoodwind
                 if (_breathEnv <= 0f) { _breathEnv = 0f; _active = false; return 0f; }
             }
 
-            // Pression bouche STK-style : AirPressure ~ 1.0 en steady state, ~1.4 max avec drive
-            // × velocity + petit bruit multiplicatif (le noise MOD la pression, pas ajoute)
-            float breathPressure = _breathEnv * p.AirPressure * _velocity * 2.5f;
-            float noise = (float)(_rng.NextDouble() * 2 - 1) * p.BreathNoise * breathPressure * 0.08f;
-            breathPressure += noise;
+            // Drive reduit x0.8 (au lieu de x2.5) : au-dessus de la pression critique la reed
+            // sature en permanence a ±1, la table d'anche perd sa dynamique → boucle etouffee.
+            // Zone d'oscillation utile ~ pm entre 0.15 et 0.75.
+            float noise = (float)(_rng.NextDouble() * 2 - 1) * p.BreathNoise * 0.02f;
+            float pm = Math.Max(0.05f, p.AirPressure * _breathEnv * _velocity * 0.8f) + noise;
 
-            // === Formulation STK Cook Clarinet A LA LETTRE ===============================
-            // 1) Lire ce qui sort de la delay (onde qui retourne vers l'anche)
-            float delayed = ReadDelay(_delayLen);
+            // 1) Lire onde retour du tube
+            float waveFromBore = ReadDelay(_delayLen);
 
-            // 2) LP simple : y = 0.5*(x + x_prev) — STK "OnePole" filter, coupure Nyquist/2
-            float filtered = 0.5f * (delayed + _lpPrevIn);
-            _lpPrevIn = delayed;
+            // 2) LP doux au pavillon (cutoff 2000-8000 Hz : ne pas tuer les hautes freq
+            //    necessaires a l'accrochage de l'anche)
+            float cutoff = 2000f + p.Brightness * 6000f;
+            float alpha = 1f - (float)Math.Exp(-2.0 * Math.PI * cutoff / _sr);
+            _lpState += alpha * (waveFromBore - _lpState);
 
-            // 3) Reflexion filtree * gain de reflexion signe (-clarinette / +sax coniques)
-            float reflectedPressure = _reflectSign * filtered;
+            // 3) Onde reflechie signee (- clarinette, + sax/hautbois/basson/cor)
+            float reflected = _lpState * _reflectSign;
 
-            // 4) Difference de pression : reflected - breath/2 (formule STK)
-            float pressureDiff = reflectedPressure - breathPressure * 0.5f;
+            // 4) Difference de pression a l'anche (convention pm - reflected)
+            float pDiff = pm - reflected;
+            float rt = ReedTable(pDiff, p.ReedSoftness);
 
-            // 5) Reed table -> coefficient de reflexion (adimensionnel [-1, +1])
-            float rt = ReedTable(pressureDiff, p.ReedSoftness);
+            // 5) Injection tube : formule symetrique 0.5*pm + rt*pDiff
+            float waveToBore = 0.5f * pm + rt * pDiff;
 
-            // 6) Input dans le tube = breath/2 + pressureDiff * rt (formule STK Cook exacte)
-            float boreInput = breathPressure * 0.5f + pressureDiff * rt;
-
-            // 7) UNE SEULE ecriture par sample
-            _bore[_writeIdx] = boreInput;
+            // 6) UNE SEULE ecriture par sample
+            _bore[_writeIdx] = waveToBore;
             _writeIdx = (_writeIdx + 1) & _boreMask;
 
-            // 8) Sortie audio = l'onde qu'on lit (ce qui s'echappe du pavillon vers l'auditeur).
-            //    En STK c'est delayLine.tick(...) qui retourne la valeur lue apres l'ecriture.
-            return delayed;
+            // 7) Sortie = pression rayonnee au pavillon = waveToBore - reflected
+            return waveToBore - reflected;
         }
     }
 }
