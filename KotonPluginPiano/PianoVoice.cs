@@ -13,6 +13,7 @@ namespace KotonPluginPiano
         public float DamperTime;        // 0..1 : vitesse d'etouffement quand la touche remonte (0=instant, 1=long)
         public float SustainPedal;      // 0/1 (ou float continu 0..1) : bloque le damper si actif
         public float Body;              // 0..1 : mix resonateur "corps" (LP + petite reverb naturelle)
+        public float Reverb;            // 0..1 : mix reverb natif (Schroeder mini) — resonance de piece
         public float StereoWidth;       // 0..1 : spread stereo des cordes (leur detune L/R)
         public float VolumeDb;
     }

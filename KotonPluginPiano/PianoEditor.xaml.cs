@@ -26,6 +26,7 @@ namespace KotonPluginPiano
             Wire(DamperTimeSlider,     DamperTimeValue,     "damper_time",     v => v.ToString("F2"));
             Wire(SustainPedalSlider,   SustainPedalValue,   "sustain_pedal",   v => v > 0.5 ? "ON" : "off");
             Wire(BodySlider,           BodyValue,           "body",            v => v.ToString("F2"));
+            Wire(ReverbSlider,         ReverbValue,         "reverb",          v => v.ToString("F2"));
             Wire(StereoWidthSlider,    StereoWidthValue,    "stereo_width",    v => v.ToString("F2"));
             Wire(VolumeSlider,         VolumeValue,         "volume",          v => v.ToString("F1") + " dB");
             Refresh();
@@ -57,6 +58,7 @@ namespace KotonPluginPiano
                     case "damper_time":     DamperTimeSlider.Value = kp.Value;     DamperTimeValue.Text = kp.Value.ToString("F2"); break;
                     case "sustain_pedal":   SustainPedalSlider.Value = kp.Value;   SustainPedalValue.Text = kp.Value > 0.5 ? "ON" : "off"; break;
                     case "body":            BodySlider.Value = kp.Value;           BodyValue.Text = kp.Value.ToString("F2"); break;
+                    case "reverb":          ReverbSlider.Value = kp.Value;         ReverbValue.Text = kp.Value.ToString("F2"); break;
                     case "stereo_width":    StereoWidthSlider.Value = kp.Value;    StereoWidthValue.Text = kp.Value.ToString("F2"); break;
                     case "volume":          VolumeSlider.Value = kp.Value;         VolumeValue.Text = kp.Value.ToString("F1") + " dB"; break;
                 }

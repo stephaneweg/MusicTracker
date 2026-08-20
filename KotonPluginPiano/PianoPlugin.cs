@@ -40,6 +40,7 @@ namespace KotonPluginPiano
         readonly KotonParameter _damperTime      = new KotonParameter("damper_time",      "Damper time",      0.0, 1.0, 0.30);
         readonly KotonParameter _sustainPedal    = new KotonParameter("sustain_pedal",    "Sustain pedal",    0.0, 1.0, 0.00);
         readonly KotonParameter _body            = new KotonParameter("body",             "Body",             0.0, 1.0, 0.25);
+        readonly KotonParameter _reverb          = new KotonParameter("reverb",           "Reverb",           0.0, 1.0, 0.15);
         readonly KotonParameter _stereoWidth     = new KotonParameter("stereo_width",     "Stereo width",     0.0, 1.0, 0.35);
         readonly KotonParameter _volumeDb        = new KotonParameter("volume",           "Volume",           -30.0, 6.0, -6.0, "dB");
 
@@ -59,6 +60,15 @@ namespace KotonPluginPiano
         BiquadState _body2L, _body2R;
         BiquadState _body3L, _body3R;
 
+        // REVERB SCHROEDER MINI : 4 combs LP-feedback en parallele + 2 all-pass en serie.
+        // Temps de comb legerement differents L/R pour decorrelation stereo naturelle. Feedback
+        // pilote par le param Reverb (0.5..0.82) → decay de ~200 ms a ~2 s. Mix 0..50% wet max.
+        float[] _cL1, _cL2, _cL3, _cL4, _cR1, _cR2, _cR3, _cR4;
+        int _iL1, _iL2, _iL3, _iL4, _iR1, _iR2, _iR3, _iR4;
+        float _lpL1, _lpL2, _lpL3, _lpL4, _lpR1, _lpR2, _lpR3, _lpR4;
+        float[] _apL1, _apL2, _apR1, _apR2;
+        int _aL1, _aL2, _aR1, _aR2;
+
         // Sustain pedal via CC64 (>63 = enfoncee)
         bool _pedalDown;
 
@@ -67,7 +77,7 @@ namespace KotonPluginPiano
             _params = new List<KotonParameter>
             {
                 _hammerHardness, _hammerAmount, _brightness, _inharmonicity, _stringDetune,
-                _damperTime, _sustainPedal, _body, _stereoWidth, _volumeDb,
+                _damperTime, _sustainPedal, _body, _reverb, _stereoWidth, _volumeDb,
             };
         }
 
@@ -92,6 +102,32 @@ namespace KotonPluginPiano
             SetBiquadBandpass(ref _body2R, sampleRate, 500f,  2f);
             SetBiquadBandpass(ref _body3L, sampleRate, 1500f, 2f);
             SetBiquadBandpass(ref _body3R, sampleRate, 1500f, 2f);
+
+            // Reverb : comb delays choisis coprimes (evite les echoes flutter), L/R legerement decorrelas
+            _cL1 = new float[(int)(0.0297 * sampleRate)];  _cR1 = new float[(int)(0.0313 * sampleRate)];
+            _cL2 = new float[(int)(0.0371 * sampleRate)];  _cR2 = new float[(int)(0.0389 * sampleRate)];
+            _cL3 = new float[(int)(0.0411 * sampleRate)];  _cR3 = new float[(int)(0.0437 * sampleRate)];
+            _cL4 = new float[(int)(0.0437 * sampleRate)];  _cR4 = new float[(int)(0.0461 * sampleRate)];
+            _apL1 = new float[(int)(0.0053 * sampleRate)]; _apR1 = new float[(int)(0.0061 * sampleRate)];
+            _apL2 = new float[(int)(0.0173 * sampleRate)]; _apR2 = new float[(int)(0.0181 * sampleRate)];
+        }
+
+        static float ProcessCombLp(float[] buf, ref int idx, ref float lp, float input, float feedback)
+        {
+            float output = buf[idx];
+            lp = 0.2f * output + 0.8f * lp;         // damping HF dans le feedback
+            buf[idx] = input + lp * feedback;
+            idx++; if (idx >= buf.Length) idx = 0;
+            return output;
+        }
+
+        static float ProcessAllpass(float[] buf, ref int idx, float input, float coef)
+        {
+            float delayed = buf[idx];
+            float output = -coef * input + delayed;
+            buf[idx] = input + coef * output;
+            idx++; if (idx >= buf.Length) idx = 0;
+            return output;
         }
 
         public void Reset()
@@ -100,6 +136,18 @@ namespace KotonPluginPiano
             _body1L.ResetState(); _body1R.ResetState();
             _body2L.ResetState(); _body2R.ResetState();
             _body3L.ResetState(); _body3R.ResetState();
+            if (_cL1 != null)
+            {
+                Array.Clear(_cL1, 0, _cL1.Length); Array.Clear(_cL2, 0, _cL2.Length);
+                Array.Clear(_cL3, 0, _cL3.Length); Array.Clear(_cL4, 0, _cL4.Length);
+                Array.Clear(_cR1, 0, _cR1.Length); Array.Clear(_cR2, 0, _cR2.Length);
+                Array.Clear(_cR3, 0, _cR3.Length); Array.Clear(_cR4, 0, _cR4.Length);
+                Array.Clear(_apL1, 0, _apL1.Length); Array.Clear(_apL2, 0, _apL2.Length);
+                Array.Clear(_apR1, 0, _apR1.Length); Array.Clear(_apR2, 0, _apR2.Length);
+                _iL1 = _iL2 = _iL3 = _iL4 = _iR1 = _iR2 = _iR3 = _iR4 = 0;
+                _aL1 = _aL2 = _aR1 = _aR2 = 0;
+                _lpL1 = _lpL2 = _lpL3 = _lpL4 = _lpR1 = _lpR2 = _lpR3 = _lpR4 = 0f;
+            }
             _pedalDown = false;
         }
 
@@ -195,10 +243,30 @@ namespace KotonPluginPiano
                 float wetL = sum * dry + bodyOutL * body;
                 float wetR = sum * dry + bodyOutR * body;
 
-                // Soft-clip final post-body : les peaks resonants peuvent facilement pousser au-dela
+                // Soft-clip post-body : les peaks resonants peuvent facilement pousser au-dela
                 // de 1.0 sur des attaques accumulees → clipping du buffer WPF = parasites.
                 wetL = (float)Math.Tanh(wetL * 0.85);
                 wetR = (float)Math.Tanh(wetR * 0.85);
+
+                // Reverb Schroeder mini (natif au plugin) : 4 combs LP-feedback en parallele + 2 AP en serie
+                float reverbMix = p.Reverb;
+                if (reverbMix > 0.001f)
+                {
+                    float reverbFb = 0.50f + reverbMix * 0.32f;   // 0.50..0.82 → decay ~200ms..2s
+                    float cL = (ProcessCombLp(_cL1, ref _iL1, ref _lpL1, wetL, reverbFb)
+                              + ProcessCombLp(_cL2, ref _iL2, ref _lpL2, wetL, reverbFb)
+                              + ProcessCombLp(_cL3, ref _iL3, ref _lpL3, wetL, reverbFb)
+                              + ProcessCombLp(_cL4, ref _iL4, ref _lpL4, wetL, reverbFb)) * 0.25f;
+                    float cR = (ProcessCombLp(_cR1, ref _iR1, ref _lpR1, wetR, reverbFb)
+                              + ProcessCombLp(_cR2, ref _iR2, ref _lpR2, wetR, reverbFb)
+                              + ProcessCombLp(_cR3, ref _iR3, ref _lpR3, wetR, reverbFb)
+                              + ProcessCombLp(_cR4, ref _iR4, ref _lpR4, wetR, reverbFb)) * 0.25f;
+                    float rL = ProcessAllpass(_apL2, ref _aL2, ProcessAllpass(_apL1, ref _aL1, cL, 0.5f), 0.5f);
+                    float rR = ProcessAllpass(_apR2, ref _aR2, ProcessAllpass(_apR1, ref _aR1, cR, 0.5f), 0.5f);
+                    float w = reverbMix * 0.5f;                   // max 50% wet (subtil)
+                    wetL = wetL * (1f - w) + rL * w;
+                    wetR = wetR * (1f - w) + rR * w;
+                }
 
                 float mid = 0.5f * (wetL + wetR);
                 float side = wetL - wetR;
@@ -217,6 +285,7 @@ namespace KotonPluginPiano
             DamperTime     = (float)_damperTime.Value,
             SustainPedal   = (float)_sustainPedal.Value,
             Body           = (float)_body.Value,
+            Reverb         = (float)_reverb.Value,
             StereoWidth    = (float)_stereoWidth.Value,
             VolumeDb       = (float)_volumeDb.Value,
         };
@@ -231,11 +300,11 @@ namespace KotonPluginPiano
 
         static readonly double[,] PresetValues =
         {
-            //                    hardness hamAmt bright inharm detune damper pedal body width volDb
-            /*Acoustique*/       { 0.45, 0.35, 0.60, 0.15, 0.35, 0.30, 0.00, 0.25, 0.35, -6.0 },
-            /*Dolce (intime)*/   { 0.25, 0.25, 0.40, 0.10, 0.25, 0.40, 0.00, 0.30, 0.30, -8.0 },
-            /*Forte (brillant)*/ { 0.75, 0.55, 0.85, 0.20, 0.45, 0.25, 0.00, 0.20, 0.40, -4.0 },
-            /*Honky-tonk*/       { 0.60, 0.45, 0.70, 0.35, 0.90, 0.25, 0.00, 0.15, 0.45, -6.0 },
+            //                    hardness hamAmt bright inharm detune damper pedal body reverb width volDb
+            /*Acoustique*/       { 0.45, 0.35, 0.60, 0.15, 0.35, 0.30, 0.00, 0.25, 0.15, 0.35, -6.0 },
+            /*Dolce (intime)*/   { 0.25, 0.25, 0.40, 0.10, 0.25, 0.40, 0.00, 0.30, 0.25, 0.30, -8.0 },
+            /*Forte (brillant)*/ { 0.75, 0.55, 0.85, 0.20, 0.45, 0.25, 0.00, 0.20, 0.10, 0.40, -4.0 },
+            /*Honky-tonk*/       { 0.60, 0.45, 0.70, 0.35, 0.90, 0.25, 0.00, 0.15, 0.05, 0.45, -6.0 },
         };
 
         public void LoadPreset(int index)
@@ -249,8 +318,9 @@ namespace KotonPluginPiano
             _damperTime.Value     = PresetValues[index, 5];
             _sustainPedal.Value   = PresetValues[index, 6];
             _body.Value           = PresetValues[index, 7];
-            _stereoWidth.Value    = PresetValues[index, 8];
-            _volumeDb.Value       = PresetValues[index, 9];
+            _reverb.Value         = PresetValues[index, 8];
+            _stereoWidth.Value    = PresetValues[index, 9];
+            _volumeDb.Value       = PresetValues[index, 10];
         }
 
         public void SetParam(string id, double value)

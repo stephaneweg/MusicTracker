@@ -84,6 +84,11 @@
                     <Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/>
                     <TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Reverb (résonance)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="ReverbSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="ReverbValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
             </Grid>
         </Grid>
     </Border>
