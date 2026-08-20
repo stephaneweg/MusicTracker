@@ -54,54 +54,56 @@ namespace KotonPluginPiano
             if (detuneCents != 0f) freq *= Math.Pow(2.0, detuneCents / 1200.0);
             _size = Math.Max(4, Math.Min(_buf.Length, (int)Math.Round(_sr / freq)));
 
-            // === EXCITATION "MARTEAU FEUTRE" (pas pluck) =========================================
-            // Un vrai piano n'est PAS excite par une impulsion instantanee (comme un pluck) : le
-            // marteau reste en CONTACT avec la corde pendant 2-6 ms (feutre dur -> court, mou -> long)
-            // et applique une FORCE en cloche pendant ce temps. Consequences audibles :
-            //   1. Le contenu spectral de l'excitation est FORTEMENT low-pass (le contact prolonge =
-            //      filtre naturel), donc peu d'aigus dans l'attaque = son "mat" pas "clic".
-            //   2. L'energie n'est pas repartie uniformement sur la periode fondamentale : elle est
-            //      CONCENTREE dans les premiers samples (le contact marteau) puis decroit vite.
-            //   3. Pas de comb pluck-position — le marteau distribue l'energie sur une largeur
-            //      physique de contact, pas un point comme un mediator.
+            // === EXCITATION "MARTEAU FEUTRE" (modele Hall 1987, Extended Karplus-Strong) =========
+            // La force appliquee par un marteau feutre sur la corde est une DEMI-ONDE SINUSOIDALE
+            // (raised sine) de duree T = contact time (2-6 ms selon hardness x velocity), pas un
+            // buffer plein de bruit. Le buffer initial est :
+            //   [0..contactSamples]     : cloche marteau (F(t) = sin(pi*t/T) * amp)
+            //   [contactSamples.._size] : petit bruit residuel LP-filtre (0.03..0.08) qui amorce
+            //                             les partiels sans "brouiller" l'attaque marteau
             //
-            // Implementation :
-            //  a) LP FORT sur le bruit d'excitation (cutoff 300-1500 Hz selon hardness × velocity).
-            //  b) Enveloppe temporelle EXPONENTIELLE decroissante appliquee au buffer (temps de
-            //     decroissance principal 15-40 ms) → concentre l'energie dans l'attaque.
-            //  c) Petit fade-in de contact 1-3 ms au tout debut (le marteau touche puis appuie) pour
-            //     supprimer le "click" numerique du bruit blanc brut.
+            // Justification :
+            //  - L'attaque a un spectre naturellement LP (le contact prolonge = filtre naturel des
+            //    aigus). Feutre dur = contact court = attaque brillante. Feutre mou = long = mat.
+            //  - L'amplitude suit ~velocity^1.5 (loi de puissance mesuree sur vrais pianos).
+            //  - Le residuel est necessaire : sans lui, le KS met plusieurs cycles a s'etablir
+            //    (attaque "molle"). Avec, on obtient un demarrage franc mais toujours cohérent.
 
             float hardnessEff = p.HammerHardness * 0.5f + 0.3f + velocity * 0.2f;  // 0.3..1.0
 
-            // (a) Bruit blanc filtre LP fort : cutoff bas = feutre mou = attaque mate
-            float lpCutoff = 300f + hardnessEff * 1500f;    // 300 Hz (mou) .. 1800 Hz (dur)
+            // (1) Duree de contact : 2-6 ms selon hardness (loi Hall)
+            float contactMs = 6f - hardnessEff * 4f;                               // 2..6 ms
+            int contactSamples = Math.Max(4, (int)(contactMs * _sr / 1000f));
+            if (contactSamples >= _size) contactSamples = _size - 1;
+
+            // (2) Cloche marteau : F(t) = sin(pi*t/T) — demi-onde
+            //     Amplitude ~ velocity^1.5 : loi de puissance des pianos reels
+            float ampBell = (float)Math.Pow(velocity, 1.5);
+            for (int i = 0; i < contactSamples; i++)
+            {
+                double phase = Math.PI * i / (double)contactSamples;
+                _buf[i] = (float)Math.Sin(phase) * ampBell;
+            }
+
+            // (3) Residuel LP-filtre sur le reste : amorce les partiels aigus sans brouiller l'attaque.
+            //     Le cutoff suit hardness (attaque brillante = residual plus riche).
+            float lpCutoff = 400f + hardnessEff * 2000f;   // 400..2400 Hz
             float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * lpCutoff / _sr);
             float lp = 0f;
-            for (int i = 0; i < _size; i++)
+            float residualLevel = 0.03f + velocity * 0.05f;
+            for (int i = contactSamples; i < _size; i++)
             {
                 float raw = (float)(rng.NextDouble() * 2.0 - 1.0);
                 lp += lpAlpha * (raw - lp);
-                _buf[i] = lp;
+                _buf[i] = lp * residualLevel;
             }
 
-            // (b) Enveloppe temporelle : decay exponentiel principal ~15-40 ms selon hardness
-            //     (mou = decay plus lent = plus rond, dur = court = plus percussif)
-            float decayMs = 40f - hardnessEff * 25f;        // 15..40 ms
-            float decayRate = (float)Math.Exp(-1.0 / (decayMs * _sr / 1000.0));
-            float env = 1f;
-            for (int i = 0; i < _size; i++)
-            {
-                _buf[i] *= env;
-                env *= decayRate;
-            }
-
-            // (c) Fade-in de contact 1-3 ms (evite le "tic" numerique du sample 0)
-            int fadeInSamples = Math.Max(4, (int)(2.0 * _sr / 1000.0));
-            for (int i = 0; i < Math.Min(fadeInSamples, _size); i++)
+            // (4) Fade-in de contact 1 ms (evite le "tic" numerique sur le sample 0)
+            int fadeInSamples = Math.Max(4, (int)(1.0 * _sr / 1000.0));
+            for (int i = 0; i < Math.Min(fadeInSamples, contactSamples); i++)
                 _buf[i] *= (float)Math.Sin(Math.PI * 0.5 * i / fadeInSamples);
 
-            // Normalisation + velocity
+            // Normalisation + velocity (le peak est desormais celui de la cloche marteau)
             float peak = 0.001f;
             for (int i = 0; i < _size; i++) peak = Math.Max(peak, Math.Abs(_buf[i]));
             float gain = velocity / peak;

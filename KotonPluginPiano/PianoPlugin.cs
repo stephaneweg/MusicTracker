@@ -52,8 +52,12 @@ namespace KotonPluginPiano
         int _stealCursor;
         const int Polyphony = 16;
 
-        // Body resonance : bandpass ~120 Hz Q=2.5 (grande caisse de piano)
-        BiquadState _bodyL, _bodyR;
+        // SOUNDBOARD : 3 peaks en parallele — resonances typiques d'une table d'harmonie de piano.
+        // Mesures acoustiques : peaks vers 120 Hz (grande caisse), 500 Hz (mi-cassure) et 1500 Hz
+        // (rayonnement aigu). Chaque peak est un bandpass RBJ (Q ~ 3), sommes puis mixe au dry.
+        BiquadState _body1L, _body1R;
+        BiquadState _body2L, _body2R;
+        BiquadState _body3L, _body3R;
 
         // Sustain pedal via CC64 (>63 = enfoncee)
         bool _pedalDown;
@@ -79,14 +83,20 @@ namespace KotonPluginPiano
             _maxBlockSize = maxBlockSize;
             _voices = new PianoVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new PianoVoice(sampleRate);
-            SetBiquadBandpass(ref _bodyL, sampleRate, 120f, 2.5f);
-            SetBiquadBandpass(ref _bodyR, sampleRate, 120f, 2.5f);
+            SetBiquadBandpass(ref _body1L, sampleRate, 120f,  3f);
+            SetBiquadBandpass(ref _body1R, sampleRate, 120f,  3f);
+            SetBiquadBandpass(ref _body2L, sampleRate, 500f,  3f);
+            SetBiquadBandpass(ref _body2R, sampleRate, 500f,  3f);
+            SetBiquadBandpass(ref _body3L, sampleRate, 1500f, 3f);
+            SetBiquadBandpass(ref _body3R, sampleRate, 1500f, 3f);
         }
 
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
-            _bodyL.ResetState(); _bodyR.ResetState();
+            _body1L.ResetState(); _body1R.ResetState();
+            _body2L.ResetState(); _body2R.ResetState();
+            _body3L.ResetState(); _body3R.ResetState();
             _pedalDown = false;
         }
 
@@ -165,8 +175,15 @@ namespace KotonPluginPiano
                 for (int v = 0; v < _voices.Length; v++)
                     if (_voices[v].IsActive) sum += _voices[v].RenderSample(p);
 
-                float bodyOutL = BiquadProcess(ref _bodyL, sum);
-                float bodyOutR = BiquadProcess(ref _bodyR, sum);
+                // 3 peaks du soundboard (120/500/1500 Hz), sommes puis mixes au dry
+                float b1L = BiquadProcess(ref _body1L, sum);
+                float b1R = BiquadProcess(ref _body1R, sum);
+                float b2L = BiquadProcess(ref _body2L, sum);
+                float b2R = BiquadProcess(ref _body2R, sum);
+                float b3L = BiquadProcess(ref _body3L, sum);
+                float b3R = BiquadProcess(ref _body3R, sum);
+                float bodyOutL = (b1L * 0.6f + b2L * 0.5f + b3L * 0.4f);
+                float bodyOutR = (b1R * 0.6f + b2R * 0.5f + b3R * 0.4f);
                 float wetL = sum * dry + bodyOutL * body;
                 float wetR = sum * dry + bodyOutR * body;
 
