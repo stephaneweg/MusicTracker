@@ -29,6 +29,18 @@ namespace KotonPluginPiano
         readonly int _sr;
         readonly float[] _buf;
         int _writeIdx, _size;
+        // Fraction de délai à lire APRÈS le sample principal (0..1) : la longueur cible du
+        // KS = sr/freq n'est presque jamais entière, et les filtres de boucle (LP KS, tone LP,
+        // all-pass, DC blocker) ajoutent 1 à 3 échantillons de retard de groupe. Pour garder la
+        // note juste on lit à N=_size − 1 avec interpolation linéaire entre _buf[p] (retard _size)
+        // et _buf[(p+1) mod _size] (retard _size − 1). Sans ça les aigus sonnent bas de 30-100 cents.
+        float _fracDelay;
+        // Facteur de mise à l'échelle de l'inharmonicité par la note (raideur de corde) : les
+        // graves ont un B mesuré ~1e−4, les aigus ~1e−2 (Fletcher & Rossing). Le multiplicateur
+        // exponentiel 2^((note−69)/24) reproduit qualitativement cette variation (×0.25 en A0,
+        // ×1 en A4, ×3.1 en C8). Figé au Strike parce que la note ne change pas dans une voix,
+        // et évite un Math.Pow par échantillon.
+        float _inharmKeyFactor = 1f;
 
         // Filtres dans la boucle
         float _lpPrev;            // LP moyen classique KS
@@ -59,7 +71,23 @@ namespace KotonPluginPiano
             _velocity = velocity;
             double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
             if (detuneCents != 0f) freq *= Math.Pow(2.0, detuneCents / 1200.0);
-            _size = Math.Max(4, Math.Min(_buf.Length, (int)Math.Round(_sr / freq)));
+            // Longueur cible en échantillons (fractionnaire), moins la compensation de retard de
+            // groupe cumulé des filtres de boucle. La valeur 1.5 est une approximation raisonnable
+            // pour la chaîne (KS-LP + tone-LP + all-pass + DC blocker) sur toute la tessiture ; à
+            // affiner note-par-note si le tuning des extrêmes est encore audible. Le reste est
+            // absorbé par le _fracDelay via interpolation linéaire au read.
+            //
+            // Convention d'indexation : _buf[p] a un age = _size échantillons (car la position sera
+            // écrasée dans _size cycles), _buf[(p+1) mod _size] a age = _size − 1 (plus récent).
+            // Pour lire un délai D avec _size − 1 < D <= _size on prend _size = ceil(D) et
+            // _fracDelay = _size − D dans [0, 1) → interpolation entre le sample vieux (p) et le
+            // sample plus récent (p+1), pondération _fracDelay sur le récent.
+            double targetSamples = _sr / freq - 1.5;
+            if (targetSamples < 4.0) targetSamples = 4.0;
+            if (targetSamples > _buf.Length - 2) targetSamples = _buf.Length - 2;
+            _size = (int)Math.Ceiling(targetSamples);
+            _fracDelay = (float)(_size - targetSamples);
+            _inharmKeyFactor = (float)Math.Pow(2.0, (note - 69) / 24.0);
 
             // === EXCITATION "MARTEAU FEUTRE" (modele Hall 1987, Extended Karplus-Strong) =========
             // La force appliquee par un marteau feutre sur la corde est une DEMI-ONDE SINUSOIDALE
@@ -78,8 +106,12 @@ namespace KotonPluginPiano
 
             float hardnessEff = p.HammerHardness * 0.5f + 0.3f + velocity * 0.2f;  // 0.3..1.0
 
-            // (1) Duree de contact : 2-6 ms selon hardness (loi Hall)
+            // (1) Duree de contact : 2-6 ms selon hardness (loi Hall), MISE À L'ÉCHELLE PAR LA NOTE.
+            // Sur un vrai piano le marteau reste ~4-8 ms sur la corde dans le grave (A0) et moins
+            // de 0.5 ms dans l'aigu (C8) — c'est ce qui donne l'attaque profonde du grave et le
+            // claquement clair de l'aigu. Facteur 1 − note/128 ≈ 0.84 en A0, 0.16 en C8.
             float contactMs = 6f - hardnessEff * 4f;                               // 2..6 ms
+            contactMs *= 1f - note / 128f;                                         // key scaling
             int contactSamples = Math.Max(4, (int)(contactMs * _sr / 1000f));
             if (contactSamples >= _size) contactSamples = _size - 1;
 
@@ -171,16 +203,31 @@ namespace KotonPluginPiano
             Array.Clear(_buf, 0, _buf.Length);
         }
 
-        public float RenderSample(in PianoParams p)
+        /// <summary>Rend un échantillon. Le couplage inter-cordes est modélisé en CONSERVATION D'ÉNERGIE :
+        /// <paramref name="couplingIn"/> = énergie reçue des autres cordes (injection dans le delay), et
+        /// <paramref name="couplingDrain"/> = fraction de l'énergie sortante qu'on donne aux autres (retirée
+        /// avant écriture). Ensemble ils rendent le couplage strictement neutre en gain — le gain effectif
+        /// de la boucle KS reste borné par gEff, donc plus de crachottement même en unisson momentané où
+        /// couplingIn peut atteindre 2·outValue en 3 cordes. Passer 0/0 = corde isolée.</summary>
+        public float RenderSample(in PianoParams p, float couplingIn, float couplingDrain)
         {
             if (!_active) return 0f;
 
-            float sample = _buf[_writeIdx];
+            // Interpolation linéaire pour retard fractionnaire (voir Strike : _fracDelay = ceil(N) − N).
+            int nextIdx = _writeIdx + 1; if (nextIdx >= _size) nextIdx = 0;
+            float sample = _buf[_writeIdx] + _fracDelay * (_buf[nextIdx] - _buf[_writeIdx]);
 
-            // 1) LP moyen KS module par Brightness
-            float harmAlpha = 0.5f + p.Brightness * 0.4f;   // 0.5..0.9
+            // 1) LP moyen KS module par Brightness — VERSION IIR 1-pôle (au lieu du FIR 2-taps du
+            //    KS classique). Le FIR laisse les aigus vivre longtemps (chaque tour de boucle
+            //    n'atténue qu'un peu) → timbre trop métallique/handpan. Le pôle IIR mange les
+            //    partiels aigus à chaque cycle, decay des harmoniques plus court, timbre plus
+            //    "bois/piano".
+            //    Brightness proche de 1 = pôle presque ouvert (LP faible) ; proche de 0 = pôle
+            //    fort (LP marqué). harmAlpha = coefficient sur l'entrée : petit = beaucoup de
+            //    récursion = plus de LP.
+            float harmAlpha = 0.15f + p.Brightness * 0.7f;   // 0.15..0.85
             float lp = harmAlpha * sample + (1f - harmAlpha) * _lpPrev;
-            _lpPrev = sample;
+            _lpPrev = lp;
 
             // 2) LP variable "tone" : legerement mordant, calme les tres hauts partiels
             float toneHz = 3000f + p.Brightness * 5000f;
@@ -189,7 +236,13 @@ namespace KotonPluginPiano
             float toned = _tonePrev;
 
             // 3) All-pass Inharmonicity — signature du piano (les partiels ne sont pas des multiples entiers)
-            float a = p.Inharmonicity * 0.6f;
+            //    Forme standard 1er ordre : y[n] = a·x[n] + x[n-1] − a·y[n-1], pôle en z = −a.
+            //    Coefficient négatif = dispersion "vers le haut" (partiels étirés au-dessus des
+            //    harmoniques entiers), signature métallique du piano.
+            //    Facteur 0.15 × keyFactor (au lieu d'un 0.6 uniforme) : la raideur d'une corde
+            //    piano croît avec la fréquence → B ~ 1e−4 en A0, ~1e−2 en C8. keyFactor calé au
+            //    Strike absorbe cette variation. Cap à 0.85 pour garder l'all-pass stable.
+            float a = -Math.Min(0.85f, p.Inharmonicity * 0.15f * _inharmKeyFactor);
             float apOut = a * toned + _apPrevIn - a * _apPrevOut;
             _apPrevIn = toned;
             _apPrevOut = apOut;
@@ -208,23 +261,30 @@ namespace KotonPluginPiano
             float gEff = (float)Math.Pow(0.9975f, _size / 1000.0);
             float outValue = dcOut * gEff;
 
-            _buf[_writeIdx] = outValue;
+            // L'injection croisée arrive DANS le delay (pas dans la sortie) : elle nourrit la
+            // résonance de la corde qui la fait ressortir naturellement les cycles suivants. Le
+            // drain retire la fraction correspondante de l'énergie sortante pour rester en
+            // conservation stricte — sinon feedback en unisson => gain > 1 => crachotements.
+            _buf[_writeIdx] = outValue * (1f - couplingDrain) + couplingIn;
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
             // Damper multi-etages : LP progressif + multiplicateur qui decroit plus lentement.
-            // Sans damper actif, la sortie est le sample brut de la boucle KS.
+            // Sans damper actif, la sortie est le signal APRÈS toute la chaîne de boucle (outValue),
+            // pas le tap brut du delay : c'est le vrai signal en train de mourir dans la corde. Idem
+            // pour l'entrée du LP d'étouffement — sinon on filtrerait une version non filtrée par
+            // le reste de la chaîne et le damper ferait double emploi de manière incohérente.
             if (_damperActive)
             {
                 // Cutoff descend exponentiellement de 6 kHz vers 300 Hz (aigus meurent vite)
                 _damperLpCurrent = _damperLpTarget + (_damperLpCurrent - _damperLpTarget) * _damperLpRate;
                 float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * _damperLpCurrent / _sr);
-                _damperLpState += lpAlpha * (sample - _damperLpState);
+                _damperLpState += lpAlpha * (outValue - _damperLpState);
                 _damperMul *= _damperMulRate;
                 if (_damperMul < 1e-4f) { _active = false; return 0f; }
                 return _damperLpState * _damperMul;
             }
-            return sample;
+            return outValue;
         }
     }
 
@@ -238,6 +298,16 @@ namespace KotonPluginPiano
         readonly int _sr;
         readonly PianoString[] _strings = new PianoString[3];
         int _stringCount;
+        // Sortie précédente par corde — sert au calcul du couplage inter-cordes du cycle suivant.
+        // On utilise le cycle précédent (délai 1 sample) plutôt qu'un double pass même-cycle :
+        // à 1.5 % d'injection, un sample de retard est totalement inaudible et ça évite un refactor
+        // "rendu séparé du write" dans PianoString.
+        readonly float[] _prevOut = new float[3];
+        // Cross-coupling léger (transfert d'énergie via chevalet). 0.8 % est plus prudent que le
+        // 1-2 % théorique de Gemini : combiné avec un delay de 1 sample, ça donne le bloom sans
+        // approcher la saturation. Le drainage compense l'injection donc c'est stable à tout K,
+        // mais on garde K petit pour que l'effet reste subtil.
+        const float CouplingCoef = 0.008f;
 
         // Hammer noise : burst additif court a l'attaque
         Random _rng;
@@ -280,6 +350,9 @@ namespace KotonPluginPiano
                 _strings[i].Strike(note, velocity, centered + stereoDetune, p, _rng);
             }
             for (int i = _stringCount; i < 3; i++) _strings[i].Kill();
+            // Reset du buffer de couplage inter-cordes : une voix ré-attaquée ne doit pas
+            // hériter du transitoire de couplage de la note précédente.
+            _prevOut[0] = _prevOut[1] = _prevOut[2] = 0f;
 
             // Hammer envelope : decay exponentiel ~30 ms
             _hammerAmount = p.HammerAmount * (0.5f + velocity * 0.5f);
@@ -309,16 +382,26 @@ namespace KotonPluginPiano
         {
             if (!_active) return 0f;
 
-            // Somme des cordes
+            // Somme des cordes, avec CROSS-COUPLING conservatif : chaque corde reçoit K × la somme
+            // des AUTRES (via chevalet commun) ET perd K × (n−1) × son propre outValue via drainage.
+            // Énergie totale conservée → boucle KS strictement stable, plus de crachotements même
+            // dans les instants où deux cordes sont momentanément en phase (juste après la frappe).
+            // Note : pré-calcul de prevSum et drain hors boucle (constants sur la voix).
+            float prevSum = _prevOut[0] + _prevOut[1] + _prevOut[2];
+            float drain = (_stringCount - 1) * CouplingCoef;
             float sum = 0f;
             int aliveStrings = 0;
             for (int i = 0; i < _stringCount; i++)
             {
                 if (_strings[i].IsActive)
                 {
-                    sum += _strings[i].RenderSample(p);
+                    float couplingIn = (prevSum - _prevOut[i]) * CouplingCoef;
+                    float s = _strings[i].RenderSample(p, couplingIn, drain);
+                    _prevOut[i] = s;
+                    sum += s;
                     aliveStrings++;
                 }
+                else _prevOut[i] = 0f;
             }
             if (aliveStrings > 1) sum /= (float)Math.Sqrt(aliveStrings);   // compensation gain
 

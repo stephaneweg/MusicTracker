@@ -328,7 +328,7 @@ namespace KotonPluginInstrumentMorph
                 }
 
                 if (sL > 1f) sL = 1f; else if (sL < -1f) sL = -1f;
-                if (sR > 1f) sR = 1f; else if (sR < -1f) sR = -1f;
+                if (sR > 1f) sR = 1f; else if (sR < -1f) sR = -1f;   
                 left[i] = sL;
                 right[i] = sR;
 
