@@ -175,6 +175,11 @@ namespace KotonPluginPiano
                 for (int v = 0; v < _voices.Length; v++)
                     if (_voices[v].IsActive) sum += _voices[v].RenderSample(p);
 
+                // Soft-clip tanh doux : evite le clipping brutal quand la pedale de sustain accumule
+                // beaucoup de voix (10-16 cordes vibrantes) → transforme la saturation lineaire en
+                // "colle" analogique naturelle (comme la table qui compresse en vrai piano).
+                sum = (float)Math.Tanh(sum * 0.7);
+
                 // 3 peaks du soundboard (120/500/1500 Hz), sommes puis mixes au dry
                 float b1L = BiquadProcess(ref _body1L, sum);
                 float b1R = BiquadProcess(ref _body1R, sum);

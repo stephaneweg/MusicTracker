@@ -110,30 +110,54 @@ namespace KotonPluginPiano
             for (int i = 0; i < _size; i++) _buf[i] *= gain;
 
             _writeIdx = 0;
+            // Reset INTEGRAL de tous les etats internes — indispensable a chaque nouvelle frappe.
+            // Sans ca, une voix reutilisee (voice stealing OU re-strike de la meme note apres NoteOff)
+            // hertie des etats damper stale des notes precedentes → l'attaque suivante sonne
+            // progressivement plus etouffee. C'est exactement le "de plus en plus etouffe" rapporte
+            // par l'utilisateur.
             _lpPrev = _tonePrev = _apPrevIn = _apPrevOut = 0f;
-            _damperGain = 1f;
+            _damperActive = false;
+            _damperMul = 1f;
+            _damperLpCurrent = 6000f;
+            _damperLpState = 0f;
             _active = true;
         }
 
-        /// <summary>Damper : touche relachee → chute rapide de la corde (multiplicateur de sortie qui
-        /// tombe exponentiellement). Sans effet si sustain pedal actif (le plugin gate cet appel).</summary>
+        /// <summary>Damper multi-etages : sur un vrai piano, quand le damper touche la corde, les
+        /// AIGUS meurent en ~30-80 ms mais la fondamentale garde une resonance residuelle 200-500 ms
+        /// avant extinction complete. Modelisation :
+        ///   - Un LP progressif dont le cutoff tombe de 6 kHz vers 300 Hz sur damperTime × 0.3
+        ///     (etouffe les aigus rapidement)
+        ///   - Un multiplicateur d'amplitude qui decroit plus lentement sur damperTime
+        ///     (laisse la fondamentale s'eteindre naturellement)</summary>
         public void EngageDamper(float damperTime)
         {
             if (!_active) return;
-            // Rien a faire ici — le decrement du _damperGain se fait au fil du RenderSample via un
-            // taux calcule depuis damperTime. On met simplement un flag :
             _damperActive = true;
-            _damperRate = (float)Math.Exp(-6.9 / Math.Max(50, damperTime * _sr));  // -60 dB en damperTime * SR samples
+            _damperMul = 1f;
+            _damperLpCurrent = 6000f;
+            _damperLpTarget = 300f;
+            float lpRampSec = Math.Max(0.02f, damperTime * 0.3f);
+            _damperLpRate = (float)Math.Exp(-1.0 / (lpRampSec * _sr));   // exponential approach to target
+            _damperMulRate = (float)Math.Exp(-6.9 / Math.Max(50, damperTime * _sr));
+            _damperLpState = 0f;
         }
 
         bool _damperActive;
-        float _damperRate = 1f;
+        float _damperMul = 1f;
+        float _damperMulRate = 1f;
+        float _damperLpCurrent = 6000f;
+        float _damperLpTarget = 300f;
+        float _damperLpRate = 1f;
+        float _damperLpState;
 
         public void Kill()
         {
             _active = false;
             _damperActive = false;
-            _damperGain = 1f;
+            _damperMul = 1f;
+            _damperLpCurrent = 6000f;
+            _damperLpState = 0f;
             Array.Clear(_buf, 0, _buf.Length);
         }
 
@@ -170,14 +194,19 @@ namespace KotonPluginPiano
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
-            // Damper : coupe rapide si touche relachee (sauf sustain pedal)
+            // Damper multi-etages : LP progressif + multiplicateur qui decroit plus lentement.
+            // Sans damper actif, la sortie est le sample brut de la boucle KS.
             if (_damperActive)
             {
-                _damperGain *= _damperRate;
-                if (_damperGain < 1e-4f) { _active = false; return 0f; }
+                // Cutoff descend exponentiellement de 6 kHz vers 300 Hz (aigus meurent vite)
+                _damperLpCurrent = _damperLpTarget + (_damperLpCurrent - _damperLpTarget) * _damperLpRate;
+                float lpAlpha = 1f - (float)Math.Exp(-2.0 * Math.PI * _damperLpCurrent / _sr);
+                _damperLpState += lpAlpha * (sample - _damperLpState);
+                _damperMul *= _damperMulRate;
+                if (_damperMul < 1e-4f) { _active = false; return 0f; }
+                return _damperLpState * _damperMul;
             }
-
-            return sample * _damperGain;
+            return sample;
         }
     }
 
