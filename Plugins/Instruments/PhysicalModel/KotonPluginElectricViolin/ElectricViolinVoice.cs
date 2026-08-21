@@ -14,6 +14,7 @@ namespace KotonPluginElectricViolin
         public float TremoloDepth;     // ignoré
         public float BodyIntensity;    // 0..1 → dosage du bus formants (résonance de caisse)
         public float Warmth;           // 0..1 → drive tanh (arrondit la dent de scie, "crème")
+        public float BowScratch;       // 0..1 → intensité du bruit d'accroche à l'attaque (~50 ms HP noise)
         public float AttackSec;
         public float ReleaseSec;
         public float VolumeDb;
@@ -72,6 +73,12 @@ namespace KotonPluginElectricViolin
         BiquadState _lpMain;
         BiquadState _form1, _form2, _form3;
 
+        // ---- Bow scratch : bruit HP d'accroche a l'attaque ("cheveu qui gratte") ----
+        float _scratchEnv;         // 1 au NoteOn, decroit exp vers 0 en ~50 ms
+        float _scratchDecayCoef;
+        float _scratchLpState;     // LP state pour construire le HP par soustraction
+        Random _scratchRng;
+
         bool _active;
         int _note;
         float _velocity;
@@ -121,6 +128,12 @@ namespace KotonPluginElectricViolin
             // plus large brièvement.
             _biteBoost = 1f;
             _biteDecayCoef = (float)Math.Exp(-1.0 / (0.020 * _sr));
+
+            // Bruit d'accroche : env 1 → 0 en ~50 ms (tau 15 ms → -60 dB en 90 ms)
+            _scratchEnv = 1f;
+            _scratchDecayCoef = (float)Math.Exp(-1.0 / (0.015 * _sr));
+            _scratchLpState = 0f;
+            _scratchRng = new Random(note * 7919 + Environment.TickCount);
 
             float attackSec = Math.Max(0.015f, p.AttackSec);
             float releaseSec = Math.Max(0.02f, p.ReleaseSec);
@@ -212,6 +225,19 @@ namespace KotonPluginElectricViolin
             if (cutoff > 7000f) cutoff = 7000f;
             SetBiquadLP(ref _lpMain, _sr, cutoff, 0.707f);
             float body = BiquadProcess(ref _lpMain, saw);
+
+            // --- 4b) Bow scratch : bruit HP filtré injecté sur les premières ~50 ms ---
+            // Le "cheveu qui accroche la corde" : avant que la corde entre en résonance, l'archet
+            // frotte et produit un bruit distinct riche en hautes fréquences. HP simple via
+            // soustraction d'un LP interne (raw - LP(raw)) = passe-haut équivalent.
+            if (_scratchEnv > 1e-4f && p.BowScratch > 0.001f)
+            {
+                float raw = (float)(_scratchRng.NextDouble() * 2 - 1);
+                _scratchLpState += 0.35f * (raw - _scratchLpState);
+                float hpNoise = raw - _scratchLpState;
+                body += hpNoise * _scratchEnv * p.BowScratch * 0.5f;
+                _scratchEnv *= _scratchDecayCoef;
+            }
 
             // --- 5) Formants en PARALLÈLE (résonances fixes de caisse) ---
             // 3 BPF sommés au signal sec avec BodyIntensity. Poids décroissants avec la fréquence :

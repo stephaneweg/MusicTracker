@@ -29,7 +29,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Colonne 1 : ARCHET -->
@@ -97,6 +97,17 @@
                     <TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/>
                     <Slider x:Name="VolumeSlider" Minimum="-30" Maximum="6" TickFrequency="1"/>
                     <TextBlock x:Name="VolumeValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,10">
+                    <TextBlock Text="Bow scratch (accroche)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="BowScratchSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="BowScratchValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="4" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Reverb (résonance)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="ReverbSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="ReverbValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
             </Grid>
         </Grid>

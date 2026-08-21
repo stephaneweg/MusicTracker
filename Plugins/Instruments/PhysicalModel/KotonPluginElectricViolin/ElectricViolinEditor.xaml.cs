@@ -24,6 +24,8 @@ namespace KotonPluginElectricViolin
             Wire(DampingSlider,       DampingValue,       "damping",         v => v.ToString("F2"));
             Wire(BodyIntensitySlider, BodyIntensityValue, "body_intensity",  v => v.ToString("F2"));
             Wire(WarmthSlider,        WarmthValue,        "warmth",          v => v.ToString("F2"));
+            Wire(BowScratchSlider,    BowScratchValue,    "bow_scratch",     v => v.ToString("F2"));
+            Wire(ReverbSlider,        ReverbValue,        "reverb",          v => v.ToString("F2"));
             Wire(VibratoRateSlider,   VibratoRateValue,   "vibrato_rate",    v => v.ToString("F1") + " Hz");
             Wire(VibratoDepthSlider,  VibratoDepthValue,  "vibrato_depth",   v => v.ToString("F0") + " ct");
             Wire(AttackSlider,        AttackValue,        "attack_time",     v => v.ToString("F2") + " s");
@@ -72,6 +74,8 @@ namespace KotonPluginElectricViolin
                     case "damping":        DampingSlider.Value       = kp.Value; DampingValue.Text       = kp.Value.ToString("F2"); break;
                     case "body_intensity": BodyIntensitySlider.Value = kp.Value; BodyIntensityValue.Text = kp.Value.ToString("F2"); break;
                     case "warmth":         WarmthSlider.Value        = kp.Value; WarmthValue.Text        = kp.Value.ToString("F2"); break;
+                    case "bow_scratch":    BowScratchSlider.Value    = kp.Value; BowScratchValue.Text    = kp.Value.ToString("F2"); break;
+                    case "reverb":         ReverbSlider.Value        = kp.Value; ReverbValue.Text        = kp.Value.ToString("F2"); break;
                     case "vibrato_rate":   VibratoRateSlider.Value   = kp.Value; VibratoRateValue.Text   = kp.Value.ToString("F1") + " Hz"; break;
                     case "vibrato_depth":  VibratoDepthSlider.Value  = kp.Value; VibratoDepthValue.Text  = kp.Value.ToString("F0") + " ct"; break;
                     case "tremolo_rate":   TremoloRateSlider.Value   = kp.Value; break;
