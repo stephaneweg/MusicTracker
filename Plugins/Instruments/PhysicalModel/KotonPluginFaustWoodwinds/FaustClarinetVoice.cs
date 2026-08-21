@@ -123,9 +123,12 @@ namespace KotonPluginFaustWoodwinds
                 pressure += pressure * noiseGain * noise;
             }
 
-            // 3. Bell opening smooth (FAUST si.smooth ~0.999)
+            // 3. Bell opening smooth (FAUST si.smooth ~0.999).
+            // Mapping physique corrige : bell_opening = 0 (pavillon FERME) → refl = -1 (tout
+            // renvoye vers l'anche = boucle a gain plein). bell_opening = 1 (grand OUVERT) →
+            // refl = -0.5 (moitie s'echappe). Le default 0.05 donne refl = -0.975 → amorce.
             _bellSmoothState += 0.001f * (_bellOpening - _bellSmoothState);
-            float bellRefl = -_bellSmoothState;   // reflexion negative avec smoothing
+            float bellRefl = -(1f - _bellSmoothState * 0.5f);
 
             // === Sample-step du waveguide bidirectionnel FAUST ===
             //
