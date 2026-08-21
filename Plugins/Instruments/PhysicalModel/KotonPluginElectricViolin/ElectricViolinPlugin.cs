@@ -35,23 +35,24 @@ namespace KotonPluginElectricViolin
         public string Id => "koton.electricviolin";
         public string DisplayName => "Electric Violin";
 
-        readonly KotonParameter _bowForce      = new KotonParameter("bow_force",       "Bow force",       0.0, 1.0, 0.55);
-        readonly KotonParameter _bowVelocity   = new KotonParameter("bow_velocity",    "Bow velocity",    0.0, 1.0, 0.65);
-        readonly KotonParameter _bowPosition   = new KotonParameter("bow_position",    "Bow position",    0.0, 0.5, 0.12);
-        readonly KotonParameter _damping       = new KotonParameter("damping",         "Damping",         0.0, 1.0, 0.65);
-        readonly KotonParameter _bodyIntensity = new KotonParameter("body_intensity",  "Body (formants)", 0.0, 1.0, 0.35);
-        readonly KotonParameter _warmth        = new KotonParameter("warmth",          "Warmth (piezo)",  0.0, 1.0, 0.45);
+        // Defaults reglés sur le preset "joli son" valide par le user 2026-08-21.
+        readonly KotonParameter _bowForce      = new KotonParameter("bow_force",       "Bow force",       0.0, 1.0, 0.75);
+        readonly KotonParameter _bowVelocity   = new KotonParameter("bow_velocity",    "Bow velocity",    0.0, 1.0, 0.75);
+        readonly KotonParameter _bowPosition   = new KotonParameter("bow_position",    "Bow position",    0.0, 0.5, 0.08);
+        readonly KotonParameter _damping       = new KotonParameter("damping",         "Damping",         0.0, 1.0, 1.00);
+        readonly KotonParameter _bodyIntensity = new KotonParameter("body_intensity",  "Body (formants)", 0.0, 1.0, 0.70);
+        readonly KotonParameter _warmth        = new KotonParameter("warmth",          "Warmth (piezo)",  0.0, 1.0, 0.75);
         // ID "bow_scratch" garde pour la compat des .sq sauvegardes ; label affiche = "Grain level"
-        readonly KotonParameter _grainLevel    = new KotonParameter("bow_scratch",     "Grain level",     0.0, 1.0, 0.35);
+        readonly KotonParameter _grainLevel    = new KotonParameter("bow_scratch",     "Grain level",     0.0, 1.0, 0.31);
         readonly KotonParameter _grainDepth    = new KotonParameter("grain_depth",     "Grain depth",     0.0, 1.0, 0.60);
         readonly KotonParameter _grainDrive    = new KotonParameter("grain_drive",     "Grain drive",     0.0, 1.0, 0.50);
-        readonly KotonParameter _reverb        = new KotonParameter("reverb",          "Reverb",          0.0, 1.0, 0.15);
-        readonly KotonParameter _vibratoRate   = new KotonParameter("vibrato_rate",    "Vibrato rate",    0.0, 8.0, 5.5, "Hz");
-        readonly KotonParameter _vibratoDepth  = new KotonParameter("vibrato_depth",   "Vibrato depth",   0.0, 40.0, 12.0, "ct");
-        readonly KotonParameter _tremoloRate   = new KotonParameter("tremolo_rate",    "Tremolo rate",    0.0, 8.0, 5.0, "Hz");
-        readonly KotonParameter _tremoloDepth  = new KotonParameter("tremolo_depth",   "Tremolo depth",   0.0, 1.0, 0.10);
-        readonly KotonParameter _attackTime    = new KotonParameter("attack_time",     "Attack",          0.0, 1.5, 0.10, "s");
-        readonly KotonParameter _releaseTime   = new KotonParameter("release_time",    "Release",         0.0, 1.5, 0.25, "s");
+        readonly KotonParameter _reverb        = new KotonParameter("reverb",          "Reverb",          0.0, 1.0, 0.48);
+        readonly KotonParameter _vibratoRate   = new KotonParameter("vibrato_rate",    "Vibrato rate",    0.0, 8.0, 5.0, "Hz");
+        readonly KotonParameter _vibratoDepth  = new KotonParameter("vibrato_depth",   "Vibrato depth",   0.0, 40.0, 10.0, "ct");
+        readonly KotonParameter _tremoloRate   = new KotonParameter("tremolo_rate",    "Tremolo rate",    0.0, 8.0, 5.5, "Hz");
+        readonly KotonParameter _tremoloDepth  = new KotonParameter("tremolo_depth",   "Tremolo depth",   0.0, 1.0, 0.20);
+        readonly KotonParameter _attackTime    = new KotonParameter("attack_time",     "Attack",          0.0, 1.5, 0.00, "s");
+        readonly KotonParameter _releaseTime   = new KotonParameter("release_time",    "Release",         0.0, 1.5, 0.00, "s");
         readonly KotonParameter _volumeDb      = new KotonParameter("volume",          "Volume",          -30.0, 6.0, -3.0, "dB");
 
         readonly List<KotonParameter> _params;
