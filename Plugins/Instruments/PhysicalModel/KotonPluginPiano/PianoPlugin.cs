@@ -296,15 +296,28 @@ namespace KotonPluginPiano
         public static readonly string[] PresetNames =
         {
             "Piano acoustique", "Piano intime (dolce)", "Piano brillant (forte)", "Piano honky-tonk",
+            "Chapman Stick (bass)", "Chapman Stick (melody)", "Chapman Stick (dual)",
         };
 
+        // Chapman Stick : instrument tap a 10-12 cordes (bass + melody). Le tap = attaque percussive
+        // proche du hammer piano, mais UNE seule corde par note (pas 2-3), sustain quasi-infini
+        // (pas d'etouffoir mecanique), corps electrique (pas de caisse acoustique), inharmonicite
+        // faible (corde metal courte, spectre proche harmonique).
+        //   - damper_time ~0.85-0.90 : sustain tres long
+        //   - string_detune ~0.10   : mono-corde, quasiment pas de chorus
+        //   - inharmonicity ~0.05   : proche corde ideale
+        //   - body ~0.08            : quasi zero (pas de table d'harmonie)
+        //   - brightness varie selon role : bass sombre, melody brillant
         static readonly double[,] PresetValues =
         {
-            //                    hardness hamAmt bright inharm detune damper pedal body reverb width volDb
-            /*Acoustique*/       { 0.45, 0.35, 0.60, 0.15, 0.35, 0.30, 0.00, 0.25, 0.15, 0.35, -6.0 },
-            /*Dolce (intime)*/   { 0.25, 0.25, 0.40, 0.10, 0.25, 0.40, 0.00, 0.30, 0.25, 0.30, -8.0 },
-            /*Forte (brillant)*/ { 0.75, 0.55, 0.85, 0.20, 0.45, 0.25, 0.00, 0.20, 0.10, 0.40, -4.0 },
-            /*Honky-tonk*/       { 0.60, 0.45, 0.70, 0.35, 0.90, 0.25, 0.00, 0.15, 0.05, 0.45, -6.0 },
+            //                          hardness hamAmt bright inharm detune damper pedal body reverb width volDb
+            /*Acoustique*/             { 0.45, 0.35, 0.60, 0.15, 0.35, 0.30, 0.00, 0.25, 0.15, 0.35, -6.0 },
+            /*Dolce (intime)*/         { 0.25, 0.25, 0.40, 0.10, 0.25, 0.40, 0.00, 0.30, 0.25, 0.30, -8.0 },
+            /*Forte (brillant)*/       { 0.75, 0.55, 0.85, 0.20, 0.45, 0.25, 0.00, 0.20, 0.10, 0.40, -4.0 },
+            /*Honky-tonk*/             { 0.60, 0.45, 0.70, 0.35, 0.90, 0.25, 0.00, 0.15, 0.05, 0.45, -6.0 },
+            /*Chapman Stick (bass)*/   { 0.55, 0.28, 0.50, 0.04, 0.10, 0.90, 0.00, 0.08, 0.30, 0.35, -4.0 },
+            /*Chapman Stick (melody)*/ { 0.65, 0.22, 0.85, 0.05, 0.10, 0.85, 0.00, 0.08, 0.35, 0.40, -5.0 },
+            /*Chapman Stick (dual)*/   { 0.60, 0.25, 0.72, 0.05, 0.10, 0.87, 0.00, 0.08, 0.32, 0.38, -4.5 },
         };
 
         public void LoadPreset(int index)
