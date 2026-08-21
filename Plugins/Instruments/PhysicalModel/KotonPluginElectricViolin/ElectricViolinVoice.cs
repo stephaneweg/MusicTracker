@@ -231,19 +231,19 @@ namespace KotonPluginElectricViolin
             if (p.BowScratch > 0.001f)
             {
                 float raw = (float)(_scratchRng.NextDouble() * 2 - 1);
-                _scratchLpState += 0.005f * (raw - _scratchLpState);   // LP tres bas ~30 Hz
-                float grainMod = _scratchLpState * 4f;                 // amplifie pour tomber ±1
+                _scratchLpState += 0.015f * (raw - _scratchLpState);   // LP ~100 Hz (grain percussif)
+                float grainMod = _scratchLpState * 6f;                 // amplifie ±1
                 if (grainMod > 1f) grainMod = 1f;
                 else if (grainMod < -1f) grainMod = -1f;
 
-                // Modulation d'amplitude : le signal fluctue avec le noise LP → sensation granuleuse
-                float grainDepth = p.BowScratch * 0.5f;
+                // Modulation d'amplitude PROFONDE : jusqu'a ±120 % de mod a BowScratch max
+                float grainDepth = p.BowScratch * 1.2f;
                 body *= 1f + grainMod * grainDepth;
 
-                // Drive tanh proportionnel : plus BowScratch est haut, plus la note sature legerement
-                // → harmoniques hautes ajoutees a la note = mordant/granularite audible
-                float drive = 1f + p.BowScratch * 0.7f;
-                body = (float)Math.Tanh(body * drive) / drive * 1.15f;
+                // Drive tanh TRES fort : a BowScratch = 1, drive = 4 → saturation carree
+                // → harmoniques hautes massivement ajoutees = mordant/growl audible
+                float drive = 1f + p.BowScratch * 3f;
+                body = (float)Math.Tanh(body * drive) / drive * (1f + p.BowScratch * 0.5f);
             }
 
             // --- 5) Formants en PARALLÈLE (résonances fixes de caisse) ---
