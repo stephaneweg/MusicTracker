@@ -20,7 +20,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="Preset :" VerticalAlignment="Center" Foreground="{DynamicResource KotonText}" Margin="0,0,10,0"/>
                 <ComboBox Grid.Column="1" x:Name="PresetCombo" Width="280" HorizontalAlignment="Left" SelectionChanged="PresetCombo_SelectionChanged"/>
-                <TextBlock Grid.Column="2" Text="Electric Violin · MSW stick-slip" Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="Synthetic Violin · MSW stick-slip" Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" VerticalAlignment="Center"/>
             </Grid>
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>

@@ -29,11 +29,11 @@ namespace KotonPluginElectricViolin
     /// pupitre orchestral "moyen". EV utilise la vraie friction stick-slip → son solo expressif
     /// qui répond à la dynamique (velocity → force → spectre change réellement).
     /// </summary>
-    [KotonInstrument("Electric Violin", Id = "koton.electricviolin", Category = "Physical Model", Version = "1.0", Vendor = "Koton Studio")]
+    [KotonInstrument("Synthetic Violin", Id = "koton.electricviolin", Category = "Physical Model", Version = "1.0", Vendor = "Koton Studio")]
     public sealed class ElectricViolinPlugin : IKotonInstrument
     {
         public string Id => "koton.electricviolin";
-        public string DisplayName => "Electric Violin";
+        public string DisplayName => "Synthetic Violin";
 
         // Defaults reglés sur le preset "joli son" valide par le user 2026-08-21.
         readonly KotonParameter _bowForce      = new KotonParameter("bow_force",       "Bow force",       0.0, 1.0, 0.75);
