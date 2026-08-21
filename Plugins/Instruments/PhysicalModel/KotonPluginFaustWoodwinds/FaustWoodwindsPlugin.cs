@@ -21,15 +21,18 @@ namespace KotonPluginFaustWoodwinds
         public string Id => "koton.faust.clarinet";
         public string DisplayName => "Clarinette FAUST";
 
-        readonly KotonParameter _pressure       = new KotonParameter("pressure",        "Air pressure",     0.0, 1.0, 0.5);
+        // Defaults ajustes pour que la boucle waveguide amorce l'auto-oscillation des le premier
+        // NoteOn : pressure suffisante (0.85), bell "presque ferme" pour maintenir la reflexion
+        // haute (0.05, → coefficient de reflexion effectif ~-0.95), reed medium.
+        readonly KotonParameter _pressure       = new KotonParameter("pressure",        "Air pressure",     0.0, 1.0, 0.85);
         readonly KotonParameter _reedStiffness  = new KotonParameter("reed_stiffness",  "Reed stiffness",   0.0, 1.0, 0.5);
-        readonly KotonParameter _bellOpening    = new KotonParameter("bell_opening",    "Bell opening",     0.0, 1.0, 0.5);
+        readonly KotonParameter _bellOpening    = new KotonParameter("bell_opening",    "Bell opening",     0.0, 1.0, 0.05);
         readonly KotonParameter _breathNoise    = new KotonParameter("breath_noise",    "Breath noise",     0.0, 1.0, 0.15);
         readonly KotonParameter _vibratoRate    = new KotonParameter("vibrato_rate",    "Vibrato rate",     0.0, 8.0, 5.0, "Hz");
         readonly KotonParameter _vibratoDepth   = new KotonParameter("vibrato_depth",   "Vibrato depth",    0.0, 30.0, 4.0, "ct");
         readonly KotonParameter _attackTime     = new KotonParameter("attack_time",     "Attack",           0.005, 0.5, 0.020, "s");
         readonly KotonParameter _releaseTime    = new KotonParameter("release_time",    "Release",          0.02, 1.5, 0.15, "s");
-        readonly KotonParameter _outputGain     = new KotonParameter("output_gain",     "Output gain",      0.0, 2.0, 0.8);
+        readonly KotonParameter _outputGain     = new KotonParameter("output_gain",     "Output gain",      0.0, 2.0, 1.0);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",          "Volume",           -30.0, 6.0, -6.0, "dB");
 
         readonly List<KotonParameter> _params;
