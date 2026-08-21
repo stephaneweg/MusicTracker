@@ -73,9 +73,7 @@ namespace KotonPluginElectricViolin
         BiquadState _lpMain;
         BiquadState _form1, _form2, _form3;
 
-        // ---- Bow scratch : bruit HP d'accroche a l'attaque ("cheveu qui gratte") ----
-        float _scratchEnv;         // 1 au NoteOn, decroit exp vers 0 en ~50 ms
-        float _scratchDecayCoef;
+        // ---- Bow noise continu (friction crin sur corde) ----
         float _scratchLpState;     // LP state pour construire le HP par soustraction
         Random _scratchRng;
 
@@ -129,9 +127,7 @@ namespace KotonPluginElectricViolin
             _biteBoost = 1f;
             _biteDecayCoef = (float)Math.Exp(-1.0 / (0.020 * _sr));
 
-            // Bruit d'accroche : env 1 → 0 en ~50 ms (tau 15 ms → -60 dB en 90 ms)
-            _scratchEnv = 1f;
-            _scratchDecayCoef = (float)Math.Exp(-1.0 / (0.015 * _sr));
+            // Bow noise continu : reset du HP state + reseed RNG determinist
             _scratchLpState = 0f;
             _scratchRng = new Random(note * 7919 + Environment.TickCount);
 
@@ -226,17 +222,17 @@ namespace KotonPluginElectricViolin
             SetBiquadLP(ref _lpMain, _sr, cutoff, 0.707f);
             float body = BiquadProcess(ref _lpMain, saw);
 
-            // --- 4b) Bow scratch : bruit HP filtré injecté sur les premières ~50 ms ---
-            // Le "cheveu qui accroche la corde" : avant que la corde entre en résonance, l'archet
-            // frotte et produit un bruit distinct riche en hautes fréquences. HP simple via
-            // soustraction d'un LP interne (raw - LP(raw)) = passe-haut équivalent.
-            if (_scratchEnv > 1e-4f && p.BowScratch > 0.001f)
+            // --- 4b) Bow noise CONTINU (friction du crin sur la corde) ---
+            // Le bruit d'accroche reste audible tout au long de la note tenue, pas seulement a
+            // l'attaque. Amplitude proportionnelle a l'enveloppe et a la velocity (plus tu appuies,
+            // plus le crin frotte fort). HP construit par soustraction d'un LP interne. Amplitude
+            // modeste (0.12) : c'est un contrepoint au signal principal, pas un bruit dominant.
+            if (p.BowScratch > 0.001f)
             {
                 float raw = (float)(_scratchRng.NextDouble() * 2 - 1);
                 _scratchLpState += 0.35f * (raw - _scratchLpState);
                 float hpNoise = raw - _scratchLpState;
-                body += hpNoise * _scratchEnv * p.BowScratch * 0.5f;
-                _scratchEnv *= _scratchDecayCoef;
+                body += hpNoise * p.BowScratch * _env * _velocity * 0.12f;
             }
 
             // --- 5) Formants en PARALLÈLE (résonances fixes de caisse) ---
