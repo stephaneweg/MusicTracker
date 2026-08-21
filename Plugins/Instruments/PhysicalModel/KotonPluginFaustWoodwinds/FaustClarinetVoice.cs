@@ -145,12 +145,13 @@ namespace KotonPluginFaustWoodwinds
             float xLeft  = _leftDelay.LastOut();
             float xRight = _rightDelay.LastOut();
 
-            // Interaction anche : FAUST reedInteraction = *(-1) : *(clarinetReed(stiffness))
-            // clarinetReed(x) = reedTable(0.7, slope)(x) = clip(0.7 + slope*x, ±1)
-            float pDiff = -xLeft;                    // *(-1)
+            // pDiff = difference de pression bouche - tube (formule FAUST correcte).
+            // Le -xLeft seul (formule d'origine litterale de FAUST reedInteraction = *(-1)) ne
+            // recoit pas le signal de pm et la reed n'accroche jamais → pas d'auto-oscillation.
+            float pDiff = pressure - xLeft;
             float rt = 0.7f + _reedSlope * pDiff;
             if (rt > 1f) rt = 1f; else if (rt < -1f) rt = -1f;
-            float reedInteraction = pDiff * rt;      // *(clarinetReed(...))
+            float reedInteraction = pDiff * rt;
 
             // Nouvelles ondes injectees
             float rightIn = reedInteraction + pressure;
