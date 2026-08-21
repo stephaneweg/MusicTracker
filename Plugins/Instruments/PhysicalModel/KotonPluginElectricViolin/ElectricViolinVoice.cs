@@ -236,14 +236,14 @@ namespace KotonPluginElectricViolin
                 if (grainMod > 1f) grainMod = 1f;
                 else if (grainMod < -1f) grainMod = -1f;
 
-                // Modulation d'amplitude PROFONDE : jusqu'a ±120 % de mod a BowScratch max
-                float grainDepth = p.BowScratch * 1.2f;
+                // Modulation d'amplitude : jusqu'a ±70 % a BowScratch max
+                float grainDepth = p.BowScratch * 0.7f;
                 body *= 1f + grainMod * grainDepth;
 
-                // Drive tanh TRES fort : a BowScratch = 1, drive = 4 → saturation carree
-                // → harmoniques hautes massivement ajoutees = mordant/growl audible
-                float drive = 1f + p.BowScratch * 3f;
-                body = (float)Math.Tanh(body * drive) / drive * (1f + p.BowScratch * 0.5f);
+                // Drive tanh modere : a BowScratch = 1, drive = 2.5 → saturation musicale
+                // (grain mordant sans devenir carre/agressif)
+                float drive = 1f + p.BowScratch * 1.5f;
+                body = (float)Math.Tanh(body * drive) / drive * (1f + p.BowScratch * 0.3f);
             }
 
             // --- 5) Formants en PARALLÈLE (résonances fixes de caisse) ---
