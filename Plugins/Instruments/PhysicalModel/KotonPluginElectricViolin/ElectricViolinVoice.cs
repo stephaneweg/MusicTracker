@@ -14,7 +14,9 @@ namespace KotonPluginElectricViolin
         public float TremoloDepth;     // ignoré
         public float BodyIntensity;    // 0..1 → dosage du bus formants (résonance de caisse)
         public float Warmth;           // 0..1 → drive tanh (arrondit la dent de scie, "crème")
-        public float BowScratch;       // 0..1 → intensité du bruit d'accroche à l'attaque (~50 ms HP noise)
+        public float GrainLevel;       // 0..1 → intensite globale du grain (master switch)
+        public float GrainDepth;       // 0..1 → dose de modulation d'amplitude AM (fluctuation lente)
+        public float GrainDrive;       // 0..1 → dose de saturation tanh (harmoniques hautes / mordant)
         public float AttackSec;
         public float ReleaseSec;
         public float VolumeDb;
@@ -228,7 +230,7 @@ namespace KotonPluginElectricViolin
             // tanh. Physique : les micro-perturbations stick-slip du crin sur la corde modulent
             // l'amplitude et introduisent des harmoniques → la note "vibre" avec du grain, comme
             // si le son etait rugueux dans sa nature meme.
-            if (p.BowScratch > 0.001f)
+            if (p.GrainLevel > 0.001f)
             {
                 float raw = (float)(_scratchRng.NextDouble() * 2 - 1);
                 _scratchLpState += 0.015f * (raw - _scratchLpState);   // LP ~100 Hz (grain percussif)
@@ -236,14 +238,13 @@ namespace KotonPluginElectricViolin
                 if (grainMod > 1f) grainMod = 1f;
                 else if (grainMod < -1f) grainMod = -1f;
 
-                // Modulation d'amplitude : jusqu'a ±70 % a BowScratch max
-                float grainDepth = p.BowScratch * 0.7f;
-                body *= 1f + grainMod * grainDepth;
+                // Modulation d'amplitude : level × depth. Max ±140 % a tous les params = 1.
+                float depth = p.GrainLevel * p.GrainDepth * 1.4f;
+                body *= 1f + grainMod * depth;
 
-                // Drive tanh modere : a BowScratch = 1, drive = 2.5 → saturation musicale
-                // (grain mordant sans devenir carre/agressif)
-                float drive = 1f + p.BowScratch * 1.5f;
-                body = (float)Math.Tanh(body * drive) / drive * (1f + p.BowScratch * 0.3f);
+                // Drive tanh : 1..4 selon level × drive. Saturation musicale a mordante.
+                float drive = 1f + p.GrainLevel * p.GrainDrive * 3f;
+                body = (float)Math.Tanh(body * drive) / drive * (1f + p.GrainLevel * p.GrainDrive * 0.5f);
             }
 
             // --- 5) Formants en PARALLÈLE (résonances fixes de caisse) ---

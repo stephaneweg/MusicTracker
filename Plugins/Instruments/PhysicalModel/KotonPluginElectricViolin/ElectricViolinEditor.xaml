@@ -29,7 +29,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Colonne 1 : ARCHET -->
@@ -100,11 +100,22 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="4" Grid.Column="0" Margin="0,0,0,10">
-                    <TextBlock Text="Bow scratch (accroche)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
-                    <Slider x:Name="BowScratchSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
-                    <TextBlock x:Name="BowScratchValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                    <TextBlock Text="Grain level" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
+                    <Slider x:Name="GrainLevelSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="GrainLevelValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+                <StackPanel Grid.Row="4" Grid.Column="2" Margin="0,0,0,10">
+                    <TextBlock Text="Grain depth (tremolo)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="GrainDepthSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="GrainDepthValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
                 </StackPanel>
                 <StackPanel Grid.Row="4" Grid.Column="4" Margin="0,0,0,10">
+                    <TextBlock Text="Grain drive (mordant)" Foreground="{DynamicResource KotonText}"/>
+                    <Slider x:Name="GrainDriveSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="GrainDriveValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>
+                </StackPanel>
+
+                <StackPanel Grid.Row="5" Grid.Column="4" Margin="0,0,0,10">
                     <TextBlock Text="Reverb (résonance)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/>
                     <Slider x:Name="ReverbSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
                     <TextBlock x:Name="ReverbValue" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/>

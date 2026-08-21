@@ -41,7 +41,10 @@ namespace KotonPluginElectricViolin
         readonly KotonParameter _damping       = new KotonParameter("damping",         "Damping",         0.0, 1.0, 0.65);
         readonly KotonParameter _bodyIntensity = new KotonParameter("body_intensity",  "Body (formants)", 0.0, 1.0, 0.35);
         readonly KotonParameter _warmth        = new KotonParameter("warmth",          "Warmth (piezo)",  0.0, 1.0, 0.45);
-        readonly KotonParameter _bowScratch    = new KotonParameter("bow_scratch",     "Bow scratch",     0.0, 1.0, 0.25);
+        // ID "bow_scratch" garde pour la compat des .sq sauvegardes ; label affiche = "Grain level"
+        readonly KotonParameter _grainLevel    = new KotonParameter("bow_scratch",     "Grain level",     0.0, 1.0, 0.35);
+        readonly KotonParameter _grainDepth    = new KotonParameter("grain_depth",     "Grain depth",     0.0, 1.0, 0.60);
+        readonly KotonParameter _grainDrive    = new KotonParameter("grain_drive",     "Grain drive",     0.0, 1.0, 0.50);
         readonly KotonParameter _reverb        = new KotonParameter("reverb",          "Reverb",          0.0, 1.0, 0.15);
         readonly KotonParameter _vibratoRate   = new KotonParameter("vibrato_rate",    "Vibrato rate",    0.0, 8.0, 5.5, "Hz");
         readonly KotonParameter _vibratoDepth  = new KotonParameter("vibrato_depth",   "Vibrato depth",   0.0, 40.0, 12.0, "ct");
@@ -72,7 +75,8 @@ namespace KotonPluginElectricViolin
             _params = new List<KotonParameter>
             {
                 _bowForce, _bowVelocity, _bowPosition, _damping,
-                _bodyIntensity, _warmth, _bowScratch, _reverb,
+                _bodyIntensity, _warmth,
+                _grainLevel, _grainDepth, _grainDrive, _reverb,
                 _vibratoRate, _vibratoDepth, _tremoloRate, _tremoloDepth,
                 _attackTime, _releaseTime, _volumeDb,
             };
@@ -205,7 +209,9 @@ namespace KotonPluginElectricViolin
             Damping           = (float)_damping.Value,
             BodyIntensity     = (float)_bodyIntensity.Value,
             Warmth            = (float)_warmth.Value,
-            BowScratch        = (float)_bowScratch.Value,
+            GrainLevel        = (float)_grainLevel.Value,
+            GrainDepth        = (float)_grainDepth.Value,
+            GrainDrive        = (float)_grainDrive.Value,
             VibratoRateHz     = (float)_vibratoRate.Value,
             VibratoDepthCents = (float)_vibratoDepth.Value,
             TremoloRateHz     = (float)_tremoloRate.Value,
