@@ -222,17 +222,28 @@ namespace KotonPluginElectricViolin
             SetBiquadLP(ref _lpMain, _sr, cutoff, 0.707f);
             float body = BiquadProcess(ref _lpMain, saw);
 
-            // --- 4b) Bow noise CONTINU (friction du crin sur la corde) ---
-            // Le bruit d'accroche reste audible tout au long de la note tenue, pas seulement a
-            // l'attaque. Amplitude proportionnelle a l'enveloppe et a la velocity (plus tu appuies,
-            // plus le crin frotte fort). HP construit par soustraction d'un LP interne. Amplitude
-            // modeste (0.12) : c'est un contrepoint au signal principal, pas un bruit dominant.
+            // --- 4b) Bow grain : la note elle-meme devient granuleuse ---
+            // Pas un bruit ajoute a cote (ce serait un "chhh" ou "grrr" separe), mais une
+            // MODULATION du signal principal par un noise tres basse frequence + un peu de drive
+            // tanh. Physique : les micro-perturbations stick-slip du crin sur la corde modulent
+            // l'amplitude et introduisent des harmoniques → la note "vibre" avec du grain, comme
+            // si le son etait rugueux dans sa nature meme.
             if (p.BowScratch > 0.001f)
             {
                 float raw = (float)(_scratchRng.NextDouble() * 2 - 1);
-                _scratchLpState += 0.35f * (raw - _scratchLpState);
-                float hpNoise = raw - _scratchLpState;
-                body += hpNoise * p.BowScratch * _env * _velocity * 0.12f;
+                _scratchLpState += 0.005f * (raw - _scratchLpState);   // LP tres bas ~30 Hz
+                float grainMod = _scratchLpState * 4f;                 // amplifie pour tomber ±1
+                if (grainMod > 1f) grainMod = 1f;
+                else if (grainMod < -1f) grainMod = -1f;
+
+                // Modulation d'amplitude : le signal fluctue avec le noise LP → sensation granuleuse
+                float grainDepth = p.BowScratch * 0.5f;
+                body *= 1f + grainMod * grainDepth;
+
+                // Drive tanh proportionnel : plus BowScratch est haut, plus la note sature legerement
+                // → harmoniques hautes ajoutees a la note = mordant/granularite audible
+                float drive = 1f + p.BowScratch * 0.7f;
+                body = (float)Math.Tanh(body * drive) / drive * 1.15f;
             }
 
             // --- 5) Formants en PARALLÈLE (résonances fixes de caisse) ---
