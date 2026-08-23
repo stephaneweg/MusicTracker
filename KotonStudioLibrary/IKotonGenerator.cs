@@ -150,23 +150,6 @@ namespace KotonStudio.Library
         /// <summary>Vélocité MIDI 1..127 (0 est un note-off en MIDI standard — remplacé par 1 côté
         /// hôte s'il arrive). Le player peut appliquer par-dessus une correction d'accent métrique.</summary>
         public int Velocity;
-
-        /// <summary>Courbe de pitch-bend optionnelle attachée à cette note (null = aucun bend).
-        /// Les offsets sont en BEATS depuis <see cref="StartBeat"/>, les valeurs en SEMITONS signés
-        /// (linéaire entre points). L'hôte convertit en <c>BendPoint[]</c> côté Riff, puis le
-        /// player interpole en temps réel comme pour n'importe quel bend de riff. Sert au glissando
-        /// (Guqin, string bends), ou à toute automation de hauteur sur une note.</summary>
-        public KotonBendPoint[] Bends;
-    }
-
-    /// <summary>Un point d'une courbe de pitch-bend attachée à une <see cref="KotonGeneratedNote"/> :
-    /// un offset en BEATS depuis le début de la note et un bend en SEMITONS signés. L'hôte
-    /// interpole linéairement entre les points consécutifs, plateau au-delà des extrêmes.</summary>
-    public struct KotonBendPoint
-    {
-        public double OffBeats;
-        public float Semis;
-        public KotonBendPoint(double offBeats, float semis) { OffBeats = offBeats; Semis = semis; }
     }
 
     /// <summary>Contexte de rendu passé à <see cref="IKotonGenerator.RenderNotes"/> : tonalité,

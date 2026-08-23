@@ -53,16 +53,6 @@ namespace KotonStudio.Library
         /// plugin (2 semitons est le défaut GM). Les CC RPN pour changer la range ne sont pas propagés v1.</summary>
         void SetPitchBend(float value, int sampleOffset = 0);
 
-        /// <summary>Bend PAR VOIX (par note active), en SEMITONS signés. Contrairement à
-        /// <see cref="SetPitchBend"/> qui bend TOUTES les voix ensemble (comme un canal MIDI),
-        /// celui-ci ne bende QUE la voix identifiée par <paramref name="note"/> (le numéro MIDI qui
-        /// l'a déclenchée). Nécessaire pour le glissando polyphonique : deux notes qui jouent en
-        /// même temps peuvent glisser indépendamment. Implémentation par défaut = no-op : les
-        /// plugins qui ne le supportent pas ignorent (un piano n'a pas de glissando physique). Le
-        /// plugin gère : quand une voix a un bend, ajouter <paramref name="semis"/> au pitch de
-        /// cette voix pour son rendu ; RESET du bend à la fin de la voix (NoteOff).</summary>
-        void SetNoteBend(int note, float semis, int sampleOffset = 0) { }
-
         /// <summary>Rend un bloc stéréo. <paramref name="left"/> et <paramref name="right"/> ont la même
         /// longueur (le nombre de frames à rendre). Le plugin ÉCRASE le contenu (pas d'ADD — l'hôte
         /// somme dans un master à côté). Un plugin silent doit poser des zéros, pas laisser tel quel.</summary>

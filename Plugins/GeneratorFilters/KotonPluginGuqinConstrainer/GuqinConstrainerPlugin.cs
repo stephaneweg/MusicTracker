@@ -41,11 +41,6 @@ namespace KotonPluginGuqinConstrainer
         // graves/aiguës pour le guqin (basse à 30, mélodie à 90) et qu'on veut quand même les
         // jouer, ramenées dans l'ambitus par octaves entières (préserve la classe de hauteur).
         readonly KotonParameter _snapMode    = new KotonParameter("snap_mode",    "Snap hors gamme",  0, 2, 2);
-        // Glissando : 0 = off, 1 = on. Ajoute un pitch bend automatique entre 2 notes consécutives
-        // qui se résolvent sur la MÊME corde stoppée (aucune corde à vide) — geste caractéristique
-        // du guqin (yin/nao/chuo). Le bend monte/descend depuis la note source vers la note cible
-        // pendant la durée de la note source, puis la note cible est attaquée normalement.
-        readonly KotonParameter _glissando   = new KotonParameter("glissando",    "Glissando même corde", 0, 1, 1);
         // MIDI de chaque corde à vide, pré-alloués (MaxStrings entrées). Seules les _stringCount
         // premières sont utilisées ; les autres restent dans SaveState pour préserver l'état de
         // l'user si le nombre de cordes est diminué puis réaugmenté.
@@ -89,7 +84,7 @@ namespace KotonPluginGuqinConstrainer
             for (int i = 0; i < GuqinModel.MaxStrings; i++)
                 _stringMidi[i] = new KotonParameter("string_midi_" + (i + 1), "Corde " + (i + 1), 0, 127, defaults[i]);
 
-            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _stringCount, _snapMode, _glissando };
+            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _stringCount, _snapMode };
             _params.AddRange(_stringMidi);
         }
 
@@ -171,11 +166,6 @@ namespace KotonPluginGuqinConstrainer
             // Contexte pour la voice-leading : dernière position stoppée jouée (pour préférer un
             // fingering proche au suivant, comme un musicien qui minimise le déplacement de main).
             double? prevPositionCm = null;
-            // Glissando : reverse map held → index de la note qui l'a créé (pour retrouver la note
-            // volée lors d'un StealOldest et lui attacher un bend vers la nouvelle note).
-            var heldToIdx = new Dictionary<GuqinConstraint.Held, int>();
-            bool doGliss = _glissando.Value >= 0.5;
-            var bendCurves = new KotonBendPoint[input.Count][];
 
             foreach (var (t, kind, idx) in events)
             {
@@ -200,27 +190,7 @@ namespace KotonPluginGuqinConstrainer
                     if (decision == GuqinConstraint.Decision.RejectStringBusy) { resolved[idx] = (false, -1, -1, 0); continue; }
                     if (decision == GuqinConstraint.Decision.StealOldest && toRelease != null)
                     {
-                        // GLISSANDO : la corde est encore en vibration (une note ancienne y était)
-                        // et la nouvelle note atterrit dessus. Si les deux notes sont stoppées
-                        // (aucune n'est à vide) et leur pitch diffère, on attache un bend à la
-                        // note ANCIENNE qui glisse vers le pitch de la nouvelle, atteint juste
-                        // avant l'attaque de la nouvelle (moment du vol de doigt physique).
-                        if (doGliss && !toRelease.IsOpen && !f.IsOpen && toRelease.Midi != f.Midi
-                            && heldToIdx.TryGetValue(toRelease, out int oldIdx))
-                        {
-                            var oldNote = input[oldIdx];
-                            double reachBeat = srcNote.StartBeat - oldNote.StartBeat;
-                            if (reachBeat > 0.01)
-                            {
-                                bendCurves[oldIdx] = new[]
-                                {
-                                    new KotonBendPoint(0.0, 0f),
-                                    new KotonBendPoint(reachBeat, (float)(f.Midi - toRelease.Midi)),
-                                };
-                            }
-                        }
                         constraint.Release(toRelease);
-                        heldToIdx.Remove(toRelease);
                         // Vol de doigt à l'instant t (StartBeat de la nouvelle note) → release
                         // scheduled à cet instant précis, PAS à la fin de la duration originale
                         // (la corde est reprise par la nouvelle note).
@@ -228,7 +198,6 @@ namespace KotonPluginGuqinConstrainer
                     }
                     var held = constraint.Register(f.Midi, f.StringIdx, f.Position);
                     heldByIdx[idx] = held;
-                    heldToIdx[held] = idx;
                     resolved[idx] = (true, f.Midi, f.StringIdx, f.Position);
                     if (!f.IsOpen) prevPositionCm = f.Position * _diapasonCm.Value;
                     if (wantsViz)
@@ -254,7 +223,6 @@ namespace KotonPluginGuqinConstrainer
                     if (h != null && constraint.Active.Contains(h))
                     {
                         constraint.Release(h);
-                        heldToIdx.Remove(h);
                         // Release scheduled à la fin naturelle de la note (t = event t).
                         if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = h.Midi, AbsoluteAtBeat = blockStartAbs + t, Tempo = tempo }); } catch { } }
                     }
@@ -272,7 +240,6 @@ namespace KotonPluginGuqinConstrainer
                     NotationDurationBeats = src.NotationDurationBeats,
                     MidiNote = resolved[i].midi,
                     Velocity = src.Velocity,
-                    Bends = bendCurves[i],
                 };
             }
         }

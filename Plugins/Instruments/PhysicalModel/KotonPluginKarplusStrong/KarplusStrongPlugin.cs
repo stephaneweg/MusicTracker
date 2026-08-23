@@ -161,7 +161,6 @@ namespace KotonPluginKarplusStrong
         {
             // No-op volontaire : une corde pincée n'a pas de note-off actif. Le sustain est
             // piloté par le paramètre Damping via la décroissance naturelle de la boucle.
-            _bends.Clear(note);
         }
 
         public void MidiCC(int cc, int value, int sampleOffset = 0)
@@ -173,17 +172,14 @@ namespace KotonPluginKarplusStrong
 
         public void SetPitchBend(float value, int sampleOffset = 0)
         {
-            // Bend GLOBAL (canal-wide) : appliqué à toutes les voix. En pratique on privilégie
-            // SetNoteBend (per-voice) pour le glissando polyphonique.
+            // Pitch bend ±2 demi-tons par défaut → multiplier de fréquence.
             _bendMul = (float)Math.Pow(2.0, value * 2.0 / 12.0);
+            // NOTE: appliqué au sample rate effectif de la ligne à retard serait plus rigoureux,
+            // mais Karplus-Strong ne réagit pas facilement au bend continu (il faudrait redimensionner
+            // la ligne, ce qui casse le contenu). En v1 on laisse le bend inactif — la note reste
+            // sur sa hauteur d'attaque. À documenter dans les limites connues.
+            _ = _bendMul;
         }
-
-        readonly KotonNoteBends _bends = new KotonNoteBends();
-
-        /// <summary>Bend PAR VOIX. La longueur de la delay line est recalculée dynamiquement dans
-        /// RenderSample (fractional delay + interpolation linéaire) → pitch continu sans reset de
-        /// l'excitation. C'est ce qui rend le glissando du guqin/koto/harpe audible.</summary>
-        public void SetNoteBend(int note, float semis, int sampleOffset = 0) => _bends.Set(note, semis);
 
         // =============================================================================================
         // Render
@@ -208,7 +204,7 @@ namespace KotonPluginKarplusStrong
                 for (int v = 0; v < _voices.Length; v++)
                 {
                     if (_voices[v].IsActive)
-                        sum += _voices[v].RenderSample(voiceParams, _bendMul * _bends.Factor(_voices[v].Note));
+                        sum += _voices[v].RenderSample(voiceParams);
                 }
 
                 // Body resonator : bandpass ~200Hz Q=3

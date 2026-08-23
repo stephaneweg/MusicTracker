@@ -181,17 +181,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 int start = (int)Math.Round(n.StartBeat * spq);
                 int len = Math.Max(1, (int)Math.Round(n.DurationBeats * spq));
                 int note = Math.Max(0, Math.Min(95, n.MidiNote - 12));
-                var rn = new RiffNote(note, start, len);
-                // Propage la courbe de bend si le constrainer en a attaché une : offsets convertis
-                // de beats vers slices, valeurs (semis) inchangées. Bend null si aucune.
-                if (n.Bends != null && n.Bends.Length > 0)
-                {
-                    var bps = new BendPoint[n.Bends.Length];
-                    for (int i = 0; i < n.Bends.Length; i++)
-                        bps[i] = new BendPoint((int)Math.Round(n.Bends[i].OffBeats * spq), n.Bends[i].Semis);
-                    rn.Bend = bps;
-                }
-                r.Notes.Add(rn);
+                r.Notes.Add(new RiffNote(note, start, len));
             }
             return r;
         }

@@ -53,11 +53,9 @@ namespace KotonPluginPolySynth
             if (t == null) { t = _voices[_stealCursor]; _stealCursor = (_stealCursor + 1) % MaxPoly; t.Kill(); }
             t.NoteOn(note, velocity / 127f, (float)_detune.Value, (float)_aAtk.Value, (float)_fAtk.Value, (float)_fDec.Value);
         }
-        public void NoteOff(int note, int sampleOffset = 0) { if (_voices == null) return; for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff((float)_aRel.Value); _bends.Clear(note); }
+        public void NoteOff(int note, int sampleOffset = 0) { if (_voices == null) return; for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff((float)_aRel.Value); }
         public void MidiCC(int cc, int value, int sampleOffset = 0) { if (cc == 123) Reset(); }
         public void SetPitchBend(float value, int sampleOffset = 0) { }
-        readonly KotonNoteBends _bends = new KotonNoteBends();
-        public void SetNoteBend(int note, float semis, int sampleOffset = 0) => _bends.Set(note, semis);
 
         public void Render(Span<float> left, Span<float> right)
         {
@@ -75,7 +73,7 @@ namespace KotonPluginPolySynth
                 if (_lfoPhase >= 1) _lfoPhase -= 1;
                 float lfo = (float)Math.Sin(_lfoPhase * 2 * Math.PI);
                 float sum = 0;
-                for (int v = 0; v < _voices.Length; v++) if (_voices[v].IsActive) sum += _voices[v].RenderSample(mix2, baseCutoff, res, envMod, lfo * lfoCut, lfo * lfoPitch, _bends.Factor(_voices[v].Note));
+                for (int v = 0; v < _voices.Length; v++) if (_voices[v].IsActive) sum += _voices[v].RenderSample(mix2, baseCutoff, res, envMod, lfo * lfoCut, lfo * lfoPitch);
                 float s = sum * volLin;
                 if (s > 1f) s = 1f; else if (s < -1f) s = -1f;
                 left[i] = s; right[i] = s;
@@ -119,15 +117,14 @@ namespace KotonPluginPolySynth
         public void NoteOff(float relMs) { _relR = 1f / Math.Max(1, relMs * _sr / 1000f); _stage = 3; }
         public void Kill() { _active = false; _amp = 0; _stage = 0; }
 
-        public float RenderSample(float mix2, float baseCutoff, float res, float envMod, float lfoCut, float lfoPitchCents, float bendMul = 1f)
+        public float RenderSample(float mix2, float baseCutoff, float res, float envMod, float lfoCut, float lfoPitchCents)
         {
             if (!_active) return 0f;
             if (_stage == 1) { _amp += _atkR; if (_amp >= 1f) { _amp = 1f; _stage = 2; } _fEnv += _fEnvAtk; if (_fEnv > 1f) _fEnv = 1f; }
             else if (_stage == 2) _fEnv *= _fEnvDec;
             else if (_stage == 3) { _amp -= _relR; _fEnv *= _fEnvDec; if (_amp <= 0f) { _amp = 0f; _active = false; return 0f; } }
 
-            // bendMul (per-voice) et LFO pitch se multiplient — les deux modulent la freq de lecture.
-            double pitchMul = Math.Pow(2.0, lfoPitchCents / 1200.0) * bendMul;
+            double pitchMul = Math.Pow(2.0, lfoPitchCents / 1200.0);
             double inc1e = _inc1 * pitchMul;
             double inc2e = _inc2 * pitchMul;
             _p1 += inc1e; if (_p1 >= 1) _p1 -= 1;
