@@ -58,6 +58,15 @@ namespace KotonPluginSpectrumRings
         readonly ConcurrentQueue<RingBirth> _births = new ConcurrentQueue<RingBirth>();
         public bool TryDequeueBirth(out RingBirth b) => _births.TryDequeue(out b);
 
+        // ---- Instrumentation debug (lisible depuis l'UI) ----
+        // Niveau max vu depuis le dernier "peak" reset (approximation de ce que la VU voit).
+        readonly float[] _debugEnv = new float[4];
+        readonly int[] _debugTriggers = new int[4];
+        int _debugProcessCalls;
+        public float GetDebugEnv(int bandIdx) => bandIdx >= 0 && bandIdx < 4 ? System.Threading.Volatile.Read(ref _debugEnv[bandIdx]) : 0f;
+        public int GetDebugTriggers(int bandIdx) => bandIdx >= 0 && bandIdx < 4 ? System.Threading.Volatile.Read(ref _debugTriggers[bandIdx]) : 0;
+        public int GetDebugProcessCalls() => System.Threading.Volatile.Read(ref _debugProcessCalls);
+
         public double HueSpeed => _hueSpeed.Value;
         public double Sensitivity => _sensitivity.Value;
         public double RingLifeSec => _ringLife.Value;
@@ -91,17 +100,20 @@ namespace KotonPluginSpectrumRings
         }
 
         // Seuil transient : l'instant dépasse SIGNIFICATIVEMENT l'env suivi + un plancher.
-        const float TriggerRatio = 1.6f;
-        const float MinTriggerLevel = 0.008f;   // plancher = évite les triggers sur du silence bruité
-        const float ReTriggerBlockSec = 0.06f;  // 60ms de blocage après un trigger sur la même bande
+        // TriggerRatio abaissé à 1.25 et MinTriggerLevel drastiquement descendu pour être sûr de
+        // choper les attaques d'instruments doux (guqin, harpe, choir…). Si trop de faux triggers,
+        // remonter la sensibilité côté UI.
+        const float TriggerRatio = 1.25f;
+        const float MinTriggerLevel = 0.001f;
+        const float ReTriggerBlockSec = 0.05f;
 
-        // Attack/release de l'envelope follower : rapide en montée, plus lent en descente.
         const float EnvAttackCoef = 0.30f;
-        const float EnvReleaseCoef = 0.008f;
+        const float EnvReleaseCoef = 0.005f;
 
         public void Process(Span<float> left, Span<float> right)
         {
             if (left.Length == 0 || right.Length == 0) return;
+            System.Threading.Interlocked.Increment(ref _debugProcessCalls);
             int n = left.Length;
             // RMS par bande sur ce bloc.
             float sBass = 0, sLow = 0, sMid = 0, sHigh = 0;
@@ -134,11 +146,13 @@ namespace KotonPluginSpectrumRings
                     _lastTriggerSec[i] = nowSec;
                     float intensity = Math.Min(1.5f, inst * sens * 4);
                     _births.Enqueue(new RingBirth { BandIdx = i, Intensity = intensity });
+                    System.Threading.Interlocked.Increment(ref _debugTriggers[i]);
                 }
                 // Update envelope (attack rapide / release lent).
                 _env[i] = inst > env
                     ? env + (inst - env) * EnvAttackCoef
                     : env - env * EnvReleaseCoef;
+                System.Threading.Volatile.Write(ref _debugEnv[i], _env[i]);
             }
             // Audio pass-through : left/right INCHANGÉS.
         }

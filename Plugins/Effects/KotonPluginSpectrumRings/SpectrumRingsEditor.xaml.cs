@@ -172,12 +172,24 @@ namespace KotonPluginSpectrumRings
             var coreCol = HsvToRgb(hueBase % 360, 0.4, 0.8);
             AddCircleFill(cx, cy, 5, Color.FromArgb(180, coreCol.R, coreCol.G, coreCol.B));
 
-            // Compteur discret d'anneaux actifs, en haut-gauche (feedback debug utile).
+            // Debug overlay : nombre d'appels Process + env par bande + triggers par bande + rings.
+            // Permet de voir OÙ le flow casse quand rien ne s'anime :
+            //  - Process=0 : le hôte ne routes pas l'audio au plugin (pas d'audio, pas de son, effet mal branché)
+            //  - Process>0 mais Env≈0 : audio arrive mais silencieux (piste vide)
+            //  - Env>0 mais Trig=0 : sensibilité trop basse (seuil transient jamais atteint)
+            //  - Trig>0 mais Rings=0 : bug UI (pas d'appel Tick, timer arrêté)
+            int calls = _plugin.GetDebugProcessCalls();
+            var dbg = string.Format(
+                "Proc:{0}  Env B:{1:F3} L:{2:F3} M:{3:F3} H:{4:F3}  Trig B:{5} L:{6} M:{7} H:{8}  Rings:{9}",
+                calls,
+                _plugin.GetDebugEnv(0), _plugin.GetDebugEnv(1), _plugin.GetDebugEnv(2), _plugin.GetDebugEnv(3),
+                _plugin.GetDebugTriggers(0), _plugin.GetDebugTriggers(1), _plugin.GetDebugTriggers(2), _plugin.GetDebugTriggers(3),
+                _rings.Count);
             var lbl = new TextBlock
             {
-                Text = _rings.Count.ToString() + " ●",
-                Foreground = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
-                FontSize = 10,
+                Text = dbg,
+                Foreground = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                FontSize = 10, FontFamily = new FontFamily("Consolas, Courier New"),
             };
             Canvas.SetLeft(lbl, 8); Canvas.SetTop(lbl, 6);
             _root.Children.Add(lbl);
