@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -9,8 +8,6 @@ using KotonStudio.Library;
 
 namespace KotonPluginSpectrumRings
 {
-    /// <summary>Éditeur = viz plein cadre. Timer 60fps draine la file de « ring births » du plugin,
-    /// spawne des anneaux qui contractent du bord vers le centre en s'estompant, et les rendre.</summary>
     public partial class SpectrumRingsEditor : UserControl
     {
         readonly SpectrumRingsPlugin _plugin;
@@ -60,6 +57,11 @@ namespace KotonPluginSpectrumRings
         }
     }
 
+    /// <summary>4 anneaux concentriques permanents (bass au bord → high au centre). Chaque
+    /// anneau : rayon = base + niveau*pulse, stroke = 1.5 + niveau*épaisseur, wobble sinusoïdal
+    /// autour du périmètre proportionnel au niveau. Couleurs HSV cyclant lentement dans le temps.
+    /// Anim toujours visible même sans audio (anneaux minces au repos), grandit et se déforme
+    /// dès qu'un son arrive dans sa bande.</summary>
     internal sealed class RingsCanvas : UserControl
     {
         readonly Canvas _root;
@@ -67,23 +69,10 @@ namespace KotonPluginSpectrumRings
         DispatcherTimer _timer;
         DateTime _tStart;
 
-        // Position radiale de départ des anneaux selon la bande. Bass = grand rayon (proche du
-        // bord), high = plus proche du centre. Convention "note grave = grand mouvement".
-        static readonly double[] SpawnRadii = { 0.95, 0.75, 0.55, 0.38 };
-        // Couleurs de base par bande (HSV hue en degrés). L'éditeur ajoute une rotation lente
-        // (hueSpeed) pour animer les teintes globales.
-        static readonly double[] BandHue = { 15, 55, 145, 240 };   // rouge-orange, jaune, teal, bleu
-
-        // Liste des anneaux vivants dans l'éditeur (thread UI uniquement).
-        sealed class LiveRing
-        {
-            public int BandIdx;
-            public DateTime BirthTime;
-            public float Intensity;
-            public double HueOffset;   // pour distinguer 2 rings d'un même burst
-        }
-        readonly List<LiveRing> _rings = new List<LiveRing>();
-        int _birthCounter;
+        // Rayons de base (fraction du min(w,h)/2). Bass à l'extérieur, high à l'intérieur.
+        static readonly double[] BaseRadii = { 0.90, 0.72, 0.54, 0.36 };
+        // Couleurs de base (hue HSV) par bande.
+        static readonly double[] BandHue = { 15, 55, 145, 240 };
 
         public RingsCanvas(SpectrumRingsPlugin plugin)
         {
@@ -103,32 +92,10 @@ namespace KotonPluginSpectrumRings
         {
             if (_timer != null) return;
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };   // 60 fps
-            _timer.Tick += (s, e) => Tick();
+            _timer.Tick += (s, e) => Render();
             _timer.Start();
         }
         public void StopAnimation() { _timer?.Stop(); _timer = null; }
-
-        void Tick()
-        {
-            // Draine la file de naissances envoyées par le thread audio.
-            while (_plugin.TryDequeueBirth(out var b))
-            {
-                _birthCounter++;
-                _rings.Add(new LiveRing
-                {
-                    BandIdx = b.BandIdx,
-                    BirthTime = DateTime.UtcNow,
-                    Intensity = b.Intensity,
-                    HueOffset = (_birthCounter * 27) % 360,   // petit décalage de teinte par birth
-                });
-            }
-            // Retire les rings morts.
-            double life = _plugin.RingLifeSec;
-            var now = DateTime.UtcNow;
-            for (int i = _rings.Count - 1; i >= 0; i--)
-                if ((now - _rings[i].BirthTime).TotalSeconds > life) _rings.RemoveAt(i);
-            Render();
-        }
 
         void Render()
         {
@@ -137,62 +104,79 @@ namespace KotonPluginSpectrumRings
             if (w < 40 || h < 40) return;
             double cx = w / 2, cy = h / 2;
             double baseR = Math.Min(w, h) * 0.45;
-            double elapsedSec = (DateTime.UtcNow - _tStart).TotalSeconds;
-            double hueBase = elapsedSec * _plugin.HueSpeed * 40.0;
+            double elapsed = (DateTime.UtcNow - _tStart).TotalSeconds;
+            double hueBase = elapsed * _plugin.HueSpeed * 40.0;
+            double sens = _plugin.Sensitivity;
             double glow = _plugin.GlowAmount;
-            double life = _plugin.RingLifeSec;
-            var now = DateTime.UtcNow;
 
-            // Chaque anneau : contraction bord → centre + fade + amincissement stroke.
-            foreach (var r in _rings)
+            // Dessine chaque anneau. Nombre de modes du wobble différent par bande pour un effet
+            // organique (bass = 3 lobes lents, high = 7 lobes rapides).
+            int[] wobbleModes = { 3, 4, 5, 7 };
+            double[] wobbleSpeed = { 1.4, 2.1, 2.8, 3.6 };
+            for (int i = 0; i < 4; i++)
             {
-                double age = (now - r.BirthTime).TotalSeconds;
-                double t = age / life;                             // 0..1
-                if (t < 0) t = 0; else if (t > 1) t = 1;
-                double spawnR = baseR * SpawnRadii[r.BandIdx];
-                double curR = spawnR * (1 - t * 0.85);             // finit à ~15% du rayon initial
-                if (curR < 2) continue;
-                double alpha = Math.Pow(1 - t, 1.6);                // fade 1→0 non-linéaire (plus doux au début)
-                double thickness = Math.Max(0.5, (1 + r.Intensity * 3) * (1 - t));
-                double hue = (hueBase + BandHue[r.BandIdx] + r.HueOffset) % 360;
-                var col = HsvToRgb(hue, 0.85, 1.0);
-                byte a = (byte)Math.Max(0, Math.Min(255, alpha * 255));
+                float lvl = _plugin.GetLevel(i);
+                double amp = Math.Min(2.0, lvl * sens * 25);   // 0..2 selon la puissance de la bande
+                double rBase = baseR * BaseRadii[i] + amp * baseR * 0.05;
+                double thickness = 1.5 + amp * 6;
+                double wobbleAmp = amp * 8;
+                int modes = wobbleModes[i];
+                double phase = elapsed * wobbleSpeed[i];
 
-                // Halo optionnel : anneau plus large, plus transparent, autour du principal.
-                if (glow > 0.01)
+                double hue = (hueBase + BandHue[i]) % 360;
+                var col = HsvToRgb(hue, 0.85, 1.0);
+                DrawWobblyRing(cx, cy, rBase, wobbleAmp, modes, phase, thickness, col);
+
+                // Halo optionnel : un 2e anneau plus large et plus transparent autour.
+                if (glow > 0.01 && amp > 0.05)
                 {
-                    byte ha = (byte)Math.Max(0, Math.Min(255, alpha * 255 * glow * 0.5));
-                    AddCircleStroke(cx, cy, curR + 4 * glow, thickness + 2 * glow,
-                        Color.FromArgb(ha, col.R, col.G, col.B));
+                    var haloCol = Color.FromArgb((byte)(140 * glow), col.R, col.G, col.B);
+                    DrawWobblyRing(cx, cy, rBase + 6 * glow, wobbleAmp * 1.2, modes, phase, thickness * 0.6, haloCol);
                 }
-                AddCircleStroke(cx, cy, curR, thickness, Color.FromArgb(a, col.R, col.G, col.B));
             }
 
-            // Petit cœur central quasi-immobile pour donner un repère visuel.
-            var coreCol = HsvToRgb(hueBase % 360, 0.4, 0.8);
-            AddCircleFill(cx, cy, 5, Color.FromArgb(180, coreCol.R, coreCol.G, coreCol.B));
+            // Cœur central : petit cercle qui bat au max des 4 bandes.
+            float maxLvl = 0;
+            for (int i = 0; i < 4; i++) { var l = _plugin.GetLevel(i); if (l > maxLvl) maxLvl = l; }
+            double coreR = 4 + Math.Min(20, maxLvl * sens * 40);
+            var coreCol = HsvToRgb(hueBase % 360, 0.6, 1.0);
+            AddCircleFill(cx, cy, coreR, coreCol);
 
-            // Debug overlay : nombre d'appels Process + env par bande + triggers par bande + rings.
-            // Permet de voir OÙ le flow casse quand rien ne s'anime :
-            //  - Process=0 : le hôte ne routes pas l'audio au plugin (pas d'audio, pas de son, effet mal branché)
-            //  - Process>0 mais Env≈0 : audio arrive mais silencieux (piste vide)
-            //  - Env>0 mais Trig=0 : sensibilité trop basse (seuil transient jamais atteint)
-            //  - Trig>0 mais Rings=0 : bug UI (pas d'appel Tick, timer arrêté)
+            // HUD debug discret.
             int calls = _plugin.GetDebugProcessCalls();
-            var dbg = string.Format(
-                "Proc:{0}  Env B:{1:F3} L:{2:F3} M:{3:F3} H:{4:F3}  Trig B:{5} L:{6} M:{7} H:{8}  Rings:{9}",
-                calls,
-                _plugin.GetDebugEnv(0), _plugin.GetDebugEnv(1), _plugin.GetDebugEnv(2), _plugin.GetDebugEnv(3),
-                _plugin.GetDebugTriggers(0), _plugin.GetDebugTriggers(1), _plugin.GetDebugTriggers(2), _plugin.GetDebugTriggers(3),
-                _rings.Count);
             var lbl = new TextBlock
             {
-                Text = dbg,
-                Foreground = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                Text = string.Format("Proc:{0}  B:{1:F3} L:{2:F3} M:{3:F3} H:{4:F3}",
+                    calls, _plugin.GetLevel(0), _plugin.GetLevel(1), _plugin.GetLevel(2), _plugin.GetLevel(3)),
+                Foreground = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
                 FontSize = 10, FontFamily = new FontFamily("Consolas, Courier New"),
             };
             Canvas.SetLeft(lbl, 8); Canvas.SetTop(lbl, 6);
             _root.Children.Add(lbl);
+        }
+
+        /// <summary>Dessine un anneau ondulé : polyline circulaire dont le rayon est modulé par
+        /// une sinusoïde de N lobes + phase. wobbleAmp=0 → cercle parfait. Sinon → ondulations
+        /// autour du périmètre qui donnent un effet "vibrant".</summary>
+        void DrawWobblyRing(double cx, double cy, double baseR, double wobbleAmp, int modes, double phase, double thickness, Color col)
+        {
+            if (baseR < 2) return;
+            int segments = 96;
+            var pts = new PointCollection(segments + 1);
+            for (int i = 0; i <= segments; i++)
+            {
+                double a = i * 2 * Math.PI / segments;
+                double r = baseR + wobbleAmp * Math.Sin(a * modes + phase);
+                pts.Add(new Point(cx + Math.Cos(a) * r, cy + Math.Sin(a) * r));
+            }
+            _root.Children.Add(new Polyline
+            {
+                Points = pts,
+                Stroke = new SolidColorBrush(col),
+                StrokeThickness = thickness,
+                StrokeLineJoin = PenLineJoin.Round,
+                IsHitTestVisible = false,
+            });
         }
 
         void AddCircleFill(double cx, double cy, double r, Color col)
@@ -202,19 +186,6 @@ namespace KotonPluginSpectrumRings
             {
                 Width = r * 2, Height = r * 2,
                 Fill = new SolidColorBrush(col),
-                IsHitTestVisible = false,
-            };
-            Canvas.SetLeft(e, cx - r); Canvas.SetTop(e, cy - r);
-            _root.Children.Add(e);
-        }
-        void AddCircleStroke(double cx, double cy, double r, double thickness, Color col)
-        {
-            if (r < 0.5) return;
-            var e = new Ellipse
-            {
-                Width = r * 2, Height = r * 2,
-                Stroke = new SolidColorBrush(col),
-                StrokeThickness = thickness,
                 IsHitTestVisible = false,
             };
             Canvas.SetLeft(e, cx - r); Canvas.SetTop(e, cy - r);

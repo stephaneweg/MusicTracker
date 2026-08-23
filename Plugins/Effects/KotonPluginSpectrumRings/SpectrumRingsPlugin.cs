@@ -44,27 +44,16 @@ namespace KotonPluginSpectrumRings
         Biquad _bpBass, _bpLow, _bpMid, _bpHigh;
         int _sr;
 
-        // Enveloppes de suivi + blocages anti-rebond par bande.
-        readonly float[] _env = new float[4];         // niveau lissé pour la comparaison
-        readonly float[] _lastTriggerSec = new float[4];
-        double _sampleClockSec;                        // temps interne en secondes (par blocs)
+        // Envelope follower par bande (attack rapide, release un peu plus lent).
+        readonly float[] _env = new float[4];
 
-        // File de naissances d'anneaux (audio → UI).
-        public struct RingBirth
-        {
-            public int BandIdx;    // 0=bass, 1=low, 2=mid, 3=high
-            public float Intensity;
-        }
-        readonly ConcurrentQueue<RingBirth> _births = new ConcurrentQueue<RingBirth>();
-        public bool TryDequeueBirth(out RingBirth b) => _births.TryDequeue(out b);
+        // Niveaux d'enveloppe par bande, publiés en volatile pour l'UI. L'éditeur les lit à
+        // chaque frame pour moduler rayon + wobble des 4 anneaux permanents.
+        readonly float[] _levels = new float[4];
+        public float GetLevel(int bandIdx) => bandIdx >= 0 && bandIdx < 4 ? System.Threading.Volatile.Read(ref _levels[bandIdx]) : 0f;
 
-        // ---- Instrumentation debug (lisible depuis l'UI) ----
-        // Niveau max vu depuis le dernier "peak" reset (approximation de ce que la VU voit).
-        readonly float[] _debugEnv = new float[4];
-        readonly int[] _debugTriggers = new int[4];
+        // Debug : combien de fois Process a été appelé (pour vérifier que le host route l'audio).
         int _debugProcessCalls;
-        public float GetDebugEnv(int bandIdx) => bandIdx >= 0 && bandIdx < 4 ? System.Threading.Volatile.Read(ref _debugEnv[bandIdx]) : 0f;
-        public int GetDebugTriggers(int bandIdx) => bandIdx >= 0 && bandIdx < 4 ? System.Threading.Volatile.Read(ref _debugTriggers[bandIdx]) : 0;
         public int GetDebugProcessCalls() => System.Threading.Volatile.Read(ref _debugProcessCalls);
 
         public double HueSpeed => _hueSpeed.Value;
@@ -87,28 +76,19 @@ namespace KotonPluginSpectrumRings
             _bpLow  = new Biquad(); _bpLow .SetBandpass(sampleRate, 500f, 0.8f);
             _bpMid  = new Biquad(); _bpMid .SetBandpass(sampleRate, 2000f, 0.9f);
             _bpHigh = new Biquad(); _bpHigh.SetBandpass(sampleRate, 8000f, 1.0f);
-            for (int i = 0; i < 4; i++) { _env[i] = 0; _lastTriggerSec[i] = -10f; }
-            _sampleClockSec = 0;
-            while (_births.TryDequeue(out _)) { }
+            for (int i = 0; i < 4; i++) _env[i] = 0;
         }
 
         public void Reset()
         {
             _bpBass?.Reset(); _bpLow?.Reset(); _bpMid?.Reset(); _bpHigh?.Reset();
-            for (int i = 0; i < 4; i++) { _env[i] = 0; _lastTriggerSec[i] = -10f; }
-            while (_births.TryDequeue(out _)) { }
+            for (int i = 0; i < 4; i++) { _env[i] = 0; System.Threading.Volatile.Write(ref _levels[i], 0); }
         }
 
-        // Seuil transient : l'instant dépasse SIGNIFICATIVEMENT l'env suivi + un plancher.
-        // TriggerRatio abaissé à 1.25 et MinTriggerLevel drastiquement descendu pour être sûr de
-        // choper les attaques d'instruments doux (guqin, harpe, choir…). Si trop de faux triggers,
-        // remonter la sensibilité côté UI.
-        const float TriggerRatio = 1.25f;
-        const float MinTriggerLevel = 0.001f;
-        const float ReTriggerBlockSec = 0.05f;
-
+        // Envelope follower : attack rapide (réagit vite aux attaques), release plus lent (le
+        // pulse « tient » un peu au lieu de tomber instantanément — plus lisible visuellement).
         const float EnvAttackCoef = 0.30f;
-        const float EnvReleaseCoef = 0.005f;
+        const float EnvReleaseCoef = 0.015f;
 
         public void Process(Span<float> left, Span<float> right)
         {
@@ -129,30 +109,13 @@ namespace KotonPluginSpectrumRings
             float invN = 1f / n;
             float[] rms = { (float)Math.Sqrt(sBass * invN), (float)Math.Sqrt(sLow * invN),
                             (float)Math.Sqrt(sMid * invN),  (float)Math.Sqrt(sHigh * invN) };
-
-            _sampleClockSec += n / (double)_sr;
-            float nowSec = (float)_sampleClockSec;
-            float sens = (float)_sensitivity.Value;
-
             for (int i = 0; i < 4; i++)
             {
                 float inst = rms[i];
-                float env = _env[i];
-                // Detection transient : instant > seuil × env ET > plancher ET pas re-trigger récent.
-                bool blocked = (nowSec - _lastTriggerSec[i]) < ReTriggerBlockSec;
-                float triggerThreshold = Math.Max(MinTriggerLevel, env * TriggerRatio / sens);
-                if (!blocked && inst > triggerThreshold)
-                {
-                    _lastTriggerSec[i] = nowSec;
-                    float intensity = Math.Min(1.5f, inst * sens * 4);
-                    _births.Enqueue(new RingBirth { BandIdx = i, Intensity = intensity });
-                    System.Threading.Interlocked.Increment(ref _debugTriggers[i]);
-                }
-                // Update envelope (attack rapide / release lent).
-                _env[i] = inst > env
-                    ? env + (inst - env) * EnvAttackCoef
-                    : env - env * EnvReleaseCoef;
-                System.Threading.Volatile.Write(ref _debugEnv[i], _env[i]);
+                _env[i] = inst > _env[i]
+                    ? _env[i] + (inst - _env[i]) * EnvAttackCoef
+                    : _env[i] - _env[i] * EnvReleaseCoef;
+                System.Threading.Volatile.Write(ref _levels[i], _env[i]);
             }
             // Audio pass-through : left/right INCHANGÉS.
         }
