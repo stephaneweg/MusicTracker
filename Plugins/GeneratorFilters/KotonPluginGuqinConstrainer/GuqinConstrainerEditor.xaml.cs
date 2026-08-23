@@ -282,9 +282,9 @@ namespace KotonPluginGuqinConstrainer
         const double NutWidthCm = 3.0, BridgeWidthCm = 4.0;
         // Espacement inter-cordes en cm réels (correspond à un vrai guqin).
         const double StringSpacingCm = 2.0;
-        // Gap supplémentaire entre corde 6 et corde 7 pour loger la rangée de hui EN INTERNE
-        // (comme les vrais hui inlays entre les 2 cordes aiguës du bord du plateau).
-        const double HuiGapExtraPx = 16;
+        // Pas de gap spécifique entre s6 et s7 : espacement uniforme partout. Les hui se centrent
+        // au milieu de l'interstice s7-s6 (qui vaut 1× spacing = 2 cm réels).
+        const double HuiGapExtraPx = 0;
 
         public void Redraw() => Render();
 
@@ -308,8 +308,7 @@ namespace KotonPluginGuqinConstrainer
             _stringSpacingPx = StringSpacingCm * _pxPerCm;
             if (_stringSpacingPx < 6) _stringSpacingPx = 6;
 
-            // Hauteur totale = 6 gaps entre cordes + un extra spécifique entre s6 et s7.
-            double stringsHeight = (GuqinModel.StringCount - 1) * _stringSpacingPx + HuiGapExtraPx;
+            double stringsHeight = (GuqinModel.StringCount - 1) * _stringSpacingPx;
             double topStringY = (h - stringsHeight) / 2;
             double botStringY = topStringY + stringsHeight;
 
@@ -331,12 +330,10 @@ namespace KotonPluginGuqinConstrainer
                 _root.Children.Add(lbl);
             }
 
-            // Hui EN NOYER inlays, positionnés entre corde 7 (top) et corde 6 (juste sous).
-            // C'est l'emplacement standard sur un vrai guqin — le musicien voit les hui à côté
-            // des cordes aiguës. Centrés au milieu du gap HuiGapExtraPx.
+            // Hui inlays noyer, exactement à mi-chemin entre s7 (top) et s6 (juste en dessous).
             var huiFill = new SolidColorBrush(WalnutMid); huiFill.Freeze();
             var huiRim  = new SolidColorBrush(WalnutRim); huiRim.Freeze();
-            double huiY = topStringY + HuiGapExtraPx / 2;
+            double huiY = topStringY + _stringSpacingPx / 2;
             for (int h2 = 0; h2 < GuqinModel.HuiPositions.Length; h2++)
             {
                 double x = MarginX + GuqinModel.HuiPositions[h2] * stringSpan;
@@ -391,12 +388,9 @@ namespace KotonPluginGuqinConstrainer
 
         double StringY(int stringIdx, double topStringY)
         {
-            // Corde 7 (index 6) au top ; ajoute HuiGapExtraPx APRÈS s7 pour laisser la place aux
-            // hui inlays entre s7 et s6. Les cordes 1..6 (index 0..5) descendent normalement avec
-            // ce décalage supplémentaire.
-            if (stringIdx == GuqinModel.StringCount - 1) return topStringY;
-            int offsetSteps = (GuqinModel.StringCount - 1) - stringIdx;   // s6=1, s5=2, ..., s1=6
-            return topStringY + HuiGapExtraPx + offsetSteps * _stringSpacingPx;
+            // Espacement uniforme : corde 7 (index 6) au top, corde 1 (index 0) tout en bas.
+            int offsetSteps = (GuqinModel.StringCount - 1) - stringIdx;   // s7=0, s6=1, ..., s1=6
+            return topStringY + offsetSteps * _stringSpacingPx;
         }
 
         /// <summary>Corps rectangulaire aux coins arrondis, fill érable clair vernis (gradient

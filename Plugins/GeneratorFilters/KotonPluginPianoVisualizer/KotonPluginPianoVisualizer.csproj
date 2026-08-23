@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonPluginPianoVisualizer</RootNamespace>
+    <AssemblyName>KotonPluginPianoVisualizer</AssemblyName>
+    <ProjectGuid>{B8F2A0D3-4C5E-4A9B-8D07-6F1E9C8B2A45}</ProjectGuid>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <TargetExt>.ksl</TargetExt>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+  </ItemGroup>
+</Project>
