@@ -262,11 +262,15 @@ namespace KotonPluginGuqinConstrainer
             Render();
         }
 
-        const double BodyExtraTop = 44, BodyExtraBot = 24, MarginX = 44;
+        // Pad haut = pad bas → corps symétrique autour du champ de cordes.
+        const double BodyExtraTop = 22, BodyExtraBot = 22, MarginX = 44;
         // Largeur des pièces en noyer (sillet + chevalet), en cm réels.
         const double NutWidthCm = 3.0, BridgeWidthCm = 4.0;
         // Espacement inter-cordes en cm réels (correspond à un vrai guqin).
         const double StringSpacingCm = 2.0;
+        // Gap supplémentaire entre corde 6 et corde 7 pour loger la rangée de hui EN INTERNE
+        // (comme les vrais hui inlays entre les 2 cordes aiguës du bord du plateau).
+        const double HuiGapExtraPx = 16;
 
         public void Redraw() => Render();
 
@@ -288,7 +292,8 @@ namespace KotonPluginGuqinConstrainer
             // < 4 px, illisible. On force un minimum sans casser la proportion (les hui restent OK).
             if (_stringSpacingPx < 6) _stringSpacingPx = 6;
 
-            double stringsHeight = (GuqinModel.StringCount - 1) * _stringSpacingPx;
+            // Hauteur totale = 6 gaps entre cordes + un extra spécifique entre s6 et s7.
+            double stringsHeight = (GuqinModel.StringCount - 1) * _stringSpacingPx + HuiGapExtraPx;
             double topStringY = (h - stringsHeight) / 2;
             double botStringY = topStringY + stringsHeight;
 
@@ -310,25 +315,17 @@ namespace KotonPluginGuqinConstrainer
                 _root.Children.Add(lbl);
             }
 
-            // Hui EN HAUT côté joueur, en NOYER (inlays foncés sur le bois clair — comme les hui
-            // du vrai instrument photographié par le user). Numéros au-dessus des marques.
+            // Hui EN NOYER inlays, positionnés entre corde 7 (top) et corde 6 (juste sous).
+            // C'est l'emplacement standard sur un vrai guqin — le musicien voit les hui à côté
+            // des cordes aiguës. Centrés au milieu du gap HuiGapExtraPx.
             var huiFill = new SolidColorBrush(WalnutMid); huiFill.Freeze();
             var huiRim  = new SolidColorBrush(WalnutRim); huiRim.Freeze();
-            double huiY = topStringY - 18;
+            double huiY = topStringY + HuiGapExtraPx / 2;
             for (int h2 = 0; h2 < GuqinModel.HuiPositions.Length; h2++)
             {
                 double x = MarginX + GuqinModel.HuiPositions[h2] * stringSpan;
                 bool center = h2 == 6;
-                double d = center ? 9 : 6;
-                var lbl = new TextBlock
-                {
-                    Text = "" + (h2 + 1),
-                    Foreground = new SolidColorBrush(Color.FromRgb(0x8A, 0x6E, 0x48)),
-                    FontSize = 8, Opacity = 0.9,
-                };
-                Canvas.SetLeft(lbl, x - 4); Canvas.SetTop(lbl, huiY - 12);
-                _root.Children.Add(lbl);
-                // Inlay noyer : disque fond, bord fin plus foncé pour donner l'illusion de profondeur.
+                double d = center ? 8 : 5;
                 var e = new Ellipse
                 {
                     Width = d, Height = d,
@@ -342,22 +339,22 @@ namespace KotonPluginGuqinConstrainer
             }
 
             // Doigtés actifs : ligne guide fine du hui jusqu'à la corde + disque sur la corde à
-            // la même X que le hui correspondant. Le disque est aligné VERTICALEMENT avec le hui
-            // pour rendre évident quel hui commande quel fingering.
+            // la même X que le hui. Guide vertical qui part du hui (vers le haut si c'est la
+            // corde 7 au-dessus, vers le bas pour les cordes 1..6 en dessous).
             foreach (var f in _fingerings)
             {
                 if (f.StringIdx < 0 || f.StringIdx >= GuqinModel.StringCount) continue;
                 double y = StringY(f.StringIdx, topStringY);
                 double x = f.Position <= 1e-6 ? MarginX - 12 : MarginX + f.Position * stringSpan;
                 var col = StringColors[f.StringIdx];
-                // Guide vertical (opacité faible) : du hui vers la corde pressée. Pas de guide pour
-                // les cordes à vide (rendues à gauche du yueshan).
                 if (f.Position > 1e-6)
                 {
+                    // Guide entre hui et corde : segment court, opacité faible. Directions gérées
+                    // automatiquement puisque WPF trace de X1,Y1 à X2,Y2 indépendamment du sens.
                     var guide = new Line
                     {
-                        X1 = x, Y1 = huiY + 4, X2 = x, Y2 = y,
-                        Stroke = new SolidColorBrush(Color.FromArgb(80, col.R, col.G, col.B)),
+                        X1 = x, Y1 = huiY, X2 = x, Y2 = y,
+                        Stroke = new SolidColorBrush(Color.FromArgb(90, col.R, col.G, col.B)),
                         StrokeThickness = 1,
                         IsHitTestVisible = false,
                     };
@@ -378,8 +375,12 @@ namespace KotonPluginGuqinConstrainer
 
         double StringY(int stringIdx, double topStringY)
         {
-            double t = (GuqinModel.StringCount - 1 - stringIdx) / (double)(GuqinModel.StringCount - 1);
-            return topStringY + t * ((GuqinModel.StringCount - 1) * _stringSpacingPx);
+            // Corde 7 (index 6) au top ; ajoute HuiGapExtraPx APRÈS s7 pour laisser la place aux
+            // hui inlays entre s7 et s6. Les cordes 1..6 (index 0..5) descendent normalement avec
+            // ce décalage supplémentaire.
+            if (stringIdx == GuqinModel.StringCount - 1) return topStringY;
+            int offsetSteps = (GuqinModel.StringCount - 1) - stringIdx;   // s6=1, s5=2, ..., s1=6
+            return topStringY + HuiGapExtraPx + offsetSteps * _stringSpacingPx;
         }
 
         /// <summary>Corps rectangulaire aux coins arrondis, fill érable clair vernis (gradient
