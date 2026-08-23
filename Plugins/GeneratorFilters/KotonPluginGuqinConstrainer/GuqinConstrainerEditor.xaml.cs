@@ -55,10 +55,9 @@ namespace KotonPluginGuqinConstrainer
             sldSpan.ValueChanged     += (s, e) => { SetParam("span_cm",     sldSpan.Value);     lblSpan.Text     = ((int)sldSpan.Value).ToString(CultureInfo.InvariantCulture) + " cm"; };
 
             _plugin.NoteStruck += OnNoteStruck;
-            _plugin.NoteReleased += OnNoteReleased;
-            // PlaybackStarted : le référentiel wall-clock est défini au moment où l'audio démarre
-            // (après le prime buffer). Tous les events reçus avant restent en buffer et sont
-            // schedulés à partir de ce moment.
+            // NoteReleased n'est plus écouté : le disque est dessiné depuis la vibration active
+            // (cf. DrawString), et la vibration décroît naturellement — le release n'a plus
+            // d'effet visuel à gérer.
             Action onStart = () => Dispatcher.BeginInvoke(new Action(() => _canvas.OnPlaybackStarted()));
             Action onStop = () => Dispatcher.BeginInvoke(new Action(() => _canvas.PurgeAll()));
             KotonHost.PlaybackStarted += onStart;
@@ -66,7 +65,6 @@ namespace KotonPluginGuqinConstrainer
             Unloaded += (s, e) =>
             {
                 _plugin.NoteStruck -= OnNoteStruck;
-                _plugin.NoteReleased -= OnNoteReleased;
                 KotonHost.PlaybackStarted -= onStart;
                 KotonHost.PlaybackStopped -= onStop;
                 _canvas.StopAnimation();
@@ -102,7 +100,6 @@ namespace KotonPluginGuqinConstrainer
         }
 
         void OnNoteStruck(GuqinConstrainerPlugin.StruckEvent ev) => Dispatcher.BeginInvoke(new Action(() => _canvas.EnqueueStruck(ev)));
-        void OnNoteReleased(GuqinConstrainerPlugin.ReleaseEvent ev) => Dispatcher.BeginInvoke(new Action(() => _canvas.EnqueueReleased(ev)));
 
         public void OnContextUpdated(KotonRenderContext ctx) { }
     }
@@ -115,7 +112,6 @@ namespace KotonPluginGuqinConstrainer
     internal sealed class GuqinCanvas : UserControl
     {
         readonly Canvas _root;
-        readonly List<Fingering> _fingerings = new List<Fingering>();
         readonly List<Vibration> _vibrations = new List<Vibration>();
         DispatcherTimer _timer;
         readonly Func<double> _getDiapasonCm;
@@ -137,7 +133,6 @@ namespace KotonPluginGuqinConstrainer
         // Grain : fines lignes plus foncées qui suggèrent le fil du bois. Semi-transparentes.
         static readonly Color GrainLine  = Color.FromRgb(0x8E, 0x6D, 0x3F);
 
-        struct Fingering { public int StringIdx; public double Position; public int Midi; }
         sealed class Vibration
         {
             public int StringIdx; public double Position; public double StartAmpPx;
@@ -150,12 +145,10 @@ namespace KotonPluginGuqinConstrainer
             public DateTime DeadlineUtc;
         }
         readonly List<Pending> _pending = new List<Pending>();
-        readonly List<Pending> _pendingReleased = new List<Pending>();
         // Buffer des events reçus AVANT que PlaybackStarted ne fixe le référentiel wall-clock —
         // tous les Filter arrivent au flatten (avant que l'audio ne joue), il faut les garder pour
         // les scheduler correctement une fois le référentiel connu.
         readonly List<GuqinConstrainerPlugin.StruckEvent> _bufferedStruck = new List<GuqinConstrainerPlugin.StruckEvent>();
-        readonly List<GuqinConstrainerPlugin.ReleaseEvent> _bufferedReleased = new List<GuqinConstrainerPlugin.ReleaseEvent>();
         DateTime? _playbackStartWallClock;   // null tant que la lecture n'a pas démarré
 
         public GuqinCanvas(Func<double> getDiapasonCm = null)
@@ -176,13 +169,6 @@ namespace KotonPluginGuqinConstrainer
             EnsureTimer();
         }
 
-        public void EnqueueReleased(GuqinConstrainerPlugin.ReleaseEvent ev)
-        {
-            if (_playbackStartWallClock.HasValue) SchedulePendingRelease(ev);
-            else _bufferedReleased.Add(ev);
-            EnsureTimer();
-        }
-
         /// <summary>Appelé quand la lecture audio démarre (event KotonHost.PlaybackStarted). Fixe le
         /// référentiel wall-clock et flush tous les events reçus pendant le flatten dans les files
         /// pending, chacun à sa position absolue sur la timeline.</summary>
@@ -190,9 +176,7 @@ namespace KotonPluginGuqinConstrainer
         {
             _playbackStartWallClock = DateTime.UtcNow;
             foreach (var ev in _bufferedStruck) SchedulePending(ev);
-            foreach (var ev in _bufferedReleased) SchedulePendingRelease(ev);
             _bufferedStruck.Clear();
-            _bufferedReleased.Clear();
             EnsureTimer();
         }
 
@@ -201,17 +185,6 @@ namespace KotonPluginGuqinConstrainer
             double tempo = ev.Tempo > 0 ? ev.Tempo : 120.0;
             double delaySec = ev.AbsoluteStartBeat * 60.0 / tempo;
             _pending.Add(new Pending { Ev = ev, DeadlineUtc = _playbackStartWallClock.Value.AddSeconds(delaySec) });
-        }
-
-        void SchedulePendingRelease(GuqinConstrainerPlugin.ReleaseEvent ev)
-        {
-            double tempo = ev.Tempo > 0 ? ev.Tempo : 120.0;
-            double delaySec = ev.AbsoluteAtBeat * 60.0 / tempo;
-            _pendingReleased.Add(new Pending
-            {
-                Ev = new GuqinConstrainerPlugin.StruckEvent { Midi = ev.Midi },
-                DeadlineUtc = _playbackStartWallClock.Value.AddSeconds(delaySec),
-            });
         }
 
         void EnsureTimer()
@@ -227,7 +200,6 @@ namespace KotonPluginGuqinConstrainer
                     if (_pending[i].DeadlineUtc > now) continue;
                     var p = _pending[i];
                     _pending.RemoveAt(i);
-                    _fingerings.Add(new Fingering { StringIdx = p.Ev.StringIdx, Position = p.Ev.Position, Midi = p.Ev.Midi });
                     _vibrations.Add(new Vibration
                     {
                         StringIdx = p.Ev.StringIdx, Position = p.Ev.Position,
@@ -235,20 +207,8 @@ namespace KotonPluginGuqinConstrainer
                         VisualHz = 9.0 + (6 - p.Ev.StringIdx) * 0.6, StartTime = now,
                     });
                 }
-                for (int i = _pendingReleased.Count - 1; i >= 0; i--)
-                {
-                    if (_pendingReleased[i].DeadlineUtc > now) continue;
-                    int m = _pendingReleased[i].Ev.Midi;
-                    _pendingReleased.RemoveAt(i);
-                    // FIFO : on retire la PLUS ANCIENNE occurrence du midi, pas la plus récente.
-                    // Sinon, quand une nouvelle note vole une ancienne à MÊME MIDI (hui 1-6 qui
-                    // donne un pitch proche des cordes à vide voisines), on enlève par erreur la
-                    // NOUVELLE : la vibration reste (decay natural) mais le disque disparaît.
-                    for (int j = 0; j < _fingerings.Count; j++)
-                        if (_fingerings[j].Midi == m) { _fingerings.RemoveAt(j); break; }
-                }
                 // Décroissance des vibrations.
-                bool anyAlive = _pending.Count > 0 || _pendingReleased.Count > 0;
+                bool anyAlive = _pending.Count > 0;
                 for (int i = _vibrations.Count - 1; i >= 0; i--)
                 {
                     var v = _vibrations[i];
@@ -264,17 +224,13 @@ namespace KotonPluginGuqinConstrainer
         public void StopAnimation() { _timer?.Stop(); _timer = null; }
 
         /// <summary>Purge complète : appelée quand la lecture s'arrête (bouton Stop). Vide TOUT :
-        /// buffers, files pending, vibrations, fingerings actifs, référentiel wall-clock. Coupe
-        /// l'animation, re-render une fois pour effacer les dots. Le prochain PlaybackStarted
-        /// repartira d'un état complètement propre.</summary>
+        /// buffer, file pending, vibrations, référentiel wall-clock. Coupe l'animation, re-render
+        /// une fois pour effacer les disques. Le prochain PlaybackStarted repartira propre.</summary>
         public void PurgeAll()
         {
             _bufferedStruck.Clear();
-            _bufferedReleased.Clear();
             _pending.Clear();
-            _pendingReleased.Clear();
             _vibrations.Clear();
-            _fingerings.Clear();
             _playbackStartWallClock = null;
             StopAnimation();
             Render();
@@ -357,60 +313,7 @@ namespace KotonPluginGuqinConstrainer
                 _root.Children.Add(e);
             }
 
-            // Doigtés actifs : disque sur la corde à la position hui + guide vertical entre le hui
-            // et la corde pressée. Le disque est dessiné en TAILLE PLUS GRANDE + bordure blanche
-            // pour éviter d'être caché par la vibration de corde ou les inlays. Panel de debug en
-            // bas affiche les positions reçues pour diagnostic si un fingering ne s'affiche pas.
-            var debugText = new System.Text.StringBuilder();
-            foreach (var f in _fingerings)
-            {
-                if (f.StringIdx < 0 || f.StringIdx >= GuqinModel.StringCount) continue;
-                double y = StringY(f.StringIdx, topStringY);
-                double x = f.Position <= 1e-6 ? MarginX + 2 : MarginX + f.Position * stringSpan;
-                var col = StringColors[f.StringIdx];
-                if (f.Position > 1e-6)
-                {
-                    _root.Children.Add(new Line
-                    {
-                        X1 = x, Y1 = huiY, X2 = x, Y2 = y,
-                        Stroke = new SolidColorBrush(Color.FromArgb(90, col.R, col.G, col.B)),
-                        StrokeThickness = 1,
-                        IsHitTestVisible = false,
-                    });
-                }
-                var halo = new Ellipse
-                {
-                    Width = 16, Height = 16,
-                    Stroke = new SolidColorBrush(Color.FromArgb(230, 255, 255, 255)),
-                    StrokeThickness = 2,
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(halo, x - 8); Canvas.SetTop(halo, y - 8);
-                _root.Children.Add(halo);
-                var dot = new Ellipse
-                {
-                    Width = 12, Height = 12,
-                    Fill = new SolidColorBrush(col),
-                    Stroke = new SolidColorBrush(Color.FromArgb(255, 0, 0, 0)),
-                    StrokeThickness = 1.2,
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(dot, x - 6); Canvas.SetTop(dot, y - 6);
-                _root.Children.Add(dot);
-
-                debugText.Append("s").Append(f.StringIdx + 1)
-                    .Append("@").Append(f.Position.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))
-                    .Append("(x=").Append(((int)x).ToString()).Append(",y=").Append(((int)y).ToString()).Append(") ");
-            }
-            // HUD toujours affiché même si zéro fingering pour voir "0 fingerings" vs. absence.
-            var dbg = new TextBlock
-            {
-                Text = string.Format("[{0}] Fingerings: {1}", _fingerings.Count, debugText.ToString()),
-                Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 220, 100)),
-                FontSize = 10, FontFamily = new FontFamily("Consolas, Courier New"),
-            };
-            Canvas.SetLeft(dbg, 8); Canvas.SetTop(dbg, h - 18);
-            _root.Children.Add(dbg);
+           
         }
 
         double StringY(int stringIdx, double topStringY)
@@ -546,6 +449,8 @@ namespace KotonPluginGuqinConstrainer
             if (xFinger > leftX + 0.5)
                 _root.Children.Add(new Line { X1 = leftX, Y1 = baseY, X2 = xFinger, Y2 = baseY, Stroke = brush, StrokeThickness = thickness, IsHitTestVisible = false });
 
+            
+
             const int Segments = 40;
             double elapsedRender = (DateTime.UtcNow - vib.StartTime).TotalSeconds;
             double sinPhase = Math.Sin(2 * Math.PI * vib.VisualHz * elapsedRender);
@@ -558,6 +463,29 @@ namespace KotonPluginGuqinConstrainer
                 pts.Add(new Point(x, baseY + dy));
             }
             _root.Children.Add(new Polyline { Points = pts, Stroke = strokeVoice, StrokeThickness = thickness + 0.5, StrokeLineJoin = PenLineJoin.Round, IsHitTestVisible = false });
+            // pour rester visible malgré le grain du bois, la vibration de la corde, ou tout
+            // autre calque qui pourrait le masquer partiellement.
+            var halo = new Ellipse
+            {
+                Width = 16,
+                Height = 16,
+                Stroke = new SolidColorBrush(Color.FromArgb(230, 255, 255, 255)),
+                StrokeThickness = 2,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(halo, xFinger - 8); Canvas.SetTop(halo, baseY - 8);
+            _root.Children.Add(halo);
+            var dot = new Ellipse
+            {
+                Width = 12,
+                Height = 12,
+                Fill = strokeVoice,
+                Stroke = new SolidColorBrush(Color.FromArgb(255, 0, 0, 0)),
+                StrokeThickness = 1.2,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(dot, xFinger - 6); Canvas.SetTop(dot, baseY - 6);
+            _root.Children.Add(dot);
         }
     }
 }
