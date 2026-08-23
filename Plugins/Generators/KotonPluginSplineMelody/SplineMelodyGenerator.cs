@@ -56,14 +56,19 @@ namespace KotonPluginSplineMelody
         //   interpolation     0=Linear / 1=Spline (Catmull-Rom)
         //   velocity          1..127 (int)
         //   articulation      0=Legato / 1=Normal / 2=Détaché / 3=Staccato
-        readonly KotonParameter _voiceCount    = new KotonParameter("voice_count",    "Voix",           1, MaxVoices, 1);
-        readonly KotonParameter _durationBars  = new KotonParameter("duration_bars",  "Durée",          1, 16, 4, "mes");
-        readonly KotonParameter _startMode     = new KotonParameter("start_mode",     "Note départ",    0, 1, 1);
-        readonly KotonParameter _startMidi     = new KotonParameter("start_midi",     "Note départ MIDI", 0, 127, 60);
-        readonly KotonParameter _ambitusSemis  = new KotonParameter("ambitus_semis",  "Ambitus",        1, 24, 12, "st");
-        readonly KotonParameter _interpolation = new KotonParameter("interpolation",  "Interpolation",  0, 1, 0);
-        readonly KotonParameter _velocity      = new KotonParameter("velocity",       "Vélocité",       1, 127, 100);
-        readonly KotonParameter _articulation  = new KotonParameter("articulation",   "Articulation",   0, 3, 1);
+        readonly KotonParameter _voiceCount      = new KotonParameter("voice_count",      "Voix",             1, MaxVoices, 1);
+        readonly KotonParameter _durationBars    = new KotonParameter("duration_bars",    "Durée",            1, 16, 4, "mes");
+        readonly KotonParameter _startMode       = new KotonParameter("start_mode",       "Note départ",      0, 1, 1);
+        readonly KotonParameter _startMidi       = new KotonParameter("start_midi",       "Note départ MIDI", 0, 127, 60);
+        readonly KotonParameter _ambitusSemis    = new KotonParameter("ambitus_semis",    "Ambitus",          1, 24, 12, "st");
+        readonly KotonParameter _interpolation   = new KotonParameter("interpolation",    "Interpolation",    0, 1, 0);
+        readonly KotonParameter _velocity        = new KotonParameter("velocity",         "Vélocité",         1, 127, 100);
+        readonly KotonParameter _articulation    = new KotonParameter("articulation",     "Articulation",     0, 3, 1);
+        // Mode rythme : 0 = Grille (motif KotonRhythm partagé, une note = 1 slice discrète)
+        //               1 = Polyrythme (K coups repartis euclidiennement sur N pas d'un cycle commun)
+        readonly KotonParameter _rhythmMode      = new KotonParameter("rhythm_mode",      "Mode rythme",      0, 1, 0);
+        // Longueur du CYCLE polyrythmique en beats (temps). Le motif se loop sur toute la durée du bloc.
+        readonly KotonParameter _polyCycleBeats  = new KotonParameter("poly_cycle_beats", "Cycle",            1, 32, 4, "temps");
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -78,11 +83,25 @@ namespace KotonPluginSplineMelody
             /// représentation logique côté moteur — c'est le max qui définit l'ambitus).</summary>
             public List<ControlPoint> Points { get; } = new List<ControlPoint>();
 
-            /// <summary>Motif rythmique loopé sur la durée du bloc (comme l'arpégiateur).</summary>
+            /// <summary>Motif rythmique loopé sur la durée du bloc (comme l'arpégiateur). Utilisé
+            /// en mode Grille uniquement.</summary>
             public KotonRhythm Rhythm { get; set; } = new KotonRhythm { Beats = 2, SlicesPerBeat = 4 };
 
             /// <summary>Couleur d'affichage (canvas + tabs). Assignée au chargement.</summary>
             public Color Color { get; set; }
+
+            // ---- Mode Polyrythme (utilisé quand rhythm_mode = 1) ----
+            /// <summary>K = nombre de coups joués dans le cycle euclidien.</summary>
+            public int Hits { get; set; } = 3;
+            /// <summary>N = nombre de pas dans le cycle euclidien (le cycle dure PolyCycleBeats/N par pas).</summary>
+            public int Steps { get; set; } = 8;
+            /// <summary>Rotation (décalage) du motif en pas — 0 = premier coup sur le premier pas.</summary>
+            public int Rotation { get; set; } = 0;
+            /// <summary>Décalage d'octave appliqué à la sortie MIDI de cette voix (semitons = OctaveOffset*12).</summary>
+            public int OctaveOffset { get; set; } = 0;
+            /// <summary>Legato : chaque coup tenu jusqu'au coup SUIVANT (au lieu d'un coup court = 1 pas).
+            /// Rend la voix chantante en mélodie. Le dernier coup du cycle tient jusqu'à la fin du bloc.</summary>
+            public bool Legato { get; set; } = true;
         }
 
         /// <summary>Un point d'ancrage sur la spline. T = position temporelle normalisée [0,1],
@@ -140,6 +159,7 @@ namespace KotonPluginSplineMelody
             {
                 _voiceCount, _durationBars, _startMode, _startMidi, _ambitusSemis,
                 _interpolation, _velocity, _articulation,
+                _rhythmMode, _polyCycleBeats,
             };
             // Instancie la voix 1 par défaut (comportement raisonnable pour une preview immédiate).
             GetVoice(0);
@@ -246,15 +266,16 @@ namespace KotonPluginSplineMelody
             }
 
             int[] scale = ScaleFor(ctx?.Tonic ?? 0, ctx?.IsMajor ?? true);
+            bool polyMode = _rhythmMode.Value >= 0.5;
+            double polyCycleBeats = Math.Max(1, _polyCycleBeats.Value);
 
             for (int v = 0; v < voiceCount; v++)
             {
                 var spec = GetVoice(v);
                 if (spec == null || spec.Points.Count == 0) continue;
 
-                // distMax : point le plus extrême (|Y| max) — sert de dénominateur pour normaliser.
-                // Si 0 (courbe plate à zéro), on utilise 1 pour éviter la div par 0 (target = 0 pour
-                // tous les points de toutes façons puisque numérateur = 0).
+                // Precompute : distMax + points tries (le moteur exige l'ordre, l'editeur ne le
+                // garantit pas apres un drag arbitraire).
                 double distMax = 0;
                 for (int i = 0; i < spec.Points.Count; i++)
                 {
@@ -262,23 +283,25 @@ namespace KotonPluginSplineMelody
                     if (a > distMax) distMax = a;
                 }
                 if (distMax < 1e-9) distMax = 1.0;
-
-                // Points de la spline triés par T croissant (le moteur exige l'ordre — l'éditeur
-                // ne le garantit pas forcément après un drag arbitraire).
                 var pts = new List<ControlPoint>(spec.Points);
                 pts.Sort((a, b) => a.T.CompareTo(b.T));
 
-                foreach (var (onset, tickLen) in EnumerateTicks(spec.Rhythm, duration))
+                // Offset d'octave applique en semitons a la sortie de cette voix.
+                int octShift = spec.OctaveOffset * 12;
+
+                IEnumerable<(double onset, double tickLen)> onsets = polyMode
+                    ? EnumeratePolyOnsets(spec, polyCycleBeats, duration)
+                    : EnumerateTicks(spec.Rhythm, duration);
+
+                foreach (var (onset, tickLen) in onsets)
                 {
                     double t01 = onset / duration;
                     if (t01 < 0) t01 = 0; else if (t01 > 1) t01 = 1;
                     double yRaw = spline ? SampleCatmullRom(pts, t01) : SampleLinear(pts, t01);
                     int targetSemis = (int)Math.Round(yRaw / distMax * ambitus);
-                    int targetMidi = Math.Max(0, Math.Min(127, startMidi + targetSemis));
+                    int targetMidi = Math.Max(0, Math.Min(127, startMidi + targetSemis + octShift));
 
-                    // Snap : chord-tone sur pulsation entière (temps fort), scale-tone ailleurs.
-                    // Tolérance de 1/32 de beat pour absorber les frappes très proches de la
-                    // pulsation (une croche à 0.9999 doit compter comme un temps fort).
+                    // Snap : chord-tone sur pulsation entiere (temps fort), scale-tone ailleurs.
                     double frac = onset - Math.Floor(onset);
                     bool onBeat = frac < 1.0 / 32 || (1 - frac) < 1.0 / 32;
 
@@ -294,8 +317,12 @@ namespace KotonPluginSplineMelody
                     {
                         noteMidi = NearestScaleTone(scale, targetMidi);
                     }
+                    // Re-apply clamp final (snap peut avoir depasse 127 dans un cas de bord).
+                    if (noteMidi < 0) noteMidi = 0; else if (noteMidi > 127) noteMidi = 127;
 
-                    double dur = tickLen * gate;
+                    // Duree audio : mode Grille = gate * duree du slice ; mode Poly = tickLen tel
+                    // quel (le tickLen tient deja compte du legato/step).
+                    double dur = polyMode ? tickLen : tickLen * gate;
                     yield return new KotonGeneratedNote
                     {
                         StartBeat = onset,
@@ -306,6 +333,83 @@ namespace KotonPluginSplineMelody
                     };
                 }
             }
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Enumeration polyrythmique : cycle EUCLIDIEN de N pas -> K coups repartis regulierement,
+        // decale de spec.Rotation, boucle sur toute la duree du bloc. Chaque pas dure
+        // cycleBeats/N beats. Le tickLen retourne = duree du pas (legato=false) ou distance
+        // jusqu'au prochain coup (legato=true, dernier coup du cycle -> jusqu'a fin du bloc).
+        // -----------------------------------------------------------------------------------------
+
+        static IEnumerable<(double onset, double tickLen)> EnumeratePolyOnsets(
+            VoiceSpec spec, double cycleBeats, double duration)
+        {
+            int k = Math.Max(0, spec.Hits);
+            int n = Math.Max(1, spec.Steps);
+            if (k > n) k = n;
+            if (k <= 0) yield break;
+            var pattern = EuclidPattern(k, n);
+            if (spec.Rotation != 0) pattern = EuclidRotate(pattern, spec.Rotation);
+
+            double stepBeats = cycleBeats / n;
+            // Precompute la liste des onsets absolus dans [0, duration) pour pouvoir calculer les
+            // longueurs legato (chaque coup jusqu'au SUIVANT). Sans ca il faudrait un lookahead
+            // dans la boucle de yield.
+            var starts = new List<double>();
+            double cycleStart = 0;
+            while (cycleStart < duration - 1e-9)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    if (!pattern[i]) continue;
+                    double onset = cycleStart + i * stepBeats;
+                    if (onset >= duration - 1e-9) break;
+                    starts.Add(onset);
+                }
+                cycleStart += cycleBeats;
+            }
+            for (int idx = 0; idx < starts.Count; idx++)
+            {
+                double onset = starts[idx];
+                double len;
+                if (spec.Legato)
+                {
+                    // Jusqu'au prochain coup (ou fin du bloc pour le dernier).
+                    len = (idx + 1 < starts.Count ? starts[idx + 1] : duration) - onset;
+                }
+                else
+                {
+                    len = Math.Min(stepBeats, duration - onset);
+                }
+                if (len < 0.01) len = 0.01;
+                yield return (onset, len);
+            }
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Rythmes euclidiens : E(K,N). Formule (i*k) mod n < k = meme collier que Bjorklund sans la
+        // recursion. Reproduit ici en STATIC PRIVATE pour rester autonome du plugin (pas de dep sur
+        // MusicTracker.dll).
+        // -----------------------------------------------------------------------------------------
+
+        internal static bool[] EuclidPattern(int k, int n)
+        {
+            if (n < 1) n = 1;
+            if (k < 0) k = 0; else if (k > n) k = n;
+            var p = new bool[n];
+            for (int i = 0; i < n; i++) p[i] = ((i * k) % n) < k;
+            return p;
+        }
+        internal static bool[] EuclidRotate(bool[] p, int r)
+        {
+            if (p == null || p.Length == 0) return p;
+            int n = p.Length;
+            r = ((r % n) + n) % n;
+            if (r == 0) return (bool[])p.Clone();
+            var q = new bool[n];
+            for (int i = 0; i < n; i++) q[(i + r) % n] = p[i];
+            return q;
         }
 
         // -----------------------------------------------------------------------------------------
@@ -513,6 +617,11 @@ namespace KotonPluginSplineMelody
                             ["lens"] = spec.Rhythm.LenSlices ?? Array.Empty<int>(),
                         },
                         ["col"] = new[] { (int)spec.Color.R, (int)spec.Color.G, (int)spec.Color.B },
+                        ["k"] = spec.Hits,
+                        ["n"] = spec.Steps,
+                        ["rot"] = spec.Rotation,
+                        ["oct"] = spec.OctaveOffset,
+                        ["leg"] = spec.Legato,
                     });
                 }
                 doc["voices"] = voicesArr;
@@ -587,6 +696,12 @@ namespace KotonPluginSplineMelody
                             if (col.MoveNext() && col.Current.TryGetInt32(out int bb)) bC = (byte)Math.Max(0, Math.Min(255, bb));
                             spec.Color = Color.FromRgb(r, g, bC);
                         }
+                        // Champs polyrythme (peuvent etre absents dans un ancien blob -> defauts).
+                        if (vEl.TryGetProperty("k", out var kEl) && kEl.TryGetInt32(out int kk)) spec.Hits = Math.Max(0, kk);
+                        if (vEl.TryGetProperty("n", out var nEl) && nEl.TryGetInt32(out int nn)) spec.Steps = Math.Max(1, nn);
+                        if (vEl.TryGetProperty("rot", out var rtEl) && rtEl.TryGetInt32(out int rt)) spec.Rotation = rt;
+                        if (vEl.TryGetProperty("oct", out var ocEl) && ocEl.TryGetInt32(out int oc)) spec.OctaveOffset = oc;
+                        if (vEl.TryGetProperty("leg", out var lgEl) && (lgEl.ValueKind == JsonValueKind.True || lgEl.ValueKind == JsonValueKind.False)) spec.Legato = lgEl.GetBoolean();
                         _voices[idx] = spec;
                     }
                     // Assure au moins la voix 0.

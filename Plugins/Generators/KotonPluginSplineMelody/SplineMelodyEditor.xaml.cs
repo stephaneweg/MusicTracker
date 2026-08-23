@@ -21,6 +21,7 @@ namespace KotonPluginSplineMelody
 
         SplineCanvas _canvas;
         MultiVoiceRhythmGrid _rhythmGrid;
+        PolyVoicePanel _polyPanel;
 
         public SplineMelodyEditor(SplineMelodyGenerator plugin)
         {
@@ -43,12 +44,16 @@ namespace KotonPluginSplineMelody
             canvasHost.Content = _canvas;
 
             _rhythmGrid = new MultiVoiceRhythmGrid(_plugin.GetVoice, GetVoiceCount);
-            _rhythmGrid.Changed += () => { /* les modifs sont ecrites directement dans les VoiceSpec.Rhythm */ };
-            rhythmHost.Content = _rhythmGrid;
+            _rhythmGrid.Changed += () => { /* modif ecrite directement dans VoiceSpec.Rhythm */ };
+
+            _polyPanel = new PolyVoicePanel(_plugin.GetVoice, GetVoiceCount,
+                () => GetParamValue("poly_cycle_beats"),
+                v => SetParam("poly_cycle_beats", v));
+            _polyPanel.Changed += () => { /* modif ecrite directement dans VoiceSpec.Hits/Steps/... */ };
 
             SyncFromPlugin();
             RebuildVoiceChips();
-            _rhythmGrid.ReloadFromModel();
+            ApplyRhythmMode();
 
             var ps = _plugin.Parameters;
             foreach (var kp in ps) kp.Changed += _ => Dispatcher.BeginInvoke(new Action(() =>
@@ -65,9 +70,12 @@ namespace KotonPluginSplineMelody
                 for (int i = 0; i <= cboVoiceCount.SelectedIndex; i++) _plugin.GetVoice(i);
                 if (_activeVoice > cboVoiceCount.SelectedIndex) _activeVoice = cboVoiceCount.SelectedIndex;
                 RebuildVoiceChips();
-                _rhythmGrid.ReloadFromModel();
+                if (rhythmHost.Content is MultiVoiceRhythmGrid) _rhythmGrid.ReloadFromModel();
+                else if (rhythmHost.Content is PolyVoicePanel) _polyPanel.Rebuild();
                 _canvas.Redraw();
             };
+            rbGrille.Checked += (s, e) => { if (_updating) return; SetParam("rhythm_mode", 0); ApplyRhythmMode(); };
+            rbPoly.Checked += (s, e) => { if (_updating) return; SetParam("rhythm_mode", 1); ApplyRhythmMode(); };
             cboBars.SelectionChanged += (s, e) => { if (_updating) return; _plugin.SetDurationBars(cboBars.SelectedIndex + 1); };
             cboStartMode.SelectionChanged += (s, e) => SetParam("start_mode", cboStartMode.SelectedIndex);
             txtStartMidi.LostFocus += (s, e) => { if (int.TryParse(txtStartMidi.Text, out int v)) SetParam("start_midi", Math.Max(0, Math.Min(127, v))); };
@@ -190,6 +198,31 @@ namespace KotonPluginSplineMelody
             for (int i = 0; i < _plugin.Parameters.Count; i++)
                 if (_plugin.Parameters[i].Id == "interpolation") return _plugin.Parameters[i].Value >= 0.5;
             return false;
+        }
+
+        double GetParamValue(string id)
+        {
+            for (int i = 0; i < _plugin.Parameters.Count; i++)
+                if (_plugin.Parameters[i].Id == id) return _plugin.Parameters[i].Value;
+            return 0;
+        }
+
+        void ApplyRhythmMode()
+        {
+            bool poly = GetParamValue("rhythm_mode") >= 0.5;
+            _updating = true;
+            try { rbGrille.IsChecked = !poly; rbPoly.IsChecked = poly; }
+            finally { _updating = false; }
+            if (poly)
+            {
+                rhythmHost.Content = _polyPanel;
+                _polyPanel.ReloadFromModel();
+            }
+            else
+            {
+                rhythmHost.Content = _rhythmGrid;
+                _rhythmGrid.ReloadFromModel();
+            }
         }
 
         public void OnContextUpdated(KotonRenderContext ctx)
