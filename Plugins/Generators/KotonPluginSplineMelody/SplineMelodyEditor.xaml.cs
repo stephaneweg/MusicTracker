@@ -1,19 +1,26 @@
 using System;
 using System.Globalization;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using KotonStudio.Library;
 
 namespace KotonPluginSplineMelody
 {
     /// <summary>
-    /// P1 : éditeur minimal — juste les options globales pour valider que le plugin se charge et que
-    /// le moteur produit des notes. Le canvas multi-voix (drag/drop des points), le sous-éditeur
-    /// rythme par voix, et l'onglet couleur arrivent en P2.
+    /// Éditeur 2-colonnes : paramètres généraux à gauche, TabControl à droite (Contours + Rythmes).
+    /// Une barre de « chips » colorés dans chaque onglet sélectionne la voix active à éditer ; le
+    /// choix survit à un switch d'onglet. Voix ACTIVE unique et partagée entre onglets — cohérent
+    /// avec le mental « je bosse sur la voix N, canvas et rythme suivent ».
     /// </summary>
     public partial class SplineMelodyEditor : UserControl, IKotonEditor
     {
         readonly SplineMelodyGenerator _plugin;
         bool _updating;
+        int _activeVoice;   // 0-based, valide dans [0, voiceCount)
+
+        SplineCanvas _canvas;
+        RhythmGridEditor _rhythmEditor;
 
         public SplineMelodyEditor(SplineMelodyGenerator plugin)
         {
@@ -31,12 +38,40 @@ namespace KotonPluginSplineMelody
             cboArticulation.Items.Add("Détaché");
             cboArticulation.Items.Add("Staccato");
 
+            _canvas = new SplineCanvas(_plugin.GetVoice, () => _activeVoice, GetVoiceCount);
+            _canvas.Changed += () => { /* la modif est déjà dans le modèle du plugin */ };
+            canvasHost.Content = _canvas;
+
+            _rhythmEditor = new RhythmGridEditor();
+            _rhythmEditor.RhythmChanged += r =>
+            {
+                var v = _plugin.GetVoice(_activeVoice);
+                if (v != null) v.Rhythm = r;
+            };
+            rhythmHost.Content = _rhythmEditor;
+
             SyncFromPlugin();
+            RebuildVoiceChips();
+            LoadRhythmForActiveVoice();
 
             var ps = _plugin.Parameters;
-            foreach (var kp in ps) kp.Changed += _ => Dispatcher.BeginInvoke(new Action(SyncFromPlugin));
+            foreach (var kp in ps) kp.Changed += _ => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                SyncFromPlugin();
+                RebuildVoiceChips();
+            }));
 
-            cboVoiceCount.SelectionChanged += (s, e) => SetParam("voice_count", cboVoiceCount.SelectedIndex + 1);
+            cboVoiceCount.SelectionChanged += (s, e) =>
+            {
+                if (_updating) return;
+                SetParam("voice_count", cboVoiceCount.SelectedIndex + 1);
+                // Voix supplémentaires instanciées si besoin (défaut = ligne plate).
+                for (int i = 0; i <= cboVoiceCount.SelectedIndex; i++) _plugin.GetVoice(i);
+                if (_activeVoice > cboVoiceCount.SelectedIndex) _activeVoice = cboVoiceCount.SelectedIndex;
+                RebuildVoiceChips();
+                LoadRhythmForActiveVoice();
+                _canvas.Redraw();
+            };
             cboBars.SelectionChanged += (s, e) => { if (_updating) return; _plugin.SetDurationBars(cboBars.SelectedIndex + 1); };
             cboStartMode.SelectionChanged += (s, e) => SetParam("start_mode", cboStartMode.SelectedIndex);
             txtStartMidi.LostFocus += (s, e) => { if (int.TryParse(txtStartMidi.Text, out int v)) SetParam("start_midi", Math.Max(0, Math.Min(127, v))); };
@@ -44,6 +79,16 @@ namespace KotonPluginSplineMelody
             cboInterp.SelectionChanged += (s, e) => SetParam("interpolation", cboInterp.SelectedIndex);
             sldVelocity.ValueChanged += (s, e) => { SetParam("velocity", sldVelocity.Value); lblVelocity.Text = ((int)sldVelocity.Value).ToString(CultureInfo.InvariantCulture); };
             cboArticulation.SelectionChanged += (s, e) => SetParam("articulation", cboArticulation.SelectedIndex);
+
+            Loaded += (s, e) => _canvas.Redraw();
+        }
+
+        int GetVoiceCount()
+        {
+            int c = 1;
+            for (int i = 0; i < _plugin.Parameters.Count; i++)
+                if (_plugin.Parameters[i].Id == "voice_count") { c = (int)_plugin.Parameters[i].Value; break; }
+            return Math.Max(1, Math.Min(SplineMelodyGenerator.MaxVoices, c));
         }
 
         void SetParam(string id, double value)
@@ -81,6 +126,78 @@ namespace KotonPluginSplineMelody
                 cboArticulation.SelectedIndex = Math.Max(0, Math.Min(3, ar));
             }
             finally { _updating = false; }
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Voice chips — construits en 2 exemplaires (Contours + Rythmes), toujours synchronisés
+        // -----------------------------------------------------------------------------------------
+        void RebuildVoiceChips()
+        {
+            voiceChipsContours.Children.Clear();
+            voiceChipsRhythms.Children.Clear();
+            int n = GetVoiceCount();
+            if (_activeVoice < 0) _activeVoice = 0;
+            if (_activeVoice >= n) _activeVoice = n - 1;
+            for (int i = 0; i < n; i++)
+            {
+                voiceChipsContours.Children.Add(BuildChip(i));
+                voiceChipsRhythms.Children.Add(BuildChip(i));
+            }
+        }
+
+        Button BuildChip(int voiceIdx)
+        {
+            var spec = _plugin.GetVoice(voiceIdx);
+            Color color = spec != null ? spec.Color : SplineMelodyGenerator.DefaultColorFor(voiceIdx);
+            bool active = voiceIdx == _activeVoice;
+
+            var swatch = new Border
+            {
+                Width = 12, Height = 12,
+                Background = new SolidColorBrush(color),
+                CornerRadius = new CornerRadius(6),
+                Margin = new Thickness(0, 0, 6, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var text = new TextBlock
+            {
+                Text = "Voix " + (voiceIdx + 1),
+                Foreground = active ? Brushes.White : (Brush)FindResource("KotonTextDim"),
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            content.Children.Add(swatch);
+            content.Children.Add(text);
+
+            var btn = new Button
+            {
+                Content = content,
+                Margin = new Thickness(0, 0, 6, 0),
+                Padding = new Thickness(8, 3, 10, 3),
+                Cursor = System.Windows.Input.Cursors.Hand,
+                Tag = voiceIdx,
+            };
+            if (active)
+            {
+                btn.Background = new SolidColorBrush(Color.FromArgb(60, color.R, color.G, color.B));
+                btn.BorderBrush = new SolidColorBrush(color);
+            }
+            btn.Click += (s, e) =>
+            {
+                if (!(btn.Tag is int idx)) return;
+                _activeVoice = idx;
+                RebuildVoiceChips();
+                LoadRhythmForActiveVoice();
+                _canvas.Redraw();
+            };
+            return btn;
+        }
+
+        void LoadRhythmForActiveVoice()
+        {
+            var v = _plugin.GetVoice(_activeVoice);
+            if (v != null && _rhythmEditor != null) _rhythmEditor.Load(v.Rhythm);
         }
 
         public void OnContextUpdated(KotonRenderContext ctx)

@@ -448,4 +448,75 @@
         <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
     </Style>
 
+    <!-- ================ TabControl / TabItem ================ -->
+    <!-- Look "pill" identique a l'app hote (ChordArticulation editor) : accent teal quand selectionne,
+         gris fonce sinon, tabs groupees en pair aux coins arrondis exterieurs. -->
+    <Style TargetType="TabItem">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource KotonTextDim}"/>
+        <Setter Property="Padding" Value="14,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="Bd"
+                            Background="{StaticResource KotonPanel}"
+                            BorderBrush="{StaticResource KotonBorder}"
+                            BorderThickness="1"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="4"
+                            Margin="0,0,2,0">
+                        <ContentPresenter ContentSource="Header"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}"
+                                          TextBlock.FontSize="12"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource KotonBorderHi}"/>
+                            <Setter Property="Foreground" Value="{StaticResource KotonText}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource KotonAccent}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource KotonAccent}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style TargetType="TabControl">
+        <Setter Property="OverridesDefaultStyle" Value="True"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <!-- La barre de tabs, alignee a droite (comme l'articulation d'accord) -->
+                        <TabPanel Grid.Row="0" IsItemsHost="True"
+                                  Background="Transparent"
+                                  HorizontalAlignment="Right"
+                                  Margin="0,0,0,8"/>
+                        <Border Grid.Row="1"
+                                Background="{StaticResource KotonPanel}"
+                                BorderBrush="{StaticResource KotonBorder}"
+                                BorderThickness="1"
+                                CornerRadius="4">
+                            <ContentPresenter ContentSource="SelectedContent"
+                                              Margin="4"/>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

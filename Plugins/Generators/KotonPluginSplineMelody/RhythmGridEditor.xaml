@@ -1,0 +1,22 @@
+<UserControl x:Class="KotonPluginSplineMelody.RhythmGridEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent" Foreground="#DDDDDD" FontFamily="Segoe UI">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Temps :" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ComboBox x:Name="cboBeats" Width="55" Margin="0,0,12,0"/>
+            <TextBlock Text="Slices/temps :" VerticalAlignment="Center" Margin="0,0,4,0"/>
+            <ComboBox x:Name="cboSpb" Width="55"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <StackPanel x:Name="beatsPanel" Orientation="Vertical"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

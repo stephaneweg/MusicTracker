@@ -1,89 +1,102 @@
 <UserControl x:Class="KotonPluginSplineMelody.SplineMelodyEditor"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="620" MinHeight="360" Background="Transparent">
+             MinWidth="720" MinHeight="380" Background="Transparent">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="ParamLabel" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource KotonTextDim}"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Margin" Value="0,10,0,3"/>
+            </Style>
+            <Style x:Key="ValueLabel" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource KotonTextLo}"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+            </Style>
         </ResourceDictionary>
     </UserControl.Resources>
-    <Border BorderThickness="0" Padding="16">
+    <Border BorderThickness="0" Padding="12">
         <Grid>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-            <!-- Barre d'options globales -->
-            <Grid Grid.Row="0" Margin="0,0,0,14">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="70"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="80"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="110"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="110"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="110"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <!-- ============ Colonne GAUCHE : paramètres généraux ============ -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel>
+                    <TextBlock Text="Voix" Style="{StaticResource ParamLabel}" Margin="0,0,0,3"/>
+                    <ComboBox x:Name="cboVoiceCount" HorizontalAlignment="Stretch"/>
 
-                <TextBlock Grid.Column="0" Text="Voix :" Foreground="{DynamicResource KotonText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ComboBox Grid.Column="1" x:Name="cboVoiceCount" HorizontalAlignment="Left" Width="60"/>
+                    <TextBlock Text="Durée (mesures)" Style="{StaticResource ParamLabel}"/>
+                    <ComboBox x:Name="cboBars" HorizontalAlignment="Stretch"/>
 
-                <TextBlock Grid.Column="3" Text="Durée :" Foreground="{DynamicResource KotonText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ComboBox Grid.Column="4" x:Name="cboBars" HorizontalAlignment="Left" Width="70"/>
+                    <TextBlock Text="Note de départ" Style="{StaticResource ParamLabel}"/>
+                    <ComboBox x:Name="cboStartMode" HorizontalAlignment="Stretch"/>
+                    <TextBlock Text="MIDI de départ (si Fixe)" Style="{StaticResource ParamLabel}"/>
+                    <TextBox x:Name="txtStartMidi" HorizontalAlignment="Stretch"/>
 
-                <TextBlock Grid.Column="6" Text="Départ :" Foreground="{DynamicResource KotonText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <StackPanel Grid.Column="7" Orientation="Horizontal">
-                    <ComboBox x:Name="cboStartMode" Width="70" Margin="0,0,4,0"/>
-                    <TextBox x:Name="txtStartMidi" Width="36" Text="60"/>
+                    <TextBlock Text="Ambitus" Style="{StaticResource ParamLabel}"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="42"/>
+                        </Grid.ColumnDefinitions>
+                        <Slider x:Name="sldAmbitus" Minimum="1" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="lblAmbitus" Grid.Column="1" Style="{StaticResource ValueLabel}" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <TextBlock Text="Interpolation" Style="{StaticResource ParamLabel}"/>
+                    <ComboBox x:Name="cboInterp" HorizontalAlignment="Stretch"/>
+
+                    <TextBlock Text="Vélocité" Style="{StaticResource ParamLabel}"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="42"/>
+                        </Grid.ColumnDefinitions>
+                        <Slider x:Name="sldVelocity" Minimum="1" Maximum="127" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="lblVelocity" Grid.Column="1" Style="{StaticResource ValueLabel}" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <TextBlock Text="Articulation" Style="{StaticResource ParamLabel}"/>
+                    <ComboBox x:Name="cboArticulation" HorizontalAlignment="Stretch"/>
                 </StackPanel>
+            </ScrollViewer>
 
-                <TextBlock Grid.Column="9" Text="Ambitus :" Foreground="{DynamicResource KotonText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <StackPanel Grid.Column="10" Orientation="Horizontal">
-                    <Slider x:Name="sldAmbitus" Minimum="1" Maximum="24" Width="80" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="lblAmbitus" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                </StackPanel>
-
-                <TextBlock Grid.Column="12" Text="Interp. :" Foreground="{DynamicResource KotonText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ComboBox Grid.Column="13" x:Name="cboInterp" HorizontalAlignment="Left" Width="100"/>
-            </Grid>
-
-            <!-- Zone principale : contient au P1 juste un message ; le canvas spline arrive en P2 -->
-            <Border Grid.Row="1" BorderBrush="{DynamicResource KotonBorder}" BorderThickness="1"
-                    Background="#101418" CornerRadius="4">
-                <Grid>
-                    <TextBlock x:Name="lblPreview"
-                               Text="Spline mélodique — canvas éditeur en cours d'implémentation (P2). Le moteur fonctionne déjà avec la spline par défaut (ligne plate à 0)."
-                               Foreground="{DynamicResource KotonTextDim}" TextWrapping="Wrap"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               Margin="24" FontStyle="Italic"/>
-                </Grid>
-            </Border>
-
-            <!-- Barre du bas : vélocité + articulation -->
-            <Grid Grid.Row="2" Margin="0,14,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="140"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="Auto"/><ColumnDefinition Width="140"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0" Text="Vélocité :" Foreground="{DynamicResource KotonText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Slider x:Name="sldVelocity" Minimum="1" Maximum="127" Width="100" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="lblVelocity" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center" Margin="6,0,0,0"/>
-                </StackPanel>
-
-                <TextBlock Grid.Column="3" Text="Articulation :" Foreground="{DynamicResource KotonText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ComboBox Grid.Column="4" x:Name="cboArticulation" HorizontalAlignment="Left" Width="120"/>
-            </Grid>
+            <!-- ============ Colonne DROITE : TabControl (Contours / Rythmes) ============ -->
+            <TabControl Grid.Column="2" x:Name="tabsMain">
+                <TabItem Header="Contours">
+                    <Grid Margin="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0"
+                                   Text="Clic gauche : ajoute un point. Glisser : déplace. Clic droit sur un point : supprime."
+                                   Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" FontSize="10"
+                                   Margin="0,0,0,6" TextWrapping="Wrap"/>
+                        <StackPanel Grid.Row="1" x:Name="voiceChipsContours" Orientation="Horizontal" Margin="0,0,0,8"/>
+                        <ContentControl Grid.Row="2" x:Name="canvasHost"/>
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Rythmes">
+                    <Grid Margin="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" x:Name="voiceChipsRhythms" Orientation="Horizontal" Margin="0,0,0,8"/>
+                        <ContentControl Grid.Row="1" x:Name="rhythmHost"/>
+                    </Grid>
+                </TabItem>
+            </TabControl>
         </Grid>
     </Border>
 </UserControl>
