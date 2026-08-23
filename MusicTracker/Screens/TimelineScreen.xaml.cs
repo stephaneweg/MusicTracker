@@ -598,6 +598,9 @@ namespace MusicTracker.Screens
             if (playWaveOut != null) { try { playWaveOut.Stop(); playWaveOut.Dispose(); } catch { } playWaveOut = null; }
             if (playBuffer != null) { try { playBuffer.Stop(); } catch { } playBuffer = null; } // stops the producer + inner
             if (player != null) { try { player.Stop(); } catch { } try { player.Dispose(); } catch { } player = null; }
+            // Notifie les plugins avec viz temps reel (constrainer guqin, etc.) qu'ils doivent
+            // couper leurs animations et purger leurs pending queues.
+            try { KotonStudio.Library.KotonHost.RaisePlaybackStopped(); } catch { }
             // Note : le GC.Collect() force qui existait ici visait a liberer les objets COM des VSTi
             // disposes entre deux Play (ancien schema : nouveau plugin instancie a chaque Play). Depuis
             // VstInstrumentCache, les instances SURVIVENT au Stop — plus rien a collecter en urgence, le

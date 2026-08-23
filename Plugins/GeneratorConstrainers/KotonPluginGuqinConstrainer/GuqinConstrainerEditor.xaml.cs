@@ -47,10 +47,15 @@ namespace KotonPluginGuqinConstrainer
 
             _plugin.NoteStruck += OnNoteStruck;
             _plugin.NoteReleased += OnNoteReleased;
+            // Purge la viz quand la lecture s'arrete (bouton Stop, teardown du player). Sans ça,
+            // les events déjà enqueue continuent de flasher les dots après le Stop audio.
+            Action onStop = () => Dispatcher.BeginInvoke(new Action(() => _canvas.PurgeAll()));
+            KotonHost.PlaybackStopped += onStop;
             Unloaded += (s, e) =>
             {
                 _plugin.NoteStruck -= OnNoteStruck;
                 _plugin.NoteReleased -= OnNoteReleased;
+                KotonHost.PlaybackStopped -= onStop;
                 _canvas.StopAnimation();
             };
         }
@@ -225,6 +230,20 @@ namespace KotonPluginGuqinConstrainer
             _timer.Start();
         }
         public void StopAnimation() { _timer?.Stop(); _timer = null; }
+
+        /// <summary>Purge complète : appelée quand la lecture s'arrête (bouton Stop). Vide les
+        /// files pending + vibrations + fingerings actifs, coupe l'animation, re-render une fois
+        /// pour effacer les dots à l'écran. Le prochain playback partira d'un état propre.</summary>
+        public void PurgeAll()
+        {
+            _pending.Clear();
+            _pendingReleased.Clear();
+            _vibrations.Clear();
+            _fingerings.Clear();
+            _currentBlockId = -1;   // le prochain event redémarrera un nouveau bloc proprement
+            StopAnimation();
+            Render();
+        }
 
         const double StringSpacingPx = 11;
         const double BodyExtraTop = 40, BodyExtraBot = 20, MarginX = 32;

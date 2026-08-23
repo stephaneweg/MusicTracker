@@ -109,6 +109,22 @@ namespace KotonStudio.Library
         /// Retourne <c>null</c> si l'id est inconnu ou si le constructeur du plugin jette. L'hôte
         /// délègue à KotonPluginRegistry.InstantiateInstrument.</summary>
         public static Func<string, IKotonInstrument> InstantiateInstrument { get; set; }
+
+        /// <summary>Notifie que la lecture (bouton Stop, fin de morceau, teardown) est terminée.
+        /// Les plugins avec visualisation temps réel s'y abonnent pour couper leurs animations
+        /// et vider leurs queues d'événements pending. Multi-abonnements supportés (event standard
+        /// C# via wrapper add/remove interne). Fire-and-forget côté hôte, thread UI attendu.</summary>
+        public static event Action PlaybackStopped
+        {
+            add    { _playbackStopped += value; }
+            remove { _playbackStopped -= value; }
+        }
+        static Action _playbackStopped;
+
+        /// <summary>Déclenche <see cref="PlaybackStopped"/> — appelé par l'hôte au Stop de la
+        /// timeline. Exposé public parce que ne peut pas être invoqué depuis l'extérieur autrement
+        /// (les events C# sont invocables uniquement depuis leur classe déclarante).</summary>
+        public static void RaisePlaybackStopped() { try { _playbackStopped?.Invoke(); } catch { } }
     }
 
     /// <summary>Descripteur léger d'un instrument Koton exposé au plugin via <see cref="KotonHost.ListInstruments"/>.
