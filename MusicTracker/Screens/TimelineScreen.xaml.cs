@@ -1944,6 +1944,11 @@ namespace MusicTracker.Screens
             // être une drum machine, un synthé mélodique ou un pad d'accompagnement.
             panel.Children.Add(BuildVstiRow(track));
 
+            // Filtres notes : chaîne de constrainers (guqin, swing, snap gamme…) appliquée entre les
+            // modules producteurs de notes et l'instrument. Placé juste sous l'instrument pour souligner
+            // l'ordre de la chaîne (module → filtres → instrument).
+            panel.Children.Add(BuildConstrainersRow(track));
+
             // base volume
             var volRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
             volRow.Children.Add(new TextBlock { Text = Loc.T("Vol"), Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 4, 0) });
@@ -4648,14 +4653,14 @@ namespace MusicTracker.Screens
             menu.IsOpen = true;
         }
 
-        /// <summary>Sous-menu « Filtres notes » : liste les constrainers actifs (éditer / bypass /
-        /// retirer) et propose un sous-menu « Ajouter... » avec tous les constrainers découverts par
-        /// KotonPluginRegistry. La chaîne est appliquée dans l'ordre d'ajout (player / partition /
-        /// export MIDI la voient identiquement, cf. NoteConstrainerChain.Apply dans les 3
-        /// résolveurs).</summary>
-        MenuItem BuildNoteConstrainersMenu(TimelineTrack track)
+        /// <summary>Génère les items du menu « Filtres notes » (Ajouter... + un item par constrainer
+        /// actif avec Éditer/Bypass/Retirer). Utilisé aussi bien pour le sous-menu du clic droit
+        /// piste que pour le popup du bouton dédié dans le header. La chaîne est appliquée dans
+        /// l'ordre d'ajout (player / partition / export MIDI la voient identiquement, cf.
+        /// NoteConstrainerChain.Apply dans les 3 résolveurs).</summary>
+        System.Collections.Generic.List<object> BuildNoteConstrainersMenuItems(TimelineTrack track)
         {
-            var root = new MenuItem { Header = "Filtres notes" };
+            var items = new System.Collections.Generic.List<object>();
             if (track.NoteConstrainers == null) track.NoteConstrainers = new System.Collections.Generic.List<Engine.Timeline.Effects.NoteConstrainerRef>();
 
             // Sous-menu Ajouter : liste des constrainers disponibles depuis le registre.
@@ -4675,18 +4680,16 @@ namespace MusicTracker.Screens
                     {
                         PushUndo("track:add-constrainer");
                         track.NoteConstrainers.Add(new Engine.Timeline.Effects.NoteConstrainerRef { Id = idCaptured });
-                        // Le player utilise le cache instance-par-track — rendu réévalué au prochain flatten.
                         Render();
                     };
                     add.Items.Add(mi);
                 }
             }
-            root.Items.Add(add);
+            items.Add(add);
 
-            // Liste des constrainers actifs sur la piste : chacun a un sous-menu Éditer / Bypass / Retirer.
             if (track.NoteConstrainers.Count > 0)
             {
-                root.Items.Add(new Separator());
+                items.Add(new Separator());
                 for (int i = 0; i < track.NoteConstrainers.Count; i++)
                 {
                     var r = track.NoteConstrainers[i];
@@ -4718,10 +4721,44 @@ namespace MusicTracker.Screens
                     };
                     mi.Items.Add(remove);
 
-                    root.Items.Add(mi);
+                    items.Add(mi);
                 }
             }
+            return items;
+        }
+
+        /// <summary>Wrap l'ensemble dans un MenuItem « Filtres notes » (pour le clic droit piste).</summary>
+        MenuItem BuildNoteConstrainersMenu(TimelineTrack track)
+        {
+            var root = new MenuItem { Header = "Filtres notes" };
+            foreach (var it in BuildNoteConstrainersMenuItems(track)) root.Items.Add(it);
             return root;
+        }
+
+        /// <summary>Bouton dédié dans le header de piste, posé juste sous la ligne « VSTi… » : ouvre
+        /// un ContextMenu avec les mêmes items que le sous-menu du clic droit. Le libellé reflète le
+        /// nombre de filtres actifs pour rendre visible ce qui tourne sans devoir dérouler.</summary>
+        UIElement BuildConstrainersRow(TimelineTrack track)
+        {
+            int n = track.NoteConstrainers?.Count ?? 0;
+            string label = n == 0 ? "Filtres notes…" : ("Filtres notes (" + n + ")");
+            var btn = new Button
+            {
+                Content = label,
+                Margin = new Thickness(0, 3, 0, 0),
+                FontSize = 11,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Padding = new Thickness(6, 2, 6, 2),
+            };
+            btn.Click += (s, e) =>
+            {
+                var menu = new ContextMenu();
+                foreach (var it in BuildNoteConstrainersMenuItems(track)) menu.Items.Add(it);
+                menu.PlacementTarget = btn;
+                menu.IsOpen = true;
+            };
+            return btn;
         }
 
         /// <summary>Ouvre l'éditeur du constrainer d'index `idx` sur la piste `track` dans une
