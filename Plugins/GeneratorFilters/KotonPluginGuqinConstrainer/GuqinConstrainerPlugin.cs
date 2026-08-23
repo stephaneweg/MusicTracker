@@ -32,12 +32,19 @@ namespace KotonPluginGuqinConstrainer
         public string DisplayName => "Guqin";
 
         // Params du modèle guqin.
-        readonly KotonParameter _diapasonCm = new KotonParameter("diapason_cm", "Diapason",    50, 150, 110, "cm");
-        readonly KotonParameter _spanCm     = new KotonParameter("span_cm",     "Empan main",  5, 30, 15, "cm");
-        readonly KotonParameter _maxFingers = new KotonParameter("max_fingers", "Max doigts",  2, 5, 4);
-        readonly KotonParameter _tuning     = new KotonParameter("tuning",      "Accordage",   0, 3, 0);
-        // Snap : 0 = rejeter, 1 = snap au plus proche.
-        readonly KotonParameter _snapMode   = new KotonParameter("snap_mode",   "Snap hors gamme", 0, 1, 1);
+        readonly KotonParameter _diapasonCm  = new KotonParameter("diapason_cm",  "Diapason",         50, 150, 110, "cm");
+        readonly KotonParameter _spanCm      = new KotonParameter("span_cm",      "Empan main",       5, 30, 15, "cm");
+        readonly KotonParameter _maxFingers  = new KotonParameter("max_fingers",  "Max doigts",       2, 5, 4);
+        readonly KotonParameter _stringCount = new KotonParameter("string_count", "Nombre de cordes", 2, GuqinModel.MaxStrings, 7);
+        // Snap : 0 = rejeter, 1 = snap au plus proche, 2 = transpose à l'octave (dans la
+        // tessiture) puis snap. Le mode 2 est utile quand la source contient des notes trop
+        // graves/aiguës pour le guqin (basse à 30, mélodie à 90) et qu'on veut quand même les
+        // jouer, ramenées dans l'ambitus par octaves entières (préserve la classe de hauteur).
+        readonly KotonParameter _snapMode    = new KotonParameter("snap_mode",    "Snap hors gamme",  0, 2, 2);
+        // MIDI de chaque corde à vide, pré-alloués (MaxStrings entrées). Seules les _stringCount
+        // premières sont utilisées ; les autres restent dans SaveState pour préserver l'état de
+        // l'user si le nombre de cordes est diminué puis réaugmenté.
+        readonly KotonParameter[] _stringMidi;
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -69,27 +76,62 @@ namespace KotonPluginGuqinConstrainer
 
         public GuqinConstrainerPlugin()
         {
-            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _tuning, _snapMode };
+            // Défauts : les 7 premiers = ZhengdiaoC (accordage standard le plus courant). Au-delà,
+            // on prolonge par gamme pentatonique montante pour rester musicalement cohérent si
+            // l'user pousse à 8+ cordes (koto/guzheng-style).
+            int[] defaults = { 43, 45, 48, 50, 52, 55, 57, 60, 62, 64, 67, 69, 72, 74, 76 };
+            _stringMidi = new KotonParameter[GuqinModel.MaxStrings];
+            for (int i = 0; i < GuqinModel.MaxStrings; i++)
+                _stringMidi[i] = new KotonParameter("string_midi_" + (i + 1), "Corde " + (i + 1), 0, 127, defaults[i]);
+
+            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _stringCount, _snapMode };
+            _params.AddRange(_stringMidi);
         }
 
         public bool HasEditor => true;
         public UserControl CreateEditor() => new GuqinConstrainerEditor(this);
         public void Dispose() { }
 
+        /// <summary>Compose le tuning courant depuis _stringCount + les N premiers _stringMidi.</summary>
         internal GuqinModel.Tuning ActiveTuning
         {
             get
             {
-                int idx = Math.Max(0, Math.Min(GuqinModel.AllTunings.Length - 1, (int)_tuning.Value));
-                return GuqinModel.AllTunings[idx];
+                int count = Math.Max(2, Math.Min(GuqinModel.MaxStrings, (int)_stringCount.Value));
+                var midis = new int[count];
+                for (int i = 0; i < count; i++)
+                    midis[i] = Math.Max(0, Math.Min(127, (int)_stringMidi[i].Value));
+                return new GuqinModel.Tuning("Custom", midis);
             }
+        }
+
+        /// <summary>Applique un preset historique aux N premières cordes + met StringCount à N.</summary>
+        internal void ApplyPreset(GuqinModel.Tuning preset)
+        {
+            if (preset == null || preset.OpenMidi == null || preset.OpenMidi.Length == 0) return;
+            int n = Math.Min(GuqinModel.MaxStrings, preset.OpenMidi.Length);
+            _stringCount.Value = n;
+            for (int i = 0; i < n; i++)
+                _stringMidi[i].Value = preset.OpenMidi[i];
         }
 
         public IEnumerable<KotonGeneratedNote> Filter(IEnumerable<KotonGeneratedNote> notes, KotonRenderContext ctx)
         {
             if (notes == null) yield break;
             var tuning = ActiveTuning;
-            bool snap = _snapMode.Value >= 0.5;
+            int snapMode = (int)Math.Round(_snapMode.Value);
+            bool snap = snapMode >= 1;
+            bool octaveTranspose = snapMode >= 2;
+            // Tessiture accessible du guqin : de la corde à vide la plus grave (min OpenMidi) au
+            // fingering le plus aigu de la corde la plus aiguë (position 7/8 → +36 semitons). Sert
+            // au mode « transpose octave » : on ajoute/retire des ×12 jusqu'à rentrer dedans.
+            int rangeMin = int.MaxValue, rangeMax = int.MinValue;
+            for (int i = 0; i < tuning.OpenMidi.Length; i++)
+            {
+                if (tuning.OpenMidi[i] < rangeMin) rangeMin = tuning.OpenMidi[i];
+                int top = GuqinModel.MidiFor(tuning, i, GuqinModel.HuiPositions[GuqinModel.HuiPositions.Length - 1]);
+                if (top > rangeMax) rangeMax = top;
+            }
             bool wantsViz = ctx != null && ctx.WantsViz;
             double tempo = ctx?.Tempo > 0 ? ctx.Tempo : 120.0;
             double blockStartAbs = ctx?.BlockStartBeat ?? 0.0;   // position absolue du bloc sur la timeline
@@ -130,9 +172,18 @@ namespace KotonPluginGuqinConstrainer
                 if (kind == 0)
                 {
                     var srcNote = input[idx];
+                    int target = srcNote.MidiNote;
+                    // Mode « transpose octave » : ramène target dans [rangeMin..rangeMax] par
+                    // sauts d'octave AVANT le résolveur. Préserve la classe de hauteur (do reste
+                    // do, la reste la), juste dans le registre du guqin.
+                    if (octaveTranspose && rangeMax >= rangeMin)
+                    {
+                        while (target < rangeMin) target += 12;
+                        while (target > rangeMax) target -= 12;
+                    }
                     // Résout en tenant compte de la position précédente (préférence : proche de
                     // là où la main était). Fallback = ResolveMidi classique (proche du centre).
-                    var f = ResolveMidiWithContext(tuning, srcNote.MidiNote, prevPositionCm, out bool exact);
+                    var f = ResolveMidiWithContext(tuning, target, prevPositionCm, out bool exact);
                     if (!exact && !snap) { resolved[idx] = (false, -1, -1, 0); continue; }
 
                     var decision = constraint.Consider(f.StringIdx, f.Position, out var toRelease);

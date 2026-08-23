@@ -21,19 +21,42 @@ namespace KotonPluginGuqinConstrainer
         readonly GuqinCanvas _canvas;
         bool _updating;
 
+        // Un input MIDI par corde, rebâti à chaque changement de _stringCount.
+        readonly List<TextBox> _stringInputs = new List<TextBox>();
+        readonly List<TextBlock> _stringNotes = new List<TextBlock>();
+
         public GuqinConstrainerEditor(GuqinConstrainerPlugin plugin)
         {
             _plugin = plugin ?? throw new ArgumentNullException(nameof(plugin));
             InitializeComponent();
 
-            foreach (var t in GuqinModel.AllTunings) cboTuning.Items.Add(t.Name);
             for (int i = 2; i <= 5; i++) cboFingers.Items.Add(i.ToString(CultureInfo.InvariantCulture));
             cboSnap.Items.Add("Rejeter");
             cboSnap.Items.Add("Snap plus proche");
+            cboSnap.Items.Add("Snap + transpose octave");
 
-            _canvas = new GuqinCanvas(() => _plugin != null && _plugin.Parameters != null
-                ? GetParam("diapason_cm", 110.0)
-                : 110.0);
+            // Presets historiques : chaque bouton applique le tuning correspondant (StringCount=7
+            // et MIDIs des 7 cordes). L'user peut ensuite adapter individuellement.
+            foreach (var t in GuqinModel.AllTunings)
+            {
+                var b = new Button
+                {
+                    Content = t.Name,
+                    Margin = new Thickness(0, 2, 0, 0),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    Padding = new Thickness(6, 3, 6, 3),
+                    FontSize = 10,
+                    ToolTip = "Applique cet accordage à 7 cordes",
+                };
+                var captured = t;
+                b.Click += (s, e) => { _plugin.ApplyPreset(captured); };
+                stkPresets.Children.Add(b);
+            }
+
+            _canvas = new GuqinCanvas(
+                () => _plugin != null && _plugin.Parameters != null ? GetParam("diapason_cm", 110.0) : 110.0,
+                () => _plugin.ActiveTuning);
             canvasHost.Content = _canvas;
 
             double GetParam(string id, double fallback)
@@ -43,16 +66,23 @@ namespace KotonPluginGuqinConstrainer
                 return fallback;
             }
 
+            BuildStringRows();   // premier montage
             SyncFromPlugin();
 
             var ps = _plugin.Parameters;
             foreach (var kp in ps) kp.Changed += _ => Dispatcher.BeginInvoke(new Action(SyncFromPlugin));
 
-            cboTuning.SelectionChanged += (s, e) => SetParam("tuning", cboTuning.SelectedIndex);
             cboFingers.SelectionChanged += (s, e) => SetParam("max_fingers", cboFingers.SelectedIndex + 2);
             cboSnap.SelectionChanged += (s, e) => SetParam("snap_mode", cboSnap.SelectedIndex);
             sldDiapason.ValueChanged += (s, e) => { SetParam("diapason_cm", sldDiapason.Value); lblDiapason.Text = ((int)sldDiapason.Value).ToString(CultureInfo.InvariantCulture) + " cm"; };
             sldSpan.ValueChanged     += (s, e) => { SetParam("span_cm",     sldSpan.Value);     lblSpan.Text     = ((int)sldSpan.Value).ToString(CultureInfo.InvariantCulture) + " cm"; };
+            sldStringCount.ValueChanged += (s, e) =>
+            {
+                int n = (int)sldStringCount.Value;
+                SetParam("string_count", n);
+                lblStringCount.Text = n.ToString(CultureInfo.InvariantCulture);
+                RefreshStringRowsVisibility();
+            };
 
             _plugin.NoteStruck += OnNoteStruck;
             // NoteReleased n'est plus écouté : le disque est dessiné depuis la vibration active
@@ -69,6 +99,53 @@ namespace KotonPluginGuqinConstrainer
                 KotonHost.PlaybackStopped -= onStop;
                 _canvas.StopAnimation();
             };
+        }
+
+        /// <summary>Construit MaxStrings lignes (label "Corde N" + TextBox MIDI + nom de note),
+        /// puis n'en montre que _stringCount. Fait une fois au montage — modifier _stringCount ne
+        /// rebâtit pas la liste, ne change que la visibilité (rapide).</summary>
+        void BuildStringRows()
+        {
+            stkStrings.Children.Clear();
+            _stringInputs.Clear();
+            _stringNotes.Clear();
+            for (int i = 0; i < GuqinModel.MaxStrings; i++)
+            {
+                int idx = i;
+                var row = new Grid { Margin = new Thickness(0, 2, 0, 0) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(58) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(56) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                var lbl = new TextBlock { Text = "Corde " + (i + 1), VerticalAlignment = VerticalAlignment.Center, FontSize = 11 };
+                Grid.SetColumn(lbl, 0);
+                row.Children.Add(lbl);
+                var tb = new TextBox { FontSize = 11, HorizontalContentAlignment = HorizontalAlignment.Right, Padding = new Thickness(3, 1, 3, 1) };
+                tb.LostFocus += (s, e) => CommitStringMidi(idx);
+                tb.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Enter) CommitStringMidi(idx); };
+                Grid.SetColumn(tb, 1);
+                row.Children.Add(tb);
+                var note = new TextBlock { VerticalAlignment = VerticalAlignment.Center, FontSize = 10, Foreground = new SolidColorBrush(Color.FromRgb(0x88, 0xAA, 0xBB)), Margin = new Thickness(6, 0, 0, 0) };
+                Grid.SetColumn(note, 2);
+                row.Children.Add(note);
+                _stringInputs.Add(tb);
+                _stringNotes.Add(note);
+                stkStrings.Children.Add(row);
+            }
+        }
+
+        void CommitStringMidi(int idx)
+        {
+            if (idx < 0 || idx >= _stringInputs.Count) return;
+            if (!int.TryParse(_stringInputs[idx].Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int v)) v = 0;
+            v = Math.Max(0, Math.Min(127, v));
+            SetParam("string_midi_" + (idx + 1), v);
+        }
+
+        void RefreshStringRowsVisibility()
+        {
+            int n = Math.Max(2, Math.Min(GuqinModel.MaxStrings, (int)sldStringCount.Value));
+            for (int i = 0; i < stkStrings.Children.Count; i++)
+                ((UIElement)stkStrings.Children[i]).Visibility = (i < n) ? Visibility.Visible : Visibility.Collapsed;
         }
 
         void SetParam(string id, double value)
@@ -89,11 +166,20 @@ namespace KotonPluginGuqinConstrainer
                         if (_plugin.Parameters[i].Id == id) return _plugin.Parameters[i].Value;
                     return 0;
                 }
-                cboTuning.SelectedIndex = Math.Max(0, Math.Min(GuqinModel.AllTunings.Length - 1, (int)GetV("tuning")));
                 cboFingers.SelectedIndex = Math.Max(0, Math.Min(3, (int)GetV("max_fingers") - 2));
-                cboSnap.SelectedIndex = GetV("snap_mode") >= 0.5 ? 1 : 0;
+                int sm = (int)Math.Round(GetV("snap_mode"));
+                cboSnap.SelectedIndex = Math.Max(0, Math.Min(2, sm));
                 sldDiapason.Value = GetV("diapason_cm"); lblDiapason.Text = ((int)sldDiapason.Value).ToString(CultureInfo.InvariantCulture) + " cm";
                 sldSpan.Value = GetV("span_cm"); lblSpan.Text = ((int)sldSpan.Value).ToString(CultureInfo.InvariantCulture) + " cm";
+                sldStringCount.Value = GetV("string_count"); lblStringCount.Text = ((int)sldStringCount.Value).ToString(CultureInfo.InvariantCulture);
+                for (int i = 0; i < _stringInputs.Count; i++)
+                {
+                    int m = (int)GetV("string_midi_" + (i + 1));
+                    if (_stringInputs[i].Text != m.ToString(CultureInfo.InvariantCulture))
+                        _stringInputs[i].Text = m.ToString(CultureInfo.InvariantCulture);
+                    _stringNotes[i].Text = GuqinModel.NoteName(m);
+                }
+                RefreshStringRowsVisibility();
                 _canvas?.Redraw();
             }
             finally { _updating = false; }
@@ -115,13 +201,31 @@ namespace KotonPluginGuqinConstrainer
         readonly List<Vibration> _vibrations = new List<Vibration>();
         DispatcherTimer _timer;
         readonly Func<double> _getDiapasonCm;
+        readonly Func<GuqinModel.Tuning> _getTuning;
 
-        static readonly Color[] StringColors =
+        /// <summary>Couleur d'une corde selon son index/count : distribue les teintes en HSV
+        /// (rouge→violet). Reste stable pour un même count → couleurs prévisibles pour l'user.</summary>
+        static Color ColorForString(int i, int count)
         {
-            Color.FromRgb(0xE0, 0x6A, 0x55), Color.FromRgb(0xE0, 0x9C, 0x4A), Color.FromRgb(0xE3, 0xC6, 0x3E),
-            Color.FromRgb(0x6E, 0xC7, 0x77), Color.FromRgb(0x1F, 0xB6, 0xC3), Color.FromRgb(0x4C, 0x79, 0xD6),
-            Color.FromRgb(0x9E, 0x6F, 0xE0),
-        };
+            if (count <= 0) count = 1;
+            double hue = (double)i / count;             // 0..1
+            return HsvToRgb(hue * 300.0, 0.62, 0.90);   // 0..300° pour éviter que rouge le plus grave se confonde avec rouge le plus aigu
+        }
+        static Color HsvToRgb(double hDeg, double s, double v)
+        {
+            double c = v * s;
+            double hh = ((hDeg % 360.0) + 360.0) % 360.0 / 60.0;
+            double x = c * (1 - Math.Abs(hh % 2 - 1));
+            double r = 0, g = 0, b = 0;
+            if (hh < 1) { r = c; g = x; }
+            else if (hh < 2) { r = x; g = c; }
+            else if (hh < 3) { g = c; b = x; }
+            else if (hh < 4) { g = x; b = c; }
+            else if (hh < 5) { r = x; b = c; }
+            else             { r = c; b = x; }
+            double m = v - c;
+            return Color.FromRgb((byte)Math.Round((r + m) * 255), (byte)Math.Round((g + m) * 255), (byte)Math.Round((b + m) * 255));
+        }
         // Érable clair : bois vernis chaud. Deux tons pour un gradient subtil qui suggère le vernis.
         static readonly Color MapleLight = Color.FromRgb(0xEB, 0xD4, 0xA6);   // reflet clair (au centre)
         static readonly Color MapleMid   = Color.FromRgb(0xD9, 0xBE, 0x8A);   // ton moyen
@@ -151,9 +255,10 @@ namespace KotonPluginGuqinConstrainer
         readonly List<GuqinConstrainerPlugin.StruckEvent> _bufferedStruck = new List<GuqinConstrainerPlugin.StruckEvent>();
         DateTime? _playbackStartWallClock;   // null tant que la lecture n'a pas démarré
 
-        public GuqinCanvas(Func<double> getDiapasonCm = null)
+        public GuqinCanvas(Func<double> getDiapasonCm = null, Func<GuqinModel.Tuning> getTuning = null)
         {
             _getDiapasonCm = getDiapasonCm ?? (() => 110.0);
+            _getTuning = getTuning ?? (() => GuqinModel.ZhengdiaoC);
             _root = new Canvas { Background = new SolidColorBrush(Color.FromRgb(0x14, 0x18, 0x1C)), ClipToBounds = true };
             Content = _root;
             SizeChanged += (s, e) => Render();
@@ -200,11 +305,16 @@ namespace KotonPluginGuqinConstrainer
                     if (_pending[i].DeadlineUtc > now) continue;
                     var p = _pending[i];
                     _pending.RemoveAt(i);
+                    // VisualHz : cordes graves vibrent visuellement plus lentement. Base 9 Hz +
+                    // décalage selon index (grave = idx 0 → +7 Hz, aigu = index max → 0). Cet
+                    // écart-là est purement visuel, pas physique — juste pour différencier.
+                    int stringCount = Math.Max(1, _getTuning()?.StringCount ?? 7);
+                    double vizHz = 9.0 + (stringCount - 1 - p.Ev.StringIdx) * 0.6;
                     _vibrations.Add(new Vibration
                     {
                         StringIdx = p.Ev.StringIdx, Position = p.Ev.Position,
                         StartAmpPx = 6.0, DecayPerSec = 1.8,
-                        VisualHz = 9.0 + (6 - p.Ev.StringIdx) * 0.6, StartTime = now,
+                        VisualHz = vizHz, StartTime = now,
                     });
                 }
                 // Décroissance des vibrations.
@@ -268,7 +378,9 @@ namespace KotonPluginGuqinConstrainer
             _stringSpacingPx = StringSpacingCm * _pxPerCm;
             if (_stringSpacingPx < 6) _stringSpacingPx = 6;
 
-            double stringsHeight = (GuqinModel.StringCount - 1) * _stringSpacingPx;
+            var tuning = _getTuning() ?? GuqinModel.ZhengdiaoC;
+            int stringCount = Math.Max(1, tuning.StringCount);
+            double stringsHeight = (stringCount - 1) * _stringSpacingPx;
             double topStringY = (h - stringsHeight) / 2;
             double botStringY = topStringY + stringsHeight;
 
@@ -276,16 +388,16 @@ namespace KotonPluginGuqinConstrainer
             DrawBody(topStringY - BodyExtraTop, botStringY + BodyExtraBot, MarginX - 18, MarginX + stringSpan + 18);
 
             // Sillet (nut) à gauche = noyer, chevalet (bridge) à droite = noyer. Le sillet s'étend
-            // légèrement au-dessus/sous la 1re et 7e corde.
+            // légèrement au-dessus/sous la 1re et dernière corde.
             DrawWalnutBar(MarginX - NutWidthCm * _pxPerCm, MarginX, topStringY - 8, botStringY + 8);
             DrawWalnutBar(MarginX + stringSpan, MarginX + stringSpan + BridgeWidthCm * _pxPerCm, topStringY - 8, botStringY + 8);
 
-            for (int s = 0; s < GuqinModel.StringCount; s++)
+            for (int s = 0; s < stringCount; s++)
             {
                 double y = StringY(s, topStringY);
-                double thickness = 0.9 + (GuqinModel.StringCount - 1 - s) * 0.25;
-                DrawString(s, y, MarginX, MarginX + stringSpan, thickness);
-                var lbl = new TextBlock { Text = "" + (s + 1), Foreground = new SolidColorBrush(StringColors[s]), FontSize = 10, FontWeight = FontWeights.Bold };
+                double thickness = 0.9 + (stringCount - 1 - s) * 0.25;
+                DrawString(s, y, MarginX, MarginX + stringSpan, thickness, stringCount);
+                var lbl = new TextBlock { Text = "" + (s + 1), Foreground = new SolidColorBrush(ColorForString(s, stringCount)), FontSize = 10, FontWeight = FontWeights.Bold };
                 Canvas.SetLeft(lbl, 12); Canvas.SetTop(lbl, y - 8);
                 _root.Children.Add(lbl);
             }
@@ -423,10 +535,10 @@ namespace KotonPluginGuqinConstrainer
             _root.Children.Add(bar);
         }
 
-        void DrawString(int stringIdx, double baseY, double leftX, double rightX, double thickness)
+        void DrawString(int stringIdx, double baseY, double leftX, double rightX, double thickness, int stringCount)
         {
             var brush = new SolidColorBrush(Color.FromRgb(0xB8, 0xB0, 0x9A)); brush.Freeze();
-            var strokeVoice = new SolidColorBrush(StringColors[stringIdx]); strokeVoice.Freeze();
+            var strokeVoice = new SolidColorBrush(ColorForString(stringIdx, stringCount)); strokeVoice.Freeze();
 
             Vibration vib = null;
             double bestAmp = 0;

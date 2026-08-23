@@ -1,7 +1,7 @@
 <UserControl x:Class="KotonPluginGuqinConstrainer.GuqinConstrainerEditor"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="1100" MinHeight="320" Background="Transparent">
+             MinWidth="1100" MinHeight="360" Background="Transparent">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -22,16 +22,13 @@
     <Border BorderThickness="0" Padding="12">
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="260"/>
                 <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock Text="Accordage" Style="{StaticResource ParamLabel}" Margin="0,0,0,3"/>
-                    <ComboBox x:Name="cboTuning" HorizontalAlignment="Stretch"/>
-
-                    <TextBlock Text="Diapason (cm)" Style="{StaticResource ParamLabel}"/>
+                    <TextBlock Text="Diapason (cm)" Style="{StaticResource ParamLabel}" Margin="0,0,0,3"/>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
                         <Slider x:Name="sldDiapason" Minimum="50" Maximum="150" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
@@ -48,8 +45,19 @@
                     <TextBlock Text="Doigts max" Style="{StaticResource ParamLabel}"/>
                     <ComboBox x:Name="cboFingers" HorizontalAlignment="Stretch"/>
 
-                    <TextBlock Text="Snap hors gamme" Style="{StaticResource ParamLabel}"/>
+                    <TextBlock Text="Hors tessiture / hors fingering" Style="{StaticResource ParamLabel}"/>
                     <ComboBox x:Name="cboSnap" HorizontalAlignment="Stretch"/>
+
+                    <TextBlock Text="Nombre de cordes" Style="{StaticResource ParamLabel}"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="46"/></Grid.ColumnDefinitions>
+                        <Slider x:Name="sldStringCount" Minimum="2" Maximum="15" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="lblStringCount" Grid.Column="1" Style="{StaticResource ValueLabel}" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <TextBlock Text="Accordage" Style="{StaticResource ParamLabel}"/>
+                    <StackPanel x:Name="stkPresets" Orientation="Vertical"/>
+                    <StackPanel x:Name="stkStrings" Orientation="Vertical" Margin="0,6,0,0"/>
 
                     <TextBlock Text="Ce constrainer contraint les notes reçues à des fingerings guqin jouables (cordes × hui, max N doigts, empan ≤ N cm). Le SON est produit par l'instrument de la piste — au choix : Guqin, Piano, ou n'importe quoi d'autre." TextWrapping="Wrap" Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" FontSize="10" Margin="0,16,0,0"/>
                 </StackPanel>
@@ -61,7 +69,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="Vue guqin (7 cordes × 13 hui) — les doigtés apparaissent au flatten du bloc"
+                    <TextBlock Grid.Row="0" Text="Vue guqin — les doigtés apparaissent au flatten du bloc"
                                Foreground="{DynamicResource KotonTextLo}" FontStyle="Italic" FontSize="10"
                                Margin="10,8,10,4"/>
                     <ContentControl Grid.Row="1" x:Name="canvasHost"/>
