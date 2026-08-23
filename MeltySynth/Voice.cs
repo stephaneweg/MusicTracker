@@ -64,6 +64,13 @@ namespace MeltySynth
         private VoiceState voiceState;
         private int voiceLength;
 
+        // Glide (glissando per-voice) : la voix démarre à un pitch décalé (semis signés) de la
+        // note cible, et le décalage s'interpole linéairement vers 0 sur _glideDurSamples samples.
+        // 0 par défaut = pas de glide, comportement inchangé.
+        private float _glideStartOffsetSemis;
+        private int _glideDurSamples;
+        private int _glideElapsedSamples;
+
         internal Voice(Synthesizer synthesizer)
         {
             this.synthesizer = synthesizer;
@@ -80,8 +87,25 @@ namespace MeltySynth
             block = new float[synthesizer.BlockSize];
         }
 
+        /// <summary>Surcharge glissando : la voix démarre au pitch <paramref name="glideFromKey"/>
+        /// et interpole linéairement vers <paramref name="key"/> sur <paramref name="glideDurSec"/>
+        /// secondes. glideFromKey = key ou glideDurSec <= 0 → équivalent au Start standard.</summary>
+        public void StartWithGlide(RegionPair region, int channel, int key, int velocity, float glideFromKey, double glideDurSec)
+        {
+            Start(region, channel, key, velocity);
+            if (glideDurSec > 0 && Math.Abs(glideFromKey - key) > 0.001)
+            {
+                _glideStartOffsetSemis = glideFromKey - key;   // <0 si on monte, >0 si on descend
+                _glideDurSamples = (int)Math.Round(glideDurSec * synthesizer.SampleRate);
+                _glideElapsedSamples = 0;
+            }
+        }
+
         public void Start(RegionPair region, int channel, int key, int velocity)
         {
+            _glideStartOffsetSemis = 0f;
+            _glideDurSamples = 0;
+            _glideElapsedSamples = 0;
             this.exclusiveClass = region.ExclusiveClass;
             this.channel = channel;
             this.key = key;
@@ -182,7 +206,16 @@ namespace MeltySynth
             var vibPitchChange = (0.01F * channelInfo.Modulation + vibLfoToPitch) * vibLfo.Value;
             var modPitchChange = modLfoToPitch * modLfo.Value + modEnvToPitch * modEnv.Value;
             var channelPitchChange = channelInfo.Tune + channelInfo.PitchBend;
-            var pitch = key + vibPitchChange + modPitchChange + channelPitchChange;
+            // Glide : offset qui s'atténue linéairement de _glideStartOffsetSemis à 0 sur
+            // _glideDurSamples. Après quoi le glide est "consommé" et n'ajoute plus rien.
+            float glideOffset = 0f;
+            if (_glideDurSamples > 0 && _glideElapsedSamples < _glideDurSamples)
+            {
+                float t = (float)_glideElapsedSamples / _glideDurSamples;
+                glideOffset = _glideStartOffsetSemis * (1f - t);
+                _glideElapsedSamples += synthesizer.BlockSize;
+            }
+            var pitch = key + vibPitchChange + modPitchChange + channelPitchChange + glideOffset;
             if (!oscillator.Process(block, pitch))
             {
                 return false;

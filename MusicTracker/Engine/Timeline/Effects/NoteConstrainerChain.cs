@@ -181,7 +181,14 @@ namespace MusicTracker.Engine.Timeline.Effects
                 int start = (int)Math.Round(n.StartBeat * spq);
                 int len = Math.Max(1, (int)Math.Round(n.DurationBeats * spq));
                 int note = Math.Max(0, Math.Min(95, n.MidiNote - 12));
-                r.Notes.Add(new RiffNote(note, start, len));
+                var rn = new RiffNote(note, start, len);
+                // Glissando : convertit MidiNote/beats → RiffNote 0..95/slices.
+                if (n.GlideDurationBeats > 0 && n.GlideFromMidi != n.MidiNote)
+                {
+                    rn.GlideFromNote = Math.Max(0, Math.Min(95, n.GlideFromMidi - 12));
+                    rn.GlideDurationSlices = Math.Max(1, (int)Math.Round(n.GlideDurationBeats * spq));
+                }
+                r.Notes.Add(rn);
             }
             return r;
         }

@@ -40,6 +40,15 @@ namespace KotonStudio.Library
         /// = position sample-accurate dans le prochain Render (0 = début).</summary>
         void NoteOn(int note, int velocity, int sampleOffset = 0);
 
+        /// <summary>Surcharge glissando : la voix démarre au pitch <paramref name="glideFromNote"/>
+        /// (MIDI 0-127) et interpole en semitons vers <paramref name="targetNote"/> sur
+        /// <paramref name="glideDurationSec"/> secondes. Un plugin qui ne supporte pas le glide
+        /// retombe sur un NoteOn standard (comportement par défaut = pas de glide, la note attaque
+        /// au pitch cible directement). Le glide est PER-VOIX (pas canal-wide), donc utilisable
+        /// en polyphonie sans conflit.</summary>
+        void NoteOn(int targetNote, int velocity, int glideFromNote, double glideDurationSec, int sampleOffset = 0)
+            => NoteOn(targetNote, velocity, sampleOffset);
+
         /// <summary>Termine la note (release de l'enveloppe). Un note-off sur une note qui ne joue pas
         /// est ignoré silencieusement.</summary>
         void NoteOff(int note, int sampleOffset = 0);

@@ -316,6 +316,15 @@ namespace MeltySynth
         /// <param name="velocity">The velocity of the note.</param>
         public void NoteOn(int channel, int key, int velocity)
         {
+            NoteOn(channel, key, velocity, key, 0.0);
+        }
+
+        /// <summary>Surcharge glissando : la voix démarre au pitch <paramref name="glideFromKey"/>
+        /// et interpole vers <paramref name="key"/> (le pitch cible du sample) sur
+        /// <paramref name="glideDurSec"/> secondes. Le sample de la SF2 est le même — c'est le
+        /// pitch de lecture qui glisse continûment (interpolation en semitons = musical).</summary>
+        public void NoteOn(int channel, int key, int velocity, float glideFromKey, double glideDurSec)
+        {
             if (velocity == 0)
             {
                 NoteOff(channel, key);
@@ -359,7 +368,10 @@ namespace MeltySynth
                             var voice = voices.RequestNew(instrumentRegion, channel);
                             if (voice != null)
                             {
-                                voice.Start(regionPair, channel, key, velocity);
+                                if (glideDurSec > 0 && Math.Abs(glideFromKey - key) > 0.001)
+                                    voice.StartWithGlide(regionPair, channel, key, velocity, glideFromKey, glideDurSec);
+                                else
+                                    voice.Start(regionPair, channel, key, velocity);
                             }
                         }
                     }

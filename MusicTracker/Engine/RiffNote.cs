@@ -26,7 +26,13 @@ namespace MusicTracker.Engine
         public BendPoint[] Bend; // optional pitch-bend curve (null = none); offsets are relative to Start
         public int Voice;   // notation voice (0 = default). Score note-input places on the selected voice; overwrite is per-voice.
 
-        public RiffNote(int note, int start, int length) { Note = note; Start = start; Length = Math.Max(1, length); Bend = null; Voice = 0; }
+        /// <summary>Glissando : la note démarre au pitch <see cref="GlideFromNote"/> (0..95) et
+        /// glide vers <see cref="Note"/> pendant <see cref="GlideDurationSlices"/> slices. Si
+        /// GlideFromNote == Note ou GlideDurationSlices == 0 → pas de glide (défaut).</summary>
+        public int GlideFromNote;
+        public int GlideDurationSlices;
+
+        public RiffNote(int note, int start, int length) { Note = note; Start = start; Length = Math.Max(1, length); Bend = null; Voice = 0; GlideFromNote = note; GlideDurationSlices = 0; }
 
         public int End => Start + Length; // exclusive end slice
 

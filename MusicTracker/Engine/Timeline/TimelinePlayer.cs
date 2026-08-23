@@ -25,6 +25,10 @@ namespace MusicTracker.Engine.Timeline
         {
             public List<int>[] AttackAt, ReleaseAt; // per global slice (Spb): notes to (re)attack / to release
             public List<int>[] AttackVel;           // parallel to AttackAt: the MIDI velocity for each attacked note
+            /// <summary>Parallel to AttackAt (indexed identiquement) : origine du glide et durée
+            /// (en secondes calculées depuis les slices+tempo local). Null si pas de glide sur la
+            /// note à cet index. Un slot n'existe que si AU MOINS une note glisse à ce slice.</summary>
+            public List<(int fromNote, double durSec)>[] AttackGlide;
             public Preset Template;
             public readonly Preset[] Voices = new Preset[NoteCount];
             public readonly bool[] Active = new bool[NoteCount];
@@ -227,6 +231,7 @@ namespace MusicTracker.Engine.Timeline
                     AttackAt = new List<int>[totalSlices + 1],
                     AttackVel = new List<int>[totalSlices + 1],
                     ReleaseAt = new List<int>[totalSlices + 1],
+                    AttackGlide = new List<(int fromNote, double durSec)>[totalSlices + 1],
                     Template = InstrumentCatalog.GetPreset(tr.Instrument),
                     BaseVol = tr.Volume,
                     // La piste ACCORDS est désormais une source d'harmonie SILENCIEUSE : elle ne fournit que
@@ -465,6 +470,18 @@ namespace MusicTracker.Engine.Timeline
                 (tr.AttackAt[s] ?? (tr.AttackAt[s] = new List<int>())).Add(n.Note);
                 (tr.AttackVel[s] ?? (tr.AttackVel[s] = new List<int>())).Add(vel);
                 (tr.ReleaseAt[e] ?? (tr.ReleaseAt[e] = new List<int>())).Add(n.Note);
+                // Glissando : parallèle à AttackAt. Si la note n'a pas de glide, on met (from=note, dur=0)
+                // pour que l'index reste aligné avec AttackAt (chaque note = un slot).
+                double glideDurSec = 0.0;
+                int glideFromNote = n.Note;
+                if (n.GlideDurationSlices > 0 && n.GlideFromNote != n.Note)
+                {
+                    glideFromNote = n.GlideFromNote;
+                    double beatsPerSlice = 1.0 / spq;
+                    double sec = n.GlideDurationSlices * beatsPerSlice * 60.0 / BpmAt(straight / (double)Spb);
+                    glideDurSec = sec;
+                }
+                (tr.AttackGlide[s] ?? (tr.AttackGlide[s] = new List<(int, double)>())).Add((glideFromNote, glideDurSec));
             }
         }
 
@@ -1040,11 +1057,29 @@ namespace MusicTracker.Engine.Timeline
                 if (att != null)
                 {
                     var vel = tracks[ti].AttackVel[sl];
+                    var gli = tracks[ti].AttackGlide[sl];
                     for (int k = 0; k < att.Count; k++)
                     {
                         int v = vel != null && k < vel.Count ? vel[k] : MeltyVelocity;
-                        if (vsti != null) vsti.NoteOn(ch, att[k] + 12, v);
-                        else synth.NoteOn(ch, att[k] + 12, v);
+                        int midi = att[k] + 12;
+                        // Glide dispo à ce slice pour cette note ? Utilise la surcharge glide.
+                        double glideDur = 0.0;
+                        int glideFrom = midi;
+                        if (gli != null && k < gli.Count && gli[k].durSec > 0)
+                        {
+                            glideDur = gli[k].durSec;
+                            glideFrom = gli[k].fromNote + 12;
+                        }
+                        if (vsti != null)
+                        {
+                            if (glideDur > 0) vsti.NoteOn(ch, midi, v, glideFrom, glideDur);
+                            else vsti.NoteOn(ch, midi, v);
+                        }
+                        else
+                        {
+                            if (glideDur > 0) synth.NoteOn(ch, midi, v, glideFrom, glideDur);
+                            else synth.NoteOn(ch, midi, v);
+                        }
                     }
                 }
             }

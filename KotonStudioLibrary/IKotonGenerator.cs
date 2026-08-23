@@ -150,6 +150,14 @@ namespace KotonStudio.Library
         /// <summary>Vélocité MIDI 1..127 (0 est un note-off en MIDI standard — remplacé par 1 côté
         /// hôte s'il arrive). Le player peut appliquer par-dessus une correction d'accent métrique.</summary>
         public int Velocity;
+
+        /// <summary>Glissando : la note démarre au pitch <see cref="GlideFromMidi"/> (MIDI 0..127)
+        /// et glide vers <see cref="MidiNote"/> pendant <see cref="GlideDurationBeats"/> beats. Si
+        /// GlideFromMidi == MidiNote ou GlideDurationBeats == 0 → pas de glide. Traité par l'hôte
+        /// via une surcharge NoteOn dédiée sur l'instrument (implémentée par MeltySynth et les
+        /// plugins Koton qui supportent le glide ; les autres ignorent silencieusement).</summary>
+        public int GlideFromMidi;
+        public double GlideDurationBeats;
     }
 
     /// <summary>Contexte de rendu passé à <see cref="IKotonGenerator.RenderNotes"/> : tonalité,

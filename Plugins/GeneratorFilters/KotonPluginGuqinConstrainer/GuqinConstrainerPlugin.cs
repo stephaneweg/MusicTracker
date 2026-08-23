@@ -41,6 +41,11 @@ namespace KotonPluginGuqinConstrainer
         // graves/aiguës pour le guqin (basse à 30, mélodie à 90) et qu'on veut quand même les
         // jouer, ramenées dans l'ambitus par octaves entières (préserve la classe de hauteur).
         readonly KotonParameter _snapMode    = new KotonParameter("snap_mode",    "Snap hors gamme",  0, 2, 2);
+        // Glissando : 0 = off, 1 = on. Actif seulement quand 2 notes consécutives atterrissent
+        // sur la MÊME corde ET aucune n'est à vide (le doigt glisse sur une corde qui vibre déjà).
+        readonly KotonParameter _glissando   = new KotonParameter("glissando",    "Glissando",        0, 1, 1);
+        // Durée du glissando en millisecondes. 150ms = valeur moyenne d'un yin/nao réel.
+        readonly KotonParameter _glideMs     = new KotonParameter("glide_ms",     "Glissando durée",  20, 500, 150, "ms");
         // MIDI de chaque corde à vide, pré-alloués (MaxStrings entrées). Seules les _stringCount
         // premières sont utilisées ; les autres restent dans SaveState pour préserver l'état de
         // l'user si le nombre de cordes est diminué puis réaugmenté.
@@ -84,7 +89,7 @@ namespace KotonPluginGuqinConstrainer
             for (int i = 0; i < GuqinModel.MaxStrings; i++)
                 _stringMidi[i] = new KotonParameter("string_midi_" + (i + 1), "Corde " + (i + 1), 0, 127, defaults[i]);
 
-            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _stringCount, _snapMode };
+            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _stringCount, _snapMode, _glissando, _glideMs };
             _params.AddRange(_stringMidi);
         }
 
@@ -166,6 +171,13 @@ namespace KotonPluginGuqinConstrainer
             // Contexte pour la voice-leading : dernière position stoppée jouée (pour préférer un
             // fingering proche au suivant, comme un musicien qui minimise le déplacement de main).
             double? prevPositionCm = null;
+            // Glissando : reverse-map held → idx pour retrouver la note volée au moment du
+            // StealOldest et lui attacher un glide sur la nouvelle note.
+            var heldToIdx = new Dictionary<GuqinConstraint.Held, int>();
+            bool doGliss = _glissando.Value >= 0.5;
+            double glideBeats = (_glideMs.Value / 1000.0) * (tempo / 60.0);   // 150ms en beats selon tempo
+            var glideFromMidi = new int[input.Count];
+            var glideDurBeats = new double[input.Count];
 
             foreach (var (t, kind, idx) in events)
             {
@@ -190,7 +202,17 @@ namespace KotonPluginGuqinConstrainer
                     if (decision == GuqinConstraint.Decision.RejectStringBusy) { resolved[idx] = (false, -1, -1, 0); continue; }
                     if (decision == GuqinConstraint.Decision.StealOldest && toRelease != null)
                     {
+                        // GLISSANDO : la corde était en vibration (ancienne note) et une nouvelle
+                        // note arrive dessus. Si ni l'ancienne ni la nouvelle n'est à vide (le doigt
+                        // gauche est engagé dans les 2 cas), on marque la nouvelle note d'un glide
+                        // qui démarre au pitch de l'ancienne et arrive au pitch cible.
+                        if (doGliss && !toRelease.IsOpen && !f.IsOpen && toRelease.Midi != f.Midi)
+                        {
+                            glideFromMidi[idx] = toRelease.Midi;
+                            glideDurBeats[idx] = glideBeats;
+                        }
                         constraint.Release(toRelease);
+                        heldToIdx.Remove(toRelease);
                         // Vol de doigt à l'instant t (StartBeat de la nouvelle note) → release
                         // scheduled à cet instant précis, PAS à la fin de la duration originale
                         // (la corde est reprise par la nouvelle note).
@@ -198,6 +220,7 @@ namespace KotonPluginGuqinConstrainer
                     }
                     var held = constraint.Register(f.Midi, f.StringIdx, f.Position);
                     heldByIdx[idx] = held;
+                    heldToIdx[held] = idx;
                     resolved[idx] = (true, f.Midi, f.StringIdx, f.Position);
                     if (!f.IsOpen) prevPositionCm = f.Position * _diapasonCm.Value;
                     if (wantsViz)
@@ -223,6 +246,7 @@ namespace KotonPluginGuqinConstrainer
                     if (h != null && constraint.Active.Contains(h))
                     {
                         constraint.Release(h);
+                        heldToIdx.Remove(h);
                         // Release scheduled à la fin naturelle de la note (t = event t).
                         if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = h.Midi, AbsoluteAtBeat = blockStartAbs + t, Tempo = tempo }); } catch { } }
                     }
@@ -240,6 +264,8 @@ namespace KotonPluginGuqinConstrainer
                     NotationDurationBeats = src.NotationDurationBeats,
                     MidiNote = resolved[i].midi,
                     Velocity = src.Velocity,
+                    GlideFromMidi = glideDurBeats[i] > 0 ? glideFromMidi[i] : resolved[i].midi,
+                    GlideDurationBeats = glideDurBeats[i],
                 };
             }
         }
@@ -271,6 +297,12 @@ namespace KotonPluginGuqinConstrainer
                 {
                     score = Math.Abs(f.Position - 0.5) * diapason;   // fallback : proche du centre
                 }
+                // BIAIS GAUCHE : favorise les positions vers le sillet (petit f.Position).
+                // Poids modéré (30 % du diapason à la position extrême droite) pour NE PAS écraser
+                // la voice-leading : la préférence gauche joue seulement quand plusieurs fingerings
+                // sont proches du contexte, sinon le voice-leading gagne.
+                if (!f.IsOpen)
+                    score += f.Position * diapason * 0.3;
                 if (d < bestDist || score < bestScore)
                 {
                     bestDist = d; bestScore = score; best = f;

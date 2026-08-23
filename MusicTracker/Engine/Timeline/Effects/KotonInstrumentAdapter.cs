@@ -73,6 +73,14 @@ namespace MusicTracker.Engine.Timeline.Effects
             catch { _failed = true; }
         }
 
+        public void NoteOn(int channel, int note, int velocity, int glideFromNote, double glideDurationSec)
+        {
+            if (_failed) return;
+            EnsurePrepared();
+            try { _plugin.NoteOn(note, velocity, glideFromNote, glideDurationSec); }
+            catch { _failed = true; }
+        }
+
         public void NoteOff(int channel, int note)
         {
             if (_failed) return;

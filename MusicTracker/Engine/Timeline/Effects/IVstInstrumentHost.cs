@@ -16,6 +16,11 @@ namespace MusicTracker.Engine.Timeline.Effects
     {
         bool IsLoaded { get; }
         void NoteOn(int channel, int note, int velocity);
+        /// <summary>Surcharge glissando : voix qui démarre à glideFromNote et glide vers note en
+        /// glideDurationSec. Default = ignore le glide, appelle NoteOn standard. Implémentations
+        /// natives (MeltySynth via adapter, KotonInstrumentAdapter → plugin) le supportent.</summary>
+        void NoteOn(int channel, int note, int velocity, int glideFromNote, double glideDurationSec)
+            => NoteOn(channel, note, velocity);
         void NoteOff(int channel, int note);
         void ProcessMidiCC(int channel, int cc, int value);
         void SetPitchBend(int channel, int value);
