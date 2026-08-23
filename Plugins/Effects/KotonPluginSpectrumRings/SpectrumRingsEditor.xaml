@@ -17,8 +17,8 @@
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Teinte" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center"/>
                 <Slider x:Name="sldHue" Minimum="0" Maximum="2" TickFrequency="0.05" Width="90" Margin="4,0,16,0" VerticalAlignment="Center"/>
-                <TextBlock Text="Réactivité" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center"/>
-                <Slider x:Name="sldReact" Minimum="0.5" Maximum="4" TickFrequency="0.1" Width="90" Margin="4,0,16,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Sensibilité" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center"/>
+                <Slider x:Name="sldReact" Minimum="0.5" Maximum="3" TickFrequency="0.1" Width="90" Margin="4,0,16,0" VerticalAlignment="Center"/>
                 <TextBlock Text="Halo" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center"/>
                 <Slider x:Name="sldGlow" Minimum="0" Maximum="1" TickFrequency="0.05" Width="90" Margin="4,0,0,0" VerticalAlignment="Center"/>
             </StackPanel>

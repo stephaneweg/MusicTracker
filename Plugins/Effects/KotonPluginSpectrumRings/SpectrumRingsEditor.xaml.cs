@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -8,9 +9,8 @@ using KotonStudio.Library;
 
 namespace KotonPluginSpectrumRings
 {
-    /// <summary>Éditeur = juste la viz. Un DispatcherTimer 60 fps lit les niveaux volatile du
-    /// plugin et repeint 4 anneaux concentriques (bass → high) + un cœur au centre. Couleurs qui
-    /// cyclent en HSV au fil du temps, halo optionnel. Petits sliders en bas pour affiner.</summary>
+    /// <summary>Éditeur = viz plein cadre. Timer 60fps draine la file de « ring births » du plugin,
+    /// spawne des anneaux qui contractent du bord vers le centre en s'estompant, et les rendre.</summary>
     public partial class SpectrumRingsEditor : UserControl
     {
         readonly SpectrumRingsPlugin _plugin;
@@ -28,9 +28,9 @@ namespace KotonPluginSpectrumRings
             var ps = _plugin.Parameters;
             foreach (var kp in ps) kp.Changed += _ => Dispatcher.BeginInvoke(new Action(SyncFromPlugin));
 
-            sldHue.ValueChanged   += (s, e) => SetParam("hue_speed",  sldHue.Value);
-            sldReact.ValueChanged += (s, e) => SetParam("reactivity", sldReact.Value);
-            sldGlow.ValueChanged  += (s, e) => SetParam("glow",       sldGlow.Value);
+            sldHue.ValueChanged   += (s, e) => SetParam("hue_speed",   sldHue.Value);
+            sldReact.ValueChanged += (s, e) => SetParam("sensitivity", sldReact.Value);
+            sldGlow.ValueChanged  += (s, e) => SetParam("glow",        sldGlow.Value);
 
             Unloaded += (s, e) => _canvas.StopAnimation();
         }
@@ -53,7 +53,7 @@ namespace KotonPluginSpectrumRings
                     return 0;
                 }
                 sldHue.Value = GetV("hue_speed");
-                sldReact.Value = GetV("reactivity");
+                sldReact.Value = GetV("sensitivity");
                 sldGlow.Value = GetV("glow");
             }
             finally { _updating = false; }
@@ -67,9 +67,23 @@ namespace KotonPluginSpectrumRings
         DispatcherTimer _timer;
         DateTime _tStart;
 
-        // Rayons de base des 4 anneaux (fraction du min(width, height) / 2). Bass = grand anneau
-        // extérieur, high = petit anneau intérieur. Convention "grave = large, aigu = étroit".
-        static readonly double[] BaseRadii = { 0.85, 0.68, 0.50, 0.32 };
+        // Position radiale de départ des anneaux selon la bande. Bass = grand rayon (proche du
+        // bord), high = plus proche du centre. Convention "note grave = grand mouvement".
+        static readonly double[] SpawnRadii = { 0.95, 0.75, 0.55, 0.38 };
+        // Couleurs de base par bande (HSV hue en degrés). L'éditeur ajoute une rotation lente
+        // (hueSpeed) pour animer les teintes globales.
+        static readonly double[] BandHue = { 15, 55, 145, 240 };   // rouge-orange, jaune, teal, bleu
+
+        // Liste des anneaux vivants dans l'éditeur (thread UI uniquement).
+        sealed class LiveRing
+        {
+            public int BandIdx;
+            public DateTime BirthTime;
+            public float Intensity;
+            public double HueOffset;   // pour distinguer 2 rings d'un même burst
+        }
+        readonly List<LiveRing> _rings = new List<LiveRing>();
+        int _birthCounter;
 
         public RingsCanvas(SpectrumRingsPlugin plugin)
         {
@@ -89,10 +103,32 @@ namespace KotonPluginSpectrumRings
         {
             if (_timer != null) return;
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };   // 60 fps
-            _timer.Tick += (s, e) => Render();
+            _timer.Tick += (s, e) => Tick();
             _timer.Start();
         }
         public void StopAnimation() { _timer?.Stop(); _timer = null; }
+
+        void Tick()
+        {
+            // Draine la file de naissances envoyées par le thread audio.
+            while (_plugin.TryDequeueBirth(out var b))
+            {
+                _birthCounter++;
+                _rings.Add(new LiveRing
+                {
+                    BandIdx = b.BandIdx,
+                    BirthTime = DateTime.UtcNow,
+                    Intensity = b.Intensity,
+                    HueOffset = (_birthCounter * 27) % 360,   // petit décalage de teinte par birth
+                });
+            }
+            // Retire les rings morts.
+            double life = _plugin.RingLifeSec;
+            var now = DateTime.UtcNow;
+            for (int i = _rings.Count - 1; i >= 0; i--)
+                if ((now - _rings[i].BirthTime).TotalSeconds > life) _rings.RemoveAt(i);
+            Render();
+        }
 
         void Render()
         {
@@ -100,68 +136,51 @@ namespace KotonPluginSpectrumRings
             double w = ActualWidth, h = ActualHeight;
             if (w < 40 || h < 40) return;
             double cx = w / 2, cy = h / 2;
-            double baseR = Math.Min(w, h) * 0.42;
-
+            double baseR = Math.Min(w, h) * 0.45;
             double elapsedSec = (DateTime.UtcNow - _tStart).TotalSeconds;
-            double hueBase = elapsedSec * _plugin.HueSpeed * 40.0;   // deg/s
-            double react = _plugin.Reactivity;
+            double hueBase = elapsedSec * _plugin.HueSpeed * 40.0;
             double glow = _plugin.GlowAmount;
+            double life = _plugin.RingLifeSec;
+            var now = DateTime.UtcNow;
 
-            // Cœur central : cercle plein qui pulse avec le niveau global, teinte animée.
-            float globLevel = _plugin.GetLevel(4);
-            double coreLevel = Math.Min(1.5, globLevel * react * 8);   // scale visuel
-            double coreR = 8 + coreLevel * 25;
-            var coreCol = HsvToRgb((hueBase) % 360, 0.9, 1.0);
-            if (glow > 0.01)
+            // Chaque anneau : contraction bord → centre + fade + amincissement stroke.
+            foreach (var r in _rings)
             {
-                // Halo doux : 2-3 cercles concentriques translucides pour l'effet lueur.
-                for (int g = 0; g < 3; g++)
-                {
-                    double r = coreR + (g + 1) * 12 * glow;
-                    byte a = (byte)Math.Max(0, 60 - g * 22);
-                    AddCircleFill(cx, cy, r, Color.FromArgb(a, coreCol.R, coreCol.G, coreCol.B));
-                }
-            }
-            AddCircleFill(cx, cy, coreR, coreCol);
-
-            // 4 anneaux concentriques : rayon = baseR * BaseRadii[i] + modulation par le niveau,
-            // couleur = HSV(hueBase + i*90).
-            for (int i = 0; i < 4; i++)
-            {
-                float lvl = _plugin.GetLevel(i);
-                double amp = Math.Min(1.5, lvl * react * 10);
-                double r = baseR * BaseRadii[i] + amp * baseR * 0.10;
-                double stroke = 3 + amp * 12;   // épaisseur pulsée
-                double hue = (hueBase + i * 78) % 360;
+                double age = (now - r.BirthTime).TotalSeconds;
+                double t = age / life;                             // 0..1
+                if (t < 0) t = 0; else if (t > 1) t = 1;
+                double spawnR = baseR * SpawnRadii[r.BandIdx];
+                double curR = spawnR * (1 - t * 0.85);             // finit à ~15% du rayon initial
+                if (curR < 2) continue;
+                double alpha = Math.Pow(1 - t, 1.6);                // fade 1→0 non-linéaire (plus doux au début)
+                double thickness = Math.Max(0.5, (1 + r.Intensity * 3) * (1 - t));
+                double hue = (hueBase + BandHue[r.BandIdx] + r.HueOffset) % 360;
                 var col = HsvToRgb(hue, 0.85, 1.0);
-                // Anneau principal
-                AddCircleStroke(cx, cy, r, stroke, col);
-                // Halo interne / externe si glow
+                byte a = (byte)Math.Max(0, Math.Min(255, alpha * 255));
+
+                // Halo optionnel : anneau plus large, plus transparent, autour du principal.
                 if (glow > 0.01)
                 {
-                    byte a = (byte)(80 * glow);
-                    AddCircleStroke(cx, cy, r + 8 * glow, 2, Color.FromArgb(a, col.R, col.G, col.B));
-                    AddCircleStroke(cx, cy, r - 8 * glow, 2, Color.FromArgb(a, col.R, col.G, col.B));
+                    byte ha = (byte)Math.Max(0, Math.Min(255, alpha * 255 * glow * 0.5));
+                    AddCircleStroke(cx, cy, curR + 4 * glow, thickness + 2 * glow,
+                        Color.FromArgb(ha, col.R, col.G, col.B));
                 }
+                AddCircleStroke(cx, cy, curR, thickness, Color.FromArgb(a, col.R, col.G, col.B));
             }
 
-            // Petites particules qui tournent autour, réactives au niveau global.
-            int particleCount = 12;
-            double rotSpeed = 0.6 + globLevel * react * 4;
-            double rotAngle = elapsedSec * rotSpeed;
-            for (int p = 0; p < particleCount; p++)
+            // Petit cœur central quasi-immobile pour donner un repère visuel.
+            var coreCol = HsvToRgb(hueBase % 360, 0.4, 0.8);
+            AddCircleFill(cx, cy, 5, Color.FromArgb(180, coreCol.R, coreCol.G, coreCol.B));
+
+            // Compteur discret d'anneaux actifs, en haut-gauche (feedback debug utile).
+            var lbl = new TextBlock
             {
-                double a = rotAngle + p * (2 * Math.PI / particleCount);
-                // Distance modulée par la bande la plus proche.
-                int band = p % 4;
-                float lvl = _plugin.GetLevel(band);
-                double rr = baseR * BaseRadii[band] + 20 + Math.Sin(elapsedSec * 3 + p) * 6 + lvl * react * 30;
-                double px = cx + Math.Cos(a) * rr;
-                double py = cy + Math.Sin(a) * rr;
-                double d = 3 + lvl * react * 8;
-                var col = HsvToRgb((hueBase + band * 78 + 40) % 360, 0.6, 1.0);
-                AddCircleFill(px, py, d, Color.FromArgb(180, col.R, col.G, col.B));
-            }
+                Text = _rings.Count.ToString() + " ●",
+                Foreground = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255)),
+                FontSize = 10,
+            };
+            Canvas.SetLeft(lbl, 8); Canvas.SetTop(lbl, 6);
+            _root.Children.Add(lbl);
         }
 
         void AddCircleFill(double cx, double cy, double r, Color col)
@@ -190,7 +209,6 @@ namespace KotonPluginSpectrumRings
             _root.Children.Add(e);
         }
 
-        /// <summary>Conversion HSV → RGB, h en degrés [0,360), s & v en [0,1].</summary>
         static Color HsvToRgb(double h, double s, double v)
         {
             h = ((h % 360) + 360) % 360;

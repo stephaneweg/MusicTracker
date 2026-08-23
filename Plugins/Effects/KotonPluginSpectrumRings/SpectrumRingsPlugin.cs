@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
@@ -8,52 +9,63 @@ using KotonStudio.Library;
 namespace KotonPluginSpectrumRings
 {
     /// <summary>
-    /// Anneaux spectraux — effet visuel pur, pass-through audio. Analyse le signal en 4 bandes
-    /// (grave / bas-médium / médium / aigu) via des biquad, calcule le RMS de chaque bande + un
-    /// RMS global, et expose ces niveaux en volatile pour que l'éditeur les affiche en temps réel
-    /// (anneaux concentriques colorés qui pulsent + cœur central au rythme du niveau global).
+    /// Anneaux spectraux — effet audio pass-through avec viz temps réel EVENT-DRIVEN. À chaque
+    /// ATTAQUE détectée dans le signal (transient dépassant un seuil relatif au niveau précédent),
+    /// on émet un « ring birth » que l'éditeur affiche comme un anneau qui naît au bord, contracte
+    /// vers le centre, et se fond en ~1.5s. Beaucoup de notes courtes → beaucoup d'anneaux qui se
+    /// chevauchent → anim très agitée. Rythme lent → anneaux plus espacés.
     ///
-    /// **Audio** : Process copie left/right tels quels (pass-through). Les filtres tournent en
-    /// PARALLÈLE — mono downmix pour l'analyse, ne modifie pas le signal stéréo passant.
+    /// **Detection transient** : envelope follower rapide (attack 15ms, release 200ms) par bande.
+    /// Quand le niveau instantané dépasse 1.6× l'enveloppe suivie + un plancher (évite le bruit),
+    /// on trigger un anneau. Blocage 60ms après trigger pour éviter les redéclenchements sur une
+    /// même note.
     ///
-    /// **Thread-safety** : Process tourne sur le thread audio ; l'éditeur lit les niveaux depuis
-    /// le thread UI. Les niveaux sont écrits via `Volatile.Write` (float atomique 32-bit → pas de
-    /// tearing), l'éditeur lit avec `Volatile.Read`. Pas de lock, pas de latence.
+    /// **Bandes → couleurs/tailles** : bass = anneau large + rouge/orange, low-mid = jaune,
+    /// medium = vert/teal, high = bleu/violet + anneau petit. Mapping intuitif : plus la note est
+    /// aigue, plus le point de départ est proche du centre.
+    ///
+    /// **Thread-safety** : ConcurrentQueue MPSC — audio thread pousse les naissances, UI thread
+    /// draine et gère la vie des rings. Audio path 100% pass-through, ne modifie jamais le signal.
     /// </summary>
-    [KotonEffect("Anneaux spectraux", Id = "koton.spectrum_rings", Category = "Visualiseur", Version = "1.0", Vendor = "Koton Studio")]
+    [KotonEffect("Anneaux spectraux", Id = "koton.spectrum_rings", Category = "Visualiseur", Version = "2.0", Vendor = "Koton Studio")]
     public sealed class SpectrumRingsPlugin : IKotonEffect
     {
         public string Id => "koton.spectrum_rings";
         public string DisplayName => "Anneaux spectraux";
 
-        readonly KotonParameter _hueSpeed  = new KotonParameter("hue_speed",  "Vitesse teinte", 0.0, 2.0, 0.5, "×");
-        readonly KotonParameter _reactivity = new KotonParameter("reactivity", "Réactivité",     0.5, 4.0, 1.5, "×");
-        readonly KotonParameter _glow       = new KotonParameter("glow",       "Halo",           0.0, 1.0, 0.6);
+        readonly KotonParameter _hueSpeed    = new KotonParameter("hue_speed",    "Vitesse teinte", 0.0, 2.0, 0.5, "×");
+        readonly KotonParameter _sensitivity = new KotonParameter("sensitivity", "Sensibilité",     0.5, 3.0, 1.5, "×");
+        readonly KotonParameter _ringLife    = new KotonParameter("ring_life",    "Durée anneau",   0.4, 3.0, 1.5, "s");
+        readonly KotonParameter _glow        = new KotonParameter("glow",         "Halo",           0.0, 1.0, 0.6);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
 
-        // Filtres biquad — instanciés par bande. Coefficients bandpass RBJ pour crossovers cibles.
-        // Fréquences centrales : 100 Hz (grave), 500 Hz (bas-medium), 2 kHz (medium), 8 kHz (aigu).
         Biquad _bpBass, _bpLow, _bpMid, _bpHigh;
         int _sr;
 
-        // Niveaux RMS lissés (attack + decay), publiés en volatile pour le rendu UI.
-        // Level[0..3] = bandes ; Level[4] = niveau global. Accessibles depuis n'importe quel thread.
-        readonly float[] _levels = new float[5];
-        public float GetLevel(int idx)
-        {
-            if (idx < 0 || idx >= _levels.Length) return 0;
-            return System.Threading.Volatile.Read(ref _levels[idx]);
-        }
+        // Enveloppes de suivi + blocages anti-rebond par bande.
+        readonly float[] _env = new float[4];         // niveau lissé pour la comparaison
+        readonly float[] _lastTriggerSec = new float[4];
+        double _sampleClockSec;                        // temps interne en secondes (par blocs)
 
-        public double Reactivity => _reactivity.Value;
+        // File de naissances d'anneaux (audio → UI).
+        public struct RingBirth
+        {
+            public int BandIdx;    // 0=bass, 1=low, 2=mid, 3=high
+            public float Intensity;
+        }
+        readonly ConcurrentQueue<RingBirth> _births = new ConcurrentQueue<RingBirth>();
+        public bool TryDequeueBirth(out RingBirth b) => _births.TryDequeue(out b);
+
         public double HueSpeed => _hueSpeed.Value;
+        public double Sensitivity => _sensitivity.Value;
+        public double RingLifeSec => _ringLife.Value;
         public double GlowAmount => _glow.Value;
 
         public SpectrumRingsPlugin()
         {
-            _params = new List<KotonParameter> { _hueSpeed, _reactivity, _glow };
+            _params = new List<KotonParameter> { _hueSpeed, _sensitivity, _ringLife, _glow };
         }
 
         public bool HasEditor => true;
@@ -66,24 +78,33 @@ namespace KotonPluginSpectrumRings
             _bpLow  = new Biquad(); _bpLow .SetBandpass(sampleRate, 500f, 0.8f);
             _bpMid  = new Biquad(); _bpMid .SetBandpass(sampleRate, 2000f, 0.9f);
             _bpHigh = new Biquad(); _bpHigh.SetBandpass(sampleRate, 8000f, 1.0f);
+            for (int i = 0; i < 4; i++) { _env[i] = 0; _lastTriggerSec[i] = -10f; }
+            _sampleClockSec = 0;
+            while (_births.TryDequeue(out _)) { }
         }
 
         public void Reset()
         {
             _bpBass?.Reset(); _bpLow?.Reset(); _bpMid?.Reset(); _bpHigh?.Reset();
-            for (int i = 0; i < _levels.Length; i++) System.Threading.Volatile.Write(ref _levels[i], 0);
+            for (int i = 0; i < 4; i++) { _env[i] = 0; _lastTriggerSec[i] = -10f; }
+            while (_births.TryDequeue(out _)) { }
         }
 
-        // Constantes d'enveloppe : attack rapide (le pic monte vite), decay plus lent (l'anim
-        // « tient » un moment sur les percussions) — donne un rendu percussif satisfaisant.
-        const float AttackCoef = 0.35f;   // 0..1 : plus haut = plus réactif
-        const float DecayCoef  = 0.03f;   // 0..1 : plus haut = décroit plus vite
+        // Seuil transient : l'instant dépasse SIGNIFICATIVEMENT l'env suivi + un plancher.
+        const float TriggerRatio = 1.6f;
+        const float MinTriggerLevel = 0.008f;   // plancher = évite les triggers sur du silence bruité
+        const float ReTriggerBlockSec = 0.06f;  // 60ms de blocage après un trigger sur la même bande
+
+        // Attack/release de l'envelope follower : rapide en montée, plus lent en descente.
+        const float EnvAttackCoef = 0.30f;
+        const float EnvReleaseCoef = 0.008f;
 
         public void Process(Span<float> left, Span<float> right)
         {
             if (left.Length == 0 || right.Length == 0) return;
             int n = left.Length;
-            float bass = 0, low = 0, mid = 0, high = 0, glob = 0;
+            // RMS par bande sur ce bloc.
+            float sBass = 0, sLow = 0, sMid = 0, sHigh = 0;
             for (int i = 0; i < n; i++)
             {
                 float mono = 0.5f * (left[i] + right[i]);
@@ -91,31 +112,35 @@ namespace KotonPluginSpectrumRings
                 float l = _bpLow .Process(mono);
                 float m = _bpMid .Process(mono);
                 float h = _bpHigh.Process(mono);
-                bass += b * b; low += l * l; mid += m * m; high += h * h;
-                glob += mono * mono;
+                sBass += b * b; sLow += l * l; sMid += m * m; sHigh += h * h;
             }
-            float rBass = (float)Math.Sqrt(bass / n);
-            float rLow  = (float)Math.Sqrt(low  / n);
-            float rMid  = (float)Math.Sqrt(mid  / n);
-            float rHigh = (float)Math.Sqrt(high / n);
-            float rGlob = (float)Math.Sqrt(glob / n);
+            float invN = 1f / n;
+            float[] rms = { (float)Math.Sqrt(sBass * invN), (float)Math.Sqrt(sLow * invN),
+                            (float)Math.Sqrt(sMid * invN),  (float)Math.Sqrt(sHigh * invN) };
 
-            // Attack / decay envelope pour lisser l'animation.
-            UpdateLevel(0, rBass);
-            UpdateLevel(1, rLow);
-            UpdateLevel(2, rMid);
-            UpdateLevel(3, rHigh);
-            UpdateLevel(4, rGlob);
-            // NB : left/right restent INCHANGÉS (pass-through complet, l'effet n'est que visuel).
-        }
+            _sampleClockSec += n / (double)_sr;
+            float nowSec = (float)_sampleClockSec;
+            float sens = (float)_sensitivity.Value;
 
-        void UpdateLevel(int idx, float target)
-        {
-            float cur = System.Threading.Volatile.Read(ref _levels[idx]);
-            float next = target > cur ? cur + (target - cur) * AttackCoef
-                                      : cur - cur * DecayCoef;
-            if (next < 0) next = 0;
-            System.Threading.Volatile.Write(ref _levels[idx], next);
+            for (int i = 0; i < 4; i++)
+            {
+                float inst = rms[i];
+                float env = _env[i];
+                // Detection transient : instant > seuil × env ET > plancher ET pas re-trigger récent.
+                bool blocked = (nowSec - _lastTriggerSec[i]) < ReTriggerBlockSec;
+                float triggerThreshold = Math.Max(MinTriggerLevel, env * TriggerRatio / sens);
+                if (!blocked && inst > triggerThreshold)
+                {
+                    _lastTriggerSec[i] = nowSec;
+                    float intensity = Math.Min(1.5f, inst * sens * 4);
+                    _births.Enqueue(new RingBirth { BandIdx = i, Intensity = intensity });
+                }
+                // Update envelope (attack rapide / release lent).
+                _env[i] = inst > env
+                    ? env + (inst - env) * EnvAttackCoef
+                    : env - env * EnvReleaseCoef;
+            }
+            // Audio pass-through : left/right INCHANGÉS.
         }
 
         public byte[] SaveState()
@@ -131,7 +156,7 @@ namespace KotonPluginSpectrumRings
         public void Dispose() { }
     }
 
-    /// <summary>Biquad bandpass RBJ minimal — un par bande dans SpectrumRingsPlugin.</summary>
+    /// <summary>Biquad bandpass RBJ.</summary>
     internal sealed class Biquad
     {
         float _b0, _b1, _b2, _a1, _a2;
