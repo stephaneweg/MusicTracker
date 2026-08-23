@@ -145,6 +145,9 @@ namespace KotonPluginPianoVisualizer
                 if (_pendingOff[i].Deadline > now) continue;
                 var p = _pendingOff[i];
                 _pendingOff.RemoveAt(i);
+                // Multi-set : décrémente le compteur ; la touche s'éteint quand il retombe à 0.
+                // Naturellement FIFO (compteur ne distingue pas ordre d'ajout, mais on retire
+                // 1 unité, laissant les autres actives).
                 if (_activeCount.TryGetValue(p.Midi, out var c))
                 {
                     if (c <= 1) { _activeCount.Remove(p.Midi); _lastVelocity.Remove(p.Midi); }

@@ -240,7 +240,11 @@ namespace KotonPluginGuqinConstrainer
                     if (_pendingReleased[i].DeadlineUtc > now) continue;
                     int m = _pendingReleased[i].Ev.Midi;
                     _pendingReleased.RemoveAt(i);
-                    for (int j = _fingerings.Count - 1; j >= 0; j--)
+                    // FIFO : on retire la PLUS ANCIENNE occurrence du midi, pas la plus récente.
+                    // Sinon, quand une nouvelle note vole une ancienne à MÊME MIDI (hui 1-6 qui
+                    // donne un pitch proche des cordes à vide voisines), on enlève par erreur la
+                    // NOUVELLE : la vibration reste (decay natural) mais le disque disparaît.
+                    for (int j = 0; j < _fingerings.Count; j++)
                         if (_fingerings[j].Midi == m) { _fingerings.RemoveAt(j); break; }
                 }
                 // Décroissance des vibrations.
@@ -374,22 +378,6 @@ namespace KotonPluginGuqinConstrainer
                         IsHitTestVisible = false,
                     });
                 }
-                // MARQUEUR DEBUG ULTRA-VISIBLE : gros carré JAUNE 30x30 avec bordure noire, très
-                // difficile à louper. Si l'user voit CE carré mais pas le disque en dessous, on
-                // sait que c'est le dot qui est masqué. Si l'user ne voit PAS le carré, c'est que
-                // le fingering n'atteint pas le canvas (bug amont).
-                var debugMarker = new Rectangle
-                {
-                    Width = 30, Height = 30,
-                    Fill = new SolidColorBrush(Color.FromArgb(200, 255, 255, 0)),
-                    Stroke = new SolidColorBrush(Colors.Black),
-                    StrokeThickness = 2,
-                    IsHitTestVisible = false,
-                };
-                Canvas.SetLeft(debugMarker, x - 15); Canvas.SetTop(debugMarker, y - 15);
-                _root.Children.Add(debugMarker);
-
-                // Le disque normal en dessous.
                 var halo = new Ellipse
                 {
                     Width = 16, Height = 16,
