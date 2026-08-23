@@ -49,9 +49,18 @@ namespace KotonPluginGuqinConstrainer
             public int Midi;
             public double StartBeat;
             public double DurationBeats;
+            /// <summary>Tempo en BPM au moment du bloc — l'éditeur convertit StartBeat en délai
+            /// wall-clock pour animer les doigtés en cadence de lecture.</summary>
+            public double Tempo;
+            /// <summary>Identifiant incrémental de bloc (une passe Filter = un BlockId). L'éditeur
+            /// reset son référentiel temporel quand le BlockId change → chaque relecture repart de
+            /// zéro, chaque redraw d'un même bloc ne dédouble pas les événements.</summary>
+            public long BlockId;
         }
         public event Action<StruckEvent> NoteStruck;
         public event Action<int> NoteReleased;
+
+        long _blockCounter;
 
         public GuqinConstrainerPlugin()
         {
@@ -76,6 +85,9 @@ namespace KotonPluginGuqinConstrainer
             if (notes == null) yield break;
             var tuning = ActiveTuning;
             bool snap = _snapMode.Value >= 0.5;
+            bool wantsViz = ctx != null && ctx.WantsViz;
+            long blockId = System.Threading.Interlocked.Increment(ref _blockCounter);
+            double tempo = ctx?.Tempo > 0 ? ctx.Tempo : 120.0;
             var constraint = new GuqinConstraint
             {
                 DiapasonCm = _diapasonCm.Value,
@@ -83,7 +95,6 @@ namespace KotonPluginGuqinConstrainer
                 MaxStoppedFingers = Math.Max(1, Math.Min(5, (int)_maxFingers.Value)),
             };
 
-            // Trie et matérialise pour indexer.
             var input = new List<KotonGeneratedNote>(notes);
             input.Sort((a, b) => a.StartBeat.CompareTo(b.StartBeat));
 
@@ -100,60 +111,64 @@ namespace KotonPluginGuqinConstrainer
             {
                 int c = a.t.CompareTo(b.t);
                 if (c != 0) return c;
-                return a.kind.CompareTo(b.kind);   // off avant on
+                return a.kind.CompareTo(b.kind);
             });
 
-            // Pour chaque noteOn, on stocke le fingering résolu (pour ressortir la note transformée
-            // dans le bon ordre à la fin). Les notes rejetées ont fingering.Midi = -1.
             var resolved = new (bool emitted, int midi, int stringIdx, double position)[input.Count];
             var heldByIdx = new GuqinConstraint.Held[input.Count];
+            // Contexte pour la voice-leading : dernière position stoppée jouée (pour préférer un
+            // fingering proche au suivant, comme un musicien qui minimise le déplacement de main).
+            double? prevPositionCm = null;
 
             foreach (var (t, kind, idx) in events)
             {
                 if (kind == 0)
                 {
-                    // NoteOn : résout + contrainte.
                     var srcNote = input[idx];
-                    var f = GuqinModel.ResolveMidi(tuning, srcNote.MidiNote, out bool exact);
+                    // Résout en tenant compte de la position précédente (préférence : proche de
+                    // là où la main était). Fallback = ResolveMidi classique (proche du centre).
+                    var f = ResolveMidiWithContext(tuning, srcNote.MidiNote, prevPositionCm, out bool exact);
                     if (!exact && !snap) { resolved[idx] = (false, -1, -1, 0); continue; }
 
                     var decision = constraint.Consider(f.StringIdx, f.Position, out var toRelease);
-                    if (decision == GuqinConstraint.Decision.RejectStringBusy)
-                    {
-                        resolved[idx] = (false, -1, -1, 0);
-                        continue;
-                    }
+                    if (decision == GuqinConstraint.Decision.RejectStringBusy) { resolved[idx] = (false, -1, -1, 0); continue; }
                     if (decision == GuqinConstraint.Decision.StealOldest && toRelease != null)
                     {
                         constraint.Release(toRelease);
-                        try { NoteReleased?.Invoke(toRelease.Midi); } catch { }
+                        if (wantsViz) { try { NoteReleased?.Invoke(toRelease.Midi); } catch { } }
                     }
                     var held = constraint.Register(f.Midi, f.StringIdx, f.Position);
                     heldByIdx[idx] = held;
                     resolved[idx] = (true, f.Midi, f.StringIdx, f.Position);
-                    try { NoteStruck?.Invoke(new StruckEvent
+                    if (!f.IsOpen) prevPositionCm = f.Position * _diapasonCm.Value;
+                    if (wantsViz)
                     {
-                        StringIdx = f.StringIdx,
-                        Position = f.Position,
-                        Midi = f.Midi,
-                        StartBeat = srcNote.StartBeat,
-                        DurationBeats = srcNote.DurationBeats,
-                    }); } catch { }
+                        try
+                        {
+                            NoteStruck?.Invoke(new StruckEvent
+                            {
+                                StringIdx = f.StringIdx,
+                                Position = f.Position,
+                                Midi = f.Midi,
+                                StartBeat = srcNote.StartBeat,
+                                DurationBeats = srcNote.DurationBeats,
+                                Tempo = tempo,
+                                BlockId = blockId,
+                            });
+                        } catch { }
+                    }
                 }
                 else
                 {
-                    // NoteOff : libère si toujours tenue (peut avoir été volée entre-temps).
                     var h = heldByIdx[idx];
                     if (h != null && constraint.Active.Contains(h))
                     {
                         constraint.Release(h);
-                        try { NoteReleased?.Invoke(h.Midi); } catch { }
+                        if (wantsViz) { try { NoteReleased?.Invoke(h.Midi); } catch { } }
                     }
                 }
             }
 
-            // Rendu final : itère les notes d'entrée dans l'ordre initial, produit celles qui ont
-            // survécu à la contrainte avec le pitch résolu.
             for (int i = 0; i < input.Count; i++)
             {
                 if (!resolved[i].emitted) continue;
@@ -167,6 +182,42 @@ namespace KotonPluginGuqinConstrainer
                     Velocity = src.Velocity,
                 };
             }
+        }
+
+        /// <summary>Résout un MIDI en fingering avec voice-leading : parmi les candidats à distance
+        /// minimale en semitons, on préfère celui dont la position (cm) est LA PLUS PROCHE de
+        /// la précédente. Fallback (pas de précédente) = position proche du centre (hui 7),
+        /// confortable pour la main.</summary>
+        GuqinModel.Fingering ResolveMidiWithContext(GuqinModel.Tuning tuning, int targetMidi, double? prevPositionCm, out bool exact)
+        {
+            var all = GuqinModel.AllFingerings(tuning);
+            double diapason = Math.Max(1, _diapasonCm.Value);
+            GuqinModel.Fingering best = default;
+            int bestDist = int.MaxValue;
+            double bestScore = double.MaxValue;
+            foreach (var f in all)
+            {
+                int d = Math.Abs(f.Midi - targetMidi);
+                if (d > bestDist) continue;
+                double score;
+                if (prevPositionCm.HasValue)
+                {
+                    // Priorité : proche de la main précédente. Une corde à vide = pas de main
+                    // engagée → score neutre au centre pour éviter un attrait pour la position 0.
+                    double posCm = f.IsOpen ? diapason * 0.5 : f.Position * diapason;
+                    score = Math.Abs(posCm - prevPositionCm.Value);
+                }
+                else
+                {
+                    score = Math.Abs(f.Position - 0.5) * diapason;   // fallback : proche du centre
+                }
+                if (d < bestDist || score < bestScore)
+                {
+                    bestDist = d; bestScore = score; best = f;
+                }
+            }
+            exact = bestDist == 0;
+            return best;
         }
 
         public byte[] SaveState()

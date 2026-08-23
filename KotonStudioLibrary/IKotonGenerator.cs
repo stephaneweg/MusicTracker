@@ -183,5 +183,12 @@ namespace KotonStudio.Library
         /// celui sous le bloc. Vaut 0 pour la preview (bloc pas encore posé) — c'est un fallback
         /// acceptable, le plugin peut détecter et jouer sur la tonique par défaut.</summary>
         public double BlockStartBeat;
+
+        /// <summary>Indique que l'appelant est le RENDU AUDIO (playback réel) — pas la partition
+        /// ni l'export MIDI. Les constrainers avec visualisation temps réel ne doivent émettre
+        /// leurs événements d'animation (NoteStruck, NoteReleased, etc.) QUE quand ce flag est
+        /// true, pour éviter de multiplier les événements quand la partition ré-appelle Filter à
+        /// chaque redraw. Défaut false = comportement conservateur (pas de viz spammée).</summary>
+        public bool WantsViz;
     }
 }

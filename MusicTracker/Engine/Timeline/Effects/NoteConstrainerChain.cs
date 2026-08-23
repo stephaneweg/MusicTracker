@@ -33,7 +33,9 @@ namespace MusicTracker.Engine.Timeline.Effects
         /// <summary>Applique la chaîne de constrainers d'une piste sur un <paramref name="riff"/> donné.
         /// Le riff en entrée est utilisé en lecture seule ; la sortie est un nouveau Riff (ou le même
         /// s'il n'y a rien à faire).</summary>
-        public static Riff Apply(TimelineTrack track, Riff riff, TimelineProject project, double absoluteStartBeat)
+        /// <param name="wantsViz">true = appel depuis le pipeline audio (le constrainer peut émettre
+        /// ses événements de visualisation temps réel). false = score/export (silencieux côté viz).</param>
+        public static Riff Apply(TimelineTrack track, Riff riff, TimelineProject project, double absoluteStartBeat, bool wantsViz = false)
         {
             if (track == null || riff == null || riff.Notes == null || riff.Notes.Count == 0) return riff;
             if (track.NoteConstrainers == null || track.NoteConstrainers.Count == 0) return riff;
@@ -44,6 +46,7 @@ namespace MusicTracker.Engine.Timeline.Effects
             // Contexte de rendu — même helper que KotonGeneratorModule pour garantir la parité
             // exacte (tonic pc / mode / tempo / signature).
             var ctx = Flow.KotonGeneratorRuntime.ContextFor(project, absoluteStartBeat);
+            ctx.WantsViz = wantsViz;
 
             int spq = riff.SlicesPerQuarter > 0 ? riff.SlicesPerQuarter : 4;
             var notes = ToGeneratedNotes(riff, spq);

@@ -4735,30 +4735,119 @@ namespace MusicTracker.Screens
             return root;
         }
 
-        /// <summary>Bouton dédié dans le header de piste, posé juste sous la ligne « VSTi… » : ouvre
-        /// un ContextMenu avec les mêmes items que le sous-menu du clic droit. Le libellé reflète le
-        /// nombre de filtres actifs pour rendre visible ce qui tourne sans devoir dérouler.</summary>
+        /// <summary>Bloc « Filtres notes » dans le header piste, posé juste sous VSTi. Un item par
+        /// filtre actif (nom + crayon Éditer, clic droit = Retirer), puis un bouton « + Ajouter
+        /// filtre notes » qui déroule les constrainers disponibles.</summary>
         UIElement BuildConstrainersRow(TimelineTrack track)
         {
-            int n = track.NoteConstrainers?.Count ?? 0;
-            string label = n == 0 ? "Filtres notes…" : ("Filtres notes (" + n + ")");
-            var btn = new Button
+            if (track.NoteConstrainers == null) track.NoteConstrainers = new System.Collections.Generic.List<Engine.Timeline.Effects.NoteConstrainerRef>();
+            var stack = new StackPanel { Margin = new Thickness(0, 3, 0, 0) };
+            var available = Engine.Timeline.Effects.KotonPluginRegistry.Constrainers;
+
+            // Une ligne par filtre actif.
+            for (int i = 0; i < track.NoteConstrainers.Count; i++)
             {
-                Content = label,
+                var r = track.NoteConstrainers[i];
+                string displayName = r?.Id ?? "?";
+                foreach (var info in available) if (info.Id == r?.Id) { displayName = info.DisplayName; break; }
+                int idxCaptured = i;
+
+                var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var lbl = new TextBlock
+                {
+                    Text = (r?.Bypass == true ? "(bypass) " : "") + displayName,
+                    Foreground = new SolidColorBrush(r?.Bypass == true ? Color.FromRgb(0x88, 0x88, 0x8C) : Color.FromRgb(0xCC, 0xCC, 0xD0)),
+                    FontSize = 11,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                    Margin = new Thickness(4, 0, 4, 0),
+                };
+                Grid.SetColumn(lbl, 0);
+                row.Children.Add(lbl);
+
+                var editBtn = new Button
+                {
+                    Content = "✎",
+                    Width = 20, Height = 20,
+                    Padding = new Thickness(0),
+                    FontSize = 11,
+                    ToolTip = "Éditer",
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                };
+                editBtn.Click += (s, e) => OpenNoteConstrainerEditor(track, idxCaptured);
+                Grid.SetColumn(editBtn, 1);
+                row.Children.Add(editBtn);
+
+                // Clic droit sur la ligne = menu contextuel (Retirer, Bypass on/off).
+                row.PreviewMouseRightButtonUp += (s, e) =>
+                {
+                    var menu = new ContextMenu();
+                    var bp = new MenuItem { Header = "Bypass", IsCheckable = true, IsChecked = r?.Bypass ?? false };
+                    bp.Click += (s2, e2) =>
+                    {
+                        PushUndo("track:constrainer-bypass");
+                        if (idxCaptured < track.NoteConstrainers.Count && track.NoteConstrainers[idxCaptured] != null)
+                            track.NoteConstrainers[idxCaptured].Bypass = bp.IsChecked;
+                        Render();
+                    };
+                    menu.Items.Add(bp);
+                    menu.Items.Add(new Separator());
+                    var rem = new MenuItem { Header = "Retirer" };
+                    rem.Click += (s2, e2) =>
+                    {
+                        PushUndo("track:remove-constrainer");
+                        if (idxCaptured < track.NoteConstrainers.Count) track.NoteConstrainers.RemoveAt(idxCaptured);
+                        Render();
+                    };
+                    menu.Items.Add(rem);
+                    menu.PlacementTarget = row;
+                    menu.IsOpen = true;
+                    e.Handled = true;
+                };
+                stack.Children.Add(row);
+            }
+
+            // Bouton « + Ajouter filtre notes » — dépose une ligne dans la stack au clic.
+            var addBtn = new Button
+            {
+                Content = "+ Ajouter filtre notes",
                 Margin = new Thickness(0, 3, 0, 0),
                 FontSize = 11,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
                 Padding = new Thickness(6, 2, 6, 2),
             };
-            btn.Click += (s, e) =>
+            addBtn.Click += (s, e) =>
             {
                 var menu = new ContextMenu();
-                foreach (var it in BuildNoteConstrainersMenuItems(track)) menu.Items.Add(it);
-                menu.PlacementTarget = btn;
+                if (available.Count == 0)
+                {
+                    menu.Items.Add(new MenuItem { Header = "(aucun constrainer découvert)", IsEnabled = false });
+                }
+                else
+                {
+                    foreach (var info in available)
+                    {
+                        var mi = new MenuItem { Header = info.DisplayName };
+                        string idCaptured = info.Id;
+                        mi.Click += (s2, e2) =>
+                        {
+                            PushUndo("track:add-constrainer");
+                            track.NoteConstrainers.Add(new Engine.Timeline.Effects.NoteConstrainerRef { Id = idCaptured });
+                            Render();
+                        };
+                        menu.Items.Add(mi);
+                    }
+                }
+                menu.PlacementTarget = addBtn;
                 menu.IsOpen = true;
             };
-            return btn;
+            stack.Children.Add(addBtn);
+
+            return stack;
         }
 
         /// <summary>Ouvre l'éditeur du constrainer d'index `idx` sur la piste `track` dans une

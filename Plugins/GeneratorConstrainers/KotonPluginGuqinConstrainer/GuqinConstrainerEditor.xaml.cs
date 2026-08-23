@@ -83,14 +83,17 @@ namespace KotonPluginGuqinConstrainer
             finally { _updating = false; }
         }
 
-        void OnNoteStruck(GuqinConstrainerPlugin.StruckEvent ev) => Dispatcher.BeginInvoke(new Action(() => _canvas.NoteOn(ev.StringIdx, ev.Position, ev.Midi, 1.0f)));
-        void OnNoteReleased(int midi) => Dispatcher.BeginInvoke(new Action(() => _canvas.NoteOff(midi)));
+        void OnNoteStruck(GuqinConstrainerPlugin.StruckEvent ev) => Dispatcher.BeginInvoke(new Action(() => _canvas.EnqueueStruck(ev)));
+        void OnNoteReleased(int midi) => Dispatcher.BeginInvoke(new Action(() => _canvas.EnqueueReleased(midi)));
 
         public void OnContextUpdated(KotonRenderContext ctx) { }
     }
 
-    /// <summary>Canvas : silhouette guqin + 7 cordes + 13 hui + doigtés actifs. Copie autonome de
-    /// KotonPluginGuqinVirtuel.GuqinCanvas.</summary>
+    /// <summary>Canvas guqin : silhouette + 7 cordes (aigu en haut côté joueur) + 13 hui EN HAUT
+    /// (côté joueur qui regarde) + doigtés actifs schedulés selon StartBeat + tempo. Le BlockId
+    /// permet de reset le référentiel temporel à chaque nouvelle passe Filter (nouvelle relecture
+    /// = nouveau départ), évite les doublons quand le même bloc est ré-évalué (thumbnail refresh
+    /// etc.).</summary>
     internal sealed class GuqinCanvas : UserControl
     {
         readonly Canvas _root;
@@ -115,6 +118,16 @@ namespace KotonPluginGuqinConstrainer
             public int StringIdx; public double Position; public double StartAmpPx;
             public double DecayPerSec; public double VisualHz; public DateTime StartTime;
         }
+        // Événement en attente de son moment de déclenchement (StartBeat * tempo → délai wall-clock).
+        sealed class Pending
+        {
+            public GuqinConstrainerPlugin.StruckEvent Ev;
+            public DateTime DeadlineUtc;
+        }
+        readonly List<Pending> _pending = new List<Pending>();
+        readonly List<Pending> _pendingReleased = new List<Pending>();
+        long _currentBlockId = -1;
+        DateTime _blockStartWallClock;
 
         public GuqinCanvas()
         {
@@ -123,23 +136,35 @@ namespace KotonPluginGuqinConstrainer
             SizeChanged += (s, e) => Render();
         }
 
-        public void NoteOn(int stringIdx, double position, int midi, float velocity)
+        /// <summary>Reçoit un événement du plugin. Si BlockId change (nouvelle passe Filter =
+        /// nouvelle relecture), on RESET tout : purge des pending précédents, référentiel
+        /// temporel redémarré. Ça évite les dots fantômes qui traîneraient d'une passe à l'autre
+        /// et le doublement quand un même bloc est redemandé (score refresh, etc.).</summary>
+        public void EnqueueStruck(GuqinConstrainerPlugin.StruckEvent ev)
         {
-            _fingerings.Add(new Fingering { StringIdx = stringIdx, Position = position, Midi = midi });
-            _vibrations.Add(new Vibration
+            if (ev.BlockId != _currentBlockId)
             {
-                StringIdx = stringIdx, Position = position,
-                StartAmpPx = 3.5 + velocity * 3.5, DecayPerSec = 1.8,
-                VisualHz = 9.0 + (6 - stringIdx) * 0.6, StartTime = DateTime.UtcNow,
-            });
+                _currentBlockId = ev.BlockId;
+                _blockStartWallClock = DateTime.UtcNow;
+                _pending.Clear();
+                _pendingReleased.Clear();
+                _fingerings.Clear();
+                _vibrations.Clear();
+            }
+            double tempo = ev.Tempo > 0 ? ev.Tempo : 120.0;
+            double delaySec = ev.StartBeat * 60.0 / tempo;
+            _pending.Add(new Pending { Ev = ev, DeadlineUtc = _blockStartWallClock.AddSeconds(delaySec) });
             EnsureTimer();
-            Render();
         }
-        public void NoteOff(int midi)
+
+        public void EnqueueReleased(int midi)
         {
-            for (int i = _fingerings.Count - 1; i >= 0; i--)
-                if (_fingerings[i].Midi == midi) { _fingerings.RemoveAt(i); break; }
-            Render();
+            // Note-off arrive avec le midi seulement — on ne sait pas quand le "vrai" release doit
+            // avoir lieu selon la timeline. En pratique, on utilise juste la duration du dernier
+            // struck sur ce midi pour planifier. Simple : release immédiat quand vu (l'anim decay
+            // suit sa propre courbe de toute façon).
+            _pendingReleased.Add(new Pending { Ev = new GuqinConstrainerPlugin.StruckEvent { Midi = midi }, DeadlineUtc = DateTime.UtcNow });
+            EnsureTimer();
         }
 
         void EnsureTimer()
@@ -148,11 +173,35 @@ namespace KotonPluginGuqinConstrainer
             _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
             _timer.Tick += (s, e) =>
             {
-                bool anyAlive = false;
+                var now = DateTime.UtcNow;
+                // Débloque les pending arrivés à échéance → visualisation.
+                for (int i = _pending.Count - 1; i >= 0; i--)
+                {
+                    if (_pending[i].DeadlineUtc > now) continue;
+                    var p = _pending[i];
+                    _pending.RemoveAt(i);
+                    _fingerings.Add(new Fingering { StringIdx = p.Ev.StringIdx, Position = p.Ev.Position, Midi = p.Ev.Midi });
+                    _vibrations.Add(new Vibration
+                    {
+                        StringIdx = p.Ev.StringIdx, Position = p.Ev.Position,
+                        StartAmpPx = 6.0, DecayPerSec = 1.8,
+                        VisualHz = 9.0 + (6 - p.Ev.StringIdx) * 0.6, StartTime = now,
+                    });
+                }
+                for (int i = _pendingReleased.Count - 1; i >= 0; i--)
+                {
+                    if (_pendingReleased[i].DeadlineUtc > now) continue;
+                    int m = _pendingReleased[i].Ev.Midi;
+                    _pendingReleased.RemoveAt(i);
+                    for (int j = _fingerings.Count - 1; j >= 0; j--)
+                        if (_fingerings[j].Midi == m) { _fingerings.RemoveAt(j); break; }
+                }
+                // Décroissance des vibrations.
+                bool anyAlive = _pending.Count > 0 || _pendingReleased.Count > 0;
                 for (int i = _vibrations.Count - 1; i >= 0; i--)
                 {
                     var v = _vibrations[i];
-                    double elapsed = (DateTime.UtcNow - v.StartTime).TotalSeconds;
+                    double elapsed = (now - v.StartTime).TotalSeconds;
                     double amp = v.StartAmpPx * Math.Exp(-v.DecayPerSec * elapsed);
                     if (amp < 0.4) _vibrations.RemoveAt(i); else anyAlive = true;
                 }
@@ -164,7 +213,7 @@ namespace KotonPluginGuqinConstrainer
         public void StopAnimation() { _timer?.Stop(); _timer = null; }
 
         const double StringSpacingPx = 11;
-        const double BodyExtraTop = 26, BodyExtraBot = 34, MarginX = 32;
+        const double BodyExtraTop = 40, BodyExtraBot = 20, MarginX = 32;
 
         public void Redraw() => Render();
 
@@ -190,30 +239,56 @@ namespace KotonPluginGuqinConstrainer
                 _root.Children.Add(lbl);
             }
 
+            // Hui EN HAUT (côté joueur : quand le musicien regarde son instrument, les hui sont
+            // sur le bord OPPOSÉ des cordes, visibles au-dessus des cordes dans notre schéma).
+            // Numéros AU-DESSUS des marques hui.
             var huiFill = new SolidColorBrush(Color.FromRgb(0xF0, 0xE8, 0xD2)); huiFill.Freeze();
             var huiBorder = new SolidColorBrush(Color.FromRgb(0x8A, 0x74, 0x50)); huiBorder.Freeze();
-            double huiY = botStringY + 14;
+            double huiY = topStringY - 16;
             for (int h2 = 0; h2 < GuqinModel.HuiPositions.Length; h2++)
             {
                 double x = MarginX + GuqinModel.HuiPositions[h2] * stringSpan;
                 bool center = h2 == 6;
                 double d = center ? 8 : 5;
+                var lbl = new TextBlock { Text = "" + (h2 + 1), Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xA0, 0x88)), FontSize = 8, Opacity = 0.85 };
+                Canvas.SetLeft(lbl, x - 4); Canvas.SetTop(lbl, huiY - 12);
+                _root.Children.Add(lbl);
                 var e = new Ellipse { Width = d, Height = d, Fill = huiFill, Stroke = huiBorder, StrokeThickness = 0.8, IsHitTestVisible = false };
                 Canvas.SetLeft(e, x - d / 2); Canvas.SetTop(e, huiY - d / 2);
                 _root.Children.Add(e);
-                var lbl = new TextBlock { Text = "" + (h2 + 1), Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xA0, 0x88)), FontSize = 8, Opacity = 0.75 };
-                Canvas.SetLeft(lbl, x - 4); Canvas.SetTop(lbl, huiY + 6);
-                _root.Children.Add(lbl);
             }
 
+            // Doigtés actifs : ligne guide fine du hui jusqu'à la corde + disque sur la corde à
+            // la même X que le hui correspondant. Le disque est aligné VERTICALEMENT avec le hui
+            // pour rendre évident quel hui commande quel fingering.
             foreach (var f in _fingerings)
             {
                 if (f.StringIdx < 0 || f.StringIdx >= GuqinModel.StringCount) continue;
                 double y = StringY(f.StringIdx, topStringY);
                 double x = f.Position <= 1e-6 ? MarginX - 12 : MarginX + f.Position * stringSpan;
                 var col = StringColors[f.StringIdx];
-                var dot = new Ellipse { Width = 10, Height = 10, Fill = new SolidColorBrush(col), Stroke = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)), StrokeThickness = 1.2, IsHitTestVisible = false };
-                Canvas.SetLeft(dot, x - 5); Canvas.SetTop(dot, y - 5);
+                // Guide vertical (opacité faible) : du hui vers la corde pressée. Pas de guide pour
+                // les cordes à vide (rendues à gauche du yueshan).
+                if (f.Position > 1e-6)
+                {
+                    var guide = new Line
+                    {
+                        X1 = x, Y1 = huiY + 4, X2 = x, Y2 = y,
+                        Stroke = new SolidColorBrush(Color.FromArgb(80, col.R, col.G, col.B)),
+                        StrokeThickness = 1,
+                        IsHitTestVisible = false,
+                    };
+                    _root.Children.Add(guide);
+                }
+                var dot = new Ellipse
+                {
+                    Width = 11, Height = 11,
+                    Fill = new SolidColorBrush(col),
+                    Stroke = new SolidColorBrush(Color.FromArgb(220, 0, 0, 0)),
+                    StrokeThickness = 1.2,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(dot, x - 5.5); Canvas.SetTop(dot, y - 5.5);
                 _root.Children.Add(dot);
             }
         }

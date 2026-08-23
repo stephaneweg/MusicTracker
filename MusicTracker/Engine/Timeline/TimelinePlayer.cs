@@ -410,7 +410,9 @@ namespace MusicTracker.Engine.Timeline
         {
             // Chaîne de constrainers de la piste : appliquée sur CHAQUE riff produit par un module,
             // exactement comme dans ScoreModel + TimelineImporter (les 3 résolveurs restent alignés).
-            Riff Filter(Riff r) => Effects.NoteConstrainerChain.Apply(sourceTr, r, melodyProject, startBeat);
+            // wantsViz=true : c'est le pipeline audio, les constrainers avec visualisation peuvent
+            // émettre leurs événements (score/MIDI laissent wantsViz=false → pas de spam).
+            Riff Filter(Riff r) => Effects.NoteConstrainerChain.Apply(sourceTr, r, melodyProject, startBeat, wantsViz: true);
 
             PlaceRiffNotes(tr, Filter(RiffForModule(m, resolve, startBeat)), startBeat);
             // A chord that carries a MELODIC CELL plays it as a 2nd voice on the same track (same instrument, same time).
