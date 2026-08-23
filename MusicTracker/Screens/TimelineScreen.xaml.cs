@@ -2389,42 +2389,48 @@ namespace MusicTracker.Screens
                 // et son degré en gros — l'articulation, elle, garde sa vignette puisque c'est elle qui sonne.
                 case PatternGeneratorModule pg: break;
                 // ARTICULATION : c'est elle qui sonne → sa vignette montre le rythme réellement joué, accords
-                // de la piste Accords compris (cellule répétée sur toute la durée du bloc).
+                // de la piste Accords compris (cellule répétée sur toute la durée du bloc). La couleur suit
+                // celle de l'instrument (comme tous les modules "generateurs").
                 case Engine.Flow.ChordArticulationModule cam:
                     box.SetThumbnail(Controls.RiffThumbnail.Get(
                         Engine.Timeline.ChordArticulation.Generate(cam, project, project.RiffById, startBeat),
-                        Controls.RiffThumbnail.Chords));
+                        Controls.InstrumentColors.FamilyHue(track.Instrument)));
                     break;
-                case CadenceModule cm: box.SetThumbnail(Controls.RiffThumbnail.Get(PatternGenerator.GenerateCadence(cm), Controls.RiffThumbnail.Chords)); break;
+                case CadenceModule cm: box.SetThumbnail(Controls.RiffThumbnail.Get(PatternGenerator.GenerateCadence(cm), Controls.InstrumentColors.FamilyHue(track.Instrument))); break;
                 case DrumPatternModule dp: box.SetThumbnail(Controls.RiffThumbnail.GetDrums(DrumPattern.Generate(dp))); break;
                 case Engine.Flow.PolyDrumModule pdm: box.SetThumbnail(Controls.RiffThumbnail.GetDrums(Engine.Flow.PolyDrum.Generate(pdm))); break;
                 case MelodicLineModule ml:
                 {
                     // Prefer the pitched line the engine derives from the chords; fall back to the raw rhythm skeleton
-                    // (so the box still shows something when no chord is in effect). Blue, matching the melodic accent.
+                    // (so the box still shows something when no chord is in effect). Couleur = instrument.
                     int spq = ml.SlicesPerQuarter > 0 ? ml.SlicesPerQuarter : 4;
                     var gen = Engine.Timeline.MelodicLineEngine.GenerateLine(ml, project, project.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat);
                     if (gen == null && ml.Notes != null && ml.Notes.Count > 0)
                         gen = new Riff { Notes = new System.Collections.Generic.List<RiffNote>(ml.Notes), LengthSlices = Math.Max(1, ml.BeatsPerBar) * spq, SlicesPerQuarter = spq };
-                    box.SetThumbnail(Controls.RiffThumbnail.Get(gen, Controls.RiffThumbnail.Melodic));
+                    box.SetThumbnail(Controls.RiffThumbnail.Get(gen, Controls.InstrumentColors.FamilyHue(track.Instrument)));
                     break;
                 }
                 case Engine.Flow.MelodicPolyModule mp:
-                    box.SetThumbnail(Controls.RiffThumbnail.Get(Engine.Flow.MelodicEuclid.Generate(mp, project, project.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat), Controls.RiffThumbnail.Melodic));
+                    box.SetThumbnail(Controls.RiffThumbnail.Get(Engine.Flow.MelodicEuclid.Generate(mp, project, project.RiffById, project.Key ?? new Engine.Score.KeySignature(), startBeat), Controls.InstrumentColors.FamilyHue(track.Instrument)));
                     break;
                 case Engine.Flow.PolyChordModule pcm:
-                    // Panneau custom : une zone par accord (largeur ∝ Beats), séparateurs 1px + label roman/qualité.
-                    // Reflète le vrai découpage temporel du module — on ne peut pas exprimer ça avec la mini-thumbnail.
-                    box.SetContentPanel(BuildPolyChordPanel(pcm));
+                {
+                    // Depuis la dissociation harmonie/articulation, PolyChord ne stocke plus ses accords
+                    // dans le module -- il lit l'harmonie active de la piste Accords, comme
+                    // ChordArticulation. On rend donc une mini-thumbnail piano-roll des notes qu'il va
+                    // reellement produire, teintee de la couleur de famille de l'instrument (comme les
+                    // autres modules melodiques).
+                    var previewRiff = Engine.Flow.PolyChord.Generate(pcm, project, project.RiffById, startBeat);
+                    box.SetThumbnail(Controls.RiffThumbnail.Get(previewRiff, Controls.InstrumentColors.FamilyHue(track.Instrument)));
                     break;
+                }
                 case KotonGeneratorModule kgm2:
                 {
                     // Aperçu mini : le riff produit par le générateur — même chemin que le player,
-                    // donc ce qu'on voit est exactement ce qui va sonner. Nul possible = plugin
-                    // absent ou RenderNotes qui jette (le fond du bloc reste la couleur du plugin).
+                    // donc ce qu'on voit est exactement ce qui va sonner. Couleur = instrument.
                     var previewRiff = Engine.Flow.KotonGeneratorRuntime.RenderRiff(kgm2, project);
                     if (previewRiff != null)
-                        box.SetThumbnail(Controls.RiffThumbnail.Get(previewRiff, Controls.RiffThumbnail.Melodic));
+                        box.SetThumbnail(Controls.RiffThumbnail.Get(previewRiff, Controls.InstrumentColors.FamilyHue(track.Instrument)));
                     break;
                 }
             }
@@ -5366,7 +5372,9 @@ namespace MusicTracker.Screens
 
             CommitRiffEditor();
             TimelineTrack track; TimelineItem item; MelodicLineModule ml;
-            TimelineHelper.InsertMelodicLine(project, out track, out item, out ml);
+            // Cible = piste Instrument selectionnee (si il y en a une), sinon fallback vers la piste
+            // "Ligne (rythme)" dediee (creee au besoin).
+            TimelineHelper.InsertMelodicLine(project, out track, out item, out ml, selectedTrack);
             selectedTrack = track; selectedItem = item;
             Render();
             editorHost.Content = BuildMelodicLineEditor(track, item, ml);   // open its editor

@@ -938,19 +938,29 @@ namespace MusicTracker.Engine.Timeline
             return outl;
         }
 
-        public static void InsertMelodicLine(TimelineProject project,out TimelineTrack selectedTrack,out TimelineItem selectedItem,out MelodicLineModule ml)
+        public static void InsertMelodicLine(TimelineProject project, out TimelineTrack selectedTrack, out TimelineItem selectedItem, out MelodicLineModule ml, TimelineTrack preferredTrack = null)
         {
+            // Prefer explicit target : si l'utilisateur a une piste Instrument selectionnee, on pose
+            // le module dessus (comportement attendu). Sinon on retombe sur la logique "trouve une
+            // piste qui deja porte une ligne melodique, ou cree la piste dediee flute".
             TimelineTrack track = null;
-            foreach (var t in project.Tracks)
+            if (preferredTrack != null && preferredTrack.Type == TimelineTrackType.Instrument)
             {
-                if (t?.Items == null) continue;
-                foreach (var it in t.Items) if (it?.Module is MelodicLineModule) { track = t; break; }
-                if (track != null) break;
+                track = preferredTrack;
             }
-            if (track == null)
+            else
             {
-                track = new TimelineTrack { Name = "Ligne (rythme)", Type = TimelineTrackType.Instrument, Instrument = 73 }; // flute
-                project.Tracks.Add(track);
+                foreach (var t in project.Tracks)
+                {
+                    if (t?.Items == null) continue;
+                    foreach (var it in t.Items) if (it?.Module is MelodicLineModule) { track = t; break; }
+                    if (track != null) break;
+                }
+                if (track == null)
+                {
+                    track = new TimelineTrack { Name = "Ligne (rythme)", Type = TimelineTrackType.Instrument, Instrument = 73 }; // flute
+                    project.Tracks.Add(track);
+                }
             }
             MelodicLineModule prev = null;
             for (int i = track.Items.Count - 1; i >= 0; i--) if (track.Items[i]?.Module is MelodicLineModule pm) { prev = pm; break; }
