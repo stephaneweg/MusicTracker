@@ -55,23 +55,23 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- File / folder list: one row = icon + name, right-aligned meta. -->
-        <Style x:Key="EntryList" TargetType="ListBox">
+        <!-- File / folder list: GridView triable (Nom / Extension / Modifié le). -->
+        <Style x:Key="EntryList" TargetType="ListView">
             <Setter Property="Background" Value="{StaticResource DarkBackground}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
             <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
         </Style>
-        <Style x:Key="EntryItem" TargetType="ListBoxItem">
-            <Setter Property="Padding" Value="8,5"/>
+        <Style x:Key="EntryItem" TargetType="ListViewItem">
+            <Setter Property="Padding" Value="4,3"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ListBoxItem">
+                    <ControlTemplate TargetType="ListViewItem">
                         <Border x:Name="b" Background="Transparent" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter/>
+                            <GridViewRowPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -84,6 +84,18 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+        <!-- Column header — cliquable, sombre, avec indicateur de tri via Tag. -->
+        <Style x:Key="EntryHeader" TargetType="GridViewColumnHeader">
+            <Setter Property="Background" Value="{StaticResource LightBackground}"/>
+            <Setter Property="Foreground" Value="{StaticResource CommonForeground}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource SubtleBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
     </Window.Resources>
 
@@ -135,23 +147,41 @@
 
                 <Border Grid.Column="1" Background="{StaticResource DarkBackground}" CornerRadius="6">
                     <Grid>
-                        <ListBox x:Name="listFiles" Style="{StaticResource EntryList}" ItemContainerStyle="{StaticResource EntryItem}"
-                                 SelectionChanged="listFiles_SelectionChanged" MouseDoubleClick="listFiles_DoubleClick" Padding="4">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="14" Margin="0,0,9,0" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Grid.Column="2" Text="{Binding Detail}" Foreground="{StaticResource SecondaryForeground}" FontSize="11" VerticalAlignment="Center" Margin="12,0,4,0"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                        <ListView x:Name="listFiles" Style="{StaticResource EntryList}" ItemContainerStyle="{StaticResource EntryItem}"
+                                  SelectionChanged="listFiles_SelectionChanged" MouseDoubleClick="listFiles_DoubleClick" Padding="0"
+                                  GridViewColumnHeader.Click="ListHeader_Click">
+                            <ListView.View>
+                                <GridView>
+                                    <GridView.ColumnHeaderContainerStyle>
+                                        <StaticResource ResourceKey="EntryHeader"/>
+                                    </GridView.ColumnHeaderContainerStyle>
+                                    <GridViewColumn Header="{loc:Tr 'Nom'}" Width="380">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Icon}" FontSize="14" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="{loc:Tr 'Extension'}" Width="80">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Ext}" Foreground="{StaticResource SecondaryForeground}" FontSize="11"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="{loc:Tr 'ModifieLe'}" Width="140">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding ModifiedDisplay}" Foreground="{StaticResource SecondaryForeground}" FontSize="11"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
                         <TextBlock x:Name="txtEmpty" Text="{loc:Tr 'DossierVide'}" Foreground="{StaticResource SecondaryForeground}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
                     </Grid>

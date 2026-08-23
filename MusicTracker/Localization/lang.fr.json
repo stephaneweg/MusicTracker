@@ -119,7 +119,6 @@
   "RestartTierce": "Tierce",
   "RestartQuinte": "Quinte",
   "SupprimerCetAccord": "Supprimer cet accord",
-
   "AccordsMesure": "Accords / mesure",
   "AddAKey": "＋  Ajouter une clé",
   "AddAMelodicLine": "🎶 Ajouter une ligne mélodique",
@@ -313,7 +312,7 @@
   "SeRepete": "se répète",
   "DureeEnTemps": "Durée (temps)",
   "TempsCycle": "Temps par cycle",
-  "Temps": "temps",
+  "Temps": " temps",
   "ComposerAvecIaPolyrythmique": "Composer avec l'IA (polyrythmique)",
   "PolyrythmicComposeSubtitle": "Batterie + ligne mélodique polyrythmiques : chaque calque déroule son cycle euclidien E(K,N) sur sa propre subdivision.",
   "PolyrythmicComposeShort": "Batterie + ligne mélodique en cycles euclidiens",
@@ -390,6 +389,7 @@
   "DisponibleUniquementSurUneMusiqueStructu": "Disponible uniquement sur une musique structurée (Piste → Créer structure…).",
   "Do": "Do",
   "Documents": "📄  Documents",
+  "Téléchargements": "📥  Téléchargements",
   "DonneUnNomAuModele": "Donne un nom au modèle.",
   "DossierIntrouvable": "Dossier introuvable.",
   "DossierParent": "Dossier parent",
@@ -612,7 +612,6 @@
   "Minimize": "Réduire",
   "Minor": "Mineur",
   "Mixte": "Mixte",
-  "Mode": "Mode",
   "ModeHisaishi": "Mode (Hisaishi)",
   "Model": "Modèle",
   "Model2": "Modèle :",
@@ -918,7 +917,6 @@
   "TemplateJsonJsonAllFiles": "Template (*.json)|*.json|Tous les fichiers (*.*)|*.*",
   "Tempo": "Tempo :",
   "TempoBPM": "Tempo (BPM)",
-  "Temps": " temps",
   "TempsMesure": "Temps / mesure",
   "TensionPenteDeRegistreDemiTons": "Tension (pente de registre, ± demi-tons)",
   "Termine": "Terminé",
@@ -1005,5 +1003,7 @@
   "AutomationSustain": "Sustain (pédale)",
   "AutomationReverb": "Réverbe",
   "AutomationChorus": "Chorus",
-  "AutomationPitchBend": "Pitch bend"
+  "AutomationPitchBend": "Pitch bend",
+  "Extension": "Extension",
+  "ModifieLe": "Modifié le"
 }

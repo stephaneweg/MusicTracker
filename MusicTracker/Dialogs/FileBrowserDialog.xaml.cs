@@ -34,14 +34,20 @@ namespace MusicTracker.Dialogs
 
         // --- internals --------------------------------------------------------------------------
         class FilterSpec { public string Desc; public string[] Pats; public bool All; }
-        // Name/Icon/Detail are properties (WPF data binding ignores fields).
+        // Name/Icon/Ext/Modified are properties (WPF data binding ignores fields). Modified est
+        // stocké en DateTime pour le tri chronologique fiable ; ModifiedDisplay est la version
+        // lisible pour la GridView.
         class FsEntry
         {
             public bool IsDir;
             public string FullPath;
             public string Name { get; set; }
             public string Icon { get; set; }
-            public string Detail { get; set; }
+            public string Ext { get; set; }        // ".mp3", ".sq", "" pour dossiers
+            public DateTime Modified { get; set; } // clé de tri
+            public string ModifiedDisplay { get; set; }
+            public long? Size { get; set; }
+            public string SizeDisplay { get; set; }
         }
 
         readonly List<FilterSpec> filters = new List<FilterSpec>();
@@ -157,15 +163,29 @@ namespace MusicTracker.Dialogs
             try
             {
                 var di = new DirectoryInfo(dir);
-                foreach (var d in di.GetDirectories().OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+                foreach (var d in di.GetDirectories())
                 {
                     if (IsHidden(d.Attributes)) continue;
-                    items.Add(new FsEntry { IsDir = true, Name = d.Name, FullPath = d.FullName, Icon = "📁", Detail = SafeDate(() => d.LastWriteTime) });
+                    DateTime wt = SafeLastWrite(() => d.LastWriteTime);
+                    items.Add(new FsEntry
+                    {
+                        IsDir = true, Name = d.Name, FullPath = d.FullName, Icon = "📁", Ext = "",
+                        Modified = wt, ModifiedDisplay = FormatDate(wt),
+                        Size = null, SizeDisplay = "",
+                    });
                 }
-                foreach (var f in di.GetFiles().OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+                foreach (var f in di.GetFiles())
                 {
                     if (IsHidden(f.Attributes) || !MatchFilter(f.Name)) continue;
-                    items.Add(new FsEntry { IsDir = false, Name = f.Name, FullPath = f.FullName, Icon = IconFor(f.Name), Detail = SafeDate(() => f.LastWriteTime) + "    " + SizeStr(f.Length) });
+                    DateTime wt = SafeLastWrite(() => f.LastWriteTime);
+                    long sz = 0; try { sz = f.Length; } catch { }
+                    items.Add(new FsEntry
+                    {
+                        IsDir = false, Name = f.Name, FullPath = f.FullName, Icon = IconFor(f.Name),
+                        Ext = (Path.GetExtension(f.Name) ?? "").ToLowerInvariant(),
+                        Modified = wt, ModifiedDisplay = FormatDate(wt),
+                        Size = sz, SizeDisplay = SizeStr(sz),
+                    });
                 }
             }
             catch { /* inaccessible folder → empty */ }
@@ -181,15 +201,87 @@ namespace MusicTracker.Dialogs
                 try { if (!File.Exists(r.Path)) continue; } catch { continue; }
                 string name = Path.GetFileName(r.Path);
                 if (!MatchFilter(name)) continue;
-                items.Add(new FsEntry { IsDir = false, Name = name, FullPath = r.Path, Icon = IconFor(name), Detail = r.Folder });
+                DateTime wt = DateTime.MinValue;
+                long sz = 0;
+                try { var fi = new FileInfo(r.Path); wt = fi.LastWriteTime; sz = fi.Length; } catch { }
+                items.Add(new FsEntry
+                {
+                    IsDir = false, Name = name, FullPath = r.Path, Icon = IconFor(name),
+                    Ext = (Path.GetExtension(name) ?? "").ToLowerInvariant(),
+                    Modified = wt, ModifiedDisplay = string.IsNullOrEmpty(r.Folder) ? FormatDate(wt) : r.Folder,
+                    Size = sz, SizeDisplay = SizeStr(sz),
+                });
             }
             ShowEntries(items);
         }
 
+        static DateTime SafeLastWrite(Func<DateTime> get) { try { return get(); } catch { return DateTime.MinValue; } }
+        static string FormatDate(DateTime dt) => dt == DateTime.MinValue ? "" : dt.ToString("yyyy-MM-dd HH:mm");
+
+        // Tri courant de la GridView. IsDir desc garde toujours les dossiers en haut ; la 2e clé
+        // est celle choisie par l'user au clic sur en-tête.
+        string sortKey = "Name";
+        System.ComponentModel.ListSortDirection sortDir = System.ComponentModel.ListSortDirection.Ascending;
+
         void ShowEntries(List<FsEntry> items)
         {
+            ApplySort(items);
             listFiles.ItemsSource = items;
             txtEmpty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        /// <summary>Tri en place : dossiers toujours au-dessus, puis par la colonne courante (Name /
+        /// Ext / Modified) dans la direction sortDir.</summary>
+        void ApplySort(List<FsEntry> items)
+        {
+            int dirDelta(FsEntry a, FsEntry b) => (b.IsDir ? 1 : 0).CompareTo(a.IsDir ? 1 : 0);
+            Comparison<FsEntry> cmp;
+            switch (sortKey)
+            {
+                case "Ext":
+                    cmp = (a, b) => { int d = dirDelta(a, b); if (d != 0) return d;
+                        return string.Compare(a.Ext ?? "", b.Ext ?? "", StringComparison.OrdinalIgnoreCase); };
+                    break;
+                case "Modified":
+                    cmp = (a, b) => { int d = dirDelta(a, b); if (d != 0) return d;
+                        return a.Modified.CompareTo(b.Modified); };
+                    break;
+                default:
+                    cmp = (a, b) => { int d = dirDelta(a, b); if (d != 0) return d;
+                        return string.Compare(a.Name ?? "", b.Name ?? "", StringComparison.OrdinalIgnoreCase); };
+                    break;
+            }
+            items.Sort(cmp);
+            if (sortDir == System.ComponentModel.ListSortDirection.Descending)
+            {
+                // On garde dossiers en haut malgré desc — donc on reverse chaque groupe séparément.
+                int split = 0;
+                for (int i = 0; i < items.Count && items[i].IsDir; i++) split = i + 1;
+                var dirs = items.GetRange(0, split);
+                var files = items.GetRange(split, items.Count - split);
+                dirs.Reverse(); files.Reverse();
+                items.Clear();
+                items.AddRange(dirs); items.AddRange(files);
+            }
+        }
+
+        /// <summary>Clic sur en-tête colonne : identifie la clé de tri via Header i18n (Nom /
+        /// Extension / ModifieLe), toggle asc/desc si même colonne, sinon reset asc.</summary>
+        void ListHeader_Click(object sender, RoutedEventArgs e)
+        {
+            var header = e.OriginalSource as System.Windows.Controls.GridViewColumnHeader;
+            if (header?.Content == null) return;
+            string content = header.Content.ToString();
+            string newKey =
+                content == Loc.T("Extension") ? "Ext" :
+                content == Loc.T("ModifieLe") ? "Modified" :
+                "Name";
+            if (newKey == sortKey)
+                sortDir = sortDir == System.ComponentModel.ListSortDirection.Ascending
+                    ? System.ComponentModel.ListSortDirection.Descending
+                    : System.ComponentModel.ListSortDirection.Ascending;
+            else { sortKey = newKey; sortDir = System.ComponentModel.ListSortDirection.Ascending; }
+            RefreshCurrent();
         }
 
         void RefreshCurrent() { if (current != null) GoTo(current, record: false); }
@@ -202,6 +294,7 @@ namespace MusicTracker.Dialogs
             AddSeparator();
             AddKnown(Loc.T("Bureau"), Environment.SpecialFolder.DesktopDirectory);
             AddKnown(Loc.T("Documents"), Environment.SpecialFolder.MyDocuments);
+            AddKnownPath(Loc.T("Téléchargements"), ResolveDownloadsFolder());
             AddKnown(Loc.T("Musique"), Environment.SpecialFolder.MyMusic);
             AddSeparator();
             foreach (var drv in SafeDrives())
@@ -214,6 +307,36 @@ namespace MusicTracker.Dialogs
         {
             string p = Environment.GetFolderPath(f);
             if (!string.IsNullOrEmpty(p) && Directory.Exists(p)) AddPlace(label, p);
+        }
+
+        /// <summary>Comme AddKnown mais avec un chemin déjà résolu (utile pour Downloads qui n'a
+        /// pas de SpecialFolder en .NET Framework).</summary>
+        void AddKnownPath(string label, string path)
+        {
+            if (!string.IsNullOrEmpty(path) && Directory.Exists(path)) AddPlace(label, path);
+        }
+
+        /// <summary>Résout le dossier Téléchargements de l'user. Ordre : (1) registre
+        /// User Shell Folders (source authoritative Windows, gère les Downloads déplacés vers
+        /// D:\... par l'user), (2) fallback %USERPROFILE%\Downloads.</summary>
+        static string ResolveDownloadsFolder()
+        {
+            try
+            {
+                using (var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"))
+                {
+                    var v = k?.GetValue("{374DE290-123F-4565-9164-39C4925E467B}") as string;
+                    if (!string.IsNullOrEmpty(v))
+                    {
+                        v = Environment.ExpandEnvironmentVariables(v);
+                        if (Directory.Exists(v)) return v;
+                    }
+                }
+            }
+            catch { }
+            var fallback = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            return Directory.Exists(fallback) ? fallback : null;
         }
 
         void AddPlace(string label, string path)
