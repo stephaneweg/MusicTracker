@@ -4762,6 +4762,7 @@ namespace MusicTracker.Screens
                 var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
                 row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
                 var lbl = new TextBlock
                 {
@@ -4787,6 +4788,25 @@ namespace MusicTracker.Screens
                 editBtn.Click += (s, e) => OpenNoteConstrainerEditor(track, idxCaptured);
                 Grid.SetColumn(editBtn, 1);
                 row.Children.Add(editBtn);
+
+                var removeBtn = new Button
+                {
+                    Content = "✕",
+                    Width = 20, Height = 20,
+                    Padding = new Thickness(0),
+                    FontSize = 11,
+                    Margin = new Thickness(2, 0, 0, 0),
+                    ToolTip = "Retirer",
+                    Cursor = System.Windows.Input.Cursors.Hand,
+                };
+                removeBtn.Click += (s, e) =>
+                {
+                    PushUndo("track:remove-constrainer");
+                    if (idxCaptured < track.NoteConstrainers.Count) track.NoteConstrainers.RemoveAt(idxCaptured);
+                    Render();
+                };
+                Grid.SetColumn(removeBtn, 2);
+                row.Children.Add(removeBtn);
 
                 // Clic droit sur la ligne = menu contextuel (Retirer, Bypass on/off).
                 row.PreviewMouseRightButtonUp += (s, e) =>
