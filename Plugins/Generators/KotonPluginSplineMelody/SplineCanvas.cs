@@ -269,8 +269,16 @@ namespace KotonPluginSplineMelody
             int active = _getActiveIndex();
             var spec = _getVoice(active);
             if (spec == null) return;
-            if (spec.Points.Count <= 2) { e.Handled = true; return; }   // garde-fou : min 2 points
             if (idx < 0 || idx >= spec.Points.Count) { e.Handled = true; return; }
+            // Points ancres (le plus a gauche + le plus a droite par T) : verrouilles. Sans eux la
+            // spline ne couvre plus les extremes du bloc (le sampler extrapole a plat).
+            int lowestIdx = 0, highestIdx = 0;
+            for (int i = 1; i < spec.Points.Count; i++)
+            {
+                if (spec.Points[i].T < spec.Points[lowestIdx].T) lowestIdx = i;
+                if (spec.Points[i].T > spec.Points[highestIdx].T) highestIdx = i;
+            }
+            if (idx == lowestIdx || idx == highestIdx) { e.Handled = true; return; }
             spec.Points.RemoveAt(idx);
             Changed?.Invoke();
             Redraw();
