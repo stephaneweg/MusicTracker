@@ -203,10 +203,15 @@ namespace KotonPluginGuqinConstrainer
                     if (decision == GuqinConstraint.Decision.StealOldest && toRelease != null)
                     {
                         // GLISSANDO : la corde était en vibration (ancienne note) et une nouvelle
-                        // note arrive dessus. Si ni l'ancienne ni la nouvelle n'est à vide (le doigt
-                        // gauche est engagé dans les 2 cas), on marque la nouvelle note d'un glide
-                        // qui démarre au pitch de l'ancienne et arrive au pitch cible.
-                        if (doGliss && !toRelease.IsOpen && !f.IsOpen && toRelease.Midi != f.Midi)
+                        // note arrive SUR LA MÊME CORDE. Si ni l'ancienne ni la nouvelle n'est à
+                        // vide (le doigt gauche est engagé dans les 2 cas), on marque la nouvelle
+                        // note d'un glide qui démarre au pitch de l'ancienne et arrive au pitch
+                        // cible. IMPORTANT : StealOldest est aussi renvoyé quand l'empan ou le
+                        // nombre max de doigts est dépassé → dans ce cas la note volée peut être
+                        // sur une AUTRE corde. On ne glisse JAMAIS entre 2 cordes différentes.
+                        if (doGliss && !toRelease.IsOpen && !f.IsOpen
+                            && toRelease.StringIdx == f.StringIdx
+                            && toRelease.Midi != f.Midi)
                         {
                             glideFromMidi[idx] = toRelease.Midi;
                             glideDurBeats[idx] = glideBeats;
