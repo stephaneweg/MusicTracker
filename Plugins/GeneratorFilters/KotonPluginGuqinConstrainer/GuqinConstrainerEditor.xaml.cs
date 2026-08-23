@@ -351,9 +351,11 @@ namespace KotonPluginGuqinConstrainer
                 _root.Children.Add(e);
             }
 
-            // Doigtés actifs : ligne guide fine du hui jusqu'à la corde + disque sur la corde à
-            // la même X que le hui. Guide vertical qui part du hui (vers le haut si c'est la
-            // corde 7 au-dessus, vers le bas pour les cordes 1..6 en dessous).
+            // Doigtés actifs : disque sur la corde à la position hui + guide vertical entre le hui
+            // et la corde pressée. Le disque est dessiné en TAILLE PLUS GRANDE + bordure blanche
+            // pour éviter d'être caché par la vibration de corde ou les inlays. Panel de debug en
+            // bas affiche les positions reçues pour diagnostic si un fingering ne s'affiche pas.
+            var debugText = new System.Text.StringBuilder();
             foreach (var f in _fingerings)
             {
                 if (f.StringIdx < 0 || f.StringIdx >= GuqinModel.StringCount) continue;
@@ -362,8 +364,6 @@ namespace KotonPluginGuqinConstrainer
                 var col = StringColors[f.StringIdx];
                 if (f.Position > 1e-6)
                 {
-                    // Guide entre hui et corde : segment court, opacité faible. Directions gérées
-                    // automatiquement puisque WPF trace de X1,Y1 à X2,Y2 indépendamment du sens.
                     var guide = new Line
                     {
                         X1 = x, Y1 = huiY, X2 = x, Y2 = y,
@@ -373,16 +373,40 @@ namespace KotonPluginGuqinConstrainer
                     };
                     _root.Children.Add(guide);
                 }
+                // Disque plus grand (14px) + double bordure (blanche extérieure + noire intérieure)
+                // pour rester visible malgré le grain du bois, la vibration de la corde, ou tout
+                // autre calque qui pourrait le masquer partiellement.
+                var halo = new Ellipse
+                {
+                    Width = 16, Height = 16,
+                    Stroke = new SolidColorBrush(Color.FromArgb(230, 255, 255, 255)),
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(halo, x - 8); Canvas.SetTop(halo, y - 8);
+                _root.Children.Add(halo);
                 var dot = new Ellipse
                 {
-                    Width = 11, Height = 11,
+                    Width = 12, Height = 12,
                     Fill = new SolidColorBrush(col),
-                    Stroke = new SolidColorBrush(Color.FromArgb(220, 0, 0, 0)),
+                    Stroke = new SolidColorBrush(Color.FromArgb(255, 0, 0, 0)),
                     StrokeThickness = 1.2,
                     IsHitTestVisible = false,
                 };
-                Canvas.SetLeft(dot, x - 5.5); Canvas.SetTop(dot, y - 5.5);
+                Canvas.SetLeft(dot, x - 6); Canvas.SetTop(dot, y - 6);
                 _root.Children.Add(dot);
+                debugText.Append("s").Append(f.StringIdx + 1).Append("@").Append(f.Position.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)).Append(" ");
+            }
+            if (_fingerings.Count > 0)
+            {
+                var dbg = new TextBlock
+                {
+                    Text = "Fingerings: " + debugText.ToString(),
+                    Foreground = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)),
+                    FontSize = 10, FontFamily = new FontFamily("Consolas, Courier New"),
+                };
+                Canvas.SetLeft(dbg, 8); Canvas.SetTop(dbg, h - 18);
+                _root.Children.Add(dbg);
             }
         }
 
