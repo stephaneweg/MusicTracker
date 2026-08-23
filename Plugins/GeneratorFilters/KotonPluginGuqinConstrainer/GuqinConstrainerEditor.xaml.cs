@@ -362,7 +362,10 @@ namespace KotonPluginGuqinConstrainer
             {
                 if (f.StringIdx < 0 || f.StringIdx >= GuqinModel.StringCount) continue;
                 double y = StringY(f.StringIdx, topStringY);
-                double x = f.Position <= 1e-6 ? MarginX - 12 : MarginX + f.Position * stringSpan;
+                // Corde à vide : disque à l'intersection nut/corde (MarginX + 2), plus DANS le
+                // sillet où il était masqué par la barre en noyer. Corde stoppée : à la position
+                // hui × diapason.
+                double x = f.Position <= 1e-6 ? MarginX + 2 : MarginX + f.Position * stringSpan;
                 var col = StringColors[f.StringIdx];
                 if (f.Position > 1e-6)
                 {
