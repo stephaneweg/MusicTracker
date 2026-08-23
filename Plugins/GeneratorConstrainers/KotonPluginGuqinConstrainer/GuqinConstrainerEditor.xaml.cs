@@ -56,14 +56,18 @@ namespace KotonPluginGuqinConstrainer
 
             _plugin.NoteStruck += OnNoteStruck;
             _plugin.NoteReleased += OnNoteReleased;
-            // Purge la viz quand la lecture s'arrete (bouton Stop, teardown du player). Sans ça,
-            // les events déjà enqueue continuent de flasher les dots après le Stop audio.
+            // PlaybackStarted : le référentiel wall-clock est défini au moment où l'audio démarre
+            // (après le prime buffer). Tous les events reçus avant restent en buffer et sont
+            // schedulés à partir de ce moment.
+            Action onStart = () => Dispatcher.BeginInvoke(new Action(() => _canvas.OnPlaybackStarted()));
             Action onStop = () => Dispatcher.BeginInvoke(new Action(() => _canvas.PurgeAll()));
+            KotonHost.PlaybackStarted += onStart;
             KotonHost.PlaybackStopped += onStop;
             Unloaded += (s, e) =>
             {
                 _plugin.NoteStruck -= OnNoteStruck;
                 _plugin.NoteReleased -= OnNoteReleased;
+                KotonHost.PlaybackStarted -= onStart;
                 KotonHost.PlaybackStopped -= onStop;
                 _canvas.StopAnimation();
             };
@@ -147,8 +151,12 @@ namespace KotonPluginGuqinConstrainer
         }
         readonly List<Pending> _pending = new List<Pending>();
         readonly List<Pending> _pendingReleased = new List<Pending>();
-        long _currentBlockId = -1;
-        DateTime _blockStartWallClock;
+        // Buffer des events reçus AVANT que PlaybackStarted ne fixe le référentiel wall-clock —
+        // tous les Filter arrivent au flatten (avant que l'audio ne joue), il faut les garder pour
+        // les scheduler correctement une fois le référentiel connu.
+        readonly List<GuqinConstrainerPlugin.StruckEvent> _bufferedStruck = new List<GuqinConstrainerPlugin.StruckEvent>();
+        readonly List<GuqinConstrainerPlugin.ReleaseEvent> _bufferedReleased = new List<GuqinConstrainerPlugin.ReleaseEvent>();
+        DateTime? _playbackStartWallClock;   // null tant que la lecture n'a pas démarré
 
         public GuqinCanvas(Func<double> getDiapasonCm = null)
         {
@@ -158,49 +166,52 @@ namespace KotonPluginGuqinConstrainer
             SizeChanged += (s, e) => Render();
         }
 
-        /// <summary>Reçoit un événement du plugin. Si BlockId change (nouvelle passe Filter =
-        /// nouvelle relecture), on RESET tout : purge des pending précédents, référentiel
-        /// temporel redémarré. Ça évite les dots fantômes qui traîneraient d'une passe à l'autre
-        /// et le doublement quand un même bloc est redemandé (score refresh, etc.).</summary>
+        /// <summary>Reçoit un event. Si le référentiel wall-clock est déjà connu (playback a
+        /// démarré), on schedule direct sur `_playbackStartWallClock + AbsoluteStartBeat * 60/tempo`.
+        /// Sinon on buffer — sera flushé quand OnPlaybackStarted fixera le référentiel.</summary>
         public void EnqueueStruck(GuqinConstrainerPlugin.StruckEvent ev)
         {
-            if (ev.BlockId != _currentBlockId)
-            {
-                _currentBlockId = ev.BlockId;
-                _blockStartWallClock = DateTime.UtcNow;
-                _pending.Clear();
-                _pendingReleased.Clear();
-                _fingerings.Clear();
-                _vibrations.Clear();
-            }
-            double tempo = ev.Tempo > 0 ? ev.Tempo : 120.0;
-            double delaySec = ev.StartBeat * 60.0 / tempo;
-            _pending.Add(new Pending { Ev = ev, DeadlineUtc = _blockStartWallClock.AddSeconds(delaySec) });
+            if (_playbackStartWallClock.HasValue) SchedulePending(ev);
+            else _bufferedStruck.Add(ev);
             EnsureTimer();
         }
 
         public void EnqueueReleased(GuqinConstrainerPlugin.ReleaseEvent ev)
         {
-            // Sync avec le référentiel du bloc (comme EnqueueStruck) : si BlockId diffère, reset.
-            if (ev.BlockId != _currentBlockId)
-            {
-                _currentBlockId = ev.BlockId;
-                _blockStartWallClock = DateTime.UtcNow;
-                _pending.Clear();
-                _pendingReleased.Clear();
-                _fingerings.Clear();
-                _vibrations.Clear();
-            }
+            if (_playbackStartWallClock.HasValue) SchedulePendingRelease(ev);
+            else _bufferedReleased.Add(ev);
+            EnsureTimer();
+        }
+
+        /// <summary>Appelé quand la lecture audio démarre (event KotonHost.PlaybackStarted). Fixe le
+        /// référentiel wall-clock et flush tous les events reçus pendant le flatten dans les files
+        /// pending, chacun à sa position absolue sur la timeline.</summary>
+        public void OnPlaybackStarted()
+        {
+            _playbackStartWallClock = DateTime.UtcNow;
+            foreach (var ev in _bufferedStruck) SchedulePending(ev);
+            foreach (var ev in _bufferedReleased) SchedulePendingRelease(ev);
+            _bufferedStruck.Clear();
+            _bufferedReleased.Clear();
+            EnsureTimer();
+        }
+
+        void SchedulePending(GuqinConstrainerPlugin.StruckEvent ev)
+        {
             double tempo = ev.Tempo > 0 ? ev.Tempo : 120.0;
-            double delaySec = ev.AtBeat * 60.0 / tempo;
-            // On abuse un peu de la struct Pending qui porte un StruckEvent : on stocke midi dans
-            // Ev.Midi et le deadline dans DeadlineUtc, les autres champs sont ignorés.
+            double delaySec = ev.AbsoluteStartBeat * 60.0 / tempo;
+            _pending.Add(new Pending { Ev = ev, DeadlineUtc = _playbackStartWallClock.Value.AddSeconds(delaySec) });
+        }
+
+        void SchedulePendingRelease(GuqinConstrainerPlugin.ReleaseEvent ev)
+        {
+            double tempo = ev.Tempo > 0 ? ev.Tempo : 120.0;
+            double delaySec = ev.AbsoluteAtBeat * 60.0 / tempo;
             _pendingReleased.Add(new Pending
             {
                 Ev = new GuqinConstrainerPlugin.StruckEvent { Midi = ev.Midi },
-                DeadlineUtc = _blockStartWallClock.AddSeconds(delaySec),
+                DeadlineUtc = _playbackStartWallClock.Value.AddSeconds(delaySec),
             });
-            EnsureTimer();
         }
 
         void EnsureTimer()
@@ -248,16 +259,19 @@ namespace KotonPluginGuqinConstrainer
         }
         public void StopAnimation() { _timer?.Stop(); _timer = null; }
 
-        /// <summary>Purge complète : appelée quand la lecture s'arrête (bouton Stop). Vide les
-        /// files pending + vibrations + fingerings actifs, coupe l'animation, re-render une fois
-        /// pour effacer les dots à l'écran. Le prochain playback partira d'un état propre.</summary>
+        /// <summary>Purge complète : appelée quand la lecture s'arrête (bouton Stop). Vide TOUT :
+        /// buffers, files pending, vibrations, fingerings actifs, référentiel wall-clock. Coupe
+        /// l'animation, re-render une fois pour effacer les dots. Le prochain PlaybackStarted
+        /// repartira d'un état complètement propre.</summary>
         public void PurgeAll()
         {
+            _bufferedStruck.Clear();
+            _bufferedReleased.Clear();
             _pending.Clear();
             _pendingReleased.Clear();
             _vibrations.Clear();
             _fingerings.Clear();
-            _currentBlockId = -1;   // le prochain event redémarrera un nouveau bloc proprement
+            _playbackStartWallClock = null;
             StopAnimation();
             Render();
         }

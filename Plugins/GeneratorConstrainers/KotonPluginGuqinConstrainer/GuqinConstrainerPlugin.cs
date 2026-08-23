@@ -47,29 +47,25 @@ namespace KotonPluginGuqinConstrainer
             public int StringIdx;
             public double Position;
             public int Midi;
+            /// <summary>Beat RELATIF au début du bloc (info de contexte).</summary>
             public double StartBeat;
             public double DurationBeats;
-            /// <summary>Tempo en BPM au moment du bloc — l'éditeur convertit StartBeat en délai
-            /// wall-clock pour animer les doigtés en cadence de lecture.</summary>
+            /// <summary>Beat ABSOLU sur la timeline (BlockStartBeat + StartBeat). C'est cette
+            /// position qui permet à l'éditeur de scheduler l'animation à son moment réel de
+            /// lecture, quelle que soit la position du bloc sur la piste — sinon l'anim de tous
+            /// les blocs joue en même temps au flatten et rien ne suit les modules suivants.</summary>
+            public double AbsoluteStartBeat;
             public double Tempo;
-            /// <summary>Identifiant incrémental de bloc (une passe Filter = un BlockId). L'éditeur
-            /// reset son référentiel temporel quand le BlockId change → chaque relecture repart de
-            /// zéro, chaque redraw d'un même bloc ne dédouble pas les événements.</summary>
-            public long BlockId;
         }
         public struct ReleaseEvent
         {
             public int Midi;
-            /// <summary>Beat (dans le bloc) où le release a lieu — utilisé pour scheduler la
-            /// disparition du dot au bon moment côté éditeur.</summary>
-            public double AtBeat;
+            /// <summary>Beat ABSOLU sur la timeline (position de release).</summary>
+            public double AbsoluteAtBeat;
             public double Tempo;
-            public long BlockId;
         }
         public event Action<StruckEvent> NoteStruck;
         public event Action<ReleaseEvent> NoteReleased;
-
-        long _blockCounter;
 
         public GuqinConstrainerPlugin()
         {
@@ -95,8 +91,8 @@ namespace KotonPluginGuqinConstrainer
             var tuning = ActiveTuning;
             bool snap = _snapMode.Value >= 0.5;
             bool wantsViz = ctx != null && ctx.WantsViz;
-            long blockId = System.Threading.Interlocked.Increment(ref _blockCounter);
             double tempo = ctx?.Tempo > 0 ? ctx.Tempo : 120.0;
+            double blockStartAbs = ctx?.BlockStartBeat ?? 0.0;   // position absolue du bloc sur la timeline
             var constraint = new GuqinConstraint
             {
                 DiapasonCm = _diapasonCm.Value,
@@ -147,7 +143,7 @@ namespace KotonPluginGuqinConstrainer
                         // Vol de doigt à l'instant t (StartBeat de la nouvelle note) → release
                         // scheduled à cet instant précis, PAS à la fin de la duration originale
                         // (la corde est reprise par la nouvelle note).
-                        if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = toRelease.Midi, AtBeat = srcNote.StartBeat, Tempo = tempo, BlockId = blockId }); } catch { } }
+                        if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = toRelease.Midi, AbsoluteAtBeat = blockStartAbs + srcNote.StartBeat, Tempo = tempo }); } catch { } }
                     }
                     var held = constraint.Register(f.Midi, f.StringIdx, f.Position);
                     heldByIdx[idx] = held;
@@ -164,8 +160,8 @@ namespace KotonPluginGuqinConstrainer
                                 Midi = f.Midi,
                                 StartBeat = srcNote.StartBeat,
                                 DurationBeats = srcNote.DurationBeats,
+                                AbsoluteStartBeat = blockStartAbs + srcNote.StartBeat,
                                 Tempo = tempo,
-                                BlockId = blockId,
                             });
                         } catch { }
                     }
@@ -177,7 +173,7 @@ namespace KotonPluginGuqinConstrainer
                     {
                         constraint.Release(h);
                         // Release scheduled à la fin naturelle de la note (t = event t).
-                        if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = h.Midi, AtBeat = t, Tempo = tempo, BlockId = blockId }); } catch { } }
+                        if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = h.Midi, AbsoluteAtBeat = blockStartAbs + t, Tempo = tempo }); } catch { } }
                     }
                 }
             }

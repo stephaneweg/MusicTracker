@@ -556,6 +556,10 @@ namespace MusicTracker.Screens
             playWaveOut = new NAudio.Wave.WaveOutEvent { DesiredLatency = 150 };
             playWaveOut.Init(playBuffer);
             playWaveOut.Play();
+            // Notifie les plugins avec viz temps reel (constrainer guqin, etc.) que la lecture
+            // audio commence MAINTENANT — ils utilisent ce moment comme référentiel pour scheduler
+            // leurs animations à partir des events déjà emis au flatten.
+            try { KotonStudio.Library.KotonHost.RaisePlaybackStarted(); } catch { }
             SetPlayGlyph("⏸"); // now playing -> the toggle shows Pause
             playTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
             playTimer.Tick += (s, ev) => MoveCursor(PlayedBeat());

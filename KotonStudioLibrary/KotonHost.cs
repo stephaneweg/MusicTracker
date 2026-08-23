@@ -125,6 +125,22 @@ namespace KotonStudio.Library
         /// timeline. Exposé public parce que ne peut pas être invoqué depuis l'extérieur autrement
         /// (les events C# sont invocables uniquement depuis leur classe déclarante).</summary>
         public static void RaisePlaybackStopped() { try { _playbackStopped?.Invoke(); } catch { } }
+
+        /// <summary>Notifie que la lecture DÉMARRE (l'utilisateur a cliqué sur Play, le player va
+        /// commencer à générer de l'audio). Les plugins avec viz temps réel s'y abonnent pour
+        /// prendre un référentiel wall-clock commun : les événements arrivés au flatten peuvent
+        /// alors être planifiés à leur position absolue sur la timeline (BlockStartBeat + StartBeat)
+        /// depuis ce référentiel, ce qui synchronise l'animation avec l'audio réel.</summary>
+        public static event Action PlaybackStarted
+        {
+            add    { _playbackStarted += value; }
+            remove { _playbackStarted -= value; }
+        }
+        static Action _playbackStarted;
+
+        /// <summary>Déclenche <see cref="PlaybackStarted"/> — appelé par l'hôte juste avant le
+        /// démarrage effectif de l'audio, après le prime du lookahead buffer.</summary>
+        public static void RaisePlaybackStarted() { try { _playbackStarted?.Invoke(); } catch { } }
     }
 
     /// <summary>Descripteur léger d'un instrument Koton exposé au plugin via <see cref="KotonHost.ListInstruments"/>.
