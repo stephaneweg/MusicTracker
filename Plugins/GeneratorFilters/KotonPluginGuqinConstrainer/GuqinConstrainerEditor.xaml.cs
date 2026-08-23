@@ -362,25 +362,34 @@ namespace KotonPluginGuqinConstrainer
             {
                 if (f.StringIdx < 0 || f.StringIdx >= GuqinModel.StringCount) continue;
                 double y = StringY(f.StringIdx, topStringY);
-                // Corde à vide : disque à l'intersection nut/corde (MarginX + 2), plus DANS le
-                // sillet où il était masqué par la barre en noyer. Corde stoppée : à la position
-                // hui × diapason.
                 double x = f.Position <= 1e-6 ? MarginX + 2 : MarginX + f.Position * stringSpan;
                 var col = StringColors[f.StringIdx];
                 if (f.Position > 1e-6)
                 {
-                    var guide = new Line
+                    _root.Children.Add(new Line
                     {
                         X1 = x, Y1 = huiY, X2 = x, Y2 = y,
                         Stroke = new SolidColorBrush(Color.FromArgb(90, col.R, col.G, col.B)),
                         StrokeThickness = 1,
                         IsHitTestVisible = false,
-                    };
-                    _root.Children.Add(guide);
+                    });
                 }
-                // Disque plus grand (14px) + double bordure (blanche extérieure + noire intérieure)
-                // pour rester visible malgré le grain du bois, la vibration de la corde, ou tout
-                // autre calque qui pourrait le masquer partiellement.
+                // MARQUEUR DEBUG ULTRA-VISIBLE : gros carré JAUNE 30x30 avec bordure noire, très
+                // difficile à louper. Si l'user voit CE carré mais pas le disque en dessous, on
+                // sait que c'est le dot qui est masqué. Si l'user ne voit PAS le carré, c'est que
+                // le fingering n'atteint pas le canvas (bug amont).
+                var debugMarker = new Rectangle
+                {
+                    Width = 30, Height = 30,
+                    Fill = new SolidColorBrush(Color.FromArgb(200, 255, 255, 0)),
+                    Stroke = new SolidColorBrush(Colors.Black),
+                    StrokeThickness = 2,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(debugMarker, x - 15); Canvas.SetTop(debugMarker, y - 15);
+                _root.Children.Add(debugMarker);
+
+                // Le disque normal en dessous.
                 var halo = new Ellipse
                 {
                     Width = 16, Height = 16,
@@ -400,19 +409,20 @@ namespace KotonPluginGuqinConstrainer
                 };
                 Canvas.SetLeft(dot, x - 6); Canvas.SetTop(dot, y - 6);
                 _root.Children.Add(dot);
-                debugText.Append("s").Append(f.StringIdx + 1).Append("@").Append(f.Position.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)).Append(" ");
+
+                debugText.Append("s").Append(f.StringIdx + 1)
+                    .Append("@").Append(f.Position.ToString("F3", System.Globalization.CultureInfo.InvariantCulture))
+                    .Append("(x=").Append(((int)x).ToString()).Append(",y=").Append(((int)y).ToString()).Append(") ");
             }
-            if (_fingerings.Count > 0)
+            // HUD toujours affiché même si zéro fingering pour voir "0 fingerings" vs. absence.
+            var dbg = new TextBlock
             {
-                var dbg = new TextBlock
-                {
-                    Text = "Fingerings: " + debugText.ToString(),
-                    Foreground = new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)),
-                    FontSize = 10, FontFamily = new FontFamily("Consolas, Courier New"),
-                };
-                Canvas.SetLeft(dbg, 8); Canvas.SetTop(dbg, h - 18);
-                _root.Children.Add(dbg);
-            }
+                Text = string.Format("[{0}] Fingerings: {1}", _fingerings.Count, debugText.ToString()),
+                Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 220, 100)),
+                FontSize = 10, FontFamily = new FontFamily("Consolas, Courier New"),
+            };
+            Canvas.SetLeft(dbg, 8); Canvas.SetTop(dbg, h - 18);
+            _root.Children.Add(dbg);
         }
 
         double StringY(int stringIdx, double topStringY)
