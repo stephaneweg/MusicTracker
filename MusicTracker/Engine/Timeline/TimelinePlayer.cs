@@ -248,7 +248,7 @@ namespace MusicTracker.Engine.Timeline
                 foreach (var item in tr.Items)
                 {
                     cursor += item.SilenceBefore;
-                    if (!silent) PlaceItem(T, item, cursor, resolveRiff, carry);
+                    if (!silent) PlaceItem(T, item, cursor, resolveRiff, carry, tr);
                     cursor += TimelineProject.ItemLength(item, resolveRiff);
                 }
                 list.Add(T);
@@ -401,23 +401,27 @@ namespace MusicTracker.Engine.Timeline
 
         // ---- flattening (riffs -> per-track note attack/release events at Spb) ------------------------------
 
-        void PlaceItem(Track tr, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, int[] carry)
+        void PlaceItem(Track tr, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, int[] carry, TimelineTrack sourceTr)
         {
-            if (item.Module != null) PlaceLeaf(tr, item.Module, startBeat, resolve, carry);
+            if (item.Module != null) PlaceLeaf(tr, item.Module, startBeat, resolve, carry, sourceTr);
         }
 
-        void PlaceLeaf(Track tr, FlowModule m, double startBeat, Func<Guid, Riff> resolve, int[] carry)
+        void PlaceLeaf(Track tr, FlowModule m, double startBeat, Func<Guid, Riff> resolve, int[] carry, TimelineTrack sourceTr)
         {
-            PlaceRiffNotes(tr, RiffForModule(m, resolve, startBeat), startBeat);
+            // Chaîne de constrainers de la piste : appliquée sur CHAQUE riff produit par un module,
+            // exactement comme dans ScoreModel + TimelineImporter (les 3 résolveurs restent alignés).
+            Riff Filter(Riff r) => Effects.NoteConstrainerChain.Apply(sourceTr, r, melodyProject, startBeat);
+
+            PlaceRiffNotes(tr, Filter(RiffForModule(m, resolve, startBeat)), startBeat);
             // A chord that carries a MELODIC CELL plays it as a 2nd voice on the same track (same instrument, same time).
             if (m is PatternGeneratorModule pgm && pgm.HasMelodic)
-                PlaceRiffNotes(tr, PatternGenerator.GenerateMelodic(pgm, melodyKey), startBeat);
+                PlaceRiffNotes(tr, Filter(PatternGenerator.GenerateMelodic(pgm, melodyKey)), startBeat);
             // A MELODIC LINE: the engine picks pitches from the harmony in effect at each beat (carrying continuity forward).
             else if (m is MelodicLineModule ml)
-                PlaceRiffNotes(tr, MelodicLineEngine.GenerateLine(ml, melodyProject, resolve, melodyKey, startBeat, carry), startBeat);
+                PlaceRiffNotes(tr, Filter(MelodicLineEngine.GenerateLine(ml, melodyProject, resolve, melodyKey, startBeat, carry)), startBeat);
             // A MELODIC POLYRHYTHM: same engine, but the rhythm comes from the module's euclidean layers.
             else if (m is MelodicPolyModule mp)
-                PlaceRiffNotes(tr, MelodicEuclid.Generate(mp, melodyProject, resolve, melodyKey, startBeat, carry), startBeat);
+                PlaceRiffNotes(tr, Filter(MelodicEuclid.Generate(mp, melodyProject, resolve, melodyKey, startBeat, carry)), startBeat);
         }
 
         void PlaceRiffNotes(Track tr, Riff riff, double startBeat)

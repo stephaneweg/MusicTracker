@@ -4617,6 +4617,11 @@ namespace MusicTracker.Screens
             menu.Items.Add(BuildAddAutomationMenu(track));
             menu.Items.Add(BuildRemoveAutomationMenu(track));
 
+            // Filtres de notes (constrainers Koton) — chaîne appliquée au flatten avant l'instrument
+            // pour player + partition + export MIDI.
+            menu.Items.Add(new Separator());
+            menu.Items.Add(BuildNoteConstrainersMenu(track));
+
             // Convertir les blocs PolyChord de cette piste en une nouvelle piste melodique (une note
             // par tick, decoupee en riffs de N mesures — utile pour extraire une "melodie" du motif).
             bool hasPolyChord = false;
@@ -4641,6 +4646,103 @@ namespace MusicTracker.Screens
             menu.Items.Add(del);
             menu.PlacementTarget = anchor;
             menu.IsOpen = true;
+        }
+
+        /// <summary>Sous-menu « Filtres notes » : liste les constrainers actifs (éditer / bypass /
+        /// retirer) et propose un sous-menu « Ajouter... » avec tous les constrainers découverts par
+        /// KotonPluginRegistry. La chaîne est appliquée dans l'ordre d'ajout (player / partition /
+        /// export MIDI la voient identiquement, cf. NoteConstrainerChain.Apply dans les 3
+        /// résolveurs).</summary>
+        MenuItem BuildNoteConstrainersMenu(TimelineTrack track)
+        {
+            var root = new MenuItem { Header = "Filtres notes" };
+            if (track.NoteConstrainers == null) track.NoteConstrainers = new System.Collections.Generic.List<Engine.Timeline.Effects.NoteConstrainerRef>();
+
+            // Sous-menu Ajouter : liste des constrainers disponibles depuis le registre.
+            var add = new MenuItem { Header = "Ajouter" };
+            var available = Engine.Timeline.Effects.KotonPluginRegistry.Constrainers;
+            if (available.Count == 0)
+            {
+                add.Items.Add(new MenuItem { Header = "(aucun constrainer découvert)", IsEnabled = false });
+            }
+            else
+            {
+                foreach (var info in available)
+                {
+                    var mi = new MenuItem { Header = info.DisplayName };
+                    string idCaptured = info.Id;
+                    mi.Click += (s, e) =>
+                    {
+                        PushUndo("track:add-constrainer");
+                        track.NoteConstrainers.Add(new Engine.Timeline.Effects.NoteConstrainerRef { Id = idCaptured });
+                        // Le player utilise le cache instance-par-track — rendu réévalué au prochain flatten.
+                        Render();
+                    };
+                    add.Items.Add(mi);
+                }
+            }
+            root.Items.Add(add);
+
+            // Liste des constrainers actifs sur la piste : chacun a un sous-menu Éditer / Bypass / Retirer.
+            if (track.NoteConstrainers.Count > 0)
+            {
+                root.Items.Add(new Separator());
+                for (int i = 0; i < track.NoteConstrainers.Count; i++)
+                {
+                    var r = track.NoteConstrainers[i];
+                    string displayName = r?.Id ?? "?";
+                    foreach (var info in available) if (info.Id == r?.Id) { displayName = info.DisplayName; break; }
+                    var mi = new MenuItem { Header = displayName + (r != null && r.Bypass ? "  (bypass)" : "") };
+
+                    int idxCaptured = i;
+                    var edit = new MenuItem { Header = "Éditer…" };
+                    edit.Click += (s, e) => OpenNoteConstrainerEditor(track, idxCaptured);
+                    mi.Items.Add(edit);
+
+                    var bypass = new MenuItem { Header = "Bypass", IsCheckable = true, IsChecked = r?.Bypass ?? false };
+                    bypass.Click += (s, e) =>
+                    {
+                        PushUndo("track:constrainer-bypass");
+                        if (idxCaptured < track.NoteConstrainers.Count && track.NoteConstrainers[idxCaptured] != null)
+                            track.NoteConstrainers[idxCaptured].Bypass = bypass.IsChecked;
+                        Render();
+                    };
+                    mi.Items.Add(bypass);
+
+                    var remove = new MenuItem { Header = "Retirer" };
+                    remove.Click += (s, e) =>
+                    {
+                        PushUndo("track:remove-constrainer");
+                        if (idxCaptured < track.NoteConstrainers.Count) track.NoteConstrainers.RemoveAt(idxCaptured);
+                        Render();
+                    };
+                    mi.Items.Add(remove);
+
+                    root.Items.Add(mi);
+                }
+            }
+            return root;
+        }
+
+        /// <summary>Ouvre l'éditeur du constrainer d'index `idx` sur la piste `track` dans une
+        /// KotonPluginEditorDialog. À la fermeture, on flush le StateBlob dans la ref pour persister
+        /// les paramètres modifiés.</summary>
+        void OpenNoteConstrainerEditor(TimelineTrack track, int idx)
+        {
+            if (track == null || track.NoteConstrainers == null || idx < 0 || idx >= track.NoteConstrainers.Count) return;
+            var inst = Engine.Timeline.Effects.NoteConstrainerChain.GetInstance(track, idx);
+            if (inst == null)
+            {
+                System.Windows.MessageBox.Show("Constrainer introuvable — plugin non installé ou id inconnu.");
+                return;
+            }
+            var win = new Dialogs.KotonPluginEditorDialog(inst, Window.GetWindow(this));
+            win.Closed += (s, e) =>
+            {
+                Engine.Timeline.Effects.NoteConstrainerChain.FlushStateBlobs(track);
+                Render();
+            };
+            win.Show();
         }
 
         // A l'ouverture d'un projet, si la piste Accords (Chord) contient un ou plusieurs PolyChordModule

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonPluginGuqinConstrainer</RootNamespace>
+    <AssemblyName>KotonPluginGuqinConstrainer</AssemblyName>
+    <ProjectGuid>{E4B7F9AB-2D6F-4C5A-B18F-A09D8C7E5F43}</ProjectGuid>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <TargetExt>.ksl</TargetExt>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+  </ItemGroup>
+</Project>

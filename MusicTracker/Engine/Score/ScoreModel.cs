@@ -292,7 +292,7 @@ namespace MusicTracker.Engine.Score
             foreach (var item in track.Items)
             {
                 cursor += item.SilenceBefore;
-                PlaceItem(s.Notes, item, cursor, resolveRiff, scale, melodic, key, project, carry);
+                PlaceItem(s.Notes, item, cursor, resolveRiff, scale, melodic, key, project, carry, track);
                 cursor += TimelineProject.ItemLength(item, resolveRiff);
             }
             s.TotalBeats = Math.Max(cursor, TimelineProject.TrackEnd(track, resolveRiff)) * scale;
@@ -382,9 +382,9 @@ namespace MusicTracker.Engine.Score
             }
         }
 
-        static void PlaceItem(List<ScoreNote> outNotes, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, double scale, bool melodic, KeySignature key, TimelineProject project, int[] carry)
+        static void PlaceItem(List<ScoreNote> outNotes, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, double scale, bool melodic, KeySignature key, TimelineProject project, int[] carry, TimelineTrack sourceTr)
         {
-            if (item.Module != null) PlaceLeaf(outNotes, item.Module, startBeat, resolve, scale, melodic, key, project, carry);
+            if (item.Module != null) PlaceLeaf(outNotes, item.Module, startBeat, resolve, scale, melodic, key, project, carry, sourceTr);
         }
 
         const double DisplayQuantum = 0.125; // smallest displayed note value (a 1/32 note) — used as the floor
@@ -397,9 +397,12 @@ namespace MusicTracker.Engine.Score
             return Math.Abs(b8 - beats) <= Math.Abs(b6 - beats) ? b8 : b6;
         }
 
-        static void PlaceLeaf(List<ScoreNote> outNotes, FlowModule m, double startBeat, Func<Guid, Riff> resolve, double scale, bool melodic, KeySignature key, TimelineProject project, int[] carry)
+        static void PlaceLeaf(List<ScoreNote> outNotes, FlowModule m, double startBeat, Func<Guid, Riff> resolve, double scale, bool melodic, KeySignature key, TimelineProject project, int[] carry, TimelineTrack sourceTr)
         {
             var riff = RiffForModule(m, resolve, melodic, key, project, startBeat, carry);
+            // Applique la chaîne de constrainers de la piste (identique à TimelinePlayer + TimelineImporter).
+            // La partition affichera EXACTEMENT ce qui sera joué et exporté.
+            riff = Timeline.Effects.NoteConstrainerChain.Apply(sourceTr, riff, project, startBeat);
             if (riff?.Notes == null) return;
             int spq = riff.SlicesPerQuarter > 0 ? riff.SlicesPerQuarter : 4; // slices per quarter = per beat
 

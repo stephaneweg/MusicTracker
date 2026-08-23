@@ -154,6 +154,13 @@ namespace MusicTracker.Engine.Timeline
         /// vide, donc rétro-compatibilité totale.</summary>
         public List<Effects.TrackEffectData> Inserts = new List<Effects.TrackEffectData>();
 
+        /// <summary>Chaîne de CONSTRAINERS de notes (dans l'ordre d'application). Chaque constrainer voit
+        /// la sortie du précédent — module → chaîne → instrument. Appliquée de manière IDENTIQUE par le
+        /// player, la partition et l'export MIDI (via <see cref="Effects.NoteConstrainerChain.Apply"/>)
+        /// pour éviter toute divergence audio/partition/export. Vide par défaut ; un .sq antérieur à cette
+        /// fonctionnalité n'a pas ce champ (initialiseur = rétro-compatibilité totale).</summary>
+        public List<Effects.NoteConstrainerRef> NoteConstrainers = new List<Effects.NoteConstrainerRef>();
+
         /// <summary>Chemin absolu du plugin VSTi qui rend cette piste au lieu du synthé MeltySynth GM.
         /// <c>null</c> (défaut) = mode MeltySynth (l'ancien pipeline, <see cref="Instrument"/> pilote le patch GM).
         /// Non-null = mode VSTi : le player instancie un <c>VstInstrument</c> et lui envoie les notes de la piste,

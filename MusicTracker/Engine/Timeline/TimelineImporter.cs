@@ -198,18 +198,18 @@ namespace MusicTracker.Engine.Timeline
             foreach (var item in t.Items)
             {
                 cur += item.SilenceBefore;
-                FlattenItem(src, item, cur, resolve, spq, project, ref carry);
+                FlattenItem(src, item, cur, resolve, spq, project, ref carry, t);
                 cur += TimelineProject.ItemLength(item, resolve);
             }
             return src;
         }
 
-        static void FlattenItem(MuseScoreImporter.Track src, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, int spq, TimelineProject project, ref int[] carry)
+        static void FlattenItem(MuseScoreImporter.Track src, TimelineItem item, double startBeat, Func<Guid, Riff> resolve, int spq, TimelineProject project, ref int[] carry, TimelineTrack sourceTr)
         {
-            if (item.Module != null) FlattenLeaf(src, item.Module, startBeat, resolve, spq, project, ref carry);
+            if (item.Module != null) FlattenLeaf(src, item.Module, startBeat, resolve, spq, project, ref carry, sourceTr);
         }
 
-        static void FlattenLeaf(MuseScoreImporter.Track src, FlowModule m, double startBeat, Func<Guid, Riff> resolve, int spq, TimelineProject project, ref int[] carry)
+        static void FlattenLeaf(MuseScoreImporter.Track src, FlowModule m, double startBeat, Func<Guid, Riff> resolve, int spq, TimelineProject project, ref int[] carry, TimelineTrack sourceTr)
         {
             // Percussions : on lit la grille de lanes → touches GM (aller-retour sans perte). Vaut pour le motif de
             // batterie ORDINAIRE comme pour la batterie POLYRYTHMIQUE — cette dernière tombait auparavant dans la
@@ -250,6 +250,9 @@ namespace MusicTracker.Engine.Timeline
                 case KotonGeneratorModule kg: riff = KotonGeneratorRuntime.RenderRiff(kg, project, startBeat); break;
                 default: riff = null; break;
             }
+            // Applique la chaîne de constrainers de la piste (identique à TimelinePlayer + ScoreModel).
+            // L'export MIDI portera EXACTEMENT ce qui est joué et affiché en partition.
+            riff = Effects.NoteConstrainerChain.Apply(sourceTr, riff, project, startBeat);
             if (riff?.Notes == null) return;
             // Un accord peut porter une CELLULE MÉLODIQUE : elle sonne à la lecture, elle doit donc s'exporter.
             if (m is PatternGeneratorModule pgm && pgm.HasMelodic)
