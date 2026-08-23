@@ -198,30 +198,36 @@ namespace KotonPluginGuqinConstrainer
                     var f = ResolveMidiWithContext(tuning, target, prevPositionCm, out bool exact);
                     if (!exact && !snap) { resolved[idx] = (false, -1, -1, 0); continue; }
 
+                    // GLISSANDO — vérifie DIRECTEMENT si la corde cible est déjà tenue par une
+                    // note stoppée (peu importe la décision du constraint). Indépendant du chemin
+                    // pris par Consider() qui a plusieurs cas de StealOldest (même corde OU
+                    // empan/doigts dépassés → potentiellement autre corde).
+                    GuqinConstraint.Held oldOnSameString = null;
+                    if (doGliss && !f.IsOpen)
+                    {
+                        foreach (var h in constraint.Active)
+                        {
+                            if (h.StringIdx == f.StringIdx && !h.IsOpen) { oldOnSameString = h; break; }
+                        }
+                    }
+
                     var decision = constraint.Consider(f.StringIdx, f.Position, out var toRelease);
                     if (decision == GuqinConstraint.Decision.RejectStringBusy) { resolved[idx] = (false, -1, -1, 0); continue; }
                     if (decision == GuqinConstraint.Decision.StealOldest && toRelease != null)
                     {
-                        // GLISSANDO : la corde était en vibration (ancienne note) et une nouvelle
-                        // note arrive SUR LA MÊME CORDE. Si ni l'ancienne ni la nouvelle n'est à
-                        // vide (le doigt gauche est engagé dans les 2 cas), on marque la nouvelle
-                        // note d'un glide qui démarre au pitch de l'ancienne et arrive au pitch
-                        // cible. IMPORTANT : StealOldest est aussi renvoyé quand l'empan ou le
-                        // nombre max de doigts est dépassé → dans ce cas la note volée peut être
-                        // sur une AUTRE corde. On ne glisse JAMAIS entre 2 cordes différentes.
-                        if (doGliss && !toRelease.IsOpen && !f.IsOpen
-                            && toRelease.StringIdx == f.StringIdx
-                            && toRelease.Midi != f.Midi)
-                        {
-                            glideFromMidi[idx] = toRelease.Midi;
-                            glideDurBeats[idx] = glideBeats;
-                        }
                         constraint.Release(toRelease);
                         heldToIdx.Remove(toRelease);
                         // Vol de doigt à l'instant t (StartBeat de la nouvelle note) → release
                         // scheduled à cet instant précis, PAS à la fin de la duration originale
                         // (la corde est reprise par la nouvelle note).
                         if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = toRelease.Midi, AbsoluteAtBeat = blockStartAbs + srcNote.StartBeat, Tempo = tempo }); } catch { } }
+                    }
+                    // Applique le glissando détecté avant le Consider() — même corde stoppée avant
+                    // ET après, pitch différent.
+                    if (oldOnSameString != null && oldOnSameString.Midi != f.Midi)
+                    {
+                        glideFromMidi[idx] = oldOnSameString.Midi;
+                        glideDurBeats[idx] = glideBeats;
                     }
                     var held = constraint.Register(f.Midi, f.StringIdx, f.Position);
                     heldByIdx[idx] = held;
