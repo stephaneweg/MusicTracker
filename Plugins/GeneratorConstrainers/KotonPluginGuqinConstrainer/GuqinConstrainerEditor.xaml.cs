@@ -84,7 +84,7 @@ namespace KotonPluginGuqinConstrainer
         }
 
         void OnNoteStruck(GuqinConstrainerPlugin.StruckEvent ev) => Dispatcher.BeginInvoke(new Action(() => _canvas.EnqueueStruck(ev)));
-        void OnNoteReleased(int midi) => Dispatcher.BeginInvoke(new Action(() => _canvas.EnqueueReleased(midi)));
+        void OnNoteReleased(GuqinConstrainerPlugin.ReleaseEvent ev) => Dispatcher.BeginInvoke(new Action(() => _canvas.EnqueueReleased(ev)));
 
         public void OnContextUpdated(KotonRenderContext ctx) { }
     }
@@ -157,13 +157,27 @@ namespace KotonPluginGuqinConstrainer
             EnsureTimer();
         }
 
-        public void EnqueueReleased(int midi)
+        public void EnqueueReleased(GuqinConstrainerPlugin.ReleaseEvent ev)
         {
-            // Note-off arrive avec le midi seulement — on ne sait pas quand le "vrai" release doit
-            // avoir lieu selon la timeline. En pratique, on utilise juste la duration du dernier
-            // struck sur ce midi pour planifier. Simple : release immédiat quand vu (l'anim decay
-            // suit sa propre courbe de toute façon).
-            _pendingReleased.Add(new Pending { Ev = new GuqinConstrainerPlugin.StruckEvent { Midi = midi }, DeadlineUtc = DateTime.UtcNow });
+            // Sync avec le référentiel du bloc (comme EnqueueStruck) : si BlockId diffère, reset.
+            if (ev.BlockId != _currentBlockId)
+            {
+                _currentBlockId = ev.BlockId;
+                _blockStartWallClock = DateTime.UtcNow;
+                _pending.Clear();
+                _pendingReleased.Clear();
+                _fingerings.Clear();
+                _vibrations.Clear();
+            }
+            double tempo = ev.Tempo > 0 ? ev.Tempo : 120.0;
+            double delaySec = ev.AtBeat * 60.0 / tempo;
+            // On abuse un peu de la struct Pending qui porte un StruckEvent : on stocke midi dans
+            // Ev.Midi et le deadline dans DeadlineUtc, les autres champs sont ignorés.
+            _pendingReleased.Add(new Pending
+            {
+                Ev = new GuqinConstrainerPlugin.StruckEvent { Midi = ev.Midi },
+                DeadlineUtc = _blockStartWallClock.AddSeconds(delaySec),
+            });
             EnsureTimer();
         }
 

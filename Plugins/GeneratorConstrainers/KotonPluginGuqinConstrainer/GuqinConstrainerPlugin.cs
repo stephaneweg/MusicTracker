@@ -57,8 +57,17 @@ namespace KotonPluginGuqinConstrainer
             /// zéro, chaque redraw d'un même bloc ne dédouble pas les événements.</summary>
             public long BlockId;
         }
+        public struct ReleaseEvent
+        {
+            public int Midi;
+            /// <summary>Beat (dans le bloc) où le release a lieu — utilisé pour scheduler la
+            /// disparition du dot au bon moment côté éditeur.</summary>
+            public double AtBeat;
+            public double Tempo;
+            public long BlockId;
+        }
         public event Action<StruckEvent> NoteStruck;
-        public event Action<int> NoteReleased;
+        public event Action<ReleaseEvent> NoteReleased;
 
         long _blockCounter;
 
@@ -135,7 +144,10 @@ namespace KotonPluginGuqinConstrainer
                     if (decision == GuqinConstraint.Decision.StealOldest && toRelease != null)
                     {
                         constraint.Release(toRelease);
-                        if (wantsViz) { try { NoteReleased?.Invoke(toRelease.Midi); } catch { } }
+                        // Vol de doigt à l'instant t (StartBeat de la nouvelle note) → release
+                        // scheduled à cet instant précis, PAS à la fin de la duration originale
+                        // (la corde est reprise par la nouvelle note).
+                        if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = toRelease.Midi, AtBeat = srcNote.StartBeat, Tempo = tempo, BlockId = blockId }); } catch { } }
                     }
                     var held = constraint.Register(f.Midi, f.StringIdx, f.Position);
                     heldByIdx[idx] = held;
@@ -164,7 +176,8 @@ namespace KotonPluginGuqinConstrainer
                     if (h != null && constraint.Active.Contains(h))
                     {
                         constraint.Release(h);
-                        if (wantsViz) { try { NoteReleased?.Invoke(h.Midi); } catch { } }
+                        // Release scheduled à la fin naturelle de la note (t = event t).
+                        if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = h.Midi, AtBeat = t, Tempo = tempo, BlockId = blockId }); } catch { } }
                     }
                 }
             }
