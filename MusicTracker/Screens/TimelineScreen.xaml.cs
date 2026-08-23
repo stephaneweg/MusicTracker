@@ -4719,7 +4719,7 @@ namespace MusicTracker.Screens
                     };
                     mi.Items.Add(bypass);
 
-                    var remove = new MenuItem { Header = "Retirer" };
+                    var remove = new MenuItem { Header = "Supprimer" };
                     remove.Click += (s, e) =>
                     {
                         PushUndo("track:remove-constrainer");
@@ -4822,7 +4822,7 @@ namespace MusicTracker.Screens
                     };
                     menu.Items.Add(bp);
                     menu.Items.Add(new Separator());
-                    var rem = new MenuItem { Header = "Retirer" };
+                    var rem = new MenuItem { Header = "Supprimer" };
                     rem.Click += (s2, e2) =>
                     {
                         PushUndo("track:remove-constrainer");
