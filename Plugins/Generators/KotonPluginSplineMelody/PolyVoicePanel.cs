@@ -23,6 +23,7 @@ namespace KotonPluginSplineMelody
 
         readonly TextBox _txtCycle = new TextBox { Width = 60, HorizontalAlignment = HorizontalAlignment.Left };
         readonly StackPanel _cardsPanel = new StackPanel { Orientation = Orientation.Vertical };
+        readonly PolyRhythmWheel _wheel = new PolyRhythmWheel { Height = 220, Margin = new Thickness(0, 0, 0, 10) };
 
         bool _updating;
 
@@ -65,15 +66,24 @@ namespace KotonPluginSplineMelody
             Grid.SetRow(toolbar, 0);
             root.Children.Add(toolbar);
 
+            // Composite content : roue polyrythmique en haut + cards en dessous (scrollables).
+            var composite = new StackPanel { Orientation = Orientation.Vertical };
+            composite.Children.Add(_wheel);
+            composite.Children.Add(_cardsPanel);
+
             var scroll = new ScrollViewer
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                Content = _cardsPanel,
+                Content = composite,
             };
             Grid.SetRow(scroll, 1);
             root.Children.Add(scroll);
             Content = root;
+
+            // Chaque modif d'input dans une card lève Changed → on rafraîchit la roue localement
+            // en plus de propager vers l'éditeur. Pas de récursion (RebuildWheel n'invoke pas Changed).
+            Changed += RebuildWheel;
         }
 
         public void ReloadFromModel()
@@ -89,6 +99,27 @@ namespace KotonPluginSplineMelody
             _cardsPanel.Children.Clear();
             int vc = _getVoiceCount();
             for (int v = 0; v < vc; v++) _cardsPanel.Children.Add(BuildCard(v));
+            RebuildWheel();
+        }
+
+        /// <summary>Reconstruit la roue depuis l'état courant des voix. Appelée au Rebuild() et
+        /// à chaque changement (via l'event Changed). Un anneau = une voix.</summary>
+        void RebuildWheel()
+        {
+            var rings = new System.Collections.Generic.List<PolyRhythmWheel.Ring>();
+            int vc = _getVoiceCount();
+            for (int v = 0; v < vc; v++)
+            {
+                var spec = _getVoice(v);
+                if (spec == null) continue;
+                rings.Add(new PolyRhythmWheel.Ring
+                {
+                    Hits = spec.Hits, Steps = spec.Steps, Rotation = spec.Rotation,
+                    Color = spec.Color,
+                });
+            }
+            double cycle = _getCycleBeats();
+            _wheel.SetRings(rings, cycle, cycle);
         }
 
         Border BuildCard(int voiceIdx)
