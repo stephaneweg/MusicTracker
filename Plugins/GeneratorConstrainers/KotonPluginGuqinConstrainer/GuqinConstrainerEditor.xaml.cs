@@ -31,8 +31,17 @@ namespace KotonPluginGuqinConstrainer
             cboSnap.Items.Add("Rejeter");
             cboSnap.Items.Add("Snap plus proche");
 
-            _canvas = new GuqinCanvas();
+            _canvas = new GuqinCanvas(() => _plugin != null && _plugin.Parameters != null
+                ? GetParam("diapason_cm", 110.0)
+                : 110.0);
             canvasHost.Content = _canvas;
+
+            double GetParam(string id, double fallback)
+            {
+                for (int i = 0; i < _plugin.Parameters.Count; i++)
+                    if (_plugin.Parameters[i].Id == id) return _plugin.Parameters[i].Value;
+                return fallback;
+            }
 
             SyncFromPlugin();
 
@@ -94,17 +103,18 @@ namespace KotonPluginGuqinConstrainer
         public void OnContextUpdated(KotonRenderContext ctx) { }
     }
 
-    /// <summary>Canvas guqin : silhouette + 7 cordes (aigu en haut côté joueur) + 13 hui EN HAUT
-    /// (côté joueur qui regarde) + doigtés actifs schedulés selon StartBeat + tempo. Le BlockId
-    /// permet de reset le référentiel temporel à chaque nouvelle passe Filter (nouvelle relecture
-    /// = nouveau départ), évite les doublons quand le même bloc est ré-évalué (thumbnail refresh
-    /// etc.).</summary>
+    /// <summary>Canvas guqin : silhouette érable + hui/sillet/chevalet noyer + 7 cordes (aigu en
+    /// haut côté joueur) + 13 hui EN HAUT + doigtés actifs schedulés selon StartBeat + tempo.
+    /// L'espacement des cordes est proportionnel au diapason (2 cm réels du plugin), donc un mini
+    /// guqin (58 cm) affiche des cordes plus serrées qu'un grand (120 cm) pour la même largeur de
+    /// canvas — cohérent avec l'instrument physique.</summary>
     internal sealed class GuqinCanvas : UserControl
     {
         readonly Canvas _root;
         readonly List<Fingering> _fingerings = new List<Fingering>();
         readonly List<Vibration> _vibrations = new List<Vibration>();
         DispatcherTimer _timer;
+        readonly Func<double> _getDiapasonCm;
 
         static readonly Color[] StringColors =
         {
@@ -112,10 +122,16 @@ namespace KotonPluginGuqinConstrainer
             Color.FromRgb(0x6E, 0xC7, 0x77), Color.FromRgb(0x1F, 0xB6, 0xC3), Color.FromRgb(0x4C, 0x79, 0xD6),
             Color.FromRgb(0x9E, 0x6F, 0xE0),
         };
-        static readonly Color BodyDark  = Color.FromRgb(0x2A, 0x1A, 0x12);
-        static readonly Color BodyLight = Color.FromRgb(0x4A, 0x2E, 0x1E);
-        static readonly Color BodyEdge  = Color.FromRgb(0x5A, 0x3E, 0x28);
-        static readonly Color SoundHole = Color.FromRgb(0x0A, 0x06, 0x04);
+        // Érable clair : bois vernis chaud. Deux tons pour un gradient subtil qui suggère le vernis.
+        static readonly Color MapleLight = Color.FromRgb(0xEB, 0xD4, 0xA6);   // reflet clair (au centre)
+        static readonly Color MapleMid   = Color.FromRgb(0xD9, 0xBE, 0x8A);   // ton moyen
+        static readonly Color MapleDark  = Color.FromRgb(0xB2, 0x94, 0x62);   // ombre sur les bords
+        // Noyer : hui + sillet + chevalet. 2 tons pour une inlay avec profondeur.
+        static readonly Color WalnutDark = Color.FromRgb(0x3D, 0x24, 0x15);
+        static readonly Color WalnutMid  = Color.FromRgb(0x5C, 0x3B, 0x24);
+        static readonly Color WalnutRim  = Color.FromRgb(0x2A, 0x18, 0x0E);
+        // Grain : fines lignes plus foncées qui suggèrent le fil du bois. Semi-transparentes.
+        static readonly Color GrainLine  = Color.FromRgb(0x8E, 0x6D, 0x3F);
 
         struct Fingering { public int StringIdx; public double Position; public int Midi; }
         sealed class Vibration
@@ -134,9 +150,10 @@ namespace KotonPluginGuqinConstrainer
         long _currentBlockId = -1;
         DateTime _blockStartWallClock;
 
-        public GuqinCanvas()
+        public GuqinCanvas(Func<double> getDiapasonCm = null)
         {
-            _root = new Canvas { Background = new SolidColorBrush(Color.FromRgb(0x10, 0x14, 0x18)), ClipToBounds = true };
+            _getDiapasonCm = getDiapasonCm ?? (() => 110.0);
+            _root = new Canvas { Background = new SolidColorBrush(Color.FromRgb(0x14, 0x18, 0x1C)), ClipToBounds = true };
             Content = _root;
             SizeChanged += (s, e) => Render();
         }
@@ -245,22 +262,43 @@ namespace KotonPluginGuqinConstrainer
             Render();
         }
 
-        const double StringSpacingPx = 11;
-        const double BodyExtraTop = 40, BodyExtraBot = 20, MarginX = 32;
+        const double BodyExtraTop = 44, BodyExtraBot = 24, MarginX = 44;
+        // Largeur des pièces en noyer (sillet + chevalet), en cm réels.
+        const double NutWidthCm = 3.0, BridgeWidthCm = 4.0;
+        // Espacement inter-cordes en cm réels (correspond à un vrai guqin).
+        const double StringSpacingCm = 2.0;
 
         public void Redraw() => Render();
+
+        double _stringSpacingPx;   // recalculé à chaque Render en fonction du diapason
+        double _pxPerCm;
 
         void Render()
         {
             _root.Children.Clear();
             double w = ActualWidth, h = ActualHeight;
             if (w < 40 || h < 40) return;
+
+            double diapasonCm = _getDiapasonCm();
+            if (diapasonCm < 10) diapasonCm = 110;
             double stringSpan = w - 2 * MarginX;
-            double stringsHeight = (GuqinModel.StringCount - 1) * StringSpacingPx;
+            _pxPerCm = stringSpan / diapasonCm;
+            _stringSpacingPx = StringSpacingCm * _pxPerCm;
+            // Garde-fou : sur un canvas très étroit + long diapason, l'espacement pourrait devenir
+            // < 4 px, illisible. On force un minimum sans casser la proportion (les hui restent OK).
+            if (_stringSpacingPx < 6) _stringSpacingPx = 6;
+
+            double stringsHeight = (GuqinModel.StringCount - 1) * _stringSpacingPx;
             double topStringY = (h - stringsHeight) / 2;
             double botStringY = topStringY + stringsHeight;
 
-            DrawBody(topStringY - BodyExtraTop, botStringY + BodyExtraBot, MarginX - 12, MarginX + stringSpan + 12);
+            // Corps érable — le corps déborde LARGEMENT au-dessus des hui et sous la corde 1.
+            DrawBody(topStringY - BodyExtraTop, botStringY + BodyExtraBot, MarginX - 18, MarginX + stringSpan + 18);
+
+            // Sillet (nut) à gauche = noyer, chevalet (bridge) à droite = noyer. Le sillet s'étend
+            // légèrement au-dessus/sous la 1re et 7e corde.
+            DrawWalnutBar(MarginX - NutWidthCm * _pxPerCm, MarginX, topStringY - 8, botStringY + 8);
+            DrawWalnutBar(MarginX + stringSpan, MarginX + stringSpan + BridgeWidthCm * _pxPerCm, topStringY - 8, botStringY + 8);
 
             for (int s = 0; s < GuqinModel.StringCount; s++)
             {
@@ -268,25 +306,37 @@ namespace KotonPluginGuqinConstrainer
                 double thickness = 0.9 + (GuqinModel.StringCount - 1 - s) * 0.25;
                 DrawString(s, y, MarginX, MarginX + stringSpan, thickness);
                 var lbl = new TextBlock { Text = "" + (s + 1), Foreground = new SolidColorBrush(StringColors[s]), FontSize = 10, FontWeight = FontWeights.Bold };
-                Canvas.SetLeft(lbl, 8); Canvas.SetTop(lbl, y - 8);
+                Canvas.SetLeft(lbl, 12); Canvas.SetTop(lbl, y - 8);
                 _root.Children.Add(lbl);
             }
 
-            // Hui EN HAUT (côté joueur : quand le musicien regarde son instrument, les hui sont
-            // sur le bord OPPOSÉ des cordes, visibles au-dessus des cordes dans notre schéma).
-            // Numéros AU-DESSUS des marques hui.
-            var huiFill = new SolidColorBrush(Color.FromRgb(0xF0, 0xE8, 0xD2)); huiFill.Freeze();
-            var huiBorder = new SolidColorBrush(Color.FromRgb(0x8A, 0x74, 0x50)); huiBorder.Freeze();
-            double huiY = topStringY - 16;
+            // Hui EN HAUT côté joueur, en NOYER (inlays foncés sur le bois clair — comme les hui
+            // du vrai instrument photographié par le user). Numéros au-dessus des marques.
+            var huiFill = new SolidColorBrush(WalnutMid); huiFill.Freeze();
+            var huiRim  = new SolidColorBrush(WalnutRim); huiRim.Freeze();
+            double huiY = topStringY - 18;
             for (int h2 = 0; h2 < GuqinModel.HuiPositions.Length; h2++)
             {
                 double x = MarginX + GuqinModel.HuiPositions[h2] * stringSpan;
                 bool center = h2 == 6;
-                double d = center ? 8 : 5;
-                var lbl = new TextBlock { Text = "" + (h2 + 1), Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xA0, 0x88)), FontSize = 8, Opacity = 0.85 };
+                double d = center ? 9 : 6;
+                var lbl = new TextBlock
+                {
+                    Text = "" + (h2 + 1),
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x8A, 0x6E, 0x48)),
+                    FontSize = 8, Opacity = 0.9,
+                };
                 Canvas.SetLeft(lbl, x - 4); Canvas.SetTop(lbl, huiY - 12);
                 _root.Children.Add(lbl);
-                var e = new Ellipse { Width = d, Height = d, Fill = huiFill, Stroke = huiBorder, StrokeThickness = 0.8, IsHitTestVisible = false };
+                // Inlay noyer : disque fond, bord fin plus foncé pour donner l'illusion de profondeur.
+                var e = new Ellipse
+                {
+                    Width = d, Height = d,
+                    Fill = huiFill,
+                    Stroke = huiRim,
+                    StrokeThickness = 0.6,
+                    IsHitTestVisible = false,
+                };
                 Canvas.SetLeft(e, x - d / 2); Canvas.SetTop(e, huiY - d / 2);
                 _root.Children.Add(e);
             }
@@ -329,32 +379,107 @@ namespace KotonPluginGuqinConstrainer
         double StringY(int stringIdx, double topStringY)
         {
             double t = (GuqinModel.StringCount - 1 - stringIdx) / (double)(GuqinModel.StringCount - 1);
-            return topStringY + t * ((GuqinModel.StringCount - 1) * StringSpacingPx);
+            return topStringY + t * ((GuqinModel.StringCount - 1) * _stringSpacingPx);
         }
 
+        /// <summary>Corps rectangulaire aux coins arrondis, fill érable clair vernis (gradient
+        /// vertical + grain procédural = fines lignes horizontales quasi-transparentes qui
+        /// suggèrent le fil du bois). Rendu unique via un Rectangle avec RadiusX/Y (WPF gère
+        /// l'antialiasing des coins arrondis).</summary>
         void DrawBody(double top, double bottom, double left, double right)
         {
-            double taper = 6;
-            var pts = new PointCollection
-            {
-                new Point(left,  top - taper/2), new Point(right, top + taper/2),
-                new Point(right, bottom - taper/2), new Point(left,  bottom + taper/2),
-            };
-            var grad = new LinearGradientBrush { StartPoint = new Point(0.5, 0), EndPoint = new Point(0.5, 1) };
-            grad.GradientStops.Add(new GradientStop(BodyDark, 0));
-            grad.GradientStops.Add(new GradientStop(BodyLight, 0.5));
-            grad.GradientStops.Add(new GradientStop(BodyDark, 1));
-            grad.Freeze();
-            _root.Children.Add(new Polygon { Points = pts, Fill = grad, Stroke = new SolidColorBrush(BodyEdge), StrokeThickness = 1.5, StrokeLineJoin = PenLineJoin.Round, IsHitTestVisible = false });
+            double w = right - left, hgt = bottom - top;
 
-            double bodyH = bottom - top, bodyW = right - left;
-            double poolY = bottom - bodyH * 0.28, pondY = bottom - bodyH * 0.20;
-            var poolRect = new Rectangle { Width = bodyW * 0.18, Height = 6, Fill = new SolidColorBrush(SoundHole), RadiusX = 3, RadiusY = 3, Opacity = 0.55, IsHitTestVisible = false };
-            Canvas.SetLeft(poolRect, left + bodyW * 0.30); Canvas.SetTop(poolRect, poolY);
-            _root.Children.Add(poolRect);
-            var pondRect = new Rectangle { Width = bodyW * 0.10, Height = 4, Fill = new SolidColorBrush(SoundHole), RadiusX = 2, RadiusY = 2, Opacity = 0.5, IsHitTestVisible = false };
-            Canvas.SetLeft(pondRect, left + bodyW * 0.76); Canvas.SetTop(pondRect, pondY);
-            _root.Children.Add(pondRect);
+            // Ombre douce sous le corps pour donner de la présence sur le fond sombre.
+            var shadow = new Rectangle
+            {
+                Width = w + 8, Height = hgt + 8,
+                Fill = new SolidColorBrush(Color.FromArgb(90, 0, 0, 0)),
+                RadiusX = 14, RadiusY = 14,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(shadow, left - 4); Canvas.SetTop(shadow, top - 2);
+            _root.Children.Add(shadow);
+
+            // Corps : gradient vertical clair au centre → foncé sur les bords (effet vernis bombé).
+            var grad = new LinearGradientBrush { StartPoint = new Point(0.5, 0), EndPoint = new Point(0.5, 1) };
+            grad.GradientStops.Add(new GradientStop(MapleDark, 0));
+            grad.GradientStops.Add(new GradientStop(MapleMid, 0.15));
+            grad.GradientStops.Add(new GradientStop(MapleLight, 0.5));
+            grad.GradientStops.Add(new GradientStop(MapleMid, 0.85));
+            grad.GradientStops.Add(new GradientStop(MapleDark, 1));
+            grad.Freeze();
+            var body = new Rectangle
+            {
+                Width = w, Height = hgt,
+                Fill = grad,
+                Stroke = new SolidColorBrush(WalnutRim),
+                StrokeThickness = 1.5,
+                RadiusX = 12, RadiusY = 12,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(body, left); Canvas.SetTop(body, top);
+            _root.Children.Add(body);
+
+            // Grain procédural : lignes horizontales fines, semi-transparentes, réparties de manière
+            // pseudo-aléatoire (seed fixe pour un rendu stable, l'image ne "vibre" pas entre 2 rendus).
+            var rng = new Random(1234);
+            int grainCount = Math.Max(6, (int)(hgt / 8));
+            for (int i = 0; i < grainCount; i++)
+            {
+                double y = top + rng.NextDouble() * hgt;
+                double thickness = 0.5 + rng.NextDouble() * 0.6;
+                byte alpha = (byte)(20 + rng.Next(30));
+                var line = new Line
+                {
+                    X1 = left + 6, Y1 = y, X2 = right - 6, Y2 = y + (rng.NextDouble() - 0.5) * 1.5,
+                    Stroke = new SolidColorBrush(Color.FromArgb(alpha, GrainLine.R, GrainLine.G, GrainLine.B)),
+                    StrokeThickness = thickness,
+                    IsHitTestVisible = false,
+                };
+                _root.Children.Add(line);
+            }
+            // 2-3 "noeuds" du bois : petits ovales à peine visibles, comme des irrégularités du fil.
+            for (int i = 0; i < 3; i++)
+            {
+                double cx = left + 30 + rng.NextDouble() * (w - 60);
+                double cy = top + 10 + rng.NextDouble() * (hgt - 20);
+                double d = 4 + rng.NextDouble() * 6;
+                var knot = new Ellipse
+                {
+                    Width = d, Height = d * 0.55,
+                    Fill = new SolidColorBrush(Color.FromArgb(35, GrainLine.R, GrainLine.G, GrainLine.B)),
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(knot, cx - d / 2); Canvas.SetTop(knot, cy - d * 0.275);
+                _root.Children.Add(knot);
+            }
+        }
+
+        /// <summary>Barre en noyer (sillet ou chevalet). Dessinée entre 2 X et sur toute la hauteur
+        /// des cordes + un peu au-dessus/sous, coins légèrement arrondis, gradient horizontal pour
+        /// suggérer une pièce montée légèrement en relief.</summary>
+        void DrawWalnutBar(double leftX, double rightX, double topY, double botY)
+        {
+            double w = rightX - leftX;
+            if (w < 1) w = 1;
+            var grad = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 0) };
+            grad.GradientStops.Add(new GradientStop(WalnutRim, 0));
+            grad.GradientStops.Add(new GradientStop(WalnutMid, 0.4));
+            grad.GradientStops.Add(new GradientStop(WalnutMid, 0.6));
+            grad.GradientStops.Add(new GradientStop(WalnutRim, 1));
+            grad.Freeze();
+            var bar = new Rectangle
+            {
+                Width = w, Height = botY - topY,
+                Fill = grad,
+                Stroke = new SolidColorBrush(WalnutRim),
+                StrokeThickness = 0.8,
+                RadiusX = 2, RadiusY = 2,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(bar, leftX); Canvas.SetTop(bar, topY);
+            _root.Children.Add(bar);
         }
 
         void DrawString(int stringIdx, double baseY, double leftX, double rightX, double thickness)
