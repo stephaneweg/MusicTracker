@@ -102,10 +102,21 @@ namespace KotonPluginSplineMelody
             if (i < 0 || i >= MaxVoices) return null;
             if (_voices[i] == null)
             {
-                _voices[i] = new VoiceSpec { Color = DefaultColorFor(i) };
+                var spec = new VoiceSpec { Color = DefaultColorFor(i) };
                 // Spline par défaut : ligne horizontale (0 = note de départ).
-                _voices[i].Points.Add(new ControlPoint(0.0, 0.0));
-                _voices[i].Points.Add(new ControlPoint(1.0, 0.0));
+                spec.Points.Add(new ControlPoint(0.0, 0.0));
+                spec.Points.Add(new ControlPoint(1.0, 0.0));
+                // Rythme par défaut : une note à chaque temps (2 temps × 4 slices, une note qui
+                // occupe un temps entier). Sinon le motif vide n'émet AUCUNE note et l'utilisateur
+                // ne voit rien à la preview → confusion.
+                spec.Rhythm = new KotonRhythm
+                {
+                    Beats = 2,
+                    SlicesPerBeat = 4,
+                    StartSlices = new[] { 0, 4 },
+                    LenSlices = new[] { 4, 4 },
+                };
+                _voices[i] = spec;
             }
             return _voices[i];
         }
