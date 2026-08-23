@@ -89,7 +89,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginFairyVoices", "P
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginGuqin", "Plugins\Instruments\PhysicalModel\KotonPluginGuqin\KotonPluginGuqin.csproj", "{E6A8B0C2-4D6F-4A8B-9C0D-5E7F9A0B1C2D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginGuqinConstrainer", "Plugins\GeneratorConstrainers\KotonPluginGuqinConstrainer\KotonPluginGuqinConstrainer.csproj", "{E4B7F9AB-2D6F-4C5A-B18F-A09D8C7E5F43}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginGuqinConstrainer", "Plugins\GeneratorFilters\KotonPluginGuqinConstrainer\KotonPluginGuqinConstrainer.csproj", "{E4B7F9AB-2D6F-4C5A-B18F-A09D8C7E5F43}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KotonPluginSitar", "Plugins\Instruments\PhysicalModel\KotonPluginSitar\KotonPluginSitar.csproj", "{F1B2C3D4-5E6F-4A0B-8C1D-9E0F1A2B3C4D}"
 EndProject

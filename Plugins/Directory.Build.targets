@@ -25,7 +25,7 @@
     <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\Instruments\'))">Instruments</PluginTypeSubdir>
     <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\Generators\'))">Generators</PluginTypeSubdir>
     <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\Effects\'))">Effects</PluginTypeSubdir>
-    <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\GeneratorConstrainers\'))">GeneratorConstrainers</PluginTypeSubdir>
+    <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\GeneratorFilters\'))">GeneratorFilters</PluginTypeSubdir>
     <!-- Fallback si un csproj est ajouté dans un chemin non reconnu : reste à la racine
          plugins/ (visible mais non catégorisé). -->
     <PluginTypeSubdir Condition="'$(PluginTypeSubdir)' == ''"></PluginTypeSubdir>
