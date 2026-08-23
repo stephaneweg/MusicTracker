@@ -1,0 +1,53 @@
+<Project>
+
+  <!--
+    Directory.Build.targets partagé pour TOUS les plugins Koton (fichiers .ksl).
+
+    Rôle : après le build, copier le .ksl produit dans le dossier plugins/ de MusicTracker,
+    dans un SOUS-DOSSIER TYPÉ (Instruments / Generators / Effects / GeneratorConstrainers).
+    Le sous-dossier est déduit AUTOMATIQUEMENT du chemin du csproj — le csproj n'a rien à
+    faire, il hérite juste de ce fichier.
+
+    Le KotonPluginRegistry scanne récursivement le dossier plugins/, donc ranger par type
+    n'a AUCUN impact fonctionnel : c'est purement organisationnel (rendre les binaires plus
+    lisibles quand on ouvre le dossier plugins/ à la main).
+
+    MSBuild ordering : Directory.Build.targets est importé APRÈS le corps du csproj ET
+    APRÈS Sdk.targets. Un <Target Name="X"> défini ici ÉCRASE tout target du même nom
+    déjà défini dans le csproj (dernière définition gagne, comportement MSBuild standard).
+    C'est pour ça que la CopyKslToHostBinPluginsDir historique de chaque csproj peut rester
+    telle quelle : ce fichier prend le dessus.
+  -->
+
+  <!-- Déduction du sous-dossier type depuis le chemin du csproj. On teste les 4 buckets
+       actuels ; ajouter un nouveau type = ajouter une ligne ici. -->
+  <PropertyGroup>
+    <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\Instruments\'))">Instruments</PluginTypeSubdir>
+    <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\Generators\'))">Generators</PluginTypeSubdir>
+    <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\Effects\'))">Effects</PluginTypeSubdir>
+    <PluginTypeSubdir Condition="$(MSBuildProjectDirectory.Contains('\GeneratorConstrainers\'))">GeneratorConstrainers</PluginTypeSubdir>
+    <!-- Fallback si un csproj est ajouté dans un chemin non reconnu : reste à la racine
+         plugins/ (visible mais non catégorisé). -->
+    <PluginTypeSubdir Condition="'$(PluginTypeSubdir)' == ''"></PluginTypeSubdir>
+  </PropertyGroup>
+
+  <!-- Copie du .ksl produit vers MusicTracker/bin/<Config>/plugins/<Type>/. Écrase le
+       target du même nom éventuellement défini dans le csproj (les nouvelles csproj
+       n'ont plus besoin de le définir localement). -->
+  <Target Name="CopyKslToHostBinPluginsDir" AfterTargets="Build">
+    <PropertyGroup>
+      <KslArtifact>$(TargetPath)</KslArtifact>
+      <!-- MSBuildThisFileDirectory ICI = le dossier de Plugins/ (Plugins/Directory.Build.targets),
+           pas celui du csproj. D'où le simple ../MusicTracker/bin/... -->
+      <HostBinPluginsDir>$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)\plugins\$(PluginTypeSubdir)\</HostBinPluginsDir>
+      <HostBinCheckDir>$(MSBuildThisFileDirectory)..\MusicTracker\bin\$(Configuration)</HostBinCheckDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(HostBinPluginsDir)"
+             Condition="Exists('$(HostBinCheckDir)')"/>
+    <Copy SourceFiles="$(KslArtifact)"
+          DestinationFolder="$(HostBinPluginsDir)"
+          Condition="Exists('$(HostBinCheckDir)')"
+          SkipUnchangedFiles="true"/>
+  </Target>
+
+</Project>

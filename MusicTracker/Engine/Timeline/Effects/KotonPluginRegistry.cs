@@ -57,6 +57,22 @@ namespace MusicTracker.Engine.Timeline.Effects
     }
 
     /// <summary>
+    /// Métadonnées d'un constrainer Koton (<see cref="IKotonGeneratorConstrainer"/>). Retourné par
+    /// <see cref="KotonPluginRegistry.Constrainers"/> pour peupler la sélection « + filtre note »
+    /// dans le panneau d'une piste, sans instancier le plugin.
+    /// </summary>
+    public sealed class KotonGeneratorConstrainerInfo
+    {
+        public string Id { get; internal set; }
+        public string DisplayName { get; internal set; }
+        public string Category { get; internal set; }
+        public string Version { get; internal set; }
+        public string Vendor { get; internal set; }
+        internal System.Type TypeToken { get; set; }
+        internal string SourceFile { get; set; }
+    }
+
+    /// <summary>
     /// Registre singleton des plugins Koton natifs (<c>.ksl</c>) trouvés dans les dossiers configurés
     /// (<c>&lt;AppPaths.BaseDir&gt;/plugins/</c> bundle + <c>%LocalAppData%/MusicTracker/plugins/</c>
     /// utilisateur + dossiers utilisateur configurés dans <see cref="AppSettings"/>).
@@ -93,6 +109,8 @@ namespace MusicTracker.Engine.Timeline.Effects
             new Dictionary<string, KotonEffectInfo>(StringComparer.Ordinal);
         static readonly Dictionary<string, KotonGeneratorInfo> _generators =
             new Dictionary<string, KotonGeneratorInfo>(StringComparer.Ordinal);
+        static readonly Dictionary<string, KotonGeneratorConstrainerInfo> _constrainers =
+            new Dictionary<string, KotonGeneratorConstrainerInfo>(StringComparer.Ordinal);
         static readonly HashSet<string> _loadedFiles =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         static readonly List<string> _scanDirs = new List<string>();
@@ -154,6 +172,14 @@ namespace MusicTracker.Engine.Timeline.Effects
         public static IReadOnlyList<KotonGeneratorInfo> Generators
         {
             get { lock (_lock) return _generators.Values.OrderBy(g => g.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(); }
+        }
+
+        /// <summary>Métadonnées de tous les constrainers Koton natifs découverts, triés par nom.
+        /// Datasource du sélecteur « + filtre note » dans le panneau de piste (introduit avec le
+        /// wiring phase B).</summary>
+        public static IReadOnlyList<KotonGeneratorConstrainerInfo> Constrainers
+        {
+            get { lock (_lock) return _constrainers.Values.OrderBy(c => c.DisplayName, StringComparer.CurrentCultureIgnoreCase).ToList(); }
         }
 
         // ------ Alias historiques (compat) ------
@@ -230,6 +256,18 @@ namespace MusicTracker.Engine.Timeline.Effects
             catch { return null; }
         }
 
+        /// <summary>Instancie un constrainer par <see cref="KotonGeneratorConstrainerInfo.Id"/> —
+        /// instance fraîche par piste (l'état interne = paramètres + éventuel état visuel).
+        /// <c>null</c> = id inconnu ou constructeur qui jette.</summary>
+        public static IKotonGeneratorConstrainer InstantiateConstrainer(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            KotonGeneratorConstrainerInfo info;
+            lock (_lock) { if (!_constrainers.TryGetValue(id, out info)) return null; }
+            try { return (IKotonGeneratorConstrainer)Activator.CreateInstance(info.TypeToken); }
+            catch { return null; }
+        }
+
         // --------------- interne ---------------
 
         static void ScanAllFolders()
@@ -284,6 +322,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 TryRegisterInstrument(t, file);
                 TryRegisterEffect(t, file);
                 TryRegisterGenerator(t, file);
+                TryRegisterConstrainer(t, file);
             }
         }
 
@@ -373,6 +412,34 @@ namespace MusicTracker.Engine.Timeline.Effects
             lock (_lock)
             {
                 if (!_generators.ContainsKey(id)) _generators[id] = info;
+            }
+        }
+
+        static void TryRegisterConstrainer(Type t, string sourceFile)
+        {
+            KotonGeneratorConstrainerAttribute attr;
+            try { attr = t.GetCustomAttribute<KotonGeneratorConstrainerAttribute>(); }
+            catch { return; }
+            if (attr == null) return;
+            if (!typeof(IKotonGeneratorConstrainer).IsAssignableFrom(t)) return;
+            var ctor = t.GetConstructor(Type.EmptyTypes);
+            if (ctor == null) return;
+
+            string id = string.IsNullOrEmpty(attr.Id) ? t.FullName : attr.Id;
+
+            var info = new KotonGeneratorConstrainerInfo
+            {
+                Id = id,
+                DisplayName = attr.DisplayName,
+                Category = attr.Category ?? "",
+                Version = attr.Version ?? "",
+                Vendor = attr.Vendor ?? "",
+                TypeToken = t,
+                SourceFile = sourceFile,
+            };
+            lock (_lock)
+            {
+                if (!_constrainers.ContainsKey(id)) _constrainers[id] = info;
             }
         }
     }
