@@ -51,7 +51,8 @@ namespace KotonPluginKarplusStrong
         readonly int _sampleRate;
         readonly float[] _buffer;   // ligne à retard circulaire
         int _writeIdx;
-        int _size;                   // longueur active de la ligne (en samples, entier)
+        int _size;                   // longueur NOMINALE de la ligne (en samples, entier) — fig au NoteOn
+        double _baseFreqHz;          // fréquence nominale de la note (Hz), fig au NoteOn
 
         // LP variable (tone) : 1-pôle IIR
         float _tonePrev;
@@ -93,6 +94,7 @@ namespace KotonPluginKarplusStrong
             double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
             if (detuneCents != 0f)
                 freq *= Math.Pow(2.0, detuneCents / 1200.0);
+            _baseFreqHz = freq;
             _size = Math.Max(4, Math.Min(_buffer.Length, (int)Math.Round(_sampleRate / freq)));
 
             // Excitation : bruit blanc dans la ligne à retard
@@ -136,7 +138,12 @@ namespace KotonPluginKarplusStrong
             for (int i = 0; i < _size; i++)
                 _buffer[i] *= gain;
 
-            _writeIdx = 0;
+            // Le buffer contient l'excitation en [0.._size]. On positionne _writeIdx à _size pour
+            // que la première lecture (writeIdx - sizeInt) tombe sur le début de l'excitation.
+            _writeIdx = _size;
+            // Le reste du buffer (hors zone excitée) doit être à zéro — sinon interpolation lit
+            // des résidus d'une voix précédente.
+            for (int i = _size; i < _buffer.Length; i++) _buffer[i] = 0f;
             _tonePrev = 0f;
             _lpPrev = 0f;
             _apPrevIn = 0f;
@@ -154,14 +161,25 @@ namespace KotonPluginKarplusStrong
         }
 
         /// <summary>Produit un sample mono. Le mixage stéréo et le pan sont gérés dans le plugin.
-        /// La voix passe en inactive automatiquement dès que l'énergie tombe sous le seuil.</summary>
-        public float RenderSample(in KsParams p)
+        /// La voix passe en inactive automatiquement dès que l'énergie tombe sous le seuil.
+        /// <paramref name="bendMul"/> = multiplicateur de fréquence (1.0 = pas de bend). Modifie
+        /// la longueur EFFECTIVE de la ligne à retard par interpolation linéaire, ce qui produit
+        /// un pitch bend continu sans perte de contenu (contrairement à recréer la ligne).</summary>
+        public float RenderSample(in KsParams p, float bendMul = 1f)
         {
             if (!_active) return 0f;
 
-            // Lecture au bout de la ligne (read = write, la structure est en tampon circulaire de
-            // longueur _size — on lit la valeur qui va être écrasée par la prochaine écriture).
-            float sample = _buffer[_writeIdx];
+            // Taille effective en fonction du bend (peut être fractionnaire). L'interpolation
+            // linéaire entre les 2 samples voisins donne le pitch continu ; sans bend (bendMul=1),
+            // sizeFrac = _size exactement → frac=0 → comportement identique à l'ancien read=write.
+            double sizeFrac = _sampleRate / (_baseFreqHz * bendMul);
+            if (sizeFrac < 4) sizeFrac = 4;
+            if (sizeFrac > _buffer.Length - 2) sizeFrac = _buffer.Length - 2;
+            int sizeInt = (int)sizeFrac;
+            double frac = sizeFrac - sizeInt;
+            int r0 = _writeIdx - sizeInt; if (r0 < 0) r0 += _buffer.Length;
+            int r1 = r0 - 1;              if (r1 < 0) r1 += _buffer.Length;
+            float sample = (float)(_buffer[r0] * (1.0 - frac) + _buffer[r1] * frac);
 
             // 1) Filtre LP "tilt" — classique KS = (x + prev)/2 (LP moyen -6dB/oct, zéro à Nyquist),
             //    modifié par Harmonics pour préserver plus d'aigus :
@@ -200,10 +218,11 @@ namespace KotonPluginKarplusStrong
             float gEff = (float)Math.Pow(gBase, _size / 1000.0);
             float outValue = apOut * gEff;
 
-            // Écriture dans la ligne à retard (le buffer devient x[n+_size])
+            // Écriture séquentielle dans la ligne à retard : le writeIdx avance de 1 par sample,
+            // wrap sur toute la longueur du buffer (pas _size, qui varie avec le bend).
             _buffer[_writeIdx] = outValue;
             _writeIdx++;
-            if (_writeIdx >= _size) _writeIdx = 0;
+            if (_writeIdx >= _buffer.Length) _writeIdx = 0;
 
             // Détection d'énergie pour libération auto de la voix
             float absOut = outValue < 0f ? -outValue : outValue;
