@@ -1,0 +1,27 @@
+<UserControl x:Class="KotonPluginSpectrumRings.SpectrumRingsEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="520" MinHeight="520" Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <ContentControl x:Name="canvasHost"/>
+        <!-- Petit strip de paramètres semi-transparent en bas, ne mange pas la viz -->
+        <Border VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
+                Background="#80101418" Padding="10,4,10,6">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Teinte" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center"/>
+                <Slider x:Name="sldHue" Minimum="0" Maximum="2" TickFrequency="0.05" Width="90" Margin="4,0,16,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Réactivité" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center"/>
+                <Slider x:Name="sldReact" Minimum="0.5" Maximum="4" TickFrequency="0.1" Width="90" Margin="4,0,16,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Halo" Foreground="{DynamicResource KotonTextDim}" FontSize="10" VerticalAlignment="Center"/>
+                <Slider x:Name="sldGlow" Minimum="0" Maximum="1" TickFrequency="0.05" Width="90" Margin="4,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
