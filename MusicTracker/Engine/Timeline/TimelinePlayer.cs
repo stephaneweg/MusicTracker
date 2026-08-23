@@ -21,10 +21,19 @@ namespace MusicTracker.Engine.Timeline
         const int Spb = 24;        // global flatten resolution (slices per beat)
         const int NoteCount = 96;  // matches RiffPlayer's note range (note -> Utils.Frequencies[note])
 
+        /// <summary>Une note active avec courbe de pitch bend. Les offsets de Curve[] sont en
+        /// SLICES GLOBALES depuis StartSlice, valeurs en semitons signés.</summary>
+        struct BendedNote { public int Midi; public int StartSlice; public int EndSlice; public BendPoint[] Curve; public float LastAppliedSemis; }
+
         sealed class Track
         {
             public List<int>[] AttackAt, ReleaseAt; // per global slice (Spb): notes to (re)attack / to release
             public List<int>[] AttackVel;           // parallel to AttackAt: the MIDI velocity for each attacked note
+            /// <summary>Notes qui portent une courbe de pitch bend (glissando, etc.). Chaque entrée
+            /// couvre [StartSlice..EndSlice] en slices globales. À chaque DispatchSlice pendant cet
+            /// intervalle, le player calcule la valeur du bend et l'envoie via SetNoteBend au VSTi
+            /// (VST → no-op par défaut, Koton adapter → forward vers plugin natif).</summary>
+            public List<BendedNote> BendedNotes = new List<BendedNote>();
             public Preset Template;
             public readonly Preset[] Voices = new Preset[NoteCount];
             public readonly bool[] Active = new bool[NoteCount];
@@ -465,6 +474,15 @@ namespace MusicTracker.Engine.Timeline
                 (tr.AttackAt[s] ?? (tr.AttackAt[s] = new List<int>())).Add(n.Note);
                 (tr.AttackVel[s] ?? (tr.AttackVel[s] = new List<int>())).Add(vel);
                 (tr.ReleaseAt[e] ?? (tr.ReleaseAt[e] = new List<int>())).Add(n.Note);
+                // Pitch bend curve : offsets convertis de slices RIFF vers slices GLOBALES avec le
+                // même scale. On stocke tel quel pour interpolation en direct à chaque DispatchSlice.
+                if (n.Bend != null && n.Bend.Length > 0)
+                {
+                    var globalCurve = new BendPoint[n.Bend.Length];
+                    for (int b = 0; b < n.Bend.Length; b++)
+                        globalCurve[b] = new BendPoint((int)Math.Round(n.Bend[b].Off * scale), n.Bend[b].Semis);
+                    tr.BendedNotes.Add(new BendedNote { Midi = n.Note + 12, StartSlice = s, EndSlice = e, Curve = globalCurve, LastAppliedSemis = float.NaN });
+                }
             }
         }
 
@@ -1045,6 +1063,31 @@ namespace MusicTracker.Engine.Timeline
                         int v = vel != null && k < vel.Count ? vel[k] : MeltyVelocity;
                         if (vsti != null) vsti.NoteOn(ch, att[k] + 12, v);
                         else synth.NoteOn(ch, att[k] + 12, v);
+                    }
+                }
+                // Bends actifs : pour chaque BendedNote qui couvre `sl`, interpole et envoie via
+                // vsti.SetNoteBend (SoundFont MeltySynth = no-op : pas de bend per-voix). On appelle
+                // uniquement quand la valeur CHANGE (cache LastAppliedSemis) pour éviter du spam.
+                var bends = tracks[ti].BendedNotes;
+                if (vsti != null && bends != null && bends.Count > 0)
+                {
+                    for (int bi = 0; bi < bends.Count; bi++)
+                    {
+                        var bn = bends[bi];
+                        if (sl < bn.StartSlice) continue;
+                        if (sl > bn.EndSlice)
+                        {
+                            // Note expirée : envoie 0 une dernière fois pour reset et retire.
+                            if (bn.LastAppliedSemis != 0f) { try { vsti.SetNoteBend(ch, bn.Midi, 0f); } catch { } }
+                            bends.RemoveAt(bi); bi--; continue;
+                        }
+                        float semis = RiffNote.BendValue(bn.Curve, sl - bn.StartSlice);
+                        if (semis != bn.LastAppliedSemis)
+                        {
+                            try { vsti.SetNoteBend(ch, bn.Midi, semis); } catch { }
+                            bn.LastAppliedSemis = semis;
+                            bends[bi] = bn;
+                        }
                     }
                 }
             }

@@ -19,6 +19,13 @@ namespace MusicTracker.Engine.Timeline.Effects
         void NoteOff(int channel, int note);
         void ProcessMidiCC(int channel, int cc, int value);
         void SetPitchBend(int channel, int value);
+        /// <summary>Bend PAR VOIX (par note active), en SEMITONS signés. Contrairement à
+        /// <see cref="SetPitchBend"/> (canal-wide), celui-ci ne modifie QUE la voix identifiée par
+        /// <paramref name="note"/> — indispensable pour un glissando polyphonique où plusieurs
+        /// notes jouent en même temps et doivent bender indépendamment. Défaut = no-op : les
+        /// backends VST natifs qui n'ont pas d'équivalent l'ignorent (le glissando reste inaudible
+        /// sur ces instruments — limitation MIDI standard, pas un bug).</summary>
+        void SetNoteBend(int channel, int note, float semis) { }
         void Render(Span<float> left, Span<float> right);
         string SaveState();
         void LoadState(string state);

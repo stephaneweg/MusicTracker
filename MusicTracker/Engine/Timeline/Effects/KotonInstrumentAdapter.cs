@@ -109,6 +109,14 @@ namespace MusicTracker.Engine.Timeline.Effects
             catch { _failed = true; }
         }
 
+        public void SetNoteBend(int channel, int note, float semis)
+        {
+            if (_failed) return;
+            EnsurePrepared();
+            try { _plugin.SetNoteBend(note, semis); }
+            catch { _failed = true; }
+        }
+
         // ---- rendu --------------------------------------------------------------------------------------
 
         public void Render(Span<float> left, Span<float> right)

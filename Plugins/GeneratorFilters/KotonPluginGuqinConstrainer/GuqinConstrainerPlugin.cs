@@ -41,6 +41,11 @@ namespace KotonPluginGuqinConstrainer
         // graves/aiguës pour le guqin (basse à 30, mélodie à 90) et qu'on veut quand même les
         // jouer, ramenées dans l'ambitus par octaves entières (préserve la classe de hauteur).
         readonly KotonParameter _snapMode    = new KotonParameter("snap_mode",    "Snap hors gamme",  0, 2, 2);
+        // Glissando : 0 = off, 1 = on. Ajoute un pitch bend automatique entre 2 notes consécutives
+        // qui se résolvent sur la MÊME corde stoppée (aucune corde à vide) — geste caractéristique
+        // du guqin (yin/nao/chuo). Le bend monte/descend depuis la note source vers la note cible
+        // pendant la durée de la note source, puis la note cible est attaquée normalement.
+        readonly KotonParameter _glissando   = new KotonParameter("glissando",    "Glissando même corde", 0, 1, 1);
         // MIDI de chaque corde à vide, pré-alloués (MaxStrings entrées). Seules les _stringCount
         // premières sont utilisées ; les autres restent dans SaveState pour préserver l'état de
         // l'user si le nombre de cordes est diminué puis réaugmenté.
@@ -84,7 +89,7 @@ namespace KotonPluginGuqinConstrainer
             for (int i = 0; i < GuqinModel.MaxStrings; i++)
                 _stringMidi[i] = new KotonParameter("string_midi_" + (i + 1), "Corde " + (i + 1), 0, 127, defaults[i]);
 
-            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _stringCount, _snapMode };
+            _params = new List<KotonParameter> { _diapasonCm, _spanCm, _maxFingers, _stringCount, _snapMode, _glissando };
             _params.AddRange(_stringMidi);
         }
 
@@ -229,6 +234,47 @@ namespace KotonPluginGuqinConstrainer
                 }
             }
 
+            // --- passe glissando : pour chaque note émise, cherche la note suivante émise sur la
+            // MÊME corde ; si ni l'une ni l'autre n'est à vide, attache un pitch bend qui monte de
+            // 0 à (target.midi - src.midi) semitons pendant la durée de la source. Le player
+            // interpole linéairement → glissement audible entre les 2 hui. La note cible reste
+            // attaquée normalement à son midi. ---
+            bool doGliss = _glissando.Value >= 0.5;
+            var bendCurves = new KotonBendPoint[input.Count][];
+            if (doGliss)
+            {
+                for (int i = 0; i < input.Count; i++)
+                {
+                    if (!resolved[i].emitted) continue;
+                    if (resolved[i].position <= 1e-6) continue;   // source à vide → pas de glissando
+                    // Cherche la 1re note ultérieure sur la même corde, émise, non ouverte, midi différent.
+                    int target = -1;
+                    for (int j = i + 1; j < input.Count; j++)
+                    {
+                        if (!resolved[j].emitted) continue;
+                        if (resolved[j].stringIdx != resolved[i].stringIdx) continue;
+                        if (resolved[j].position <= 1e-6) break;   // suivante à vide → pas de glissando
+                        if (resolved[j].midi == resolved[i].midi) break;   // même hui, rien à glisser
+                        target = j; break;
+                    }
+                    if (target < 0) continue;
+                    var s = input[i];
+                    var t = input[target];
+                    // Le bend atteint sa valeur cible juste avant la ré-attaque de la note cible
+                    // (t.StartBeat - s.StartBeat). Si les 2 notes sont adjacentes (durée = gap),
+                    // ça correspond à la durée sonore de la source. Si elles ne le sont pas, on
+                    // borne à s.DurationBeats pour éviter un bend qui déborde après la fin audio.
+                    double reachBeat = Math.Min(t.StartBeat - s.StartBeat, s.DurationBeats);
+                    if (reachBeat < 0.01) continue;   // notes quasi-simultanées : pas de glissando
+                    float semis = (float)(resolved[target].midi - resolved[i].midi);
+                    bendCurves[i] = new[]
+                    {
+                        new KotonBendPoint(0.0, 0f),
+                        new KotonBendPoint(reachBeat, semis),
+                    };
+                }
+            }
+
             for (int i = 0; i < input.Count; i++)
             {
                 if (!resolved[i].emitted) continue;
@@ -240,6 +286,7 @@ namespace KotonPluginGuqinConstrainer
                     NotationDurationBeats = src.NotationDurationBeats,
                     MidiNote = resolved[i].midi,
                     Velocity = src.Velocity,
+                    Bends = bendCurves[i],
                 };
             }
         }
