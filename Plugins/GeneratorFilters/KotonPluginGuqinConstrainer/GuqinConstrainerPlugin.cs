@@ -171,6 +171,11 @@ namespace KotonPluginGuqinConstrainer
             // Contexte pour la voice-leading : dernière position stoppée jouée (pour préférer un
             // fingering proche au suivant, comme un musicien qui minimise le déplacement de main).
             double? prevPositionCm = null;
+            // Glissando : reverse map held → index de la note qui l'a créé (pour retrouver la note
+            // volée lors d'un StealOldest et lui attacher un bend vers la nouvelle note).
+            var heldToIdx = new Dictionary<GuqinConstraint.Held, int>();
+            bool doGliss = _glissando.Value >= 0.5;
+            var bendCurves = new KotonBendPoint[input.Count][];
 
             foreach (var (t, kind, idx) in events)
             {
@@ -195,7 +200,27 @@ namespace KotonPluginGuqinConstrainer
                     if (decision == GuqinConstraint.Decision.RejectStringBusy) { resolved[idx] = (false, -1, -1, 0); continue; }
                     if (decision == GuqinConstraint.Decision.StealOldest && toRelease != null)
                     {
+                        // GLISSANDO : la corde est encore en vibration (une note ancienne y était)
+                        // et la nouvelle note atterrit dessus. Si les deux notes sont stoppées
+                        // (aucune n'est à vide) et leur pitch diffère, on attache un bend à la
+                        // note ANCIENNE qui glisse vers le pitch de la nouvelle, atteint juste
+                        // avant l'attaque de la nouvelle (moment du vol de doigt physique).
+                        if (doGliss && !toRelease.IsOpen && !f.IsOpen && toRelease.Midi != f.Midi
+                            && heldToIdx.TryGetValue(toRelease, out int oldIdx))
+                        {
+                            var oldNote = input[oldIdx];
+                            double reachBeat = srcNote.StartBeat - oldNote.StartBeat;
+                            if (reachBeat > 0.01)
+                            {
+                                bendCurves[oldIdx] = new[]
+                                {
+                                    new KotonBendPoint(0.0, 0f),
+                                    new KotonBendPoint(reachBeat, (float)(f.Midi - toRelease.Midi)),
+                                };
+                            }
+                        }
                         constraint.Release(toRelease);
+                        heldToIdx.Remove(toRelease);
                         // Vol de doigt à l'instant t (StartBeat de la nouvelle note) → release
                         // scheduled à cet instant précis, PAS à la fin de la duration originale
                         // (la corde est reprise par la nouvelle note).
@@ -203,6 +228,7 @@ namespace KotonPluginGuqinConstrainer
                     }
                     var held = constraint.Register(f.Midi, f.StringIdx, f.Position);
                     heldByIdx[idx] = held;
+                    heldToIdx[held] = idx;
                     resolved[idx] = (true, f.Midi, f.StringIdx, f.Position);
                     if (!f.IsOpen) prevPositionCm = f.Position * _diapasonCm.Value;
                     if (wantsViz)
@@ -228,50 +254,10 @@ namespace KotonPluginGuqinConstrainer
                     if (h != null && constraint.Active.Contains(h))
                     {
                         constraint.Release(h);
+                        heldToIdx.Remove(h);
                         // Release scheduled à la fin naturelle de la note (t = event t).
                         if (wantsViz) { try { NoteReleased?.Invoke(new ReleaseEvent { Midi = h.Midi, AbsoluteAtBeat = blockStartAbs + t, Tempo = tempo }); } catch { } }
                     }
-                }
-            }
-
-            // --- passe glissando : pour chaque note émise, cherche la note suivante émise sur la
-            // MÊME corde ; si ni l'une ni l'autre n'est à vide, attache un pitch bend qui monte de
-            // 0 à (target.midi - src.midi) semitons pendant la durée de la source. Le player
-            // interpole linéairement → glissement audible entre les 2 hui. La note cible reste
-            // attaquée normalement à son midi. ---
-            bool doGliss = _glissando.Value >= 0.5;
-            var bendCurves = new KotonBendPoint[input.Count][];
-            if (doGliss)
-            {
-                for (int i = 0; i < input.Count; i++)
-                {
-                    if (!resolved[i].emitted) continue;
-                    if (resolved[i].position <= 1e-6) continue;   // source à vide → pas de glissando
-                    // Cherche la 1re note ultérieure sur la même corde, émise, non ouverte, midi différent.
-                    int target = -1;
-                    for (int j = i + 1; j < input.Count; j++)
-                    {
-                        if (!resolved[j].emitted) continue;
-                        if (resolved[j].stringIdx != resolved[i].stringIdx) continue;
-                        if (resolved[j].position <= 1e-6) break;   // suivante à vide → pas de glissando
-                        if (resolved[j].midi == resolved[i].midi) break;   // même hui, rien à glisser
-                        target = j; break;
-                    }
-                    if (target < 0) continue;
-                    var s = input[i];
-                    var t = input[target];
-                    // Le bend atteint sa valeur cible juste avant la ré-attaque de la note cible
-                    // (t.StartBeat - s.StartBeat). Si les 2 notes sont adjacentes (durée = gap),
-                    // ça correspond à la durée sonore de la source. Si elles ne le sont pas, on
-                    // borne à s.DurationBeats pour éviter un bend qui déborde après la fin audio.
-                    double reachBeat = Math.Min(t.StartBeat - s.StartBeat, s.DurationBeats);
-                    if (reachBeat < 0.01) continue;   // notes quasi-simultanées : pas de glissando
-                    float semis = (float)(resolved[target].midi - resolved[i].midi);
-                    bendCurves[i] = new[]
-                    {
-                        new KotonBendPoint(0.0, 0f),
-                        new KotonBendPoint(reachBeat, semis),
-                    };
                 }
             }
 
