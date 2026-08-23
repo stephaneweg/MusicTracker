@@ -330,10 +330,12 @@ namespace KotonPluginGuqinConstrainer
                 _root.Children.Add(lbl);
             }
 
-            // Hui inlays noyer, exactement à mi-chemin entre s7 (top) et s6 (juste en dessous).
+            // Hui inlays noyer, AU-DESSUS de la corde 1 (grave, sur la face de l'instrument
+            // opposée au joueur — c'est là que les hui sont posés sur un vrai guqin, sur le bord
+            // extérieur du plateau, visibles depuis la position de jeu).
             var huiFill = new SolidColorBrush(WalnutMid); huiFill.Freeze();
             var huiRim  = new SolidColorBrush(WalnutRim); huiRim.Freeze();
-            double huiY = topStringY + _stringSpacingPx / 2;
+            double huiY = topStringY - 12;
             for (int h2 = 0; h2 < GuqinModel.HuiPositions.Length; h2++)
             {
                 double x = MarginX + GuqinModel.HuiPositions[h2] * stringSpan;
@@ -412,9 +414,9 @@ namespace KotonPluginGuqinConstrainer
 
         double StringY(int stringIdx, double topStringY)
         {
-            // Espacement uniforme : corde 7 (index 6) au top, corde 1 (index 0) tout en bas.
-            int offsetSteps = (GuqinModel.StringCount - 1) - stringIdx;   // s7=0, s6=1, ..., s1=6
-            return topStringY + offsetSteps * _stringSpacingPx;
+            // Convention musicien : GRAVE (corde 1, index 0) au HAUT (côté hui, table du plateau),
+            // AIGU (corde 7, index 6) EN BAS (côté joueur). Espacement uniforme, 2 cm réels.
+            return topStringY + stringIdx * _stringSpacingPx;
         }
 
         /// <summary>Corps rectangulaire aux coins arrondis, fill érable clair vernis (gradient
