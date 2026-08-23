@@ -35,15 +35,18 @@ namespace KotonPluginSplineMelody
         readonly Func<int, SplineMelodyGenerator.VoiceSpec> _getVoice;
         readonly Func<int> _getActiveIndex;
         readonly Func<int> _getVoiceCount;
+        readonly Func<bool> _isSplineMode;   // true = Catmull-Rom (courbes), false = linéaire
         public event Action Changed;
 
         public SplineCanvas(Func<int, SplineMelodyGenerator.VoiceSpec> getVoice,
                             Func<int> getActiveIndex,
-                            Func<int> getVoiceCount)
+                            Func<int> getVoiceCount,
+                            Func<bool> isSplineMode)
         {
             _getVoice = getVoice ?? throw new ArgumentNullException(nameof(getVoice));
             _getActiveIndex = getActiveIndex ?? throw new ArgumentNullException(nameof(getActiveIndex));
             _getVoiceCount = getVoiceCount ?? throw new ArgumentNullException(nameof(getVoiceCount));
+            _isSplineMode = isSplineMode ?? throw new ArgumentNullException(nameof(isSplineMode));
 
             _root = new Canvas
             {
@@ -66,9 +69,9 @@ namespace KotonPluginSplineMelody
         readonly Canvas _root;
 
         const double YScale = 10;     // amplitude visuelle max en Y (unités arbitraires du modèle)
-        const double PointRadius = 6; // taille du hit-target des points
-        const double VoiceLineActive = 2.5;
-        const double VoiceLineInactive = 1.4;
+        const double PointRadius = 7; // taille du hit-target des points
+        const double VoiceLineActive = 4.0;
+        const double VoiceLineInactive = 2.4;
         const byte InactiveAlpha = 90;
 
         // Drag state
@@ -133,20 +136,31 @@ namespace KotonPluginSplineMelody
             if (isActive) { var b = new SolidColorBrush(baseCol); b.Freeze(); lineBrush = b; }
             else { var b = new SolidColorBrush(Color.FromArgb(InactiveAlpha, baseCol.R, baseCol.G, baseCol.B)); b.Freeze(); lineBrush = b; }
 
-            // Ligne : polyline linéaire (P2 = pas de rendu Catmull-Rom côté canvas — le user voit
-            // la spline lissée à l'écoute, ce qui suffit ; on garde l'édition WYSIWYG en linéaire).
-            var poly = new Polyline
+            // Le rendu suit le mode d'interpolation choisi (WYSIWYG avec la restitution audio) :
+            //   - Linéaire : polyline
+            //   - Spline   : chemin Catmull-Rom converti en cubiques Bézier
+            double thickness = isActive ? VoiceLineActive : VoiceLineInactive;
+            bool spline = _isSplineMode();
+            Shape shape;
+            if (spline && pts.Count >= 2)
             {
-                Stroke = lineBrush,
-                StrokeThickness = isActive ? VoiceLineActive : VoiceLineInactive,
-                StrokeLineJoin = PenLineJoin.Round,
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round,
-                IsHitTestVisible = false,
-            };
-            foreach (var p in pts)
-                poly.Points.Add(new Point(MapT(p.T, w), MapY(p.Y, h)));
-            _root.Children.Add(poly);
+                shape = BuildCatmullRomPath(pts, w, h, lineBrush, thickness);
+            }
+            else
+            {
+                var poly = new Polyline
+                {
+                    Stroke = lineBrush,
+                    StrokeThickness = thickness,
+                    StrokeLineJoin = PenLineJoin.Round,
+                    StrokeStartLineCap = PenLineCap.Round,
+                    StrokeEndLineCap = PenLineCap.Round,
+                    IsHitTestVisible = false,
+                };
+                foreach (var p in pts) poly.Points.Add(new Point(MapT(p.T, w), MapY(p.Y, h)));
+                shape = poly;
+            }
+            _root.Children.Add(shape);
 
             if (!isActive) return;   // les voix passives n'ont pas de handles
 
@@ -173,6 +187,42 @@ namespace KotonPluginSplineMelody
                 el.MouseRightButtonDown += OnPointRightDown;
                 _root.Children.Add(el);
             }
+        }
+
+        /// <summary>Construit un Path Catmull-Rom (traversant TOUS les points) rendu comme une suite
+        /// de cubiques Bézier. Formule classique : pour 4 points p0..p3, la courbe C-R de p1 à p2
+        /// équivaut au Bézier ayant pour handles p1 + (p2-p0)/6 et p2 - (p3-p1)/6. Aux extrémités
+        /// on duplique le point (p0=p1 au début, p3=p2 à la fin) — même convention que le moteur
+        /// audio, WYSIWYG total entre l'aperçu et le rendu joué.</summary>
+        Shape BuildCatmullRomPath(List<SplineMelodyGenerator.ControlPoint> pts, double w, double h, Brush stroke, double thickness)
+        {
+            var geometry = new PathGeometry();
+            var figure = new PathFigure { StartPoint = new Point(MapT(pts[0].T, w), MapY(pts[0].Y, h)), IsClosed = false };
+            for (int i = 0; i < pts.Count - 1; i++)
+            {
+                var p0 = i > 0 ? pts[i - 1] : pts[i];
+                var p1 = pts[i];
+                var p2 = pts[i + 1];
+                var p3 = i + 2 < pts.Count ? pts[i + 2] : pts[i + 1];
+                double p0x = MapT(p0.T, w), p0y = MapY(p0.Y, h);
+                double p1x = MapT(p1.T, w), p1y = MapY(p1.Y, h);
+                double p2x = MapT(p2.T, w), p2y = MapY(p2.Y, h);
+                double p3x = MapT(p3.T, w), p3y = MapY(p3.Y, h);
+                var c1 = new Point(p1x + (p2x - p0x) / 6, p1y + (p2y - p0y) / 6);
+                var c2 = new Point(p2x - (p3x - p1x) / 6, p2y - (p3y - p1y) / 6);
+                figure.Segments.Add(new BezierSegment(c1, c2, new Point(p2x, p2y), true));
+            }
+            geometry.Figures.Add(figure);
+            return new System.Windows.Shapes.Path
+            {
+                Data = geometry,
+                Stroke = stroke,
+                StrokeThickness = thickness,
+                StrokeLineJoin = PenLineJoin.Round,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                IsHitTestVisible = false,
+            };
         }
 
         // -----------------------------------------------------------------------------------------

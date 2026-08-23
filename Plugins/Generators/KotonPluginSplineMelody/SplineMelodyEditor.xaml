@@ -87,14 +87,7 @@
                     </Grid>
                 </TabItem>
                 <TabItem Header="Rythmes">
-                    <Grid Margin="6">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <StackPanel Grid.Row="0" x:Name="voiceChipsRhythms" Orientation="Horizontal" Margin="0,0,0,8"/>
-                        <ContentControl Grid.Row="1" x:Name="rhythmHost"/>
-                    </Grid>
+                    <ContentControl x:Name="rhythmHost" Margin="6"/>
                 </TabItem>
             </TabControl>
         </Grid>

@@ -20,7 +20,7 @@ namespace KotonPluginSplineMelody
         int _activeVoice;   // 0-based, valide dans [0, voiceCount)
 
         SplineCanvas _canvas;
-        RhythmGridEditor _rhythmEditor;
+        MultiVoiceRhythmGrid _rhythmGrid;
 
         public SplineMelodyEditor(SplineMelodyGenerator plugin)
         {
@@ -38,38 +38,34 @@ namespace KotonPluginSplineMelody
             cboArticulation.Items.Add("Détaché");
             cboArticulation.Items.Add("Staccato");
 
-            _canvas = new SplineCanvas(_plugin.GetVoice, () => _activeVoice, GetVoiceCount);
+            _canvas = new SplineCanvas(_plugin.GetVoice, () => _activeVoice, GetVoiceCount, IsSplineInterp);
             _canvas.Changed += () => { /* la modif est déjà dans le modèle du plugin */ };
             canvasHost.Content = _canvas;
 
-            _rhythmEditor = new RhythmGridEditor();
-            _rhythmEditor.RhythmChanged += r =>
-            {
-                var v = _plugin.GetVoice(_activeVoice);
-                if (v != null) v.Rhythm = r;
-            };
-            rhythmHost.Content = _rhythmEditor;
+            _rhythmGrid = new MultiVoiceRhythmGrid(_plugin.GetVoice, GetVoiceCount);
+            _rhythmGrid.Changed += () => { /* les modifs sont ecrites directement dans les VoiceSpec.Rhythm */ };
+            rhythmHost.Content = _rhythmGrid;
 
             SyncFromPlugin();
             RebuildVoiceChips();
-            LoadRhythmForActiveVoice();
+            _rhythmGrid.ReloadFromModel();
 
             var ps = _plugin.Parameters;
             foreach (var kp in ps) kp.Changed += _ => Dispatcher.BeginInvoke(new Action(() =>
             {
                 SyncFromPlugin();
                 RebuildVoiceChips();
+                _canvas.Redraw();   // interpolation ou autre param → canvas se re-render (WYSIWYG)
             }));
 
             cboVoiceCount.SelectionChanged += (s, e) =>
             {
                 if (_updating) return;
                 SetParam("voice_count", cboVoiceCount.SelectedIndex + 1);
-                // Voix supplémentaires instanciées si besoin (défaut = ligne plate).
                 for (int i = 0; i <= cboVoiceCount.SelectedIndex; i++) _plugin.GetVoice(i);
                 if (_activeVoice > cboVoiceCount.SelectedIndex) _activeVoice = cboVoiceCount.SelectedIndex;
                 RebuildVoiceChips();
-                LoadRhythmForActiveVoice();
+                _rhythmGrid.ReloadFromModel();
                 _canvas.Redraw();
             };
             cboBars.SelectionChanged += (s, e) => { if (_updating) return; _plugin.SetDurationBars(cboBars.SelectedIndex + 1); };
@@ -134,15 +130,10 @@ namespace KotonPluginSplineMelody
         void RebuildVoiceChips()
         {
             voiceChipsContours.Children.Clear();
-            voiceChipsRhythms.Children.Clear();
             int n = GetVoiceCount();
             if (_activeVoice < 0) _activeVoice = 0;
             if (_activeVoice >= n) _activeVoice = n - 1;
-            for (int i = 0; i < n; i++)
-            {
-                voiceChipsContours.Children.Add(BuildChip(i));
-                voiceChipsRhythms.Children.Add(BuildChip(i));
-            }
+            for (int i = 0; i < n; i++) voiceChipsContours.Children.Add(BuildChip(i));
         }
 
         Button BuildChip(int voiceIdx)
@@ -188,16 +179,17 @@ namespace KotonPluginSplineMelody
                 if (!(btn.Tag is int idx)) return;
                 _activeVoice = idx;
                 RebuildVoiceChips();
-                LoadRhythmForActiveVoice();
                 _canvas.Redraw();
+                // La grille rythme montre TOUTES les voix — pas besoin de la recharger sur switch.
             };
             return btn;
         }
 
-        void LoadRhythmForActiveVoice()
+        bool IsSplineInterp()
         {
-            var v = _plugin.GetVoice(_activeVoice);
-            if (v != null && _rhythmEditor != null) _rhythmEditor.Load(v.Rhythm);
+            for (int i = 0; i < _plugin.Parameters.Count; i++)
+                if (_plugin.Parameters[i].Id == "interpolation") return _plugin.Parameters[i].Value >= 0.5;
+            return false;
         }
 
         public void OnContextUpdated(KotonRenderContext ctx)
