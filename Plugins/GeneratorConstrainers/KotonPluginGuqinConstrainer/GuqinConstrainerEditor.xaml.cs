@@ -301,10 +301,15 @@ namespace KotonPluginGuqinConstrainer
             if (diapasonCm < 10) diapasonCm = 110;
             double stringSpan = w - 2 * MarginX;
             _pxPerCm = stringSpan / diapasonCm;
-            _stringSpacingPx = StringSpacingCm * _pxPerCm;
-            // Garde-fou : sur un canvas très étroit + long diapason, l'espacement pourrait devenir
-            // < 4 px, illisible. On force un minimum sans casser la proportion (les hui restent OK).
-            if (_stringSpacingPx < 6) _stringSpacingPx = 6;
+            // Espacement des cordes : au minimum 2cm réels, mais SI le canvas a plus de place
+            // verticale que ce que 2cm imposent, on ELARGIT jusqu'à consommer ~70% de la hauteur
+            // disponible. L'instrument se dessine ainsi grand sur un grand canvas et compact sur
+            // un petit, sans jamais descendre sous 2cm.
+            double minSpacing = StringSpacingCm * _pxPerCm;
+            double availableForStrings = h - 2 * BodyExtraTop - HuiGapExtraPx - 20;   // -20 pour marge visuelle
+            double fillSpacing = availableForStrings * 0.85 / (GuqinModel.StringCount - 1);
+            _stringSpacingPx = Math.Max(minSpacing, fillSpacing);
+            if (_stringSpacingPx < 6) _stringSpacingPx = 6;   // garde-fou
 
             // Hauteur totale = 6 gaps entre cordes + un extra spécifique entre s6 et s7.
             double stringsHeight = (GuqinModel.StringCount - 1) * _stringSpacingPx + HuiGapExtraPx;
