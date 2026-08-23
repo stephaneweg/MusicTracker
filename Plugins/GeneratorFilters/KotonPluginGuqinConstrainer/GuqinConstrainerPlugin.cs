@@ -296,24 +296,15 @@ namespace KotonPluginGuqinConstrainer
             {
                 int d = Math.Abs(f.Midi - targetMidi);
                 if (d > bestDist) continue;
-                double score;
-                if (prevPositionCm.HasValue)
-                {
-                    // Priorité : proche de la main précédente. Une corde à vide = pas de main
-                    // engagée → score neutre au centre pour éviter un attrait pour la position 0.
-                    double posCm = f.IsOpen ? diapason * 0.5 : f.Position * diapason;
-                    score = Math.Abs(posCm - prevPositionCm.Value);
-                }
-                else
-                {
-                    score = Math.Abs(f.Position - 0.5) * diapason;   // fallback : proche du centre
-                }
-                // BIAIS GAUCHE : favorise les positions vers le sillet (petit f.Position).
-                // Poids modéré (30 % du diapason à la position extrême droite) pour NE PAS écraser
-                // la voice-leading : la préférence gauche joue seulement quand plusieurs fingerings
-                // sont proches du contexte, sinon le voice-leading gagne.
-                if (!f.IsOpen)
-                    score += f.Position * diapason * 0.3;
+                // BIAIS GAUCHE DOMINANT : position vers le sillet (petit f.Position) est le
+                // critère PRIMAIRE — favorise la corde la plus aigüe possible car pour un même
+                // pitch, une corde aigüe demande une position plus petite (plus proche du yueshan).
+                // Voice-leading conservée comme tiebreaker avec poids ×0.1 : elle départage entre
+                // positions équivalentes mais ne domine plus.
+                double posCm = f.Position * diapason;
+                double score = posCm;
+                if (prevPositionCm.HasValue && !f.IsOpen)
+                    score += 0.1 * Math.Abs(posCm - prevPositionCm.Value);
                 if (d < bestDist || score < bestScore)
                 {
                     bestDist = d; bestScore = score; best = f;
