@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF>
+    <RootNamespace>KotonPluginMusicBox</RootNamespace><AssemblyName>KotonPluginMusicBox</AssemblyName>
+    <ProjectGuid>{C3D4E5F6-A7B8-4C9D-A012-3F4A5B6C7D83}</ProjectGuid>
+    <Nullable>disable</Nullable><LangVersion>latest</LangVersion><Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo><Platforms>x64</Platforms><PlatformTarget>x64</PlatformTarget><TargetExt>.ksl</TargetExt>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="..\..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" /></ItemGroup>
+  <Target Name="CopyKsl" AfterTargets="Build">
+    <PropertyGroup><HostDir>$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)\plugins\</HostDir></PropertyGroup>
+    <MakeDir Directories="$(HostDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)')" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(HostDir)" Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\..\MusicTracker\bin\$(Configuration)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>
