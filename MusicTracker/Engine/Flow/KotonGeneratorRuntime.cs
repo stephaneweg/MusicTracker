@@ -76,6 +76,7 @@ namespace MusicTracker.Engine.Flow
                 TimeSigNum = Math.Max(1, project.TimeSigNum),
                 TimeSigDen = Math.Max(1, project.TimeSigDen),
                 BlockStartBeat = absoluteStartBeat,
+                PickupBeats = project.PickupBeats,
             };
         }
 

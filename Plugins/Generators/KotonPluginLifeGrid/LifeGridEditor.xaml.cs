@@ -44,15 +44,19 @@ namespace KotonPluginLifeGrid
             foreach (var n in LifeGrid.StampNames) StampCombo.Items.Add(n);
             foreach (var n in LifeGrid.RuleNames) RuleCombo.Items.Add(n);
             foreach (var n in LifeGrid.ScaleNames) ScaleCombo.Items.Add(n);
-            foreach (var n in LifeGrid.ReadModeNames) ReadCombo.Items.Add(n);
             foreach (var n in LifeGrid.DurModeNames) DurCombo.Items.Add(n);
             foreach (var n in LifeGrid.ReviveNames) ReviveCombo.Items.Add(n);
+            foreach (var n in LifeGrid.HarmonyNames) HarmonyCombo.Items.Add(n);
 
             SeedCanvas.Editable = true;
             SeedCanvas.CellPainted += OnCellPainted;
             EvoCanvas.Editable = false;
 
             Wire(GpbSlider, GpbValue, "gens_per_beat", v => v.ToString("F0"), true);
+            Wire(SweepSlider, SweepValue, "sweep_div", SweepText, false);
+            // L'étiquette de l'étalement nomme la valeur rythmique obtenue, qui dépend aussi du nombre
+            // de générations par temps : elle doit donc suivre les DEUX curseurs.
+            GpbSlider.ValueChanged += (o, e) => { if (!_syncing && !_loading) SweepValue.Text = SweepText(SweepSlider.Value); };
             Wire(GateSlider, GateValue, "gate", v => v.ToString("F2"), false);
             Wire(VoicesSlider, VoicesValue, "max_voices", v => v.ToString("F0"), false);
             Wire(OctSlider, OctValue, "base_octave", v => v.ToString("F0"), false);
@@ -105,12 +109,12 @@ namespace KotonPluginLifeGrid
             SurvBox.IsEnabled = custom;
 
             ScaleCombo.SelectedIndex = (int)Math.Round(_plugin.GetParam("scale"));
-            ReadCombo.SelectedIndex = (int)Math.Round(_plugin.GetParam("read_mode"));
             DurCombo.SelectedIndex = (int)Math.Round(_plugin.GetParam("dur_mode"));
             ReviveCombo.SelectedIndex = (int)Math.Round(_plugin.GetParam("revive"));
-            ChordCheck.IsChecked = _plugin.GetParam("chord_aware") >= 0.5;
+            HarmonyCombo.SelectedIndex = (int)Math.Round(_plugin.GetParam("harmony"));
 
             GpbSlider.Value = _plugin.GetParam("gens_per_beat"); GpbValue.Text = GpbSlider.Value.ToString("F0");
+            SweepSlider.Value = _plugin.GetParam("sweep_div"); SweepValue.Text = SweepText(SweepSlider.Value);
             GateSlider.Value = _plugin.GetParam("gate"); GateValue.Text = GateSlider.Value.ToString("F2");
             VoicesSlider.Value = _plugin.GetParam("max_voices"); VoicesValue.Text = VoicesSlider.Value.ToString("F0");
             OctSlider.Value = _plugin.GetParam("base_octave"); OctValue.Text = OctSlider.Value.ToString("F0");
@@ -259,9 +263,17 @@ namespace KotonPluginLifeGrid
 
         // ------------------------------------------------------------------ combos simples
         void Scale_Changed(object sender, SelectionChangedEventArgs e) { if (!_syncing && !_loading) _plugin.SetParam("scale", ScaleCombo.SelectedIndex); }
-        void Read_Changed(object sender, SelectionChangedEventArgs e) { if (!_syncing && !_loading) _plugin.SetParam("read_mode", ReadCombo.SelectedIndex); }
+        /// <summary>« 1 » ne dit pas ce qu'il fait — l'étiquette nomme le cas particulier.</summary>
+        string SweepText(double v)
+        {
+            int div = Math.Max(1, (int)Math.Round(v));
+            int gpb = Math.Max(1, (int)Math.Round(_plugin.GetParam("gens_per_beat")));
+            int den = gpb * div;
+            string grid = den == 1 ? "un temps" : "1/" + den + " de temps";
+            return div == 1 ? "1 — tout ensemble, " + grid : div + " subdivisions — " + grid;
+        }
         void Dur_Changed(object sender, SelectionChangedEventArgs e) { if (!_syncing && !_loading) _plugin.SetParam("dur_mode", DurCombo.SelectedIndex); }
-        void Chord_Click(object sender, RoutedEventArgs e) { if (!_syncing && !_loading) _plugin.SetParam("chord_aware", ChordCheck.IsChecked == true ? 1 : 0); }
+        void Harmony_Changed(object sender, SelectionChangedEventArgs e) { if (!_syncing && !_loading) _plugin.SetParam("harmony", HarmonyCombo.SelectedIndex); }
 
         void Revive_Changed(object sender, SelectionChangedEventArgs e)
         {

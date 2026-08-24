@@ -71,12 +71,17 @@ namespace KotonPluginLifeGrid
     ///
     /// **Comment naissent les notes** (les trois questions du mapping) :
     /// <list type="bullet">
-    /// <item><b>La hauteur</b> vient de la LIGNE : ligne 0 = degré le plus grave du pool (gamme, ou
-    /// notes de l'accord courant si <c>chord_aware</c>), et on monte vers le haut de la grille.</item>
-    /// <item><b>Le rythme</b> vient de la COLONNE, selon <c>read_mode</c> : en <i>Balayage</i> la
-    /// colonne x décale la note de x/Cols de génération (une génération = un arpège balayé de gauche
-    /// à droite) ; en <i>Accord</i> la colonne est ignorée pour le temps, toutes les lignes vivantes
-    /// sonnent ensemble et la largeur de la ligne devient une intensité.</item>
+    /// <item><b>La hauteur</b> vient de la LIGNE : ligne 0 = note la plus grave du pool, et on monte
+    /// vers le haut de la grille. Ce pool dépend de <c>harmony</c> — la gamme du projet (transposée sur
+    /// sa tonique), les notes de l'accord posé sous le bloc, ou le mode par défaut : contour dessiné
+    /// dans la gamme, mais ramené sur l'accord DÈS QUE LA NOTE TOMBE SUR UN TEMPS. Le troisième mode
+    /// est le seul à produire des notes de passage : ailleurs qu'aux temps forts, la grille est libre
+    /// de sortir de l'harmonie, ce qui évite l'arpège perpétuel du mode « accord ».</item>
+    /// <item><b>Le rythme</b> vient de la COLONNE : les colonnes sont réparties en <c>sweep_div</c>
+    /// groupes qui découpent la génération en autant de subdivisions, et une ligne sonne dans chaque
+    /// subdivision où elle a au moins une cellule vivante. Une génération devient donc un arpège
+    /// balayé de gauche à droite sur une VRAIE grille rythmique — c'est ce qui permet aux notes de
+    /// tomber sur les temps. À 1, toute la génération sonne d'un coup : lecture en accords.</item>
     /// <item><b>La durée</b> n'est pas choisie, elle ÉMERGE : une cellule qui naît ouvre la note,
     /// une cellule qui meurt la ferme. Un vaisseau qui traverse la grille tient sa note pendant
     /// toute sa traversée, une cellule isolée qui meurt tout de suite fait une croche. C'est le
@@ -105,12 +110,12 @@ namespace KotonPluginLifeGrid
         readonly KotonParameter _rulePreset  = new KotonParameter("rule_preset",   "Règle",             0, 9, 0);
         readonly KotonParameter _birthMask   = new KotonParameter("birth_mask",    "Naissances",        0, 511, 8);
         readonly KotonParameter _survMask    = new KotonParameter("surv_mask",     "Survies",           0, 511, 12);
-        readonly KotonParameter _readMode    = new KotonParameter("read_mode",     "Lecture",           0, 1, 0);
+        readonly KotonParameter _sweepDiv    = new KotonParameter("sweep_div",     "Étalement",         1, 8, 2);
         readonly KotonParameter _durMode     = new KotonParameter("dur_mode",      "Durées",            0, 2, 0);
         readonly KotonParameter _gate        = new KotonParameter("gate",          "Gate",              0.05, 1.0, 0.9);
         readonly KotonParameter _scale       = new KotonParameter("scale",         "Gamme",             0, 4, 3);
         readonly KotonParameter _baseOctave  = new KotonParameter("base_octave",   "Octave de base",    0, 8, 3);
-        readonly KotonParameter _chordAware  = new KotonParameter("chord_aware",   "Suivre l'accord",   0, 1, 1);
+        readonly KotonParameter _harmony     = new KotonParameter("harmony",       "Harmonie",          0, 2, 2);
         readonly KotonParameter _velocity    = new KotonParameter("velocity",      "Vélocité",          1, 127, 80);
         readonly KotonParameter _accent      = new KotonParameter("accent",        "Accent (densité)",  0, 1, 0.5);
         readonly KotonParameter _maxVoices   = new KotonParameter("max_voices",    "Voix max",          1, 16, 4);
@@ -130,10 +135,10 @@ namespace KotonPluginLifeGrid
             _rulePreset.Automatable = false;
             _birthMask.Automatable = false;
             _survMask.Automatable = false;
-            _readMode.Automatable = false;
+            _sweepDiv.Automatable = false;
             _durMode.Automatable = false;
             _scale.Automatable = false;
-            _chordAware.Automatable = false;
+            _harmony.Automatable = false;
             _maxVoices.Automatable = false;
             _revive.Automatable = false;
             _density.Automatable = false;
@@ -142,8 +147,8 @@ namespace KotonPluginLifeGrid
 
             _params = new List<KotonParameter>
             {
-                _gensPerBeat, _rulePreset, _birthMask, _survMask, _readMode, _durMode, _gate,
-                _scale, _baseOctave, _chordAware, _velocity, _accent, _maxVoices, _revive,
+                _gensPerBeat, _rulePreset, _birthMask, _survMask, _sweepDiv, _durMode, _gate,
+                _scale, _baseOctave, _harmony, _velocity, _accent, _maxVoices, _revive,
                 _density, _rngSeed,
             };
 
@@ -383,25 +388,103 @@ namespace KotonPluginLifeGrid
             new[] { 0, 2, 4, 7, 9 }, new[] { 0, 3, 5, 7, 10 },
         };
         public static readonly string[] ScaleNames = { "Chromatique", "Majeur", "Mineur", "Penta majeur", "Penta mineur" };
-        public static readonly string[] ReadModeNames = { "Balayage (colonne = temps)", "Accord (tout ensemble)" };
         public static readonly string[] DurModeNames = { "Durée de vie", "Un pas", "Staccato" };
         public static readonly string[] ReviveNames = { "Aucune", "Ré-injecter le motif", "Cellules aléatoires" };
+        public static readonly string[] HarmonyNames =
+        {
+            "Gamme seule", "Notes de l'accord", "Accord sur les temps forts",
+        };
 
-        /// <summary>Construit un pool de <paramref name="count"/> hauteurs croissantes à partir des
-        /// degrés donnés, en empilant les octaves autant que nécessaire. Une ligne de la grille = une
-        /// entrée du pool, donc la grille couvre exactement le registre utile — pas de lignes muettes
-        /// en haut faute de notes.</summary>
-        static int[] BuildPool(int[] degrees, int baseMidi, int count)
+        /// <summary>Construit un pool de <paramref name="count"/> hauteurs croissantes en partant de
+        /// <paramref name="baseMidi"/> et en ne retenant que les notes dont la classe de hauteur est
+        /// autorisée. Une ligne de la grille = une entrée du pool.
+        ///
+        /// **Pourquoi partir d'une hauteur fixe et pas de la fondamentale de l'accord** : sinon la
+        /// grille entière saute d'une septième quand on passe de Do à Si, et le dessin qu'on entendait
+        /// se retrouve une octave plus haut sans avoir bougé. Ancré ici, le registre reste stable d'un
+        /// accord à l'autre — seules les notes disponibles changent sous les lignes, ce qui est
+        /// exactement le comportement d'une conduite de voix.</summary>
+        static int[] PoolFromPcs(bool[] allowed, int baseMidi, int count)
         {
             var pool = new int[count];
-            for (int i = 0; i < count; i++)
-            {
-                int oct = i / degrees.Length, d = i % degrees.Length;
-                int m = baseMidi + oct * 12 + degrees[d];
-                pool[i] = m < 0 ? 0 : (m > 127 ? 127 : m);
-            }
+            int k = 0;
+            for (int m = Math.Max(0, baseMidi); m <= 127 && k < count; m++)
+                if (allowed[m % 12]) pool[k++] = m;
+            // Registre saturé (octave de base très haute) : on rabat sur la dernière note trouvée
+            // plutôt que de laisser des zéros, qui sonneraient en tout bas du clavier.
+            int last = k > 0 ? pool[k - 1] : 60;
+            while (k < count) pool[k++] = last;
             return pool;
         }
+
+        /// <summary>Classes de hauteur d'une gamme transposée sur la tonique du projet.</summary>
+        static bool[] ScalePcs(int scaleIdx, int tonic)
+        {
+            var allowed = new bool[12];
+            foreach (int d in ScaleDegrees[scaleIdx]) allowed[((tonic + d) % 12 + 12) % 12] = true;
+            return allowed;
+        }
+
+        /// <summary>Classes de hauteur des notes d'un accord (basse d'inversion comprise : si le
+        /// morceau dit Do/Mi, le Mi fait partie des notes disponibles).</summary>
+        static bool[] ChordPcs(KotonChord ch)
+        {
+            var allowed = new bool[12];
+            foreach (int m in ch.GetMidiNotes(ch.Root)) allowed[((m % 12) + 12) % 12] = true;
+            if (ch.BassNote.HasValue) allowed[((ch.BassNote.Value % 12) + 12) % 12] = true;
+            return allowed;
+        }
+
+        /// <summary>Ramène <paramref name="midi"/> sur la note autorisée la plus proche (en cherchant
+        /// alternativement au-dessus et en dessous). Sert à corriger une note de gamme vers l'accord
+        /// sur un temps fort sans la déplacer de plus d'un ton — le contour mélodique dessiné dans la
+        /// grille est conservé, seule la couleur est ajustée.</summary>
+        static int SnapToPc(int midi, bool[] allowed)
+        {
+            for (int d = 0; d <= 6; d++)
+            {
+                int up = midi + d, dn = midi - d;
+                if (up <= 127 && allowed[up % 12]) return up;
+                if (dn >= 0 && allowed[((dn % 12) + 12) % 12]) return dn;
+            }
+            return midi;
+        }
+
+        /// <summary>Poids métrique de la position absolue <paramref name="absBeat"/> : 1 sur le premier
+        /// temps de la mesure, puis par ordre décroissant le temps fort secondaire, les autres temps,
+        /// les contretemps et les subdivisions fines.
+        ///
+        /// Les paliers reprennent volontairement ceux que l'hôte applique aux vélocités
+        /// (<c>TimelinePlayer.MetricVelocity</c>) pour que le choix des notes et l'accentuation
+        /// désignent les MÊMES temps forts. Le « temps » compté ici est le temps NOTÉ (la croche en
+        /// 6/8), et la levée décale la grille de mesures comme il se doit.</summary>
+        static double MetricWeight(double absBeat, int tsNum, int tsDen, double pickup)
+        {
+            double beatLen = 4.0 / Math.Max(1, tsDen);          // durée d'un temps noté, en noires
+            double barLen = Math.Max(1e-6, tsNum * beatLen);
+            double pos = (absBeat - pickup) % barLen;
+            if (pos < 0) pos += barLen;
+
+            const double eps = 1e-6;
+            double inBeat = pos % beatLen;
+            int beatInBar = (int)Math.Floor(pos / beatLen + eps);
+            bool onBeat = inBeat < eps || beatLen - inBeat < eps;
+
+            if (onBeat)
+            {
+                if (beatInBar == 0 || pos < eps) return 1.0;                    // premier temps
+                if (tsNum % 2 == 0 && beatInBar == tsNum / 2) return 0.8;       // temps fort secondaire
+                return 0.6;                                                     // autre temps
+            }
+            if (Math.Abs(inBeat * 2 - beatLen) < eps) return 0.4;               // contretemps (demi-temps)
+            if (Math.Abs(inBeat * 3 % beatLen) < eps || Math.Abs(inBeat * 4 % beatLen) < eps) return 0.25;
+            return 0.1;                                                         // subdivision fine
+        }
+
+        /// <summary>Seuil à partir duquel une position compte comme « temps fort » pour le mode
+        /// harmonique 2 : tout ce qui tombe SUR un temps noté. Les contretemps et les subdivisions
+        /// restent libres de sortir de l'accord — ce sont les notes de passage.</summary>
+        const double StrongBeat = 0.55;
 
         // ---------------------------------------------------------------- rendu
         public IEnumerable<KotonGeneratedNote> RenderNotes(double startBeat, double endBeat, KotonRenderContext ctx)
@@ -412,12 +495,12 @@ namespace KotonPluginLifeGrid
 
             int cols = seed.Cols, rows = seed.Rows;
             int gensPerBeat = Clamp((int)Math.Round(_gensPerBeat.Value), 1, 8);
-            bool sweep = (int)Math.Round(_readMode.Value) == 0;
+            int sweepDiv = Clamp((int)Math.Round(_sweepDiv.Value), 1, 8);
             int durMode = Clamp((int)Math.Round(_durMode.Value), 0, 2);
             double gate = _gate.Value;
             int scaleIdx = Clamp((int)Math.Round(_scale.Value), 0, ScaleDegrees.Length - 1);
             int baseMidi = 12 + Clamp((int)Math.Round(_baseOctave.Value), 0, 8) * 12;
-            bool chordAware = _chordAware.Value >= 0.5;
+            int harmony = Clamp((int)Math.Round(_harmony.Value), 0, 2);
             int baseVel = Clamp((int)Math.Round(_velocity.Value), 1, 127);
             double accent = _accent.Value;
             int maxVoices = Clamp((int)Math.Round(_maxVoices.Value), 1, 16);
@@ -432,23 +515,41 @@ namespace KotonPluginLifeGrid
 
             double duration = Math.Max(0.25, DurationBeats);
             double blockStart = ctx != null ? ctx.BlockStartBeat : 0.0;
+            double pickup = ctx != null ? ctx.PickupBeats : 0.0;
+            int tonic = ctx != null ? ((ctx.Tonic % 12) + 12) % 12 : 0;
             int genCount = (int)Math.Ceiling(duration / step - 1e-9);
             if (genCount <= 0) return notes;
 
             var gens = Simulate(genCount);
 
-            // Un « slot » = une voix potentielle, suivie de génération en génération. En balayage il y
-            // en a un par cellule (la colonne fait partie de l'identité rythmique de la note) ; en mode
-            // accord il y en a un par ligne (plusieurs cellules d'une même ligne = une seule note, dont
-            // elles renforcent l'intensité).
-            int slotCount = sweep ? cols * rows : rows;
+            // Un « slot » = une voix potentielle, suivie de génération en génération : une LIGNE dans
+            // une SUBDIVISION de la génération. Les colonnes de la grille sont réparties en sweepDiv
+            // groupes, et un groupe qui contient au moins une cellule vivante fait sonner sa ligne au
+            // moment correspondant.
+            //
+            // Pourquoi grouper plutôt que donner sa position à chaque colonne : avec 16 colonnes, une
+            // génération se découperait en seizièmes de génération — soit du 1/32 de temps, qui ne
+            // s'entend pas comme un rythme mais comme un strum, et qui ne tombe jamais sur un temps.
+            // En groupant, les notes atterrissent sur une vraie grille rythmique : elles peuvent tomber
+            // SUR les temps, ce dont dépendent l'accentuation de l'hôte et le mode harmonique 2.
+            // sweepDiv = 1 rassemble toute la génération sur un seul instant (lecture en accords).
+            int slotCount = rows * sweepDiv;
+            var groupSize = new int[sweepDiv];
+            for (int x = 0; x < cols; x++) groupSize[x * sweepDiv / cols]++;
+
             var weight = new double[slotCount];      // intensité du slot à la génération courante
             var prevOn = new bool[slotCount];        // slot actif à la génération précédente
             var runStart = new int[slotCount];       // génération d'ouverture de la note en cours
             var runWeight = new double[slotCount];   // intensité figée à l'ouverture
             var runPitch = new int[slotCount];       // hauteur figée à l'ouverture
 
-            int[] pool = BuildPool(ScaleDegrees[scaleIdx], baseMidi, rows);
+            // Deux pools ancrés sur la MÊME hauteur de base, donc superposables : celui de la gamme
+            // (le contour dessiné dans la grille) et celui de l'accord (la couleur). Le mode harmonique
+            // décide lequel gagne, et à quel moment.
+            var scaleAllowed = ScalePcs(scaleIdx, tonic);
+            int[] scalePool = PoolFromPcs(scaleAllowed, baseMidi, rows);
+            int[] chordPool = scalePool;
+            bool[] chordAllowed = null;
 
             for (int g = 0; g <= genCount; g++)
             {
@@ -460,44 +561,35 @@ namespace KotonPluginLifeGrid
                 if (!past)
                 {
                     var cur = gens[g];
-                    if (sweep)
-                    {
-                        for (int y = 0; y < rows; y++)
-                            for (int x = 0; x < cols; x++)
-                            {
-                                if (cur[y * cols + x] == 0) continue;
-                                // Ramené sur 0..1 (jamais nul quand la cellule vit, sinon le slot
-                                // passerait pour inactif) : une cellule isolée sonne doucement, une
-                                // cellule au cœur d'un amas sonne fort.
-                                weight[y * cols + x] = (1.0 + Neighbours(cur, cols, rows, x, y)) / 9.0;
-                            }
-                    }
-                    else
-                    {
-                        for (int y = 0; y < rows; y++)
+                    for (int y = 0; y < rows; y++)
+                        for (int x = 0; x < cols; x++)
                         {
-                            int live = 0;
-                            for (int x = 0; x < cols; x++) if (cur[y * cols + x] != 0) live++;
-                            if (live > 0) weight[y] = live / (double)cols;
+                            if (cur[y * cols + x] == 0) continue;
+                            weight[y * sweepDiv + x * sweepDiv / cols] += 1.0;
                         }
-                    }
+                    // Densité du groupe ramenée sur 0..1 : jamais nulle quand une cellule vit (sinon le
+                    // slot passerait pour inactif), et d'autant plus forte que le groupe est rempli.
+                    for (int s = 0; s < slotCount; s++)
+                        if (weight[s] > 0) weight[s] /= Math.Max(1, groupSize[s % sweepDiv]);
 
                     LimitVoices(weight, prevOn, maxVoices);
 
-                    // Pool reconstruit sur l'accord courant : la grille garde son dessin, ce sont les
-                    // degrés sous les lignes qui changent avec l'harmonie.
-                    if (chordAware && KotonHost.GetChordAt != null)
+                    // Accord relu à chaque génération : la grille garde son dessin, ce sont les notes
+                    // disponibles sous les lignes qui changent avec l'harmonie.
+                    if (harmony > 0 && KotonHost.GetChordAt != null)
                     {
                         var ch = KotonHost.GetChordAt(blockStart + g * step);
                         if (ch.HasValue)
                         {
-                            var tones = ch.Value.GetMidiNotes(baseMidi + ch.Value.Root);
-                            if (tones != null && tones.Length > 0)
-                            {
-                                var degs = new int[tones.Length];
-                                for (int i = 0; i < tones.Length; i++) degs[i] = tones[i] - tones[0];
-                                pool = BuildPool(degs, tones[0], rows);
-                            }
+                            chordAllowed = ChordPcs(ch.Value);
+                            chordPool = PoolFromPcs(chordAllowed, baseMidi, rows);
+                        }
+                        else
+                        {
+                            // Pas d'accord posé sous le bloc : on retombe sur la gamme plutôt que de
+                            // garder l'accord précédent, qui deviendrait faux dès la section suivante.
+                            chordAllowed = null;
+                            chordPool = scalePool;
                         }
                     }
                 }
@@ -509,12 +601,24 @@ namespace KotonPluginLifeGrid
                     {
                         runStart[s] = g;
                         runWeight[s] = weight[s];
-                        runPitch[s] = pool[sweep ? s / cols : s];
+                        int row = s / sweepDiv;
+
+                        // Position métrique de la note RÉELLE, décalage de subdivision compris : la
+                        // première subdivision d'une génération peut tomber sur un temps, les autres
+                        // sont des contretemps — et c'est ce qui les autorise à sortir de l'accord.
+                        double metW = MetricWeight(blockStart + SlotStart(s, g, sweepDiv, step), tsNum, tsDen, pickup);
+
+                        int midi;
+                        if (harmony == 1 && chordAllowed != null) midi = chordPool[row];
+                        else if (harmony == 2 && chordAllowed != null && metW >= StrongBeat)
+                            midi = SnapToPc(scalePool[row], chordAllowed);   // temps fort → couleur de l'accord
+                        else midi = scalePool[row];                          // ailleurs → note de passage
+                        runPitch[s] = midi;
                     }
                     else if (!on && prevOn[s])
                     {
                         var n = MakeNote(s, runStart[s], g, runPitch[s], runWeight[s],
-                                         sweep, cols, step, duration, durMode, gate, baseVel, accent);
+                                         sweepDiv, step, duration, durMode, gate, baseVel, accent);
                         if (n.HasValue) notes.Add(n.Value);
                     }
                     prevOn[s] = on;
@@ -527,12 +631,11 @@ namespace KotonPluginLifeGrid
 
         /// <summary>Fabrique la note correspondant à un slot vivant de <paramref name="g0"/> à
         /// <paramref name="g1"/> (exclu). Rend <c>null</c> si elle tombe hors du bloc.</summary>
-        KotonGeneratedNote? MakeNote(int slot, int g0, int g1, int midi, double w, bool sweep,
-                                     int cols, double step, double duration, int durMode,
+        KotonGeneratedNote? MakeNote(int slot, int g0, int g1, int midi, double w,
+                                     int sweepDiv, double step, double duration, int durMode,
                                      double gate, int baseVel, double accent)
         {
-            double t0 = g0 * step;
-            if (sweep) t0 += (slot % cols) * step / cols;   // la colonne décale dans la génération
+            double t0 = SlotStart(slot, g0, sweepDiv, step);
             if (t0 >= duration - 1e-9) return null;
 
             double life = (g1 - g0) * step;
@@ -550,6 +653,12 @@ namespace KotonPluginLifeGrid
                 Velocity = Clamp(vel, 1, 127),
             };
         }
+
+        /// <summary>Position de départ d'un slot, en beats depuis le début du bloc. Le décalage de
+        /// subdivision est ici et pas ailleurs : le choix de la note (position métrique) et sa pose
+        /// (<see cref="MakeNote"/>) doivent tomber d'accord au millième de temps près.</summary>
+        static double SlotStart(int slot, int gen, int sweepDiv, double step)
+            => gen * step + (slot % sweepDiv) * step / sweepDiv;
 
         /// <summary>Plafonne le nombre de voix simultanées : au-delà de <paramref name="max"/> slots
         /// actifs, on ne garde que les plus intenses — mais un slot DÉJÀ actif passe devant un nouveau,
@@ -576,16 +685,6 @@ namespace KotonPluginLifeGrid
         }
 
         static double Score(double w, bool sustaining) => w + (sustaining ? 100.0 : 0.0);
-
-        static int Neighbours(byte[] cur, int cols, int rows, int x, int y)
-        {
-            int yUp = (y + 1) % rows, yDn = (y - 1 + rows) % rows;
-            int xR = (x + 1) % cols, xL = (x - 1 + cols) % cols;
-            return cur[yDn * cols + xL] + cur[yDn * cols + x] + cur[yDn * cols + xR]
-                 + cur[y * cols + xL] + cur[y * cols + xR]
-                 + cur[yUp * cols + xL] + cur[yUp * cols + x] + cur[yUp * cols + xR];
-        }
-
         static int Clamp(int v, int lo, int hi) => v < lo ? lo : (v > hi ? hi : v);
 
         // ---------------------------------------------------------------- persistance

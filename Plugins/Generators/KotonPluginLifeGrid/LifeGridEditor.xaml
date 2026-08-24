@@ -116,8 +116,10 @@
                 <!-- lecture -->
                 <StackPanel Grid.Column="2">
                     <TextBlock Style="{StaticResource Head}" Text="Lecture"/>
-                    <ComboBox x:Name="ReadCombo" SelectionChanged="Read_Changed"
-                              ToolTip="Balayage : la colonne place la note dans le temps (arpège). Accord : toutes les lignes vivantes sonnent ensemble."/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="Étalement (subdivisions par génération)" Margin="0,2,0,1"/>
+                    <Slider x:Name="SweepSlider" Minimum="1" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"
+                            ToolTip="Découpe la génération en autant d&apos;instants. À 1 toutes les lignes vivantes sonnent ensemble (accords) ; au-delà, les colonnes de la grille se répartissent sur ces subdivisions et la génération devient un arpège balayé."/>
+                    <TextBlock x:Name="SweepValue" Style="{StaticResource Val}"/>
 
                     <TextBlock Style="{StaticResource Lbl}" Text="Générations/temps"/>
                     <Slider x:Name="GpbSlider" Minimum="1" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/>
@@ -145,9 +147,9 @@
                     <Slider x:Name="OctSlider" Minimum="0" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/>
                     <TextBlock x:Name="OctValue" Style="{StaticResource Val}"/>
 
-                    <CheckBox x:Name="ChordCheck" Content="Suivre l'accord courant" Margin="0,8,0,0"
-                              Foreground="{DynamicResource KotonAccent}" FontSize="11" Click="Chord_Click"
-                              ToolTip="Les lignes lisent les notes de l'accord sous le bloc au lieu de la gamme."/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="Harmonie"/>
+                    <ComboBox x:Name="HarmonyCombo" SelectionChanged="Harmony_Changed"
+                              ToolTip="Gamme seule : la grille ignore les accords. Notes de l'accord : tout est note d'accord (arpège). Accord sur les temps forts : le contour reste dans la gamme, mais les notes qui tombent sur un temps sont ramenées sur l'accord — les autres deviennent des notes de passage."/>
 
                     <TextBlock Style="{StaticResource Lbl}" Text="Vélocité"/>
                     <Slider x:Name="VelSlider" Minimum="1" Maximum="127" TickFrequency="1"/>
