@@ -20,7 +20,7 @@ namespace KotonPluginMusicBox
         public string DisplayName => "Music Box";
 
         readonly KotonParameter _strike     = new KotonParameter("strike",     "Strike",      0.0, 1.0, 0.75);
-        readonly KotonParameter _sustain    = new KotonParameter("sustain",    "Sustain",     0.0, 1.0, 0.55);
+        readonly KotonParameter _sustain    = new KotonParameter("sustain",    "Sustain",     0.0, 1.0, 0.30);
         readonly KotonParameter _brightness = new KotonParameter("brightness", "Brillance",   0.0, 1.0, 0.75);
         readonly KotonParameter _bodyClick  = new KotonParameter("body_click", "Click bois",  0.0, 1.0, 0.35);
         readonly KotonParameter _volumeDb   = new KotonParameter("volume",     "Volume",      -30, 6, -3, "dB");
@@ -66,64 +66,114 @@ namespace KotonPluginMusicBox
 
     internal sealed class MbVoice
     {
-        // Music box = peigne métallique. Ratios harmoniques mais avec inharmonicité légère aux aigus.
-        // Ratios de mesure : peigne d'un music box "Reuge" 30 notes (Fletcher & Rossing 1998).
-        static readonly float[] Ratios = { 1.000f, 2.000f, 3.010f, 4.030f, 5.070f, 6.130f };
-        const int NModes = 6;
+        // Music box = lamelle métallique pincée par un picot du cylindre. C'est le modèle CANONIQUE
+        // d'un Karplus-Strong : excitation impulsionnelle (le picot) injectée dans une delay line
+        // (la lamelle qui vibre), rebouclée à travers un LP moyen (amortissement HF naturel de la
+        // lamelle). Résultat : timbre riche à l'attaque, se dépouille rapidement en pure sinusoïde
+        // (fondamentale qui meurt en dernier) → exactement la signature audio d'un peigne music box.
+        //
+        // Params importants :
+        // - Excitation courte + HF (brillance métallique du "tock")
+        // - LP moyen intrinsèque (classique KS) : c'est LUI qui donne la décroissance mécanique
+        // - Tone LP variable (brightness) : gouverne le brillant total
+        // - All-pass léger (stiffness) : petite inharmonicité pour éviter le son "synthé pur"
+        // - Feedback modéré (~0.965) : music box = sustain court à moyen, PAS d'infini
         readonly int _sr;
-        readonly double[] _phase = new double[NModes];
-        readonly double[] _inc = new double[NModes];
-        readonly float[] _amp = new float[NModes];
-        readonly float[] _decay = new float[NModes];
-        // Bruit d'attaque + click du bois (BP autour de 400 Hz)
-        float _clickAmp; float _clickDecay;
+        readonly float[] _buf;   // ligne à retard
+        int _writeIdx;
+        int _size;
+        // Filtre LP classique KS
+        float _lpPrev;
+        // LP variable tone
+        float _toneZ;
+        // All-pass 1er ordre pour stiffness (petite dispersion)
+        float _apX1, _apY1;
         int _note;
+        float _fbGain;
+        float _toneCoef;
+        float _apCoef;
+        // Enveloppe d'énergie pour libération auto
+        float _peak = 1f;
         bool _active;
         public bool IsActive => _active;
         public int Note => _note;
-        public MbVoice(int sr) { _sr = sr; }
+        public MbVoice(int sr)
+        {
+            _sr = sr;
+            // Buffer max = SR / freq_min. Music box va jusqu'à ~ C3 = 130 Hz → SR/130 ≈ 340 samples.
+            // On garde une marge confortable (allocation à l'init, pas de GC au NoteOn).
+            _buf = new float[Math.Max(sr / 40, 2048)];
+        }
         public void NoteOn(int note, float vel, float strike, float sustain, float bright, float click)
         {
             _note = note;
-            double f0 = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
-            for (int i = 0; i < NModes; i++)
+            double freq = 440.0 * Math.Pow(2.0, (note - 69) / 12.0);
+            _size = Math.Max(4, Math.Min(_buf.Length, (int)Math.Round(_sr / freq)));
+
+            // Excitation = bruit blanc filtré par un LP TRÈS OUVERT (garde les HF pour le "tock")
+            // puis multiplié par une enveloppe déclinante (early-decayed noise burst). Plus
+            // "strike" est haut, plus l'excitation est brute et brillante.
+            float attackLp = 0.85f - strike * 0.35f;   // 0.85 doux, 0.50 dur
+            float lp = 0f;
+            for (int i = 0; i < _size; i++)
             {
-                _phase[i] = 0;
-                double f = f0 * Ratios[i];
-                if (f > _sr * 0.45) f = _sr * 0.45;
-                _inc[i] = 2.0 * Math.PI * f / _sr;
-                // Amplitude : la fondamentale et l'octave dominent, les partiels aigus dopés par brightness
-                float rank = 1f / (1f + i * 0.5f);
-                float brBoost = 1f + bright * (i / (float)NModes) * 2f;
-                _amp[i] = vel * rank * brBoost * 0.35f * (1f + strike * 0.5f);
-                float decaySec = 0.8f + sustain * 5f - i * 0.15f;
-                if (decaySec < 0.15f) decaySec = 0.15f;
-                _decay[i] = (float)Math.Exp(-1.0 / (decaySec * _sr));
+                float raw = (float)(_r.NextDouble() * 2 - 1);
+                lp = attackLp * lp + (1f - attackLp) * raw;
+                // Enveloppe : décroissance rapide dans la ligne pour simuler le pincement bref
+                float env = (i < _size / 3) ? 1f : (1f - (i - _size / 3f) / (_size * 2f / 3f));
+                if (env < 0) env = 0;
+                _buf[i] = (raw * strike + lp * (1f - strike)) * env * vel * 0.9f;
             }
-            _clickAmp = click * vel * 0.4f;
-            _clickDecay = (float)Math.Exp(-1.0 / (0.008 * _sr));   // 8ms click
+            // Petit body click très bref superposé au début (résonance caisse bois ~250 Hz)
+            if (click > 0f)
+            {
+                int clickLen = Math.Min(_size, (int)(0.008 * _sr));   // 8ms
+                for (int i = 0; i < clickLen; i++)
+                    _buf[i] += (float)(_r.NextDouble() * 2 - 1) * click * vel * 0.3f * (1f - i / (float)clickLen);
+            }
+
+            // Feedback : music box a un sustain modéré. Base 0.965 → décroissance ~1s pour la
+            // fondamentale (compensée par _size / 1000). Sustain augmente vers 0.99 max.
+            float gBase = 0.955f + sustain * 0.035f;
+            _fbGain = (float)Math.Pow(gBase, _size / 1000.0);
+
+            // Tone LP : cutoff 500..8000 Hz selon brightness. Un music box est brillant.
+            float toneHz = 500f + bright * 7500f;
+            _toneCoef = 1f - (float)Math.Exp(-2.0 * Math.PI * toneHz / _sr);
+
+            // All-pass stiffness minimal (inharmonicité TRÈS légère → sonne "propre" mais pas synthé)
+            _apCoef = 0.08f;
+
+            _writeIdx = 0;
+            _lpPrev = 0f;
+            _toneZ = 0f;
+            _apX1 = _apY1 = 0f;
+            _peak = 1f;
             _active = true;
         }
-        public void Kill() { _active = false; for (int i = 0; i < NModes; i++) _amp[i] = 0; _clickAmp = 0; }
+        public void Kill() { _active = false; Array.Clear(_buf, 0, _buf.Length); _peak = 0f; }
         public float Render()
         {
             if (!_active) return 0f;
-            float s = 0f;
-            for (int i = 0; i < NModes; i++)
-            {
-                _phase[i] += _inc[i]; if (_phase[i] > 2 * Math.PI) _phase[i] -= 2 * Math.PI;
-                s += (float)Math.Sin(_phase[i]) * _amp[i];
-                _amp[i] *= _decay[i];
-            }
-            // Click du bois : bruit blanc filtré modulé par l'enveloppe
-            if (_clickAmp > 0.0001f)
-            {
-                s += (float)(_r.NextDouble() * 2 - 1) * _clickAmp;
-                _clickAmp *= _clickDecay;
-            }
-            float peak = 0f; for (int i = 0; i < NModes; i++) if (_amp[i] > peak) peak = _amp[i];
-            if (peak < 1e-6f && _clickAmp < 1e-6f) _active = false;
-            return s;
+            float sample = _buf[_writeIdx];
+            // 1) LP moyen KS classique (0.5x + 0.5x_prev) — le AMORTISSEMENT MÉTALLIQUE naturel
+            float lp = 0.5f * (sample + _lpPrev);
+            _lpPrev = sample;
+            // 2) LP variable tone
+            _toneZ += _toneCoef * (lp - _toneZ);
+            float toned = _toneZ;
+            // 3) All-pass stiffness (petite dispersion)
+            float apOut = _apCoef * toned + _apX1 - _apCoef * _apY1;
+            _apX1 = toned; _apY1 = apOut;
+            // Feedback
+            float outVal = apOut * _fbGain;
+            _buf[_writeIdx] = outVal;
+            _writeIdx++; if (_writeIdx >= _size) _writeIdx = 0;
+            // Détection énergie pour libération auto
+            float abs = outVal < 0 ? -outVal : outVal;
+            _peak = Math.Max(_peak * 0.9998f, abs);
+            if (_peak < 1e-5f) { _active = false; return 0f; }
+            return sample;   // retourne le sample non-filtré = préserve l'attaque
         }
         static readonly Random _r = new Random();
     }
