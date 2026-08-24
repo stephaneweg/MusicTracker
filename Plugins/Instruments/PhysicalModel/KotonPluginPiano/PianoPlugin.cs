@@ -43,6 +43,10 @@ namespace KotonPluginPiano
         readonly KotonParameter _reverb          = new KotonParameter("reverb",           "Reverb",           0.0, 1.0, 0.15);
         readonly KotonParameter _stereoWidth     = new KotonParameter("stereo_width",     "Stereo width",     0.0, 1.0, 0.35);
         readonly KotonParameter _volumeDb        = new KotonParameter("volume",           "Volume",           -30.0, 6.0, -6.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -77,8 +81,7 @@ namespace KotonPluginPiano
             _params = new List<KotonParameter>
             {
                 _hammerHardness, _hammerAmount, _brightness, _inharmonicity, _stringDetune,
-                _damperTime, _sustainPedal, _body, _reverb, _stereoWidth, _volumeDb,
-            };
+                _damperTime, _sustainPedal, _body, _reverb, _stereoWidth, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -110,6 +113,7 @@ namespace KotonPluginPiano
             _cL4 = new float[(int)(0.0437 * sampleRate)];  _cR4 = new float[(int)(0.0461 * sampleRate)];
             _apL1 = new float[(int)(0.0053 * sampleRate)]; _apR1 = new float[(int)(0.0061 * sampleRate)];
             _apL2 = new float[(int)(0.0173 * sampleRate)]; _apR2 = new float[(int)(0.0181 * sampleRate)];
+            _retrig.Prepare(sampleRate);
         }
 
         static float ProcessCombLp(float[] buf, ref int idx, ref float lp, float input, float feedback)
@@ -149,6 +153,7 @@ namespace KotonPluginPiano
                 _lpL1 = _lpL2 = _lpL3 = _lpL4 = _lpR1 = _lpR2 = _lpR3 = _lpR4 = 0f;
             }
             _pedalDown = false;
+            _retrig.Reset();
         }
 
         // =============================================================================================
@@ -156,6 +161,7 @@ namespace KotonPluginPiano
         // =============================================================================================
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             var p = ToVoiceParams();
             float vel = velocity / 127f;
@@ -179,6 +185,7 @@ namespace KotonPluginPiano
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             var p = ToVoiceParams();
             // Pedale de sustain (via CC64 OU parametre) : bloque le damper
@@ -222,6 +229,10 @@ namespace KotonPluginPiano
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sum = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                     if (_voices[v].IsActive) sum += _voices[v].RenderSample(p);

@@ -19,6 +19,31 @@ namespace MusicTracker.Engine.Timeline
     public class TimelinePlayer : WaveProvider16
     {
         const int Spb = 24;        // global flatten resolution (slices per beat)
+
+        /// <summary>
+        /// Valeurs de la lane Staccato, en RÉ-ARTICULATIONS PAR TEMPS : rien, puis une par temps, deux
+        /// (croches), trois (triolet), quatre (doubles), huit, seize.
+        ///
+        /// Une suite discrète et musicale plutôt qu'un taux continu en Hz, pour deux raisons. Le détaché
+        /// reste calé sur la mesure quand le tempo change — en Hz, un ralenti donnait un nombre de coups
+        /// par temps non entier, donc un décalage progressif contre le rythme écrit. Et un musicien pense
+        /// « en croches », pas « à 7,3 Hz » : les valeurs intermédiaires n'avaient aucun sens à viser.
+        ///
+        /// Le triolet est là parce que 1/3 de temps n'est pas atteignable par doublements successifs, et
+        /// que c'est la subdivision ternaire la plus courante.
+        /// </summary>
+        static readonly double[] StaccatoDivisions = { 0, 1, 2, 3, 4, 8, 16 };
+
+        /// <summary>Traduit la valeur brute d'une lane (0..1) en ré-articulations par temps, par arrondi
+        /// au cran le plus proche. L'éditeur aimante déjà les points sur ces crans ; cet arrondi couvre
+        /// les courbes venues d'un fichier plus ancien ou d'une future subdivision retirée.</summary>
+        static double StaccatoPerBeat(double laneValue)
+        {
+            if (laneValue <= 0) return 0;
+            if (laneValue > 1) laneValue = 1;
+            int i = (int)Math.Round(laneValue * (StaccatoDivisions.Length - 1));
+            return StaccatoDivisions[i];
+        }
         const int NoteCount = 96;  // matches RiffPlayer's note range (note -> Utils.Frequencies[note])
 
         sealed class Track
@@ -49,6 +74,28 @@ namespace MusicTracker.Engine.Timeline
             /// prises au démarrage. Ajouter/retirer une lane en cours de lecture n'a pas d'effet audible jusqu'au prochain Start —
             /// même règle qu'avec <see cref="Autom"/>, et raisonnable puisque l'utilisateur relance de toute façon la lecture après édition.</summary>
             public Dictionary<AutomationParam, List<AutomationPoint>> LaneSnaps;
+            /// <summary>Lanes de paramètres de plugin ciblant l'INSTRUMENT Koton de la piste, résolues au Start.
+            /// <c>null</c> si aucune (cas courant : pas d'allocation, pas de test dans la boucle chaude).</summary>
+            public List<PluginAutomBinding> InstrAutom;
+            /// <summary>Lanes de paramètres de plugin ciblant les INSERTS, indexées comme <see cref="Effects"/>
+            /// (donc pas forcément comme <c>Src.Inserts</c> — voir <see cref="TimelinePlayer.FxSlotOf"/>).
+            /// <c>null</c> si la piste n'en a aucune ; une case <c>null</c> = cet insert n'est pas automatisé.</summary>
+            public List<PluginAutomBinding>[] FxAutom;
+            /// <summary>Vélocité des notes en train de sonner, indexée par note MIDI (0 = éteinte).
+            /// Le staccato en a besoin : rejouer une note tenue suppose de savoir laquelle et à quelle
+            /// nuance — le dispatch ne gardait jusqu'ici aucune trace de ce qui sonne.</summary>
+            public readonly int[] SoundingVel = new int[128];
+            /// <summary>Phase du staccato, de 0 à 1 sur une période. Remise à zéro à chaque vraie
+            /// attaque pour que le premier coup tombe une période pleine après la note.</summary>
+            public double StacPhase;
+            /// <summary>Paramètre « retrig » de l'instrument Koton de la piste, s'il en expose un.
+            /// Quand il existe, la lane Staccato le PILOTE au lieu de rejouer les notes elle-même : le
+            /// plugin sait mieux qu'elle ce que « réarticuler » veut dire chez lui. Mesuré à 6 coups par
+            /// seconde sur la flûte soufflée, rejouer la note depuis l'extérieur coûte 35,8 dB de niveau
+            /// — sa mise en souffle recommence à zéro — là où son propre paramètre n'en coûte que 0,2.</summary>
+            public KotonStudio.Library.KotonParameter StacParam;
+            /// <summary>Valeur du paramètre avant la lecture, remise en place au Stop.</summary>
+            public double StacParamSaved;
             // La piste de projet dont cette voix a été construite. Les valeurs de mixage (volume / pan / mute /
             // solo / réverbe) y sont lues EN DIRECT à chaque buffer — mais par cette référence, jamais par un
             // index dans project.Tracks : le thread d'interface peut insérer, échanger ou retirer une piste
@@ -76,6 +123,22 @@ namespace MusicTracker.Engine.Timeline
             /// Format-agnostique via <see cref="IVstInstrumentHost"/> — <c>VstInstrument</c> (.dll) et
             /// <c>Vst3Instrument</c> (.vst3) partagent la même surface d'appel.</summary>
             public MusicTracker.Engine.Timeline.Effects.IVstInstrumentHost Vsti;
+        }
+
+        /// <summary>Une <see cref="PluginAutomationLane"/> RÉSOLUE : la courbe (triée) et le
+        /// <see cref="KotonStudio.Library.KotonParameter"/> vivant qu'elle pilote. La résolution est faite une
+        /// fois au <see cref="Start"/> — ajouter/retirer une lane en cours de lecture ne prend effet qu'au Start
+        /// suivant, même règle que les lanes MIDI ; en revanche DÉPLACER un point s'entend tout de suite (la
+        /// liste de points est celle de la lane, on n'en copie que l'ordre).</summary>
+        sealed class PluginAutomBinding
+        {
+            public PluginAutomationLane Lane;
+            public KotonStudio.Library.KotonParameter Param;
+            public List<AutomationPoint> Pts;
+            /// <summary>Valeur qu'avait le paramètre AVANT que la lecture ne le pilote, remise en place au
+            /// <see cref="Stop"/>. Sans ça le curseur du plugin resterait figé là où la courbe s'est arrêtée —
+            /// et cette valeur de hasard partirait dans le .sq à la sauvegarde suivante.</summary>
+            public double Saved;
         }
 
         readonly int sampleRate;
@@ -168,8 +231,18 @@ namespace MusicTracker.Engine.Timeline
         float[] mL, mR;                     // master mix scratch (stereo, alloué à la volée)
         float[] mIn;                        // scratch mono pour le pré-mix des inserts master (réutilisé)
         // Chaîne d'inserts du bus master (snapshot au démarrage, comme les lanes) + peaks lus par le vu-mètre master.
+        // Bus de réverbe : une instance pour tout le morceau, alimentée par le départ de chaque piste.
+        static readonly Dictionary<string, double> WetOnly = new Dictionary<string, double> { { "mix", 1.0 } };
+        IAudioEffect reverbFx;
+        float[] revL, revR;
         IAudioEffect[] masterFx;
         TrackEffectData[] masterFxSrc;      // parallèle à masterFx — pour relecture live des paramètres et Enabled
+        // Lanes de paramètres de plugin du bus master, indexées comme masterFx. null = aucune.
+        List<PluginAutomBinding>[] masterFxAutom;
+        // Beat au DÉBUT du buffer courant, figé le temps de le rendre : les paramètres de plugin sont posés une
+        // fois par buffer (comme le pan/l'expression), pas par échantillon — RenderTrackSlice tourne sur des
+        // threads de tâche et ne peut pas lire CurrentBeat, qui avance pendant le rendu.
+        double automBeat;
         public float MasterPeakL { get; private set; }
         public float MasterPeakR { get; private set; }
         readonly TimelineProject srcProject;
@@ -647,6 +720,9 @@ namespace MusicTracker.Engine.Timeline
                 for (int i = 0; i < tracks.Length; i++)
                     SnapshotInserts(tracks[i].Src?.Inserts, out tracks[i].Effects, out tracks[i].EffectsSrc);
                 SnapshotInserts(srcProject?.MasterInserts, out masterFx, out masterFxSrc);
+                reverbFx = srcProject?.ReverbBus != null ? EffectFactory.Create(srcProject.ReverbBus, sampleRate) : null;
+                reverbFx?.Reset();
+                BuildPluginAutomation();             // résout les lanes de paramètres de plugin sur les instances vivantes
                 mDispatched = sliceIndex - 1;        // dispatch from the start slice onward
                 for (int i = 0; i < tracks.Length; i++) { tracks[i].PeakL = 0; tracks[i].PeakR = 0; }
                 MasterPeakL = 0; MasterPeakR = 0;
@@ -751,6 +827,146 @@ namespace MusicTracker.Engine.Timeline
             outSrc = dList.ToArray();
         }
 
+        // ---- automation des paramètres de plugin Koton ---------------------------------------------------
+        //
+        // Résolue UNE FOIS au Start, après SnapshotInserts (les instances d'insert doivent exister). Chaque
+        // lane est appariée au KotonParameter vivant via PluginAutomation.Resolve — le même objet que celui
+        // que lit le plugin au Render et qu'affiche son éditeur ouvert. Une lane dont la cible a disparu
+        // (insert supprimé, plugin remplacé) est simplement ignorée : rien à piloter, pas d'exception.
+
+        void BuildPluginAutomation()
+        {
+            // La chaîne d'inserts a pu bouger depuis la dernière lecture (effet retiré, réordonné) : on recale
+            // les index avant de résoudre, sinon une lane pointerait sur l'effet voisin — ou sur rien.
+            Effects.PluginAutomation.FixupAll(srcProject);
+            // Repère les pistes dont l'instrument Koton sait se réarticuler tout seul : leur lane
+            // Staccato deviendra un pilotage de ce paramètre plutôt qu'un rejeu de notes.
+            for (int i = 0; i < tracks.Length; i++)
+            {
+                tracks[i].StacParam = null;
+                var kot = tracks[i].Vsti as Effects.KotonInstrumentAdapter;
+                var kps = kot?.Plugin?.Parameters;
+                if (kps == null) continue;
+                for (int k = 0; k < kps.Count; k++)
+                    if (kps[k] != null && kps[k].Id == "retrig")
+                    { tracks[i].StacParam = kps[k]; tracks[i].StacParamSaved = kps[k].Value; break; }
+            }
+            for (int i = 0; i < tracks.Length; i++)
+            {
+                var tk = tracks[i];
+                tk.InstrAutom = null;
+                tk.FxAutom = null;
+                var src = tk.Src;
+                var lanes = src?.PluginAutomationLanes;
+                if (lanes == null || lanes.Count == 0) continue;
+                foreach (var lane in lanes)
+                {
+                    var b = Bind(lane, src);
+                    if (b == null) continue;
+                    if (lane.Slot == PluginAutomationSlot.Instrument)
+                    {
+                        if (tk.InstrAutom == null) tk.InstrAutom = new List<PluginAutomBinding>();
+                        tk.InstrAutom.Add(b);
+                    }
+                    else
+                    {
+                        int slot = FxSlotOf(tk.EffectsSrc, src.Inserts, lane.InsertIndex);
+                        if (slot < 0) continue;
+                        if (tk.FxAutom == null) tk.FxAutom = new List<PluginAutomBinding>[tk.Effects.Length];
+                        if (tk.FxAutom[slot] == null) tk.FxAutom[slot] = new List<PluginAutomBinding>();
+                        tk.FxAutom[slot].Add(b);
+                    }
+                }
+            }
+
+            masterFxAutom = null;
+            var ml = srcProject?.MasterAutomationLanes;
+            if (ml == null || masterFx == null) return;
+            foreach (var lane in ml)
+            {
+                var b = Bind(lane, null);
+                if (b == null) continue;
+                int slot = FxSlotOf(masterFxSrc, srcProject.MasterInserts, lane.InsertIndex);
+                if (slot < 0) continue;
+                if (masterFxAutom == null) masterFxAutom = new List<PluginAutomBinding>[masterFx.Length];
+                if (masterFxAutom[slot] == null) masterFxAutom[slot] = new List<PluginAutomBinding>();
+                masterFxAutom[slot].Add(b);
+            }
+        }
+
+        /// <summary>Apparie une lane à son paramètre vivant. <c>null</c> si la lane est désactivée, sans points
+        /// (rien à piloter — le paramètre garde alors la valeur réglée dans le plugin) ou si sa cible a disparu.</summary>
+        PluginAutomBinding Bind(PluginAutomationLane lane, TimelineTrack track)
+        {
+            if (lane == null || !lane.Enabled || lane.Points == null || lane.Points.Count == 0) return null;
+            var param = Effects.PluginAutomation.Resolve(lane, track, srcProject, sampleRate);
+            if (param == null) return null;
+            return new PluginAutomBinding
+            {
+                Lane = lane,
+                Param = param,
+                Pts = lane.Points.OrderBy(p => p.Beat).ToList(),
+                Saved = param.Value,
+            };
+        }
+
+        /// <summary>Rend à chaque paramètre automatisé la valeur qu'il avait avant la lecture. Appelé au
+        /// <see cref="Stop"/> : l'automation est un pilotage TEMPORAIRE, pas une modification du réglage du
+        /// plugin — sans cette remise en place, arrêter la lecture au milieu d'un sweep gèlerait le curseur
+        /// à mi-course et c'est cette valeur-là qui serait sauvegardée dans le projet.</summary>
+        void RestoreAutomatedParams()
+        {
+            for (int i = 0; i < tracks.Length; i++)
+            {
+                Restore(tracks[i].InstrAutom);
+                var fa = tracks[i].FxAutom;
+                if (fa != null) for (int j = 0; j < fa.Length; j++) Restore(fa[j]);
+            }
+            if (masterFxAutom != null) for (int j = 0; j < masterFxAutom.Length; j++) Restore(masterFxAutom[j]);
+            // Le taux de ré-attaque posé par la lane est lui aussi TEMPORAIRE : on rend au plugin la
+            // valeur qu'il avait avant la lecture, sinon elle partirait dans le .sq à la sauvegarde.
+            for (int i = 0; i < tracks.Length; i++)
+                tracks[i].StacParam?.SetFromAutomation(tracks[i].StacParamSaved);
+
+            void Restore(List<PluginAutomBinding> b)
+            {
+                if (b == null) return;
+                // SetFromAutomation ici aussi : l'arrêt peut venir du thread audio (fin naturelle du morceau),
+                // et l'éditeur ouvert affiche de toute façon déjà cette valeur — l'automation ne l'a jamais
+                // notifié, donc il n'y a rien à rafraîchir.
+                for (int k = 0; k < b.Count; k++) b[k].Param.SetFromAutomation(b[k].Saved);
+            }
+        }
+
+        /// <summary>Position d'un insert dans le tableau d'effets INSTANCIÉS. <see cref="SnapshotInserts"/> saute
+        /// les inserts qu'il n'a pas pu créer (plugin désinstallé), donc les index ne coïncident pas forcément
+        /// avec ceux de la liste source : on retrouve la case par identité de référence du TrackEffectData.</summary>
+        static int FxSlotOf(TrackEffectData[] snapshot, List<TrackEffectData> src, int srcIndex)
+        {
+            if (snapshot == null || src == null || srcIndex < 0 || srcIndex >= src.Count) return -1;
+            var d = src[srcIndex];
+            for (int i = 0; i < snapshot.Length; i++) if (ReferenceEquals(snapshot[i], d)) return i;
+            return -1;
+        }
+
+        /// <summary>Pose la valeur de chaque lane sur son paramètre. La courbe est NORMALISÉE (0..1) : elle est
+        /// dépliée sur les bornes VIVANTES du paramètre, de sorte qu'une lane enregistrée avec une version
+        /// antérieure du plugin reste musicalement juste même si les bornes ont bougé.</summary>
+        static void ApplyPluginBindings(List<PluginAutomBinding> bindings, double beat)
+        {
+            if (bindings == null) return;
+            for (int i = 0; i < bindings.Count; i++)
+            {
+                var b = bindings[i];
+                double f = SampleCurve(b.Pts, b.Lane.DefaultNorm, beat);
+                if (f < 0) f = 0; else if (f > 1) f = 1;
+                var p = b.Param;
+                // SetFromAutomation et pas Value : on écrit à chaque buffer depuis le thread audio, lever
+                // Changed à cette cadence noierait le dispatcher WPF de l'éditeur ouvert (cf. sa doc).
+                p.SetFromAutomation(p.Min + f * (p.Max - p.Min));
+            }
+        }
+
         /// <summary>Beat at an absolute sample offset (from beat 0), via the tempo map. For a playback cursor.</summary>
         public double BeatAtSample(long abs)
         {
@@ -771,7 +987,11 @@ namespace MusicTracker.Engine.Timeline
                 return BeatAtSample(SampleAtStart + (consumedSinceStart % loopSamples));
             return BeatAtSample(SampleAtStart + consumedSinceStart);
         }
-        public void Stop() { playing = false; }
+        public void Stop()
+        {
+            playing = false;
+            RestoreAutomatedParams();
+        }
 
     
 
@@ -795,11 +1015,14 @@ namespace MusicTracker.Engine.Timeline
             int frames = sampleCount / 2;
             EnsureBuffers(frames);
 
-            ApplyChannelAutomation(CurrentBeat);
+            automBeat = CurrentBeat;             // figé pour tout le buffer (lu par les tâches de rendu par piste)
+            ApplyChannelAutomation(automBeat);
 
             int end = loopEndSlice > 0 ? loopEndSlice : totalSlices;
             Array.Clear(mL, 0, frames);
             Array.Clear(mR, 0, frames);
+            Array.Clear(revL, 0, frames);
+            Array.Clear(revR, 0, frames);
 
             int done = 0;
             while (done < frames)
@@ -831,15 +1054,22 @@ namespace MusicTracker.Engine.Timeline
                     RenderTrackSlice(0, startOff, nn);
                 }
 
-                // Somme des pistes dans le master.
+                // Somme des pistes dans le master, et prélèvement du départ de réverbe.
                 for (int i = 0; i < tracks.Length; i++)
                 {
                     var tk = tracks[i];
                     if (tk.BufL == null) continue;
+                    // Le départ est pris APRÈS les inserts de la piste : la réverbe doit entendre le son
+                    // tel qu'il sort de la tranche, distorsion et égalisation comprises, comme sur une
+                    // console où le départ est post-insert.
+                    float send = (float)(tk.Src != null ? tk.Src.ReverbBusSend : 0.0);
+                    if (send < 0f) send = 0f; else if (send > 1f) send = 1f;
                     for (int k = 0; k < nn; k++)
                     {
-                        mL[startOff + k] += tk.BufL[startOff + k];
-                        mR[startOff + k] += tk.BufR[startOff + k];
+                        float sl = tk.BufL[startOff + k], sr = tk.BufR[startOff + k];
+                        mL[startOff + k] += sl;
+                        mR[startOff + k] += sr;
+                        if (send > 0f) { revL[startOff + k] += sl * send; revR[startOff + k] += sr * send; }
                     }
                 }
 
@@ -863,6 +1093,21 @@ namespace MusicTracker.Engine.Timeline
                 done += n;
             }
 
+            // Bus de réverbe : une seule passe pour tout le morceau, ajoutée au master AVANT ses inserts —
+            // l'égaliseur ou le compresseur du master doivent traiter le son réverbéré, pas le son sec.
+            var revSrc = srcProject?.ReverbBus;
+            if (reverbFx != null && (revSrc == null || revSrc.Enabled))
+            {
+                if (revSrc != null) reverbFx.Load(revSrc.Params);
+                // L'effet rend un mélange sec/humide. Sur un BUS on ne veut QUE l'humide : le signal sec
+                // est déjà dans le master, l'y remettre le compterait deux fois et remonterait le niveau
+                // de chaque piste qui envoie. Load n'écrase que les clés présentes, d'où ce second appel
+                // qui force le seul mix sans toucher au reste des réglages de l'utilisateur.
+                reverbFx.Load(WetOnly);
+                reverbFx.Process(revL, revR, frames);
+                for (int f = 0; f < frames; f++) { mL[f] += revL[f]; mR[f] += revR[f]; }
+            }
+
             // Inserts master appliqués sur toute la fenêtre déjà sommée (mêmes règles live que les inserts de piste).
             if (masterFx != null)
                 for (int i = 0; i < masterFx.Length; i++)
@@ -870,6 +1115,8 @@ namespace MusicTracker.Engine.Timeline
                     var d = (masterFxSrc != null && i < masterFxSrc.Length) ? masterFxSrc[i] : null;
                     if (d != null && !d.Enabled) continue;
                     if (d != null) masterFx[i].Load(d.Params);
+                    // APRÈS Load : Load réapplique les valeurs figées du .sq, l'automation doit gagner.
+                    if (masterFxAutom != null && i < masterFxAutom.Length) ApplyPluginBindings(masterFxAutom[i], automBeat);
                     masterFx[i].Process(mL, mR, frames);
                 }
 
@@ -958,6 +1205,7 @@ namespace MusicTracker.Engine.Timeline
         void EnsureBuffers(int frames)
         {
             if (mL == null || mL.Length < frames) { mL = new float[frames]; mR = new float[frames]; }
+            if (revL == null || revL.Length < frames) { revL = new float[frames]; revR = new float[frames]; }
             if (mIn == null || mIn.Length < frames) mIn = new float[frames];
             for (int i = 0; i < tracks.Length; i++)
             {
@@ -1021,6 +1269,9 @@ namespace MusicTracker.Engine.Timeline
                     var d = (fxSrc != null && i < fxSrc.Length) ? fxSrc[i] : null;
                     if (d != null && !d.Enabled) continue;                     // toggle live : effet passé en bypass
                     if (d != null) fx[i].Load(d.Params);                       // params live : slider = audible immédiat
+                    // APRÈS Load, qui vient de réappliquer les valeurs figées du .sq : une lane d'automation
+                    // est la source de vérité pour SON paramètre, les autres restent pilotés par le curseur.
+                    if (tk.FxAutom != null && i < tk.FxAutom.Length) ApplyPluginBindings(tk.FxAutom[i], automBeat);
                     fx[i].Process(tmpL, tmpR, nn);
                 }
                 Array.Copy(tmpL, 0, tk.BufL, startOff, nn);
@@ -1051,6 +1302,7 @@ namespace MusicTracker.Engine.Timeline
                     {
                         if (vsti != null) vsti.NoteOff(ch, note + 12);
                         else synth.NoteOff(ch, note + 12);
+                        tracks[ti].SoundingVel[(note + 12) & 127] = 0;
                     }
                 }
                 var att = tracks[ti].AttackAt[sl];
@@ -1080,7 +1332,44 @@ namespace MusicTracker.Engine.Timeline
                             if (glideDur > 0) synth.NoteOn(ch, midi, v, glideFrom, glideDur);
                             else synth.NoteOn(ch, midi, v);
                         }
+                        tracks[ti].SoundingVel[midi & 127] = v;
                     }
+                    tracks[ti].StacPhase = 0;   // le premier coup tombe une periode apres l'attaque
+                }
+
+                // Staccato : ré-articulation périodique des notes tenues. Posé ICI, au dispatch des
+                // notes, et non dans le synthé — le même code sert alors à MeltySynth, aux VSTi et aux
+                // plugins Koton, qui reçoivent tous leurs notes par ce chemin.
+                // Piste dont l'instrument Koton gère lui-même la ré-articulation : la lane a déjà posé
+                // son taux sur le paramètre du plugin (voir ApplyChannelAutomation), rien à faire ici.
+                var stLanes = tracks[ti].StacParam != null ? null : tracks[ti].LaneSnaps;
+                if (stLanes != null && stLanes.TryGetValue(AutomationParam.Staccato, out var stPts))
+                {
+                    double stBeat = sl / (double)Spb;
+                    double perBeat = StaccatoPerBeat(SampleCurve(stPts, 0.0, stBeat));
+                    if (perBeat > 0)
+                    {
+                        // Avance en TEMPS, pas en secondes : le détaché reste calé sur la mesure quelle
+                        // que soit la carte de tempo, et un ralenti allonge les notes au lieu d'en changer
+                        // le nombre. Une tranche vaut 1/Spb de temps.
+                        tracks[ti].StacPhase += perBeat / Spb;
+                        if (tracks[ti].StacPhase >= 1.0)
+                        {
+                            tracks[ti].StacPhase -= 1.0;
+                            var sv = tracks[ti].SoundingVel;
+                            for (int m = 0; m < 128; m++)
+                            {
+                                int v = sv[m];
+                                if (v <= 0) continue;
+                                // NoteOff puis NoteOn : le NoteOff lance la release (donc la petite
+                                // decroissance) et le NoteOn repart de l'attaque du patch. C'est
+                                // exactement ce qu'on entend en jouant deux notes successives.
+                                if (vsti != null) { vsti.NoteOff(ch, m); vsti.NoteOn(ch, m, v); }
+                                else { synth.NoteOff(ch, m); synth.NoteOn(ch, m, v); }
+                            }
+                        }
+                    }
+                    else tracks[ti].StacPhase = 0;
                 }
             }
         }
@@ -1098,9 +1387,22 @@ namespace MusicTracker.Engine.Timeline
                 var synth = tracks[ti].Synth;
                 var vsti = tracks[ti].Vsti;
                 if (synth == null && vsti == null) continue;
+                // Paramètres du plugin instrument : posés une fois par buffer, avant tout rendu. Contrairement
+                // aux inserts, rien ne les réécrit après (pas de Load par buffer côté instrument).
+                ApplyPluginBindings(tracks[ti].InstrAutom, beat);
                 var p = tracks[ti].Src;
                 int ch = tracks[ti].Channel;
                 var lanes = tracks[ti].LaneSnaps;
+                // Staccato délégué au plugin. La lane parle en subdivisions du temps, le paramètre du
+                // plugin en Hz : la conversion passe donc par le tempo COURANT, et le détaché suit
+                // naturellement un ralenti ou une accélération.
+                var sp = tracks[ti].StacParam;
+                if (sp != null && lanes != null && lanes.TryGetValue(AutomationParam.Staccato, out var stCurve))
+                {
+                    double hz = StaccatoPerBeat(SampleCurve(stCurve, 0.0, beat)) * BpmAt(beat) / 60.0;
+                    if (hz > sp.Max) hz = sp.Max;   // le plugin plafonne plus bas que 16 doubles/temps
+                    sp.SetFromAutomation(hz);
+                }
                 double baseVol = p != null ? p.Volume : tracks[ti].BaseVol;
                 double mix = p != null ? ((p.Mute || (anySolo && !p.Solo)) ? 0.0 : 1.0) : tracks[ti].Mix;
                 double gv = TrackGain(tracks[ti].Autom, baseVol, beat) * mix;
@@ -1181,6 +1483,6 @@ namespace MusicTracker.Engine.Timeline
 
         
 
-        void RaiseEnded() { if (endedRaised) return; endedRaised = true; playing = false; Ended?.Invoke(); }
+        void RaiseEnded() { if (endedRaised) return; endedRaised = true; playing = false; RestoreAutomatedParams(); Ended?.Invoke(); }
     }
 }

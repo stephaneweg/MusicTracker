@@ -38,8 +38,8 @@ namespace KotonPluginVowelSynth
         public string DisplayName => "Vowel Synth";
 
         // Vowel index (0..5 = A/E/I/O/U/EH). Combo dans l'editeur.
-        readonly KotonParameter _vowelA     = new KotonParameter("vowel_a",   "Vowel A",         0, 5, 0);   // A par defaut
-        readonly KotonParameter _vowelB     = new KotonParameter("vowel_b",   "Vowel B",         0, 5, 3);   // O par defaut
+        readonly KotonParameter _vowelA     = new KotonParameter("vowel_a",   "Vowel A",         0, 5, 0) { Automatable = false };   // A par defaut
+        readonly KotonParameter _vowelB     = new KotonParameter("vowel_b",   "Vowel B",         0, 5, 3) { Automatable = false };   // O par defaut
         readonly KotonParameter _morph      = new KotonParameter("morph",     "Morph A→B",       0.0, 1.0, 0.0);
         readonly KotonParameter _formantQ   = new KotonParameter("formant_q", "Formant Q",       1.0, 20.0, 6.0);
         readonly KotonParameter _formantGain= new KotonParameter("formant_gain","Formant gain",  0.0, 4.0, 1.5);

@@ -59,7 +59,14 @@ namespace MusicTracker.Dialogs
                     };
                     return;
                 }
-                hostBorder.Child = ctl;
+                // Barre de presets posée par l'hôte AU-DESSUS de l'éditeur : le plugin n'a rien à faire
+                // pour l'avoir, elle ne parle qu'aux Parameters/SaveState que le contrat impose déjà.
+                var dock = new DockPanel();
+                var bar = new Controls.KotonPresetBar(_plugin);
+                DockPanel.SetDock(bar, Dock.Top);
+                dock.Children.Add(bar);
+                dock.Children.Add(ctl);
+                hostBorder.Child = dock;
             }
             catch (Exception ex)
             {

@@ -36,6 +36,10 @@ namespace KotonPluginWindchimes
         readonly KotonParameter _windGust   = new KotonParameter("wind_gust",  "Wind gust (rafales)", 0.0, 1.0, 0.30);
         readonly KotonParameter _stereoSpread = new KotonParameter("stereo_spread", "Stereo spread", 0.0, 1.0, 0.75);
         readonly KotonParameter _volumeDb   = new KotonParameter("volume",     "Volume",      -30.0, 6.0, -4.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -56,7 +60,7 @@ namespace KotonPluginWindchimes
 
         public WindchimesPlugin()
         {
-            _params = new List<KotonParameter> { _brightness, _decay, _wind, _windGust, _stereoSpread, _volumeDb };
+            _params = new List<KotonParameter> { _brightness, _decay, _wind, _windGust, _stereoSpread, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -68,14 +72,17 @@ namespace KotonPluginWindchimes
             _voices = new ChimeVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new ChimeVoice(sampleRate);
             _samplesUntilNextGust = _sr * 2;
+            _retrig.Prepare(sampleRate);
         }
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
         }
 
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             float vel = velocity / 127f;
             TriggerChime(note, vel);
@@ -84,7 +91,11 @@ namespace KotonPluginWindchimes
         void TriggerChime(int note, float velocity)
         {
             ChimeVoice target = null;
-            for (int i = 0; i < _voices.Length; i++) if (!_voices[i].IsActive) { target = _voices[i]; break; }
+            // Rejouer la MÊME note reprend sa voix au lieu d'en allouer une neuve : sans ça les coups
+            // répétés s'empilent (mesure : pic 0,33 → 0,68 à 9 coups/s). C'est aussi le comportement
+            // physique — ré-exciter un résonateur déjà en vibration l'arrête.
+            for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) { target = _voices[i]; target.Kill(); break; }
+            if (target == null) for (int i = 0; i < _voices.Length; i++) if (!_voices[i].IsActive) { target = _voices[i]; break; }
             if (target == null)
             {
                 target = _voices[_stealCursor];
@@ -122,6 +133,10 @@ namespace KotonPluginWindchimes
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 // Événement wind (Poisson)
                 _samplesUntilNextGust--;
                 if (_samplesUntilNextGust <= 0 && effectiveWind > 0.01f)

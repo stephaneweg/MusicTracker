@@ -14,7 +14,8 @@
     <PlatformTarget>x64</PlatformTarget>
     <TargetExt>.ksl</TargetExt>
   </PropertyGroup>
-  <ItemGroup><ProjectReference Include="..\..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="..\..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+    <Compile Include="..\..\..\Shared\KotonReAttack.cs" Link="KotonReAttack.cs" /></ItemGroup>
   <Target Name="CopyKslToHostBinPluginsDir" AfterTargets="Build">
     <PropertyGroup>
       <KslArtifact>$(TargetPath)</KslArtifact>

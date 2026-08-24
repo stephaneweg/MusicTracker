@@ -224,6 +224,10 @@ namespace MusicTracker.Screens
                             it.Icon = new TextBlock { Text = "✓", FontWeight = FontWeights.Bold };
                         string id = p.Id;
                         it.Click += (s, e) => SelectKoton(track, id);
+                        // Écoute au survol : un La3 tenu tant que le pointeur reste sur le nom. Choisir un
+                        // instrument dans une liste de plusieurs dizaines demandait sinon de le poser sur
+                        // une piste, jouer une note, puis recommencer avec le suivant.
+                        KotonInstrumentAudition.Attach(it, id);
                         target.Items.Add(it);
                     }
                 }
@@ -258,6 +262,9 @@ namespace MusicTracker.Screens
                 menu.Items.Add(remove);
             }
 
+            // Filet : fermer le menu par Échap ou par un clic ailleurs ne produit pas toujours un
+            // MouseLeave sur l'item survolé — sans ça une note tenue continuerait après la fermeture.
+            menu.Closed += (s, e) => KotonInstrumentAudition.Stop();
             menu.IsOpen = true;
         }
 

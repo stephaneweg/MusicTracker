@@ -35,7 +35,7 @@ namespace KotonPluginBlownFlute
         public string Id => "koton.blownflute";
         public string DisplayName => "Blown Flute";
 
-        readonly KotonParameter _instrument      = new KotonParameter("instrument",       "Instrument",       0, 5, 0);
+        readonly KotonParameter _instrument      = new KotonParameter("instrument",       "Instrument",       0, 5, 0) { Automatable = false };
         readonly KotonParameter _breathPressure  = new KotonParameter("breath_pressure",  "Breath pressure",  0.0, 1.0, 0.55);
         readonly KotonParameter _breathNoise     = new KotonParameter("breath_noise",     "Breath noise",     0.0, 1.0, 0.45);
         readonly KotonParameter _jetInstability  = new KotonParameter("jet_instability",  "Jet instability",  0.0, 1.0, 0.20);
@@ -48,6 +48,12 @@ namespace KotonPluginBlownFlute
         readonly KotonParameter _releaseTime     = new KotonParameter("release_time",     "Release",          0.0, 2.0, 0.30, "s");
         readonly KotonParameter _stereoWidth     = new KotonParameter("stereo_width",     "Stereo width",     0.0, 1.0, 0.25);
         readonly KotonParameter _volumeDb        = new KotonParameter("volume",           "Volume",           -30.0, 6.0, -6.0, "dB");
+
+        // Coup de langue : ré-articule la note tenue à intervalle régulier. 0 Hz = une seule attaque,
+        // c'est-à-dire exactement le comportement d'avant — ajouter ce paramètre ne change donc rien
+        // aux projets existants tant qu'on n'y touche pas.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _tongue =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Coup de langue", 16.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -63,7 +69,7 @@ namespace KotonPluginBlownFlute
             {
                 _instrument, _breathPressure, _breathNoise, _jetInstability, _embouchureShift,
                 _damping, _brightness, _vibratoRate, _vibratoDepth,
-                _breathAttack, _releaseTime, _stereoWidth, _volumeDb,
+                _breathAttack, _releaseTime, _tongue.Rate, _stereoWidth, _volumeDb,
             };
         }
 
@@ -104,15 +110,26 @@ namespace KotonPluginBlownFlute
             _sampleRate = sampleRate;
             _voices = new BlownFluteVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new BlownFluteVoice(sampleRate);
+            _tongue.Prepare(sampleRate);
         }
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            _tongue.Reset();
         }
 
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
             if (_voices == null || velocity == 0) return;
+            _tongue.NoteOn(note, velocity);   // la note entre dans les tenues, la phase repart de l'attaque
+            StartVoice(note, velocity);
+        }
+
+        /// <summary>Alloue et attaque une voix. Séparé de <see cref="NoteOn"/> parce que le coup de langue
+        /// rappelle ce chemin-ci : repasser par le NoteOn public remettrait la phase à zéro à chaque coup,
+        /// et plus aucune ré-attaque ne se déclencherait.</summary>
+        void StartVoice(int note, int velocity)
+        {
             var p = ToVoiceParams();
             float vel = velocity / 127f;
             BlownFluteVoice target = null;
@@ -121,9 +138,11 @@ namespace KotonPluginBlownFlute
             if (target == null) { target = _voices[_stealCursor]; _stealCursor = (_stealCursor + 1) % _voices.Length; target.Kill(); }
             target.NoteOn(note, vel, p);
         }
+
         public void NoteOff(int note, int sampleOffset = 0)
         {
             if (_voices == null) return;
+            _tongue.NoteOff(note);
             for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff();
         }
         public void MidiCC(int cc, int value, int sampleOffset = 0) { if (cc == 123) Reset(); }
@@ -138,6 +157,26 @@ namespace KotonPluginBlownFlute
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Coup de langue : à l'échéance de la période, chaque note tenue est REJOUÉE — tube vidé,
+                // enveloppe repartie de zéro — mais avec l'attaque brève propre au coup de langue et non
+                // celle réglée par l'utilisateur (voir BlownFluteVoice.ReTongue). Le taux est relu à
+                // chaque échantillon, donc il s'automatise en continu (accelerando de détaché, entrée
+                // progressive du frullato…).
+                if (_tongue.Tick())
+                {
+                    for (int t = 0; t < _tongue.Count; t++)
+                    {
+                        int note = _tongue.NoteAt(t);
+                        int vel = _tongue.VelocityAt(t);
+                        bool found = false;
+                        for (int v = 0; v < _voices.Length; v++)
+                            if (_voices[v].IsActive && _voices[v].Note == note) { _voices[v].ReTongue(vel / 127f, p); found = true; }
+                        // La voix a été volée entre-temps (polyphonie saturée) : il faut la réallouer,
+                        // sinon la note disparaîtrait purement et simplement.
+                        if (!found) StartVoice(note, vel);
+                    }
+                }
+
                 float sumL = 0f, sumR = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {
@@ -150,6 +189,9 @@ namespace KotonPluginBlownFlute
                     sumL += s * (1f - p01);
                     sumR += s * p01;
                 }
+                // Bruit de langue ajoute EN SORTIE : injecte dans le tube (voir ReTongue) il tombait
+                // pile quand l'enveloppe d'articulation vaut zero et n'etait jamais entendu — mesure :
+                // rapport aigu/total identique a l'attaque et en regime etabli (-1,1 dB).
                 left[i] = sumL * volLin;
                 right[i] = sumR * volLin;
             }

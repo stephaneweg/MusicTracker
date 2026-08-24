@@ -28,12 +28,16 @@ namespace KotonPluginHarpsichord
         readonly KotonParameter _pluckClick   = new KotonParameter("pluck_click",  "Pluck click",  0.0, 1.0, 0.50);
         readonly KotonParameter _choirDetune  = new KotonParameter("choir_detune", "Choir detune", 0.0, 12.0, 3.5, "cent");
         readonly KotonParameter _choirMix     = new KotonParameter("choir_mix",    "Choir mix",    0.0, 1.0, 0.60);
-        readonly KotonParameter _register4ft  = new KotonParameter("register_4ft", "4' register",  0.0, 1.0, 0.0);   // 0 = 8'+8', 1 = 8'+4'
+        readonly KotonParameter _register4ft  = new KotonParameter("register_4ft", "4' register",  0.0, 1.0, 0.0) { Automatable = false };   // 0 = 8'+8', 1 = 8'+4'
         readonly KotonParameter _bodyRes      = new KotonParameter("body_resonance","Body resonance", 0.0, 1.0, 0.30);
         readonly KotonParameter _attack       = new KotonParameter("attack",       "Attack",       0.5, 20.0, 2.0, "ms");
         readonly KotonParameter _release      = new KotonParameter("release",      "Release",      50.0, 2000.0, 600.0, "ms");
-        readonly KotonParameter _polyphony    = new KotonParameter("polyphony",    "Polyphony",    2, 12, 8);
+        readonly KotonParameter _polyphony    = new KotonParameter("polyphony",    "Polyphony",    2, 12, 8) { Automatable = false };
         readonly KotonParameter _volumeDb     = new KotonParameter("volume",       "Volume",       -30.0, 6.0, -4.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -45,7 +49,7 @@ namespace KotonPluginHarpsichord
 
         public HarpsichordPlugin()
         {
-            _params = new List<KotonParameter> { _sustain, _brightness, _pluckClick, _choirDetune, _choirMix, _register4ft, _bodyRes, _attack, _release, _polyphony, _volumeDb };
+            _params = new List<KotonParameter> { _sustain, _brightness, _pluckClick, _choirDetune, _choirMix, _register4ft, _bodyRes, _attack, _release, _polyphony, _volumeDb, _retrig.Rate };
         }
         public bool HasEditor => true;
         public UserControl CreateEditor() => new HarpsichordEditor(this);
@@ -54,19 +58,30 @@ namespace KotonPluginHarpsichord
             _sr = sampleRate;
             _voices = new HarpsichordVoice[MaxPoly];
             for (int i = 0; i < MaxPoly; i++) _voices[i] = new HarpsichordVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
-        public void Reset() { if (_voices != null) foreach (var v in _voices) v.Kill(); }
+        public void Reset()
+        {
+            if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
+        }
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             int poly = Math.Max(2, Math.Min(MaxPoly, (int)Math.Round(_polyphony.Value)));
             HarpsichordVoice t = null;
-            for (int i = 0; i < poly; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
+            // Rejouer la MÊME note reprend sa voix au lieu d'en allouer une neuve : sans ça les coups
+            // répétés s'empilent (mesure : pic 0,33 → 0,68 à 9 coups/s). C'est aussi le comportement
+            // physique — repincer une corde déjà en vibration l'arrête.
+            for (int i = 0; i < poly; i++) if (_voices[i].IsActive && _voices[i].Note == note) { t = _voices[i]; t.Kill(); break; }
+            if (t == null) for (int i = 0; i < poly; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
             if (t == null) { t = _voices[_stealCursor]; _stealCursor = (_stealCursor + 1) % poly; t.Kill(); }
             t.NoteOn(note, velocity / 127f, Build());
         }
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff();
         }
@@ -88,6 +103,10 @@ namespace KotonPluginHarpsichord
             var p = Build(); int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sum = 0;
                 for (int v = 0; v < _voices.Length; v++) if (_voices[v].IsActive) sum += _voices[v].RenderSample(p);
                 float s = sum * volLin;

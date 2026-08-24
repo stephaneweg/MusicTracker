@@ -84,7 +84,7 @@ namespace KotonPluginMallets
         // Paramètres
         // =============================================================================================
         // Instrument : discret 0..7 (index dans PresetsData). Un changement ré-arme les modes courants.
-        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",      0, 7, 0);
+        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",      0, 7, 0) { Automatable = false };
         readonly KotonParameter _malletHardness = new KotonParameter("mallet_hardness",  "Mallet hardness", 0.0, 1.0, 0.5);
         // Position sur la barre : 0 = centre (fondamentale forte), 1 = bord (accentue les partiels).
         readonly KotonParameter _position       = new KotonParameter("position",         "Position",        0.0, 1.0, 0.3);
@@ -94,6 +94,10 @@ namespace KotonPluginMallets
         readonly KotonParameter _tremDepth      = new KotonParameter("trem_depth",       "Tremolo depth",   0.0, 1.0, 0.0);
         readonly KotonParameter _stereoSpread   = new KotonParameter("stereo_spread",    "Stereo spread",   0.0, 1.0, 0.4);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",           "Volume",          -30.0, 6.0, -3.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -109,8 +113,7 @@ namespace KotonPluginMallets
             _params = new List<KotonParameter>
             {
                 _instrument, _malletHardness, _position, _damping, _brightness,
-                _tremRate, _tremDepth, _stereoSpread, _volumeDb,
-            };
+                _tremRate, _tremDepth, _stereoSpread, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -205,11 +208,13 @@ namespace KotonPluginMallets
             _maxBlockSize = maxBlockSize;
             _voices = new ModalVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new ModalVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
 
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
         }
 
         // =============================================================================================
@@ -217,6 +222,7 @@ namespace KotonPluginMallets
         // =============================================================================================
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             var preset = GetPreset((int)_instrument.Value);
             float vel = velocity / 127f;
@@ -243,6 +249,7 @@ namespace KotonPluginMallets
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             // No-op volontaire : une percussion à son déterminé n'a pas de note-off actif — la barre
             // décroît naturellement selon les DecayMs de ses modes. Un vrai marimba n'a pas de damper
             // (contrairement à un piano). Pour un "damper" manuel style piano, on ajouterait plus
@@ -279,6 +286,10 @@ namespace KotonPluginMallets
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 _tremoloPhase += tremInc;
                 if (_tremoloPhase > 2 * Math.PI) _tremoloPhase -= 2 * Math.PI;
                 float trem = 1f - tremDepth * 0.5f * (1f - (float)Math.Cos(_tremoloPhase));   // 1..1-depth, sinusoïdal

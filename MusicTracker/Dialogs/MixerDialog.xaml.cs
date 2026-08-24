@@ -41,6 +41,8 @@ namespace MusicTracker.Dialogs
             meterTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(45) };
             meterTimer.Tick += (s, e) => UpdateMeters();
             meterTimer.Start();
+            // Fermer le mixeur coupe l'écoute d'insert : elle n'a plus de bouton pour l'arrêter.
+            Closed += (s, e) => InsertPreview.Stop();
         }
 
         /// <summary>Reconstruire les strips après un ajout/retrait/réorganisation de pistes côté timeline.</summary>
@@ -50,7 +52,14 @@ namespace MusicTracker.Dialogs
             meters.Clear();
             insertsHosts.Clear();
             if (project?.Tracks == null) return;
-            foreach (var tr in project.Tracks) list.Items.Add(BuildStrip(tr));
+            // La piste d'accords n'est pas une source sonore : le player la force à zéro (elle sert de
+            // trame harmonique aux générateurs). Lui donner une tranche de console avec fader, panoramique
+            // et départ de réverbe promettait un réglage qui ne pouvait rien changer.
+            foreach (var tr in project.Tracks)
+            {
+                if (tr.Type == TimelineTrackType.Chord) continue;
+                list.Items.Add(BuildStrip(tr));
+            }
             RefreshMasterInserts();
         }
 
@@ -65,7 +74,7 @@ namespace MusicTracker.Dialogs
                 CornerRadius = new CornerRadius(5),
                 Padding = new Thickness(6, 8, 6, 8),
                 Margin = new Thickness(3),
-                Width = 86,
+                Width = 120,
             };
             var col = new StackPanel();
 
@@ -91,6 +100,22 @@ namespace MusicTracker.Dialogs
             panSlider.MouseDoubleClick += (s, e) => { tr.Pan = 0; e.Handled = true; };
             panRow.Children.Add(panSlider);
             col.Children.Add(panRow);
+
+            // Départ vers le BUS de réverbe. Un bus et non une réverbe par piste : une seule instance
+            // sert tout le morceau, là où N inserts coûteraient N fois le processeur et verraient leurs
+            // réglages diverger dès la première retouche.
+            var revRow = new DockPanel { Margin = new Thickness(0, 0, 0, 4) };
+            var revLbl = new TextBlock { Text = Loc.T("MixReverb"), Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 9, VerticalAlignment = VerticalAlignment.Center };
+            var revVal = new TextBlock { Foreground = new SolidColorBrush(Color.FromRgb(0x99, 0x99, 0x99)), FontSize = 9, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, MinWidth = 32 };
+            revVal.SetBinding(TextBlock.TextProperty, new Binding("ReverbBusSend") { Source = tr, StringFormat = "{0:P0}" });
+            DockPanel.SetDock(revLbl, Dock.Left);
+            DockPanel.SetDock(revVal, Dock.Right);
+            revRow.Children.Add(revLbl); revRow.Children.Add(revVal);
+            var revSlider = new Slider { Minimum = 0, Maximum = 1, SmallChange = 0.02, VerticalAlignment = VerticalAlignment.Center, ToolTip = Loc.T("MixReverbHint") };
+            revSlider.SetBinding(Slider.ValueProperty, new Binding("ReverbBusSend") { Source = tr, Mode = BindingMode.TwoWay });
+            revSlider.MouseDoubleClick += (s, e) => { tr.ReverbBusSend = 0; e.Handled = true; };
+            revRow.Children.Add(revSlider);
+            col.Children.Add(revRow);
 
             // Fader (vertical) + vu-mètre à sa droite.
             var faderMeter = new Grid { Height = 150, Margin = new Thickness(0, 4, 0, 4) };
@@ -150,7 +175,7 @@ namespace MusicTracker.Dialogs
             for (int i = 0; i < tr.Inserts.Count; i++)
             {
                 var d = tr.Inserts[i];
-                host.Children.Add(BuildInsertRow(d, tr.Inserts, () => { RefreshInsertsForTrack(tr); CaptureUndo(); }));
+                host.Children.Add(BuildInsertRow(d, tr.Inserts, tr, () => { RefreshInsertsForTrack(tr); CaptureUndo(); }));
             }
         }
 
@@ -161,15 +186,17 @@ namespace MusicTracker.Dialogs
             for (int i = 0; i < project.MasterInserts.Count; i++)
             {
                 var d = project.MasterInserts[i];
-                masterInsertsList.Items.Add(BuildInsertRow(d, project.MasterInserts, () => { RefreshMasterInserts(); CaptureUndo(); }));
+                masterInsertsList.Items.Add(BuildInsertRow(d, project.MasterInserts, null, () => { RefreshMasterInserts(); CaptureUndo(); }));
             }
         }
 
-        // Une ligne d'insert : bouton étiquette (édition), toggle actif, bouton suppression.
-        FrameworkElement BuildInsertRow(TrackEffectData d, List<TrackEffectData> owner, Action onChanged)
+        // Une ligne d'insert : bouton étiquette (édition), écoute, toggle actif, bouton suppression.
+        // <paramref name="ownerTrack"/> = la piste dont vient la chaîne, ou null pour le bus master.
+        FrameworkElement BuildInsertRow(TrackEffectData d, List<TrackEffectData> owner, TimelineTrack ownerTrack, Action onChanged)
         {
             var row = new Grid { Margin = new Thickness(0, 1, 0, 1) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -185,10 +212,31 @@ namespace MusicTracker.Dialogs
             Grid.SetColumn(edit, 0);
             row.Children.Add(edit);
 
+            // Écoute : joue un bloc de la piste (le morceau entier sur le master) à travers la chaîne
+            // JUSQU'À cet insert. Chaque ligne fait donc entendre un état différent du signal, ce qui
+            // permet de juger l'apport d'un effet et pas seulement le résultat de la chaîne entière.
+            int index = owner != null ? owner.IndexOf(d) : 0;
+            var play = new Button { Width = 16, Height = 18, Style = (Style)FindResource("TinyButton"), Margin = new Thickness(3, 0, 0, 0) };
+            Action refreshPlay = () =>
+            {
+                var cur = InsertPreview.Playing;
+                bool mine = cur.HasValue && ReferenceEquals(cur.Value.Track, ownerTrack) && cur.Value.Index == index;
+                play.Content = mine ? "⏹" : "▶";
+                play.ToolTip = Loc.T(mine ? "FxPreviewStopTip" : "FxPreviewTip");
+            };
+            play.Click += (s, e) => InsertPreview.Toggle(project, screen, ownerTrack, index);
+            InsertPreview.StateChanged += refreshPlay;
+            // Les lignes sont reconstruites à chaque ajout/retrait d'insert : sans ce désabonnement, les
+            // anciennes resteraient accrochées à l'événement statique pour toute la session.
+            row.Unloaded += (s, e) => InsertPreview.StateChanged -= refreshPlay;
+            refreshPlay();
+            Grid.SetColumn(play, 1);
+            row.Children.Add(play);
+
             var onoff = new ToggleButton { Content = "•", Width = 16, Height = 18, Style = (Style)FindResource("MixToggle"), Margin = new Thickness(3, 0, 0, 0), IsChecked = d.Enabled, ToolTip = Loc.T("ToggleEffect") };
             onoff.Checked += (s, e) => { d.Enabled = true; edit.Opacity = 1.0; onChanged(); };
             onoff.Unchecked += (s, e) => { d.Enabled = false; edit.Opacity = 0.5; onChanged(); };
-            Grid.SetColumn(onoff, 1);
+            Grid.SetColumn(onoff, 2);
             row.Children.Add(onoff);
 
             var del = new Button { Content = "×", Width = 16, Height = 18, Style = (Style)FindResource("TinyButton"), Margin = new Thickness(3, 0, 0, 0), ToolTip = Loc.T("RemoveEffect") };
@@ -196,10 +244,13 @@ namespace MusicTracker.Dialogs
             {
                 // Libere l'instance Koton cachee (l'insert n'existe plus, plus besoin de garder l'adapter)
                 if (d.Kind == EffectFactory.KotonKind) KotonEffectCache.Release(d);
+                // Une écoute en cours pointe cet insert par son indice : le laisser tourner ferait
+                // entendre la chaîne d'à côté après la suppression.
+                InsertPreview.Stop();
                 owner.Remove(d);
                 onChanged();
             };
-            Grid.SetColumn(del, 2);
+            Grid.SetColumn(del, 3);
             row.Children.Add(del);
 
             return row;
@@ -347,6 +398,15 @@ namespace MusicTracker.Dialogs
                 return;
             }
             new EffectConfigDialog(d, this).ShowDialog();
+        }
+
+        /// <summary>Ouvre l'éditeur de la réverbe du BUS — celle qu'alimentent tous les départs de piste.
+        /// Un seul jeu de réglages pour tout le morceau, c'est le principe même d'un bus.</summary>
+        void EditReverbBus_Click(object sender, RoutedEventArgs e)
+        {
+            if (project?.ReverbBus == null) return;
+            OpenEffectEditor(project.ReverbBus);
+            CaptureUndo();
         }
 
         void MasterAddFx_Click(object sender, RoutedEventArgs e)

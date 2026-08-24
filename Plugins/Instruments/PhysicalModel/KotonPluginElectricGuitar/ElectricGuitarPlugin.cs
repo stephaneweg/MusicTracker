@@ -42,6 +42,10 @@ namespace KotonPluginElectricGuitar
         readonly KotonParameter _body          = new KotonParameter("body",           "Body",           0.0, 1.0, 0.20);
         readonly KotonParameter _stereoWidth   = new KotonParameter("stereo_width",   "Stereo width",   0.0, 1.0, 0.30);
         readonly KotonParameter _volumeDb      = new KotonParameter("volume",         "Volume",         -30.0, 6.0, -4.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -59,8 +63,7 @@ namespace KotonPluginElectricGuitar
             _params = new List<KotonParameter>
             {
                 _pluckPosition, _pluckHardness, _pickupPosition, _damping, _sustain,
-                _tone, _drive, _body, _stereoWidth, _volumeDb,
-            };
+                _tone, _drive, _body, _stereoWidth, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -73,15 +76,18 @@ namespace KotonPluginElectricGuitar
             for (int i = 0; i < Polyphony; i++) _voices[i] = new GuitarVoice(sampleRate);
             SetBiquadBandpass(ref _bodyL, sampleRate, 150f, 3f);
             SetBiquadBandpass(ref _bodyR, sampleRate, 150f, 3f);
+            _retrig.Prepare(sampleRate);
         }
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
             _bodyL.ResetState(); _bodyR.ResetState();
+            _retrig.Reset();
         }
 
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             float vel = velocity / 127f;
 
@@ -129,6 +135,10 @@ namespace KotonPluginElectricGuitar
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sumL = 0f, sumR = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {

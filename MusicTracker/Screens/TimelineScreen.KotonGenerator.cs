@@ -75,7 +75,16 @@ namespace MusicTracker.Screens
             KotonHost.CurrentContext = () => (s_activeKotonHost == this)
                 ? KotonGeneratorRuntime.ContextFor(this.project, 0)
                 : null;
+            // Tête de lecture AUDIBLE (échantillons consommés par le device) — référence exacte
+            // des plugins de visualisation temps réel : encaisse la latence du device, la pause,
+            // le départ au curseur et la boucle sans qu'ils aient à re-scheduler quoi que ce soit.
+            KotonHost.PlayheadBeat = () => (s_activeKotonHost == this) ? this.KotonHost_PlayheadBeat() : (double?)null;
         }
+
+        /// <summary>Position audible en beats absolus, ou null si le device audio ne tourne pas
+        /// (arrêt / pause / buffer encore en prime → l'animation se fige au lieu de dériver).</summary>
+        double? KotonHost_PlayheadBeat()
+            => (playWaveOut != null && player != null && playBuffer != null) ? PlayedBeat() : (double?)null;
 
         /// <summary>Décâble <see cref="KotonHost"/> — appelé à la fermeture de l'onglet.</summary>
         internal void UnhookKotonHost()
@@ -89,6 +98,7 @@ namespace MusicTracker.Screens
                 KotonHost.StopPreview = null;
                 KotonHost.NotifyDurationChanged = null;
                 KotonHost.CurrentContext = null;
+                KotonHost.PlayheadBeat = null;
             }
         }
 
@@ -408,7 +418,14 @@ namespace MusicTracker.Screens
                 try { uc = inst.CreateEditor(); } catch { }
                 if (uc != null)
                 {
-                    host.Child = uc;
+                    // Même barre de presets que dans la fenêtre d'éditeur des instruments/effets — un
+                    // générateur se règle autant qu'un synthé, il mérite le même magasin de réglages.
+                    var dock = new DockPanel();
+                    var bar = new Controls.KotonPresetBar(inst);
+                    DockPanel.SetDock(bar, Dock.Top);
+                    dock.Children.Add(bar);
+                    dock.Children.Add(uc);
+                    host.Child = dock;
                 }
                 else
                 {

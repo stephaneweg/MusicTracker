@@ -82,7 +82,7 @@
                 <Rectangle Grid.Column="1" Width="1" Fill="#444" Margin="4,10,4,10"/>
 
                 <!-- Strip Master (fixe à droite). -->
-                <Border Grid.Column="2" Name="masterHost" Background="#2A2A34" CornerRadius="5" Padding="8,10" Margin="4,4,10,8" Width="86">
+                <Border Grid.Column="2" Name="masterHost" Background="#2A2A34" CornerRadius="5" Padding="8,10" Margin="4,4,10,8" Width="120">
                     <StackPanel HorizontalAlignment="Center">
                         <TextBlock Text="{loc:Tr 'MasterBus'}" Foreground="#1FB6C3" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,6"/>
                         <!-- Vu-mètre master : deux barres verticales L/R alimentées par un timer. -->
@@ -98,7 +98,11 @@
                                 <Rectangle Name="masterMeterR" Fill="#1FB6C3" VerticalAlignment="Bottom" Height="0"/>
                             </Border>
                         </Grid>
-                        <TextBlock Text="{loc:Tr 'Inserts'}" Foreground="#999" FontSize="10" Margin="0,4,0,3"/>
+                        <!-- Réglage de la réverbe du BUS : les départs sont sur les strips de piste, mais
+                             la réverbe elle-même est unique et se règle donc ici, au master. -->
+                        <Button Content="{loc:Tr 'MixReverbBus'}" Style="{StaticResource TinyButton}"
+                                ToolTip="{loc:Tr 'MixReverbBusTip'}" Click="EditReverbBus_Click" Margin="0,4,0,0"/>
+                        <TextBlock Text="{loc:Tr 'Inserts'}" Foreground="#999" FontSize="10" Margin="0,8,0,3"/>
                         <ItemsControl Name="masterInsertsList"/>
                         <Button Content="{loc:Tr 'AddFxDots'}" Style="{StaticResource TinyButton}" Click="MasterAddFx_Click" Margin="0,4,0,0"/>
                     </StackPanel>

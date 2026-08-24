@@ -18,7 +18,7 @@ namespace KotonPluginAcid303
         public string Id => "koton.acid303";
         public string DisplayName => "Acid 303";
 
-        readonly KotonParameter _wave      = new KotonParameter("wave",       "Wave (0=saw 1=square)", 0, 1, 0);
+        readonly KotonParameter _wave      = new KotonParameter("wave",       "Wave (0=saw 1=square)", 0, 1, 0) { Automatable = false };
         readonly KotonParameter _cutoff    = new KotonParameter("cutoff",     "Cutoff",     100, 8000, 1200, "Hz");
         readonly KotonParameter _resonance = new KotonParameter("resonance",  "Resonance",  0.0, 1.0, 0.70);
         readonly KotonParameter _envMod    = new KotonParameter("env_mod",    "Env mod",    0.0, 1.0, 0.60);

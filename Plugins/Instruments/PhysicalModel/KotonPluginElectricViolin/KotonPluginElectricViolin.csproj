@@ -16,6 +16,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+    <Compile Include="..\..\..\Shared\KotonReAttack.cs" Link="KotonReAttack.cs" />
   </ItemGroup>
   <Target Name="CopyKslToHostBinPluginsDir" AfterTargets="Build">
     <PropertyGroup>

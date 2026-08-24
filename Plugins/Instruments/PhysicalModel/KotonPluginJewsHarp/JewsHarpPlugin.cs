@@ -45,6 +45,10 @@ namespace KotonPluginJewsHarp
         readonly KotonParameter _breath      = new KotonParameter("breath",       "Breath (souffle)", 0.0, 1.0, 0.15);
         readonly KotonParameter _brightness  = new KotonParameter("brightness",   "Brightness",     0.0, 1.0, 0.55);
         readonly KotonParameter _volumeDb    = new KotonParameter("volume",       "Volume",         -30.0, 6.0, -3.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -58,8 +62,7 @@ namespace KotonPluginJewsHarp
         {
             _params = new List<KotonParameter> {
                 _lameFreq, _lameDecay, _twang, _spring, _formantQ, _formantMin, _formantMax,
-                _breath, _brightness, _volumeDb,
-            };
+                _breath, _brightness, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -70,19 +73,26 @@ namespace KotonPluginJewsHarp
             _sr = sampleRate;
             _voices = new JewsHarpVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new JewsHarpVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
         }
 
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             float vel = velocity / 127f;
 
             JewsHarpVoice target = null;
-            for (int i = 0; i < _voices.Length; i++) if (!_voices[i].IsActive) { target = _voices[i]; break; }
+            // Rejouer la MÊME note reprend sa voix au lieu d'en allouer une neuve : sans ça les coups
+            // répétés s'empilent (mesure : pic 0,33 → 0,68 à 9 coups/s). C'est aussi le comportement
+            // physique — ré-exciter un résonateur déjà en vibration l'arrête.
+            for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) { target = _voices[i]; target.Kill(); break; }
+            if (target == null) for (int i = 0; i < _voices.Length; i++) if (!_voices[i].IsActive) { target = _voices[i]; break; }
             if (target == null)
             {
                 target = _voices[_stealCursor];
@@ -108,6 +118,7 @@ namespace KotonPluginJewsHarp
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             for (int i = 0; i < _voices.Length; i++)
                 if (_voices[i].IsActive && _voices[i].Note == note)
@@ -127,6 +138,10 @@ namespace KotonPluginJewsHarp
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sum = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {

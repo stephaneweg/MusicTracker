@@ -29,8 +29,12 @@ namespace KotonPluginBanjo
         readonly KotonParameter _pluckLen   = new KotonParameter("pluck_length","Pluck length",  2.0, 20.0, 5.0, "ms");
         readonly KotonParameter _attack     = new KotonParameter("attack",      "Attack",        0.5, 20.0, 1.5, "ms");
         readonly KotonParameter _release    = new KotonParameter("release",     "Release",       50.0, 1000.0, 250.0, "ms");
-        readonly KotonParameter _polyphony  = new KotonParameter("polyphony",   "Polyphony",     2, 8, 5);
+        readonly KotonParameter _polyphony  = new KotonParameter("polyphony",   "Polyphony",     2, 8, 5) { Automatable = false };
         readonly KotonParameter _volumeDb   = new KotonParameter("volume",      "Volume",        -30.0, 6.0, -3.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -42,7 +46,7 @@ namespace KotonPluginBanjo
 
         public BanjoPlugin()
         {
-            _params = new List<KotonParameter> { _sustain, _brightness, _twang, _drumHead, _pluckLen, _attack, _release, _polyphony, _volumeDb };
+            _params = new List<KotonParameter> { _sustain, _brightness, _twang, _drumHead, _pluckLen, _attack, _release, _polyphony, _volumeDb, _retrig.Rate };
         }
         public bool HasEditor => true;
         public UserControl CreateEditor() => new BanjoEditor(this);
@@ -51,14 +55,24 @@ namespace KotonPluginBanjo
             _sr = sampleRate;
             _voices = new BanjoVoice[MaxPoly];
             for (int i = 0; i < MaxPoly; i++) _voices[i] = new BanjoVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
-        public void Reset() { if (_voices != null) foreach (var v in _voices) v.Kill(); }
+        public void Reset()
+        {
+            if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
+        }
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             int poly = Math.Max(2, Math.Min(MaxPoly, (int)Math.Round(_polyphony.Value)));
             BanjoVoice t = null;
-            for (int i = 0; i < poly; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
+            // Rejouer la MÊME note reprend sa voix au lieu d'en allouer une neuve : sans ça les coups
+            // répétés s'empilent (mesure : pic 0,33 → 0,68 à 9 coups/s). C'est aussi le comportement
+            // physique — repincer une corde déjà en vibration l'arrête.
+            for (int i = 0; i < poly; i++) if (_voices[i].IsActive && _voices[i].Note == note) { t = _voices[i]; t.Kill(); break; }
+            if (t == null) for (int i = 0; i < poly; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
             if (t == null) { t = _voices[_stealCursor]; _stealCursor = (_stealCursor + 1) % poly; t.Kill(); }
             t.NoteOn(note, velocity / 127f, Build());
         }
@@ -75,6 +89,10 @@ namespace KotonPluginBanjo
             var p = Build(); int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sum = 0;
                 for (int v = 0; v < _voices.Length; v++) if (_voices[v].IsActive) sum += _voices[v].RenderSample(p);
                 float s = sum * volLin;

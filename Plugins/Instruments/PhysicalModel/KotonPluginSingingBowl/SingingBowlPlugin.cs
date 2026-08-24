@@ -29,6 +29,10 @@ namespace KotonPluginSingingBowl
         readonly KotonParameter _beat        = new KotonParameter("beat",       "Battements",      0.0, 1.0, 0.35);
         readonly KotonParameter _brightness  = new KotonParameter("brightness", "Brillance",       0.0, 1.0, 0.55);
         readonly KotonParameter _volumeDb    = new KotonParameter("volume",     "Volume",          -30, 6, -6, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -39,17 +43,30 @@ namespace KotonPluginSingingBowl
 
         public SingingBowlPlugin()
         {
-            _params = new List<KotonParameter> { _strikeAmt, _sustainLen, _shimmer, _beat, _brightness, _volumeDb };
+            _params = new List<KotonParameter> { _strikeAmt, _sustainLen, _shimmer, _beat, _brightness, _volumeDb, _retrig.Rate };
         }
         public bool HasEditor => true;
         public UserControl CreateEditor() => new SimpleEditor(this);
-        public void Prepare(int sr, int max) { _sr = sr; _voices = new BowlVoice[Polyphony]; for (int i = 0; i < Polyphony; i++) _voices[i] = new BowlVoice(sr); }
-        public void Reset() { if (_voices != null) foreach (var v in _voices) v.Kill(); }
+        public void Prepare(int sr, int max)
+        {
+            _sr = sr; _voices = new BowlVoice[Polyphony]; for (int i = 0; i < Polyphony; i++) _voices[i] = new BowlVoice(sr);
+            _retrig.Prepare(sr);
+        }
+        public void Reset()
+        {
+            if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
+        }
         public void NoteOn(int note, int vel, int off = 0)
         {
+            _retrig.NoteOn(note, vel);
             if (_voices == null || vel == 0) return;
             BowlVoice t = null;
-            for (int i = 0; i < Polyphony; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
+            // Rejouer la MÊME note reprend sa voix au lieu d'en allouer une neuve : sans ça les coups
+            // répétés s'empilent (mesure : pic 0,33 → 0,68 à 9 coups/s). C'est aussi le comportement
+            // physique — repincer une corde déjà en vibration l'arrête.
+            for (int i = 0; i < Polyphony; i++) if (_voices[i].IsActive && _voices[i].Note == note) { t = _voices[i]; t.Kill(); break; }
+            if (t == null) for (int i = 0; i < Polyphony; i++) if (!_voices[i].IsActive) { t = _voices[i]; break; }
             if (t == null) { t = _voices[_stealCursor]; _stealCursor = (_stealCursor + 1) % Polyphony; t.Kill(); }
             t.NoteOn(note, vel / 127f, (float)_strikeAmt.Value, (float)_sustainLen.Value, (float)_shimmer.Value, (float)_beat.Value, (float)_brightness.Value);
         }
@@ -63,6 +80,10 @@ namespace KotonPluginSingingBowl
             int n = l.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sum = 0f;
                 foreach (var v in _voices) if (v.IsActive) sum += v.Render();
                 float s = sum * volLin * 0.5f;

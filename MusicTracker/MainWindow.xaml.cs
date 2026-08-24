@@ -443,6 +443,25 @@ namespace MusicTracker
         }
 
         // "Aide": open the help menu (Signaler un bug + À propos) anchored under the button.
+        // Koton Live : le rack temps réel. Une seule instance à la fois — un second clic ramène la fenêtre
+        // existante au premier plan plutôt que d'ouvrir un deuxième moteur audio sur le même périphérique.
+        Live.LiveWindow liveWindow;
+
+        private void btnLive_Click(object sender, RoutedEventArgs e)
+        {
+            if (liveWindow == null)
+            {
+                liveWindow = new Live.LiveWindow { Owner = this };
+                liveWindow.Closed += (s, a) => liveWindow = null;
+                liveWindow.Show();
+            }
+            else
+            {
+                if (liveWindow.WindowState == WindowState.Minimized) liveWindow.WindowState = WindowState.Normal;
+                liveWindow.Activate();
+            }
+        }
+
         private void btnHelp_Click(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement fe && fe.ContextMenu != null)

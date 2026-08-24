@@ -1,7 +1,7 @@
 <UserControl x:Class="KotonPluginPianoVisualizer.PianoVisualizerEditor"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="960" MinHeight="220" Background="Transparent">
+             MinWidth="960" MinHeight="360" Background="Transparent">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -9,5 +9,20 @@
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
-    <ContentControl x:Name="canvasHost"/>
+    <DockPanel Background="{DynamicResource KotonGround}">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource KotonPanel}"
+                BorderBrush="{DynamicResource KotonBorder}" BorderThickness="0,0,0,1" Padding="10,6">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="Anticipation" FontSize="11" VerticalAlignment="Center"
+                           Foreground="{DynamicResource KotonTextDim}"/>
+                <Slider x:Name="leadSlider" Width="150" Minimum="1" Maximum="16" Margin="8,0,8,0"
+                        TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center"/>
+                <TextBlock x:Name="leadValue" FontSize="11" MinWidth="60" VerticalAlignment="Center"
+                           Foreground="{DynamicResource KotonAccent}"/>
+                <CheckBox x:Name="gridCheck" Content="Grille" IsChecked="True" Margin="20,0,0,0" VerticalAlignment="Center"/>
+                <CheckBox x:Name="namesCheck" Content="Repères d'octave" IsChecked="True" Margin="14,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+        <ContentControl x:Name="canvasHost"/>
+    </DockPanel>
 </UserControl>

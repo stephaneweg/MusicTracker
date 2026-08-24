@@ -34,6 +34,10 @@ namespace KotonPluginErhu
         readonly KotonParameter _attack      = new KotonParameter("attack",      "Attack",       10.0, 500.0, 60.0, "ms");
         readonly KotonParameter _release     = new KotonParameter("release",     "Release",      50.0, 2000.0, 300.0, "ms");
         readonly KotonParameter _volumeDb    = new KotonParameter("volume",      "Volume",       -30.0, 6.0, -3.0, "dB");
+        // Ré-attaque périodique. Modèle AUTO-OSCILLANT : on ne rejoue PAS la note (voir
+        // KotonReAttack.ArticulationSec), on met en forme la sortie.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Détaché", 14.0, 0.0) { ArticulationSec = 0.03f };
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -43,14 +47,23 @@ namespace KotonPluginErhu
 
         public ErhuPlugin()
         {
-            _params = new List<KotonParameter> { _bowPressure, _bowNoise, _formantHz, _formantQ, _brightness, _glideMs, _vibRate, _vibDepth, _attack, _release, _volumeDb };
+            _params = new List<KotonParameter> { _bowPressure, _bowNoise, _formantHz, _formantQ, _brightness, _glideMs, _vibRate, _vibDepth, _attack, _release, _volumeDb, _retrig.Rate };
         }
         public bool HasEditor => true;
         public UserControl CreateEditor() => new ErhuEditor(this);
-        public void Prepare(int sampleRate, int maxBlockSize) { _sr = sampleRate; _voice = new ErhuVoice(sampleRate); }
-        public void Reset() => _voice?.Kill();
+        public void Prepare(int sampleRate, int maxBlockSize)
+        {
+            _sr = sampleRate; _voice = new ErhuVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
+        }
+        public void Reset()
+        {
+            _voice?.Kill();
+            _retrig.Reset();
+        }
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voice == null || velocity == 0) return;
             var p = Build();
             if (_voice.IsActive) _voice.NoteOnLegato(note, velocity / 127f, p);
@@ -76,9 +89,15 @@ namespace KotonPluginErhu
             var p = Build(); int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                _retrig.Tick();
+                float artG = _retrig.Gain;
+
                 float s = _voice.IsActive ? _voice.RenderSample(p) * volLin : 0f;
                 if (s > 1f) s = 1f; else if (s < -1f) s = -1f;
                 left[i] = s; right[i] = s;
+                            // Enveloppe d'articulation du coup de langue / détaché : la note continue de sonner
+                // sous-jacente, c'est la SORTIE qu'on découpe.
+                left[i] *= artG; right[i] *= artG;
             }
         }
         public byte[] SaveState() { try { var d = new Dictionary<string, double>(); foreach (var kp in _params) d[kp.Id] = kp.Value; return Encoding.UTF8.GetBytes(JsonSerializer.Serialize(d)); } catch { return Array.Empty<byte>(); } }

@@ -1,24 +1,60 @@
 <UserControl x:Class="KotonPluginDidgeridoo.DidgeridooEditor"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             MinWidth="560" MinHeight="320" Background="Transparent">
+             MinWidth="860" MinHeight="470" Background="Transparent">
     <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
     </ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
     <Border Padding="16">
         <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" Grid.Column="0"><TextBlock Text="Formant Hz" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S1" Minimum="400" Maximum="2500" TickFrequency="50"/><TextBlock x:Name="V1" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="1" Grid.Column="0"><TextBlock Text="Formant Q" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S2" Minimum="1" Maximum="12" TickFrequency="0.5"/><TextBlock x:Name="V2" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Wobble rate (Hz)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S3" Minimum="0" Maximum="6" TickFrequency="0.25"/><TextBlock x:Name="V3" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="3" Grid.Column="0"><TextBlock Text="Wobble depth" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S4" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V4" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="4" Grid.Column="0"><TextBlock Text="Growl (distortion)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S5" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V5" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="0" Grid.Column="2"><TextBlock Text="Breath (bruit)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S6" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V6" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Harmonics" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S7" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V7" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Attack (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S8" Minimum="10" Maximum="500" TickFrequency="10"/><TextBlock x:Name="V8" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Release (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S9" Minimum="50" Maximum="2000" TickFrequency="50"/><TextBlock x:Name="V9" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
-            <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S10" Minimum="-30" Maximum="6" TickFrequency="1"/><TextBlock x:Name="V10" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ================= Tube ================= -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="TUBE" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+            <StackPanel Grid.Row="1" Grid.Column="0"><TextBlock Text="Perce &amp; matière" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S1" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V1" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="0"><TextBlock Text="Résonance du tube" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S2" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V2" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="0"><TextBlock Text="Inharmonicité (perce irrégulière)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S3" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V3" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="0"><TextBlock Text="Brillance" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S4" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V4" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="5" Grid.Column="0"><TextBlock Text="Coupe-bas (placement micro)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S5" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V5" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="6" Grid.Column="0"><TextBlock Text="Grain" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S6" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V6" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="8" Grid.Column="0"><TextBlock Text="Volume (dB)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S7" Minimum="-30" Maximum="6" TickFrequency="1"/><TextBlock x:Name="V7" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+
+            <!-- ================= Levres ================= -->
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="LÈVRES &amp; SOUFFLE" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+            <StackPanel Grid.Row="1" Grid.Column="2"><TextBlock Text="Ouverture des lèvres" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S8" Minimum="0.10" Maximum="0.95" TickFrequency="0.05"/><TextBlock x:Name="V8" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Pression de souffle" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S9" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V9" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="2"><TextBlock Text="Souffle &amp; salive" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S10" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V10" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="Humanisation (dérive des lèvres)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S11" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V11" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="5" Grid.Column="2"><TextBlock Text="Flutter de langue (Hz, 0 = off)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S12" Minimum="0" Maximum="16" TickFrequency="0.5"/><TextBlock x:Name="V12" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="6" Grid.Column="2"><TextBlock Text="Toot (x fondamentale)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S13" Minimum="1.5" Maximum="3.2" TickFrequency="0.1"/><TextBlock x:Name="V13" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="7" Grid.Column="2"><TextBlock Text="Attaque (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S14" Minimum="5" Maximum="600" TickFrequency="5"/><TextBlock x:Name="V14" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="8" Grid.Column="2"><TextBlock Text="Relâche (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S15" Minimum="50" Maximum="3000" TickFrequency="50"/><TextBlock x:Name="V15" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+
+            <!-- ================= Bouche ================= -->
+            <TextBlock Grid.Row="0" Grid.Column="4" Text="BOUCHE (VOYELLES)" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" FontSize="11" Margin="0,0,0,4"/>
+            <StackPanel Grid.Row="1" Grid.Column="4"><TextBlock Text="Voyelle : ou &#x2192; o &#x2192; a &#x2192; e &#x2192; i" Foreground="{DynamicResource KotonAccent}" FontWeight="Bold"/><Slider x:Name="S16" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V16" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="2" Grid.Column="4"><TextBlock Text="Langue haute (force du formant)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S17" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V17" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="3" Grid.Column="4"><TextBlock Text="Taille de la bouche" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S18" Minimum="0.60" Maximum="1.60" TickFrequency="0.05"/><TextBlock x:Name="V18" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="4" Grid.Column="4"><TextBlock Text="Mod. de bouche (Hz)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S19" Minimum="0" Maximum="12" TickFrequency="0.25"/><TextBlock x:Name="V19" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="5" Grid.Column="4"><TextBlock Text="Amplitude de la mod." Foreground="{DynamicResource KotonText}"/><Slider x:Name="S20" Minimum="0" Maximum="1" TickFrequency="0.05"/><TextBlock x:Name="V20" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="6" Grid.Column="4"><TextBlock Text="Forme de la mod." Foreground="{DynamicResource KotonText}"/><ComboBox x:Name="ShapeCombo" SelectionChanged="Shape_Changed"><ComboBoxItem Content="Cyclique (sinus)"/><ComboBoxItem Content="Kanga (rebond)"/><ComboBoxItem Content="Sample &amp; hold"/><ComboBoxItem Content="Aléatoire lisse"/></ComboBox></StackPanel>
+            <StackPanel Grid.Row="7" Grid.Column="4"><TextBlock Text="Slew voyelle (ms)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S21" Minimum="5" Maximum="400" TickFrequency="5"/><TextBlock x:Name="V21" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+            <StackPanel Grid.Row="8" Grid.Column="4"><TextBlock Text="Respiration circulaire (s)" Foreground="{DynamicResource KotonText}"/><Slider x:Name="S22" Minimum="0" Maximum="12" TickFrequency="0.5"/><TextBlock x:Name="V22" Foreground="{DynamicResource KotonTextDim}" FontSize="10" HorizontalAlignment="Right"/></StackPanel>
+
+            <!-- ================= Legende clavier ================= -->
+            <Border Grid.Row="9" Grid.ColumnSpan="5" Margin="0,14,0,0" Padding="10,7" CornerRadius="3"
+                    Background="{DynamicResource KotonPanel}" BorderBrush="{DynamicResource KotonBorder}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Foreground="{DynamicResource KotonAccent}" FontWeight="Bold" FontSize="10" Text="JEU AU CLAVIER"/>
+                    <TextBlock Foreground="{DynamicResource KotonTextDim}" FontSize="10" TextWrapping="Wrap" Margin="0,3,0,0"
+                               Text="1re note = bourdon (sa hauteur accorde le tube).  Re-jouer LA MÊME note pendant le bourdon = articulation rythmique : coup de langue si vélocité &lt; 96, coup de diaphragme au-delà.  Une note à l'octave ou plus au-dessus = toot, tenu tant que la touche est tenue.  Toute autre note = glissement legato du bourdon.  Molette (CC1) = balayage de voyelle, CC2/CC11 = pression, pitch bend = chute de mâchoire."/>
+                </StackPanel>
+            </Border>
         </Grid>
     </Border>
 </UserControl>

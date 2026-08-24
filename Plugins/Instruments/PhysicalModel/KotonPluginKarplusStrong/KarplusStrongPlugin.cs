@@ -56,6 +56,10 @@ namespace KotonPluginKarplusStrong
         readonly KotonParameter _bodyMix        = new KotonParameter("body_mix",        "Body",            0.0, 1.0, 0.30);
         readonly KotonParameter _stereoWidth    = new KotonParameter("stereo_width",    "Stereo width",    0.0, 1.0, 0.30);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",          "Volume",          -30.0, 6.0, -6.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
 
@@ -77,8 +81,7 @@ namespace KotonPluginKarplusStrong
             _params = new List<KotonParameter>
             {
                 _damping, _sustain, _harmonics, _tone, _stiffness, _pluckPosition, _pluckHardness,
-                _bodyMix, _stereoWidth, _volumeDb,
-            };
+                _bodyMix, _stereoWidth, _volumeDb, _retrig.Rate };
         }
 
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -100,6 +103,7 @@ namespace KotonPluginKarplusStrong
             // Body resonator : bandpass ~200 Hz Q=3
             SetBiquadBandpass(ref _bodyL, sampleRate, 200f, 3f);
             SetBiquadBandpass(ref _bodyR, sampleRate, 200f, 3f);
+            _retrig.Prepare(sampleRate);
         }
 
         public void Reset()
@@ -109,6 +113,7 @@ namespace KotonPluginKarplusStrong
             _bodyL.ResetState();
             _bodyR.ResetState();
             _bendMul = 1f;
+            _retrig.Reset();
         }
 
         // =============================================================================================
@@ -116,6 +121,7 @@ namespace KotonPluginKarplusStrong
         // =============================================================================================
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
 
             var p = SnapshotParams();
@@ -159,6 +165,7 @@ namespace KotonPluginKarplusStrong
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             // No-op volontaire : une corde pincée n'a pas de note-off actif. Le sustain est
             // piloté par le paramètre Damping via la décroissance naturelle de la boucle.
         }
@@ -199,6 +206,10 @@ namespace KotonPluginKarplusStrong
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 // Somme mono des voix
                 float sum = 0f;
                 for (int v = 0; v < _voices.Length; v++)

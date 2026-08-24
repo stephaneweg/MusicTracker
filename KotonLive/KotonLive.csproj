@@ -1,0 +1,49 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonLive</RootNamespace>
+    <AssemblyName>KotonLive</AssemblyName>
+    <ApplicationIcon>..\MusicTracker\app.ico</ApplicationIcon>
+    <ProjectGuid>{3C7A9E14-6B2D-4F58-9A03-8E1D5C4B7F26}</ProjectGuid>
+    <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
+    <!-- x64 comme Koton Studio : on héberge les mêmes VST natifs, et un exécutable AnyCPU chargerait
+         l'assembly x64 du séquenceur dans un process 32 bits sur une machine x86. -->
+    <Platforms>x64</Platforms>
+    <Platform>x64</Platform>
+    <PlatformTarget>x64</PlatformTarget>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+    <!-- Windows-only par construction (WPF + WASAPI/ASIO), comme le séquenceur. -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <!-- Tout le moteur (LiveEngine, LiveWindow, hôtes VST/Koton, SoundFont) vit dans l'assembly du
+       séquenceur : cet exécutable n'est qu'une coque qui l'initialise et ouvre la fenêtre. C'est ce qui
+       garantit qu'il n'y a QU'UNE implémentation, partagée avec le bouton « Live » de Koton Studio. -->
+  <ItemGroup>
+    <ProjectReference Include="..\MusicTracker\MusicTracker.csproj" />
+  </ItemGroup>
+
+  <!-- L'exécutable doit vivre DANS le dossier d'installation de Koton Studio : c'est là que se trouvent
+       plugins\*.ksl, SoundFont\*.sf2 et Localization\lang.*.json, tous résolus par AppPaths relativement à
+       l'exe. On copie donc nos propres artefacts à côté de KotonStudio.exe après le build (uniquement les
+       nôtres — les fichiers du séquenceur y sont déjà, et les réécrire ferait courir un risque de collision
+       si les deux projets se construisaient en parallèle). L'installeur embarque tout le dossier. -->
+  <Target Name="CopyNextToKotonStudio" AfterTargets="Build">
+    <ItemGroup>
+      <_LiveArtifacts Include="$(TargetDir)$(AssemblyName).exe" />
+      <_LiveArtifacts Include="$(TargetDir)$(AssemblyName).dll" />
+      <_LiveArtifacts Include="$(TargetDir)$(AssemblyName).pdb" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+      <_LiveArtifacts Include="$(TargetDir)$(AssemblyName).deps.json" Condition="Exists('$(TargetDir)$(AssemblyName).deps.json')" />
+      <_LiveArtifacts Include="$(TargetDir)$(AssemblyName).runtimeconfig.json" Condition="Exists('$(TargetDir)$(AssemblyName).runtimeconfig.json')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_LiveArtifacts)" DestinationFolder="$(MSBuildProjectDirectory)\..\MusicTracker\bin\$(Configuration)\"
+          SkipUnchangedFiles="true" ContinueOnError="true" />
+  </Target>
+
+</Project>

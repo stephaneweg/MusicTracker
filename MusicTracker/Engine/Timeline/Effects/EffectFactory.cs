@@ -10,7 +10,7 @@ namespace MusicTracker.Engine.Timeline.Effects
     public static class EffectFactory
     {
         /// <summary>Ordre affiché dans le menu « Ajouter un effet » — n'inclut PAS le VST (il a son propre sous-menu peuplé dynamiquement par <see cref="VstPluginScanner"/>).</summary>
-        public static readonly string[] Kinds = new[] { "eq", "comp", "delay", "sat" };
+        public static readonly string[] Kinds = new[] { "eq", "comp", "delay", "sat", "reverb" };
 
         /// <summary>Identifiant stable d'un insert VST2 — extériorisé en constante pour éviter les "vst" littéraux disséminés.</summary>
         public const string VstKind = "vst";
@@ -32,6 +32,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "comp":  return "FxCompressor";
                 case "delay": return "FxDelay";
                 case "sat":   return "FxSaturation";
+                case "reverb":return "FxReverb";
                 case VstKind: return "FxVst";
                 case Vst3Kind:return "FxVst";   // même intitulé côté UI — l'utilisateur voit "VST" sans distinction de version
                 case KotonKind:return "FxKoton";
@@ -47,6 +48,7 @@ namespace MusicTracker.Engine.Timeline.Effects
                 case "comp":  return new CompressorEffect(sampleRate);
                 case "delay": return new DelayEffect(sampleRate);
                 case "sat":   return new SaturationEffect(sampleRate);
+                case "reverb":return new ReverbEffect(sampleRate);
                 case VstKind: return new VstEffect(sampleRate);  // PluginPath posé par le caller
                 case Vst3Kind:return new Vst3Effect(sampleRate);
                 case KotonKind:return null;                       // Koton natifs : instanciation via CreateKoton (Id requis)

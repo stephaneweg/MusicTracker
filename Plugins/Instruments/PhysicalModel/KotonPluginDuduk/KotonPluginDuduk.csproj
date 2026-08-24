@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonPluginDuduk</RootNamespace>
+    <AssemblyName>KotonPluginDuduk</AssemblyName>
+    <ProjectGuid>{4B1E7C92-6A38-4D5E-9F71-2C8B0E4A6D33}</ProjectGuid>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <TargetExt>.ksl</TargetExt>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+    <Compile Include="..\..\..\Shared\KotonReAttack.cs" Link="KotonReAttack.cs" />
+  </ItemGroup>
+</Project>

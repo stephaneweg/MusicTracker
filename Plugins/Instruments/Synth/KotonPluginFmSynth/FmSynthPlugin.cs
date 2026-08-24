@@ -48,7 +48,7 @@ namespace KotonPluginFmSynth
         readonly KotonParameter _feedback = new KotonParameter("feedback", "Feedback",    0.0, 1.0,  0.0);
         // `algo` : 0 = FM (par défaut, historique) ; 1 = Additif (les 2 opérateurs sortent en
         // parallèle). Défaut = 0 → tous les projets sauvés avec l'ancienne version restent bit-parfaits.
-        readonly KotonParameter _algo     = new KotonParameter("algo",     "Algorithme",  0.0, 1.0,  0.0);
+        readonly KotonParameter _algo     = new KotonParameter("algo",     "Algorithme",  0.0, 1.0,  0.0) { Automatable = false };
         readonly KotonParameter _attack   = new KotonParameter("attack",   "Attaque",     1.0, 2000.0,  10.0, "ms");
         readonly KotonParameter _decay    = new KotonParameter("decay",    "Decay",       1.0, 2000.0, 300.0, "ms");
         readonly KotonParameter _sustain  = new KotonParameter("sustain",  "Sustain",     0.0, 1.0,  0.6);

@@ -1,0 +1,175 @@
+<UserControl x:Class="KotonPluginLifeGrid.LifeGridEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:KotonPluginLifeGrid"
+             MinWidth="760" MinHeight="500" Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <Style x:Key="Lbl" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource KotonText}"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Margin" Value="0,7,0,1"/>
+            </Style>
+            <Style x:Key="Val" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource KotonTextDim}"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="HorizontalAlignment" Value="Right"/>
+            </Style>
+            <Style x:Key="Head" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource KotonAccent}"/>
+                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Margin" Value="0,0,0,4"/>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border Padding="14">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ============ les deux grilles : on dessine à gauche, on regarde vivre à droite ============ -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Style="{StaticResource Head}" Text="Motif de départ — cliquez pour dessiner"/>
+                    <local:LifeGridCanvas x:Name="SeedCanvas" Height="200"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <DockPanel Margin="0,0,0,4">
+                        <TextBlock x:Name="GenLabel" DockPanel.Dock="Right" Style="{StaticResource Val}" Text="gén. 0"/>
+                        <TextBlock Style="{StaticResource Head}" Text="Évolution"/>
+                    </DockPanel>
+                    <local:LifeGridCanvas x:Name="EvoCanvas" Height="200"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- ============ actions sur le motif ============ -->
+            <WrapPanel Grid.Row="1" Margin="0,10,0,0">
+                <TextBlock Text="Amorce" VerticalAlignment="Center" Foreground="{DynamicResource KotonTextDim}" FontSize="11" Margin="0,0,6,0"/>
+                <ComboBox x:Name="StampCombo" Width="152" SelectionChanged="Stamp_Changed"
+                          ToolTip="Motifs classiques du jeu de la vie — le planeur voyage, le R-pentomino et l'acorn se développent longtemps avant de se figer."/>
+                <Button x:Name="RandomBtn" Content="Aléatoire" Margin="8,0,0,0" Padding="10,3" Click="Random_Click"/>
+                <Button x:Name="ClearBtn" Content="Vider" Margin="6,0,0,0" Padding="10,3" Click="Clear_Click"/>
+                <Button x:Name="PlayBtn" Content="▶ Écouter" Margin="18,0,0,0" Padding="10,3" Click="Play_Click"/>
+                <Button x:Name="StopBtn" Content="■" Margin="6,0,0,0" Padding="10,3" Click="Stop_Click"/>
+                <Button x:Name="AnimBtn" Content="⏸ Animation" Margin="18,0,0,0" Padding="10,3" Click="Anim_Click"
+                        ToolTip="Met en pause l'animation du panneau Évolution."/>
+            </WrapPanel>
+
+            <!-- ============ paramètres ============ -->
+            <Grid Grid.Row="2" Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- règle + taille -->
+                <StackPanel Grid.Column="0">
+                    <TextBlock Style="{StaticResource Head}" Text="Règle"/>
+                    <ComboBox x:Name="RuleCombo" SelectionChanged="Rule_Changed"/>
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="B" VerticalAlignment="Center" Foreground="{DynamicResource KotonTextDim}" FontSize="11" Margin="0,0,4,0"/>
+                        <TextBox Grid.Column="1" x:Name="BirthBox" TextChanged="Mask_Changed"
+                                 ToolTip="Nombres de voisins vivants qui font NAÎTRE une cellule vide (ex. 3)."/>
+                        <TextBlock Grid.Column="2" Text="S" VerticalAlignment="Center" Foreground="{DynamicResource KotonTextDim}" FontSize="11" Margin="8,0,4,0"/>
+                        <TextBox Grid.Column="3" x:Name="SurvBox" TextChanged="Mask_Changed"
+                                 ToolTip="Nombres de voisins vivants qui laissent SURVIVRE une cellule vivante (ex. 23)."/>
+                    </Grid>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Colonnes"/>
+                    <Slider x:Name="ColsSlider" Minimum="4" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Size_Changed"/>
+                    <TextBlock x:Name="ColsValue" Style="{StaticResource Val}"/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Lignes (= étendue de notes)"/>
+                    <Slider x:Name="RowsSlider" Minimum="4" Maximum="24" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="Size_Changed"/>
+                    <TextBlock x:Name="RowsValue" Style="{StaticResource Val}"/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Relance"/>
+                    <ComboBox x:Name="ReviveCombo" SelectionChanged="Revive_Changed"
+                              ToolTip="Que faire quand la grille s'éteint ou se fige. « Aucune » transforme un motif stable en ostinato."/>
+                </StackPanel>
+
+                <!-- lecture -->
+                <StackPanel Grid.Column="2">
+                    <TextBlock Style="{StaticResource Head}" Text="Lecture"/>
+                    <ComboBox x:Name="ReadCombo" SelectionChanged="Read_Changed"
+                              ToolTip="Balayage : la colonne place la note dans le temps (arpège). Accord : toutes les lignes vivantes sonnent ensemble."/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Générations/temps"/>
+                    <Slider x:Name="GpbSlider" Minimum="1" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock x:Name="GpbValue" Style="{StaticResource Val}"/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Durées"/>
+                    <ComboBox x:Name="DurCombo" SelectionChanged="Dur_Changed"
+                              ToolTip="Durée de vie : la note dure tant que la cellule reste vivante."/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Gate"/>
+                    <Slider x:Name="GateSlider" Minimum="0.05" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="GateValue" Style="{StaticResource Val}"/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Voix max (par génération)"/>
+                    <Slider x:Name="VoicesSlider" Minimum="1" Maximum="16" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock x:Name="VoicesValue" Style="{StaticResource Val}"/>
+                </StackPanel>
+
+                <!-- hauteurs -->
+                <StackPanel Grid.Column="4">
+                    <TextBlock Style="{StaticResource Head}" Text="Hauteurs"/>
+                    <ComboBox x:Name="ScaleCombo" SelectionChanged="Scale_Changed"/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Octave de base"/>
+                    <Slider x:Name="OctSlider" Minimum="0" Maximum="8" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock x:Name="OctValue" Style="{StaticResource Val}"/>
+
+                    <CheckBox x:Name="ChordCheck" Content="Suivre l'accord courant" Margin="0,8,0,0"
+                              Foreground="{DynamicResource KotonAccent}" FontSize="11" Click="Chord_Click"
+                              ToolTip="Les lignes lisent les notes de l'accord sous le bloc au lieu de la gamme."/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Vélocité"/>
+                    <Slider x:Name="VelSlider" Minimum="1" Maximum="127" TickFrequency="1"/>
+                    <TextBlock x:Name="VelValue" Style="{StaticResource Val}"/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Accent (selon la densité)"/>
+                    <Slider x:Name="AccentSlider" Minimum="0" Maximum="1" TickFrequency="0.05"/>
+                    <TextBlock x:Name="AccentValue" Style="{StaticResource Val}"/>
+
+                    <TextBlock Style="{StaticResource Lbl}" Text="Densité aléatoire / graine"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Slider Grid.Column="0" x:Name="DensitySlider" Minimum="0.05" Maximum="0.9" TickFrequency="0.05"/>
+                        <Slider Grid.Column="2" x:Name="SeedSlider" Minimum="0" Maximum="999" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    </Grid>
+                    <TextBlock x:Name="DensityValue" Style="{StaticResource Val}"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

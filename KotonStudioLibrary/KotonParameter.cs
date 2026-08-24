@@ -34,6 +34,25 @@ namespace KotonStudio.Library
         /// <summary>Valeur par défaut (posée à la construction et utilisée par un bouton "reset").</summary>
         public double Default { get; }
 
+        /// <summary>
+        /// Vrai (défaut) si le paramètre décrit une PLAGE CONTINUE : toute valeur entre <see cref="Min"/>
+        /// et <see cref="Max"/> a un sens, et passer progressivement de l'une à l'autre a un sens aussi.
+        /// C'est la condition pour qu'une courbe d'automation puisse le piloter.
+        ///
+        /// À mettre à <c>false</c> pour un CHOIX : un sélecteur d'instrument, de forme d'onde, de voyelle,
+        /// de mode, de routage… Les valeurs y sont des étiquettes, pas des quantités : « à mi-chemin entre
+        /// la voyelle A et la voyelle E » ne veut rien dire, et une courbe ne ferait que faire sauter le
+        /// réglage d'une option à l'autre en cours de note. Idem pour les comptes structurels (polyphonie,
+        /// nombre de voix d'unisson), qu'on ne change pas pendant qu'une note sonne.
+        ///
+        /// Attention à ne pas confondre avec « valeur entière » : une hauteur MIDI ou un nombre de demi-tons
+        /// se lit en entier mais reste un continuum, et s'automatise très bien.
+        ///
+        /// Un paramètre non automatisable reste évidemment réglable dans l'éditeur du plugin ; il n'est
+        /// simplement pas proposé dans le menu d'automation.
+        /// </summary>
+        public bool Automatable { get; set; } = true;
+
         /// <summary>Suffixe d'unité affiché à côté de la valeur ("Hz", "dB", "%", "ms" — libre). Vide
         /// pour un paramètre adimensionnel (ratio, index).</summary>
         public string Unit { get; }
@@ -82,5 +101,25 @@ namespace KotonStudio.Library
 
         /// <summary>Remet la valeur au défaut (utile pour un bouton "reset" dans l'éditeur).</summary>
         public void ResetToDefault() => Value = Default;
+
+        /// <summary>
+        /// Pose la valeur SANS lever <see cref="Changed"/> — réservé à l'automation par courbe, qui écrit à
+        /// CHAQUE buffer audio (~90 fois par seconde) depuis le thread de rendu.
+        ///
+        /// Passer par <see cref="Value"/> serait dangereux à cette cadence : les éditeurs qui rafraîchissent
+        /// leur UI dans le handler noieraient le dispatcher WPF, et ceux qui touchent un contrôle directement
+        /// (sans <c>Dispatcher.BeginInvoke</c>) lèveraient une exception de thread depuis le moteur audio.
+        ///
+        /// Conséquence assumée : pendant qu'une lane pilote un paramètre, le curseur correspondant dans
+        /// l'éditeur ouvert ne bouge pas — c'est le comportement usuel des hôtes, et la courbe de la timeline
+        /// reste l'affichage de référence. Les valeurs restent bornées comme avec <see cref="Value"/>.
+        /// </summary>
+        public void SetFromAutomation(double value)
+        {
+            double v = value;
+            if (v < Min) v = Min;
+            else if (v > Max) v = Max;
+            _value = v;
+        }
     }
 }

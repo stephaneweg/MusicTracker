@@ -141,6 +141,18 @@ namespace KotonStudio.Library
         /// <summary>Déclenche <see cref="PlaybackStarted"/> — appelé par l'hôte juste avant le
         /// démarrage effectif de l'audio, après le prime du lookahead buffer.</summary>
         public static void RaisePlaybackStarted() { try { _playbackStarted?.Invoke(); } catch { } }
+
+        /// <summary>Position AUDIBLE de la tête de lecture, en beats ABSOLUS sur la timeline, ou
+        /// <c>null</c> si rien ne joue. Câblé par l'hôte sur le compteur d'échantillons réellement
+        /// CONSOMMÉS par le device audio — c'est donc la seule référence exacte pour une animation
+        /// synchrone : elle absorbe la latence du device (~150 ms), le prime du lookahead buffer,
+        /// la pause, le départ au curseur (StartBeat != 0), la boucle A-B et la carte de tempo.
+        ///
+        /// Un plugin de visualisation doit la POLLER à chaque frame plutôt que de scheduler ses
+        /// événements sur une horloge murale prise au <see cref="PlaybackStarted"/> (qui dérive et
+        /// ignore tout ce qui précède). Le fallback horloge murale reste correct en dépannage si
+        /// ce callback n'est pas câblé (hôte plus ancien).</summary>
+        public static Func<double?> PlayheadBeat { get; set; }
     }
 
     /// <summary>Descripteur léger d'un instrument Koton exposé au plugin via <see cref="KotonHost.ListInstruments"/>.

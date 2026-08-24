@@ -33,10 +33,10 @@ namespace KotonPluginWoodwind
         public string Id => "koton.woodwind";
         public string DisplayName => "Woodwind";
 
-        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",       0, 7, 0);
+        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",       0, 7, 0) { Automatable = false };
         readonly KotonParameter _airPressure    = new KotonParameter("air_pressure",     "Air pressure",     0.0, 1.0, 0.45);
         readonly KotonParameter _breathNoise    = new KotonParameter("breath_noise",     "Breath noise",     0.0, 1.0, 0.30);
-        readonly KotonParameter _excitationType = new KotonParameter("excitation_type",  "Excitation",       0, 1, 0);   // 0=anche, 1=jet
+        readonly KotonParameter _excitationType = new KotonParameter("excitation_type",  "Excitation",       0, 1, 0) { Automatable = false };   // 0=anche, 1=jet
         readonly KotonParameter _reedSoftness   = new KotonParameter("reed_softness",    "Reed softness",    0.0, 1.0, 0.50);
         readonly KotonParameter _damping        = new KotonParameter("damping",          "Damping",          0.0, 1.0, 0.35);
         readonly KotonParameter _brightness     = new KotonParameter("brightness",       "Brightness",       0.0, 1.0, 0.50);
@@ -47,6 +47,13 @@ namespace KotonPluginWoodwind
         readonly KotonParameter _releaseTime    = new KotonParameter("release_time",     "Release",          0.0, 1.5, 0.20, "s");
         readonly KotonParameter _stereoWidth    = new KotonParameter("stereo_width",     "Stereo width",     0.0, 1.0, 0.25);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",           "Volume",           -30.0, 6.0, -6.0, "dB");
+        // Souffle d'attaque de l'anche. Coupe par defaut : sur des notes rapprochees il
+        // s'entend comme un bruit parasite a chaque note plutot que comme une articulation.
+        readonly KotonParameter _chiffAmount    = new KotonParameter("chiff",            "Bruit d'attaque", 0.0, 1.0, 0.0);
+        // Ré-attaque périodique. Modèle AUTO-OSCILLANT : on ne rejoue PAS la note (voir
+        // KotonReAttack.ArticulationSec), on met en forme la sortie.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Coup de langue", 16.0, 0.0) ;
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -91,8 +98,7 @@ namespace KotonPluginWoodwind
                 _instrument, _airPressure, _breathNoise, _excitationType, _reedSoftness,
                 _damping, _brightness, _boreSize,
                 _vibratoRate, _vibratoDepth, _attackTime, _releaseTime,
-                _stereoWidth, _volumeDb,
-            };
+                _stereoWidth, _volumeDb, _retrig.Rate, _chiffAmount };
         }
 
         public bool HasEditor => true;
@@ -147,11 +153,13 @@ namespace KotonPluginWoodwind
             _maxBlockSize = maxBlockSize;
             _voices = new WoodwindVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new WoodwindVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
 
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
         }
 
         // =============================================================================================
@@ -159,6 +167,7 @@ namespace KotonPluginWoodwind
         // =============================================================================================
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             var p = ToVoiceParams();
             float vel = velocity / 127f;
@@ -172,6 +181,7 @@ namespace KotonPluginWoodwind
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff();
         }
@@ -211,6 +221,23 @@ namespace KotonPluginWoodwind
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Coup de langue : on relance l'articulation de la note tenue. Woodwind est un moteur
+                // ADDITIF, pas un guide d'onde : il n'a aucune boucle acoustique a reconstruire, donc
+                // la vraie re-articulation est de rejouer la note — avec le transitoire d'anche que
+                // l'instrument produit lui-meme, plutot qu'un bruit synthetique ajoute en sortie.
+                if (_retrig.Tick())
+                {
+                    _retrig.BeginStroke();
+                    for (int rt = 0; rt < _retrig.Count; rt++)
+                    {
+                        int rn = _retrig.NoteAt(rt); float rv = _retrig.VelocityAt(rt) / 127f;
+                        for (int v = 0; v < _voices.Length; v++)
+                            if (_voices[v].IsActive && _voices[v].Note == rn) _voices[v].ReTongue(rv, p);
+                    }
+                    _retrig.EndStroke();
+                }
+
+
                 float sumL = 0f, sumR = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {
@@ -229,6 +256,8 @@ namespace KotonPluginWoodwind
                 sumR = BiquadPeakProcess(ref _formant2R, sumR);
                 left[i] = sumL * volLin;
                 right[i] = sumR * volLin;
+                            // Enveloppe d'articulation du coup de langue / détaché : la note continue de sonner
+                // sous-jacente, c'est la SORTIE qu'on découpe.
             }
         }
 
@@ -272,6 +301,7 @@ namespace KotonPluginWoodwind
             BoreSize          = (float)_boreSize.Value,
             VibratoRateHz     = (float)_vibratoRate.Value,
             VibratoDepthCents = (float)_vibratoDepth.Value,
+            ChiffAmount       = (float)_chiffAmount.Value,
             AttackSec         = (float)_attackTime.Value,
             ReleaseSec        = (float)_releaseTime.Value,
             VolumeDb          = (float)_volumeDb.Value,

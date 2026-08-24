@@ -18,7 +18,7 @@ namespace KotonPluginChoir
         public string Id => "koton.choir";
         public string DisplayName => "Choir";
 
-        readonly KotonParameter _subVoices     = new KotonParameter("sub_voices",   "Sub-voices",   3, 12, 8);
+        readonly KotonParameter _subVoices     = new KotonParameter("sub_voices",   "Sub-voices",   3, 12, 8) { Automatable = false };
         readonly KotonParameter _detune        = new KotonParameter("detune",       "Detune spread", 5, 40, 18, "cent");
         readonly KotonParameter _panSpread     = new KotonParameter("pan_spread",   "Pan spread",   0.0, 1.0, 0.75);
         readonly KotonParameter _vowelMorphRate= new KotonParameter("morph_rate",   "Vowel morph rate", 0.0, 0.5, 0.08, "Hz");

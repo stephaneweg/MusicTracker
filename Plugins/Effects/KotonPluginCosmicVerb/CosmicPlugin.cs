@@ -32,7 +32,7 @@ namespace KotonPluginCosmicVerb
         public string Id => "koton.cosmicverb";
         public string DisplayName => "Cosmic Verb";
 
-        readonly KotonParameter _mode      = new KotonParameter("mode",       "Mode",       0, CosmicModes.All.Length - 1, 12);   // Andromeda par défaut
+        readonly KotonParameter _mode      = new KotonParameter("mode",       "Mode",       0, CosmicModes.All.Length - 1, 12) { Automatable = false };   // Andromeda par défaut
         readonly KotonParameter _delayMs   = new KotonParameter("delay_ms",   "Delay",      10, 3000, 350, "ms");
         readonly KotonParameter _warp      = new KotonParameter("warp",       "Warp",       0.0, 1.0, 0.70);
         readonly KotonParameter _feedback  = new KotonParameter("feedback",   "Feedback",   0.0, 1.0, 0.75);

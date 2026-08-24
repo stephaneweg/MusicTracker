@@ -80,15 +80,23 @@ namespace MusicTracker.Engine
         // MPM (McLeod) per-frame pitch via the Normalized Square Difference Function (NSDF). Picks the FIRST
         // key maximum >= MpmCutoff × the highest one — that's the fundamental, which sidesteps the octave-down
         // error of a plain autocorrelation max. The NSDF value at that peak is the clarity (0..1, voicing).
-        static double DetectPitch(float[] x, int start, int win, int sampleRate, double rmsThreshold, out double clarity)
+        /// <param name="minFreq">Borne grave de la recherche (Hz). LE réglage contre les erreurs d'octave
+        /// basse : tant qu'on cherche jusqu'à 70 Hz, une période double d'un médium reste candidate. Remonter
+        /// cette borne au plus grave que l'instrument produit les rend arithmétiquement impossibles.</param>
+        /// <param name="maxFreq">Borne aiguë de la recherche (Hz).</param>
+        /// <param name="cutoff">Seuil MPM : on retient le PREMIER maximum-clé atteignant <c>cutoff × le plus
+        /// haut</c>. Plus il est BAS, plus on accepte un pic précoce — donc une période courte, donc l'octave
+        /// du haut : c'est le second levier anti-octave-basse.</param>
+        static double DetectPitch(float[] x, int start, int win, int sampleRate, double rmsThreshold, out double clarity,
+                                  double minFreq = MinFreq, double maxFreq = MaxFreq, double cutoff = MpmCutoff)
         {
             clarity = 0;
             double energy = 0;
             for (int i = 0; i < win; i++) { double v = x[start + i]; energy += v * v; }
             if (Math.Sqrt(energy / win) < rmsThreshold) return 0; // gate: silence
 
-            int maxLag = Math.Min(win - 1, (int)(sampleRate / MinFreq));
-            int minLag = Math.Max(2, (int)(sampleRate / MaxFreq));
+            int maxLag = Math.Min(win - 1, (int)(sampleRate / Math.Max(20, minFreq)));
+            int minLag = Math.Max(2, (int)(sampleRate / Math.Max(minFreq + 1, maxFreq)));
             var nsdf = new double[maxLag + 1];
             for (int tau = 0; tau <= maxLag; tau++)
             {
@@ -114,7 +122,7 @@ namespace MusicTracker.Engine
             }
             if (keyLag.Count == 0 || highest < ClarityMin) return 0;
 
-            double cut = MpmCutoff * highest;
+            double cut = cutoff * highest;
             int chosen = -1;
             foreach (int k in keyLag) if (nsdf[k] >= cut) { chosen = k; break; }
             if (chosen < 0) return 0;
@@ -132,6 +140,13 @@ namespace MusicTracker.Engine
         /// <summary>Per-frame fundamental (Hz, 0 = unvoiced) for live/real-time use — exposes the internal MPM detector.</summary>
         public static double DetectFramePitch(float[] x, int start, int sampleRate, double rmsThreshold)
             => DetectPitch(x, start, x.Length - start, sampleRate, rmsThreshold, out _); // window = the array the caller filled
+
+        /// <summary>Surcharge temps réel avec plage de recherche et seuil MPM explicites — voir
+        /// <see cref="DetectPitch"/>. Les valeurs par défaut de l'autre surcharge restent celles réglées à
+        /// l'oreille pour l'éditeur de riff ; celle-ci sert au rack live, qui les expose à l'utilisateur.</summary>
+        public static double DetectFramePitch(float[] x, int start, int sampleRate, double rmsThreshold,
+                                              double minFreq, double maxFreq, double cutoff)
+            => DetectPitch(x, start, x.Length - start, sampleRate, rmsThreshold, out _, minFreq, maxFreq, cutoff);
 
         /// <summary>The analysis hop size, so callers can drive a real-time loop at the same resolution.</summary>
         public static int HopSize => Hop;

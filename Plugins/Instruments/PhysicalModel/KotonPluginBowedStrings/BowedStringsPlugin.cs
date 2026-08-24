@@ -48,7 +48,7 @@ namespace KotonPluginBowedStrings
         readonly KotonParameter _harmonics      = new KotonParameter("harmonics",       "Harmonics",       0.0, 1.0, 0.15);
         // Unison : 1 = mono, 2/4/6/8 = ensemble progressif. Impair non autorisé côté UI (le combo
         // n'expose que les valeurs pertinentes), mais on borne quand même côté rendu.
-        readonly KotonParameter _unisonCount    = new KotonParameter("unison_count",    "Unison",          1, 8, 4);
+        readonly KotonParameter _unisonCount    = new KotonParameter("unison_count",    "Unison",          1, 8, 4) { Automatable = false };
         readonly KotonParameter _detuneSpread   = new KotonParameter("detune_spread",   "Detune spread",   0.0, 30.0, 8.0, "ct");
         readonly KotonParameter _vibratoRate    = new KotonParameter("vibrato_rate",    "Vibrato rate",    0.0, 8.0, 5.0, "Hz");
         readonly KotonParameter _vibratoDepth   = new KotonParameter("vibrato_depth",   "Vibrato depth",   0.0, 50.0, 12.0, "ct");
@@ -56,6 +56,10 @@ namespace KotonPluginBowedStrings
         readonly KotonParameter _releaseTime    = new KotonParameter("release_time",    "Release",         0.0, 2.0, 0.30, "s");
         readonly KotonParameter _stereoWidth    = new KotonParameter("stereo_width",    "Stereo width",    0.0, 1.0, 0.60);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",          "Volume",          -30.0, 6.0, -6.0, "dB");
+        // Ré-attaque périodique. Modèle AUTO-OSCILLANT : on ne rejoue PAS la note (voir
+        // KotonReAttack.ArticulationSec), on met en forme la sortie.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Détaché", 14.0, 0.0) { ArticulationSec = 0.035f };
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -74,8 +78,7 @@ namespace KotonPluginBowedStrings
             {
                 _bowPressure, _bowPosition, _bowSmoothness, _damping, _tone, _harmonics,
                 _unisonCount, _detuneSpread, _vibratoRate, _vibratoDepth,
-                _attackTime, _releaseTime, _stereoWidth, _volumeDb,
-            };
+                _attackTime, _releaseTime, _stereoWidth, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -91,12 +94,14 @@ namespace KotonPluginBowedStrings
             int total = MaxNotes * 8;   // 8 notes × 8 voix d'unison max
             _voices = new BowedStringVoice[total];
             for (int i = 0; i < total; i++) _voices[i] = new BowedStringVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
 
         public void Reset()
         {
             if (_voices != null)
                 foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
         }
 
         // =============================================================================================
@@ -104,6 +109,7 @@ namespace KotonPluginBowedStrings
         // =============================================================================================
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
 
             var p = SnapshotParams();
@@ -140,6 +146,7 @@ namespace KotonPluginBowedStrings
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             // Passer TOUTES les voix (unison) qui jouent cette note en release
             for (int i = 0; i < _voices.Length; i++)
@@ -175,6 +182,9 @@ namespace KotonPluginBowedStrings
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                _retrig.Tick();
+                float artG = _retrig.Gain;
+
                 float sumL = 0f, sumR = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {
@@ -186,6 +196,9 @@ namespace KotonPluginBowedStrings
                 }
                 left[i] = sumL * volLin * unisonCompensation;
                 right[i] = sumR * volLin * unisonCompensation;
+                            // Enveloppe d'articulation du coup de langue / détaché : la note continue de sonner
+                // sous-jacente, c'est la SORTIE qu'on découpe.
+                left[i] *= artG; right[i] *= artG;
             }
         }
 

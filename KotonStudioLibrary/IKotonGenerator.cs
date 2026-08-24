@@ -192,6 +192,14 @@ namespace KotonStudio.Library
         /// acceptable, le plugin peut détecter et jouer sur la tonique par défaut.</summary>
         public double BlockStartBeat;
 
+        /// <summary>Levée (anacrouse) du projet, en beats : la grille de mesures est décalée d'autant,
+        /// les vraies barres de mesure tombant à <c>PickupBeats + k × beats_par_mesure</c>. Un
+        /// générateur qui raisonne sur la position métrique (accentuer un temps fort, placer une note
+        /// d'accord sur le premier temps) doit RETRANCHER cette valeur avant son modulo, sinon toute sa
+        /// notion de temps fort est décalée sur un morceau qui commence par une levée. Vaut 0 sur la
+        /// grande majorité des projets — un générateur qui l'ignore reste juste sur ces morceaux-là.</summary>
+        public double PickupBeats;
+
         /// <summary>Indique que l'appelant est le RENDU AUDIO (playback réel) — pas la partition
         /// ni l'export MIDI. Les constrainers avec visualisation temps réel ne doivent émettre
         /// leurs événements d'animation (NoteStruck, NoteReleased, etc.) QUE quand ce flag est

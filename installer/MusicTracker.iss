@@ -1,4 +1,4 @@
-; Inno Setup script for MusicTracker.
+﻿; Inno Setup script for MusicTracker.
 ; Compiled by installer\release.ps1 (which passes the version + paths). To build by hand:
 ;   ISCC.exe /DMyAppVersion=1.0.1.0 installer\MusicTracker.iss
 ;
@@ -13,6 +13,9 @@
 #define MyAppDisplayName "Koton Studio"
 #define MyAppPublisher "Stéphan Wegener"
 #define MyAppExeName "KotonStudio.exe"
+; Second executable de la suite : le rack temps reel, installe a cote du sequenceur.
+#define MyAppLiveDisplayName "Koton Live"
+#define MyAppLiveExeName "KotonLive.exe"
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0.0"
@@ -59,6 +62,9 @@ Type: files; Name: "{app}\MusicTracker.exe.config"
 
 [Icons]
 Name: "{group}\{#MyAppDisplayName}"; Filename: "{app}\{#MyAppExeName}"
+; Koton Live = le rack temps reel (micro/MIDI -> instrument -> effets -> carte son). Meme dossier
+; d'installation que le sequenceur : il charge son assembly et partage plugins\ et SoundFont\.
+Name: "{group}\{#MyAppLiveDisplayName}"; Filename: "{app}\{#MyAppLiveExeName}"
 Name: "{autodesktop}\{#MyAppDisplayName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]

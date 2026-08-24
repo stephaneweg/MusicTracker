@@ -30,7 +30,7 @@ namespace KotonPluginOceanReverb
         // =============================================================================================
         // Paramètres
         // =============================================================================================
-        readonly KotonParameter _mode        = new KotonParameter("mode",        "Mode",        0, 2, 0);   // 0=Abyss, 1=Tide, 2=Foam
+        readonly KotonParameter _mode        = new KotonParameter("mode",        "Mode",        0, 2, 0) { Automatable = false };   // 0=Abyss, 1=Tide, 2=Foam
         readonly KotonParameter _size        = new KotonParameter("size",        "Size",        0.0, 1.0, 0.60);
         readonly KotonParameter _decay       = new KotonParameter("decay",       "Decay",       0.0, 1.0, 0.75);
         readonly KotonParameter _brightness  = new KotonParameter("brightness",  "Brightness",  0.0, 1.0, 0.55);

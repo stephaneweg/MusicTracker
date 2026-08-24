@@ -47,8 +47,8 @@ namespace KotonPluginShimmerSparkle
         readonly KotonParameter _sparkleGain = new KotonParameter("sparkle_gain",  "Sparkle level",   0.0, 1.5, 0.60);
         readonly KotonParameter _sparklePitchLo = new KotonParameter("sparkle_lo", "Sparkle range low",  36, 96, 72);   // MIDI note
         readonly KotonParameter _sparklePitchHi = new KotonParameter("sparkle_hi", "Sparkle range high", 36, 108, 96);
-        readonly KotonParameter _sparkleKey   = new KotonParameter("sparkle_key",  "Sparkle key", 0, 11, 0);        // C..B
-        readonly KotonParameter _sparkleScale = new KotonParameter("sparkle_scale","Sparkle scale", 0, 4, 0);       // 0=major 1=minor 2=pentaMaj 3=pentaMin 4=chroma
+        readonly KotonParameter _sparkleKey   = new KotonParameter("sparkle_key",  "Sparkle key", 0, 11, 0) { Automatable = false };        // C..B
+        readonly KotonParameter _sparkleScale = new KotonParameter("sparkle_scale","Sparkle scale", 0, 4, 0) { Automatable = false };       // 0=major 1=minor 2=pentaMaj 3=pentaMin 4=chroma
         readonly KotonParameter _sparkleDecay = new KotonParameter("sparkle_decay","Sparkle decay", 50.0, 2000.0, 400.0, "ms");
         readonly KotonParameter _sparkleTrig  = new KotonParameter("sparkle_trigger","Trigger from input",0,1,1);   // 0=free, 1=amp-gated (only when input active)
 

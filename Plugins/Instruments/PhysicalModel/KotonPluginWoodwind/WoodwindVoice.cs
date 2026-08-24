@@ -14,6 +14,7 @@ namespace KotonPluginWoodwind
         public float BoreSize;
         public float VibratoRateHz;
         public float VibratoDepthCents;
+        public float ChiffAmount;
         public float AttackSec;
         public float ReleaseSec;
         public float VolumeDb;
@@ -44,6 +45,9 @@ namespace KotonPluginWoodwind
         enum EnvStage { Idle, Attack, Sustain, Release }
         EnvStage _stage = EnvStage.Idle;
         float _env, _envAttackRate, _envReleaseRate;
+        int _tongueDip;    // echantillons restants de la descente d'articulation (voir ReTongue)
+        float _tongueFall; // pente de cette descente (filtre a un pole : pas d'angle, pas de clic)
+        float _tongueDipTarget;
 
         bool _active;
         int _note;
@@ -132,18 +136,52 @@ namespace KotonPluginWoodwind
             _vibPhase = (float)(_rng.NextDouble() * 2 * Math.PI);
             _vibInc = (float)(2 * Math.PI * p.VibratoRateHz / _sr);
 
+            // Souffle bref au depart de la note. Il est desormais DOSABLE et coupe par defaut : c'est
+            // ce petit bruit d'attaque que l'utilisateur ne voulait pas entendre sur des croches jouees.
             float chiffTimeMs = 20f + p.ReedSoftness * 40f;
-            _chiffEnv = 0.3f + velocity * 0.5f;
+            _chiffEnv = (0.3f + velocity * 0.5f) * p.ChiffAmount;
             _chiffDecayRate = (float)Math.Exp(-6.907755 / (chiffTimeMs * _sr / 1000.0));
 
             _envAttackRate = 1f / Math.Max(1f, p.AttackSec * _sr);
             _envReleaseRate = 1f / Math.Max(1f, p.ReleaseSec * _sr);
             _env = 0f;
             _stage = EnvStage.Attack;
+            _tongueDip = 0;
 
             _fmX1 = _fmX2 = _fmY1 = _fmY2 = 0f;
             _breathState = 0f;
             _active = true;
+        }
+
+        /// <summary>
+        /// Coup de langue sur la note en cours : on relance l'enveloppe et le transitoire d'anche, SANS
+        /// retoucher les partiels — leurs phases continuent de tourner, donc aucun clic et le timbre reste
+        /// celui de l'instrument.
+        ///
+        /// Deux raisons de ne pas simplement rappeler <see cref="NoteOn"/> :
+        /// l'attaque y est celle réglée par l'utilisateur (0,15 s par défaut, jusqu'à 1,5 s), ce qui fait
+        /// s'effondrer le niveau dès qu'on dépasse quelques coups par seconde ; et elle retire aux
+        /// partiels leur phase courante, ce qui claque. Un coup de langue est par nature bref : 12 ms fixes.
+        ///
+        /// Le transitoire vient d'ici, pas d'un bruit ajouté en sortie : c'est le <c>chiff</c> que
+        /// l'instrument produit déjà à chaque attaque, donc exactement le grain d'une note réarticulée.
+        /// </summary>
+        public void ReTongue(float velocity, in WwParams p)
+        {
+            if (!_active) return;
+            _velocity = velocity;
+            _chiffEnv = (0.3f + velocity * 0.5f) * p.ChiffAmount;
+            // L'enveloppe CREUSE sans jamais couper : elle descend en 5 ms vers un fond partiel, puis
+            // remonte en 28 ms. Une fermeture a zero, meme breve, s'entend comme un « tac » et non comme
+            // une note articulee — un detache reel creuse le son, il ne l'interrompt pas. Les deux pentes
+            // sont douces pour la meme raison : c'est l'angle, pas le niveau, qui fait le clic.
+            const float TongueDipLevel = 0.30f, TongueDipSec = 0.005f;
+            _tongueDip = (int)(TongueDipSec * _sr);
+            _tongueFall = 1f - (float)Math.Exp(-1.0 / Math.Max(1.0, TongueDipSec * _sr * 0.35));
+            _tongueDipTarget = TongueDipLevel;
+            const double TongueAttackSec = 0.028;
+            _envAttackRate = 1f / Math.Max(1f, (float)TongueAttackSec * _sr);
+            _stage = EnvStage.Attack;
         }
 
         public void NoteOff()
@@ -165,7 +203,8 @@ namespace KotonPluginWoodwind
             if (!_active) return 0f;
 
             // Envelope ADSR
-            if (_stage == EnvStage.Attack)
+            if (_tongueDip > 0) { _tongueDip--; _env += (_tongueDipTarget - _env) * _tongueFall; }
+            else if (_stage == EnvStage.Attack)
             {
                 _env += _envAttackRate;
                 if (_env >= 1f) { _env = 1f; _stage = EnvStage.Sustain; }

@@ -25,9 +25,9 @@ namespace KotonPluginFairyVoices
         public string Id => "koton.fairyvoices";
         public string DisplayName => "Fairy Voices";
 
-        readonly KotonParameter _voices     = new KotonParameter("voices",     "Sub-voices",     1, 8, 5);
+        readonly KotonParameter _voices     = new KotonParameter("voices",     "Sub-voices",     1, 8, 5) { Automatable = false };
         readonly KotonParameter _spread     = new KotonParameter("spread",     "Detune spread",  0.0, 40.0, 15.0, "cent");
-        readonly KotonParameter _vowel      = new KotonParameter("vowel",      "Voyelle",        0, 5, 0);   // A / E / I / O / U / EH
+        readonly KotonParameter _vowel      = new KotonParameter("vowel",      "Voyelle",        0, 5, 0) { Automatable = false };   // A / E / I / O / U / EH
         readonly KotonParameter _formantQ   = new KotonParameter("formant_q",  "Formant Q",      1.0, 15.0, 5.0);
         readonly KotonParameter _brightness = new KotonParameter("brightness", "Brightness",     0.0, 1.0, 0.55);
         readonly KotonParameter _air        = new KotonParameter("air",        "Air (souffle)",  0.0, 1.0, 0.20);

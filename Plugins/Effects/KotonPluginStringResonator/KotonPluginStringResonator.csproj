@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>KotonPluginStringResonator</RootNamespace>
+    <AssemblyName>KotonPluginStringResonator</AssemblyName>
+    <ProjectGuid>{5E9A2C41-7B3D-4F86-9A12-6C4D8E5B7A93}</ProjectGuid>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <TargetExt>.ksl</TargetExt>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\KotonStudioLibrary\KotonStudioLibrary.csproj" />
+  </ItemGroup>
+  <!-- Suiveur de fréquence PARTAGÉ avec les autres effets accordés sur l'entrée. Lié plutôt que copié :
+       un plugin .ksl ne référence que KotonStudioLibrary (contrat public du SDK), donc on ne peut pas en
+       faire un assembly commun sans le publier dans ce contrat. La liaison de source garde une seule
+       implémentation à maintenir, chaque plugin restant un binaire autonome. -->
+  <ItemGroup>
+    <Compile Include="..\..\Shared\KotonPitchTracker.cs" Link="KotonPitchTracker.cs" />
+  </ItemGroup>
+</Project>

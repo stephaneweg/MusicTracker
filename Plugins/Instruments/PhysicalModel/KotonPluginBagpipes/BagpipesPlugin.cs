@@ -18,7 +18,7 @@ namespace KotonPluginBagpipes
         public string Id => "koton.bagpipes";
         public string DisplayName => "Bagpipes";
 
-        readonly KotonParameter _droneSource= new KotonParameter("drone_source","Drone source", 0, 1, 1);   // 0=MIDI fixe, 1=fondamentale accord
+        readonly KotonParameter _droneSource= new KotonParameter("drone_source","Drone source", 0, 1, 1) { Automatable = false };   // 0=MIDI fixe, 1=fondamentale accord
         readonly KotonParameter _dronePitch = new KotonParameter("drone_pitch","Drone pitch (MIDI)", 24, 60, 46);
         readonly KotonParameter _droneMix   = new KotonParameter("drone_mix",  "Drone mix",   0.0, 1.0, 0.55);
         readonly KotonParameter _reedHz     = new KotonParameter("reed_hz",    "Reed formant", 1000, 4000, 2200, "Hz");
@@ -28,10 +28,14 @@ namespace KotonPluginBagpipes
         readonly KotonParameter _attack     = new KotonParameter("attack",     "Attack",      1.0, 100.0, 10.0, "ms");
         readonly KotonParameter _release    = new KotonParameter("release",    "Release",     50.0, 1000.0, 200.0, "ms");
         readonly KotonParameter _volumeDb   = new KotonParameter("volume",     "Volume",      -30.0, 6.0, -4.0, "dB");
+        // Ré-attaque périodique. Modèle AUTO-OSCILLANT : on ne rejoue PAS la note (voir
+        // KotonReAttack.ArticulationSec), on met en forme la sortie.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Coup de langue", 16.0, 0.0) { ArticulationSec = 0.025f };
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
-        public BagpipesPlugin() { _params = new List<KotonParameter> { _droneSource, _dronePitch, _droneMix, _reedHz, _reedQ, _reedNoise, _brightness, _attack, _release, _volumeDb }; }
+        public BagpipesPlugin() { _params = new List<KotonParameter> { _droneSource, _dronePitch, _droneMix, _reedHz, _reedQ, _reedNoise, _brightness, _attack, _release, _volumeDb, _retrig.Rate }; }
         public bool HasEditor => true;
         public UserControl CreateEditor() => new BagpipesEditor(this);
 
@@ -64,10 +68,16 @@ namespace KotonPluginBagpipes
             _droneEnvUpRate   = 1f / Math.Max(1, 0.005f * sampleRate);   // 5 ms attack
             _droneEnvDownRate = 1f / Math.Max(1, 0.400f * sampleRate);   // 400 ms release
             _droneEnv = 0f;
+            _retrig.Prepare(sampleRate);
         }
-        public void Reset() { if (_voices != null) foreach (var v in _voices) v.Kill(); _droneEnv = 0f; _droneLp = 0f; _samplesElapsed = 0; }
+        public void Reset()
+        {
+            if (_voices != null) foreach (var v in _voices) v.Kill(); _droneEnv = 0f; _droneLp = 0f; _samplesElapsed = 0;
+            _retrig.Reset();
+        }
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             // Detecte a la volee "premier NoteOn sans voix active" AVANT d'allouer la voix cible.
             // Remplace le _activeCount qui derivait via le voice stealing (steal ecrasait une voix
@@ -113,6 +123,7 @@ namespace KotonPluginBagpipes
         }
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             for (int i = 0; i < _voices.Length; i++) if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff((float)_release.Value);
         }
@@ -131,6 +142,9 @@ namespace KotonPluginBagpipes
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                _retrig.Tick();
+                float artG = _retrig.Gain;
+
                 float chSum = 0;
                 for (int v = 0; v < _voices.Length; v++) if (_voices[v].IsActive) chSum += _voices[v].RenderSample(reedHz, reedQ, reedNoise, bright);
 
@@ -161,6 +175,9 @@ namespace KotonPluginBagpipes
                 float s = (chSum + drone * dMix * 0.6f) * volLin;
                 if (s > 1f) s = 1f; else if (s < -1f) s = -1f;
                 left[i] = s; right[i] = s;
+                            // Enveloppe d'articulation du coup de langue / détaché : la note continue de sonner
+                // sous-jacente, c'est la SORTIE qu'on découpe.
+                left[i] *= artG; right[i] *= artG;
             }
         }
 

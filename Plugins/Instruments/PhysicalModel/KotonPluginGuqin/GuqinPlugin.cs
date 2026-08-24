@@ -46,8 +46,12 @@ namespace KotonPluginGuqin
         readonly KotonParameter _attackMs        = new KotonParameter("attack",         "Attack",         1.0, 200.0, 5.0, "ms");
         readonly KotonParameter _releaseMs       = new KotonParameter("release",        "Release",        50.0, 3000.0, 800.0, "ms");
 
-        readonly KotonParameter _polyphony       = new KotonParameter("polyphony",      "Polyphony",      1, 6, 1);
+        readonly KotonParameter _polyphony       = new KotonParameter("polyphony",      "Polyphony",      1, 6, 1) { Automatable = false };
         readonly KotonParameter _volumeDb        = new KotonParameter("volume",         "Volume",         -30.0, 6.0, -3.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -63,8 +67,7 @@ namespace KotonPluginGuqin
                 _sustain, _hfDamping, _pluckBrightness, _pluckLength, _bodyResonance,
                 _glideMs, _glideCurve,
                 _vibratoRate, _vibratoDepth,
-                _attackMs, _releaseMs, _polyphony, _volumeDb,
-            };
+                _attackMs, _releaseMs, _polyphony, _volumeDb, _retrig.Rate };
         }
         public bool HasEditor => true;
         public UserControl CreateEditor() => new GuqinEditor(this);
@@ -74,11 +77,17 @@ namespace KotonPluginGuqin
             _sr = sampleRate;
             _voices = new GuqinVoice[MaxPoly];
             for (int i = 0; i < MaxPoly; i++) _voices[i] = new GuqinVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
-        public void Reset() { if (_voices != null) foreach (var v in _voices) v.Kill(); }
+        public void Reset()
+        {
+            if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
+        }
 
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             float vel = velocity / 127f;
             int poly = Math.Max(1, Math.Min(MaxPoly, (int)Math.Round(_polyphony.Value)));
@@ -89,19 +98,27 @@ namespace KotonPluginGuqin
             if (poly == 1)
             {
                 var v = _voices[0];
-                if (v.IsActive) v.NoteOnLegato(note, vel, BuildParams());
+                // …SAUF si c'est la MEME note : un glissando vers la hauteur deja jouee ne produit
+                // rien du tout. Rejouer la note, c'est la repincer — vrai pour un trille de la main
+                // droite comme pour la re-attaque periodique.
+                if (v.IsActive && v.Note != note) v.NoteOnLegato(note, vel, BuildParams());
                 else v.NoteOnPluck(note, vel, BuildParams());
                 return;
             }
 
             // Poly : voice-stealing FIFO, mais on tente d'abord une voix libre.
             GuqinVoice target = null;
-            for (int i = 0; i < poly; i++) if (!_voices[i].IsActive) { target = _voices[i]; break; }
+            // Rejouer la MÊME note reprend sa voix au lieu d'en allouer une neuve : sans ça les coups
+            // répétés s'empilent (mesure : pic 0,33 → 0,68 à 9 coups/s). C'est aussi le comportement
+            // physique — repincer une corde déjà en vibration l'arrête.
+            for (int i = 0; i < poly; i++) if (_voices[i].IsActive && _voices[i].Note == note) { target = _voices[i]; target.Kill(); break; }
+            if (target == null) for (int i = 0; i < poly; i++) if (!_voices[i].IsActive) { target = _voices[i]; break; }
             if (target == null) { target = _voices[_stealCursor]; _stealCursor = (_stealCursor + 1) % poly; target.Kill(); }
             target.NoteOnPluck(note, vel, BuildParams());
         }
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             for (int i = 0; i < _voices.Length; i++)
                 if (_voices[i].IsActive && _voices[i].Note == note) _voices[i].NoteOff();
@@ -132,6 +149,10 @@ namespace KotonPluginGuqin
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sum = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                     if (_voices[v].IsActive) sum += _voices[v].RenderSample(p);

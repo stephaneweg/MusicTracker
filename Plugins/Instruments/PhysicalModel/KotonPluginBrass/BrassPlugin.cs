@@ -47,7 +47,7 @@ namespace KotonPluginBrass
         // =============================================================================================
         // Paramètres
         // =============================================================================================
-        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",      0, 3, 0);
+        readonly KotonParameter _instrument     = new KotonParameter("instrument",       "Instrument",      0, 3, 0) { Automatable = false };
         readonly KotonParameter _breathPressure = new KotonParameter("breath_pressure",  "Breath pressure", 0.0, 1.0, 0.65);
         readonly KotonParameter _breathNoise    = new KotonParameter("breath_noise",     "Breath noise",    0.0, 1.0, 0.15);
         readonly KotonParameter _overshoot      = new KotonParameter("overshoot",        "Overshoot",       0.0, 1.0, 0.60);
@@ -60,6 +60,10 @@ namespace KotonPluginBrass
         readonly KotonParameter _releaseTime    = new KotonParameter("release_time",     "Release",         0.02, 1.5, 0.15, "s");
         readonly KotonParameter _stereoWidth    = new KotonParameter("stereo_width",     "Stereo width",    0.0, 1.0, 0.30);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",           "Volume",          -30.0, 6.0, -6.0, "dB");
+        // Ré-attaque périodique. Modèle AUTO-OSCILLANT : on ne rejoue PAS la note (voir
+        // KotonReAttack.ArticulationSec), on met en forme la sortie.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Coup de langue", 16.0, 0.0) { ArticulationSec = 0.025f };
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -97,8 +101,7 @@ namespace KotonPluginBrass
                 _instrument, _breathPressure, _breathNoise, _overshoot, _fmMaxIndex,
                 _brightness, _damping,
                 _vibratoRate, _vibratoDepth, _attackTime, _releaseTime,
-                _stereoWidth, _volumeDb,
-            };
+                _stereoWidth, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -148,11 +151,13 @@ namespace KotonPluginBrass
             _maxBlockSize = maxBlockSize;
             _voices = new BrassVoice[Polyphony];
             for (int i = 0; i < Polyphony; i++) _voices[i] = new BrassVoice(sampleRate);
+            _retrig.Prepare(sampleRate);
         }
 
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
         }
 
         // =============================================================================================
@@ -160,6 +165,7 @@ namespace KotonPluginBrass
         // =============================================================================================
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             var p = ToVoiceParams();
             float vel = velocity / 127f;
@@ -180,6 +186,7 @@ namespace KotonPluginBrass
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             for (int i = 0; i < _voices.Length; i++)
                 if (_voices[i].IsActive && _voices[i].Note == note)
@@ -217,6 +224,9 @@ namespace KotonPluginBrass
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                _retrig.Tick();
+                float artG = _retrig.Gain;
+
                 float sumL = 0f, sumR = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {
@@ -235,6 +245,9 @@ namespace KotonPluginBrass
                 sumR = BiquadPeakProcess(ref _formantR, sumR);
                 left[i] = sumL * volLin;
                 right[i] = sumR * volLin;
+                            // Enveloppe d'articulation du coup de langue / détaché : la note continue de sonner
+                // sous-jacente, c'est la SORTIE qu'on découpe.
+                left[i] *= artG; right[i] *= artG;
             }
         }
 

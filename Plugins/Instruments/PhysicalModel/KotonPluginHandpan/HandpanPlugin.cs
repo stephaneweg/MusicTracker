@@ -41,6 +41,10 @@ namespace KotonPluginHandpan
         readonly KotonParameter _shellMix       = new KotonParameter("shell_mix",       "Shell (bol)",    0.0, 1.0, 0.35);
         readonly KotonParameter _stereoSpread   = new KotonParameter("stereo_spread",   "Stereo spread",  0.0, 1.0, 0.35);
         readonly KotonParameter _volumeDb       = new KotonParameter("volume",          "Volume",         -30.0, 6.0, -4.0, "dB");
+        // Ré-attaque périodique : rejoue la note tenue tous les 1/taux de seconde.
+        // 0 Hz = une seule attaque, donc aucun projet existant ne change.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Trémolo", 20.0, 0.0);
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -79,8 +83,7 @@ namespace KotonPluginHandpan
         {
             _params = new List<KotonParameter>
             {
-                _malletHardness, _resonance, _brightness, _sympathy, _shellMix, _stereoSpread, _volumeDb,
-            };
+                _malletHardness, _resonance, _brightness, _sympathy, _shellMix, _stereoSpread, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -94,6 +97,7 @@ namespace KotonPluginHandpan
             // Shell resonance : bandpass ~120 Hz Q=4 (le "boom" du bol métallique)
             SetBiquadBandpass(ref _shellL, sampleRate, 120f, 4f);
             SetBiquadBandpass(ref _shellR, sampleRate, 120f, 4f);
+            _retrig.Prepare(sampleRate);
         }
 
         public void Reset()
@@ -101,10 +105,12 @@ namespace KotonPluginHandpan
             if (_voices != null) foreach (var v in _voices) v.Kill();
             _shellL.ResetState();
             _shellR.ResetState();
+            _retrig.Reset();
         }
 
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             float vel = velocity / 127f;
             var p = ToVoiceParams();
@@ -153,6 +159,7 @@ namespace KotonPluginHandpan
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             // Damping "main sur le bol" : accelere la decroissance des modes actifs pour cette note.
             // Sinon le sustain naturel (10s x Resonance) rend un enchainement de notes rapides
             // impossible a ecouter (drone infini). Le geste physique du joueur = pose de la main.
@@ -180,6 +187,10 @@ namespace KotonPluginHandpan
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                // Ré-attaque : à l'échéance, la note tenue est rejouée (BeginStroke neutralise
+                // la notification que NoteOn va renvoyer à l'engin).
+                if (_retrig.Tick()) { _retrig.BeginStroke(); for (int rt = 0; rt < _retrig.Count; rt++) NoteOn(_retrig.NoteAt(rt), _retrig.VelocityAt(rt)); _retrig.EndStroke(); }
+
                 float sumL = 0f, sumR = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {

@@ -24,7 +24,7 @@ namespace KotonPluginFreeze
         public string DisplayName => "Freeze";
 
         readonly KotonParameter _capture     = new KotonParameter("capture",      "Capture (armer)", 0, 1, 0);
-        readonly KotonParameter _freezeMode  = new KotonParameter("freeze_mode",  "Freeze",          0, 1, 0);
+        readonly KotonParameter _freezeMode  = new KotonParameter("freeze_mode",  "Freeze",          0, 1, 0) { Automatable = false };
         readonly KotonParameter _tone        = new KotonParameter("tone",         "Tone",            0.0, 1.0, 0.60);
         readonly KotonParameter _stereoWidth = new KotonParameter("stereo_width", "Stereo width",    0.0, 1.0, 0.80);
         readonly KotonParameter _mix         = new KotonParameter("mix",          "Mix",             0.0, 1.0, 0.75);

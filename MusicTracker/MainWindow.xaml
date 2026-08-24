@@ -121,6 +121,12 @@
                         Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="6,0"
                         Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                <!-- Koton Live : ouvre le rack temps réel (micro/MIDI → instrument → effets → carte son).
+                     Même fenêtre que l'exécutable autonome KotonLive.exe. -->
+                <Button x:Name="btnLive" DockPanel.Dock="Right" Click="btnLive_Click" ToolTip="{loc:Tr 'LiveTitle'}" Cursor="Hand"
+                        Content="&#xE720;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="0"
+                        Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
                 <!-- Aide : menu déroulant (Signaler un bug + À propos), just left of the settings gear. -->
                 <Button x:Name="btnHelp" DockPanel.Dock="Right" Click="btnHelp_Click" ToolTip="{loc:Tr 'Help'}" Cursor="Hand"
                         Content="&#xE897;" FontFamily="Segoe MDL2 Assets" FontSize="16" Padding="10,3" Margin="0"

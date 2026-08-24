@@ -75,6 +75,11 @@ namespace MusicTracker.Screens
         /// exclusivement par Start/Pause/Stop de cet écran.</summary>
         public Engine.Timeline.TimelinePlayer CurrentPlayer => player;
 
+        /// <summary>Position du curseur, en temps depuis le début du morceau — d'où repart la lecture.
+        /// Exposée pour que le mixeur écoute le passage que l'utilisateur regarde plutôt que le début
+        /// du morceau.</summary>
+        public double CursorBeat => startBeat;
+
         /// <summary>Capture un snapshot d'annulation — appelé par le mixeur après un ajout/retrait d'effet
         /// d'insert. Édition des paramètres d'un effet non captée en v1 (cohérent avec le reste des
         /// dialogues qui n'ajoutent pas de snapshot par changement de slider).</summary>
@@ -1618,6 +1623,7 @@ namespace MusicTracker.Screens
         void Render()
         {
             TimelineHelper.EnsureChordTrack(project);   // invariant: exactly one chords track, pinned at the bottom (whatever added tracks)
+            Engine.Timeline.Effects.PluginAutomation.FixupAll(project);  // recale les lanes après un remaniement de la chaîne d'inserts
             headerPanel.Children.Clear();
             lanePanel.Children.Clear();
             highlighters.Clear();
@@ -1635,6 +1641,7 @@ namespace MusicTracker.Screens
             // Tempo lane (header + ruler).
             headerPanel.Children.Add(MakeHeader("Tempo", TempoH, null));
             lanePanel.Children.Add(LaneRow(MakeTempoLane(laneWidth), TempoH));
+            AddMasterRow(laneWidth);
 
             // Chord trame lane (when this is a composed arrangement).
             if (IsComposedArrangement())
@@ -1691,6 +1698,7 @@ namespace MusicTracker.Screens
 
             headerPanel.Children.Add(MakeHeader("Tempo", TempoH, null));
             lanePanel.Children.Add(LaneRow(MakeTempoLane(laneWidth), TempoH));
+            AddMasterRow(laneWidth);
             if (IsComposedArrangement())
             {
                 headerPanel.Children.Add(MakeChordHeader(ChordH));
@@ -1708,15 +1716,7 @@ namespace MusicTracker.Screens
                 var vol = new Controls.TimelineEditor.VolumeLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
                 vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
                 stack.Children.Add(vol);
-                if (track.AutomationLanes != null)
-                {
-                    foreach (var ln in track.AutomationLanes)
-                    {
-                        var auto = new Controls.TimelineEditor.AutomationLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
-                        auto.Configure(track, ln, PxPerBeat, AutomLaneH, laneWidth);
-                        stack.Children.Add(auto);
-                    }
-                }
+                AddAutomationLanes(stack, track, laneWidth);
                 var lane = MakeTrackLane(track, laneWidth, fillItems: false);
                 stack.Children.Add(lane);
                 lanePanel.Children.Add(LaneRow(stack, rh));
@@ -1795,7 +1795,32 @@ namespace MusicTracker.Screens
         {
             if (track == null || track.Collapsed) return track != null && track.Collapsed ? CollapsedH : VolLaneH + LaneH;
             int extras = track.AutomationLanes != null ? track.AutomationLanes.Count : 0;
+            if (track.PluginAutomationLanes != null) extras += track.PluginAutomationLanes.Count;
             return VolLaneH + extras * AutomLaneH + LaneH;
+        }
+
+        // Empile les lanes d'automation d'une piste : d'abord les contrôleurs MIDI, puis les paramètres de plugin
+        // (regroupés, et d'une autre couleur — voir AutomationLaneControl). Partagé par Render et RenderBatched.
+        void AddAutomationLanes(StackPanel stack, TimelineTrack track, double laneWidth)
+        {
+            if (track.AutomationLanes != null)
+            {
+                foreach (var ln in track.AutomationLanes)
+                {
+                    var auto = new Controls.TimelineEditor.AutomationLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
+                    auto.Configure(track, ln, PxPerBeat, AutomLaneH, laneWidth);
+                    stack.Children.Add(auto);
+                }
+            }
+            if (track.PluginAutomationLanes != null)
+            {
+                foreach (var ln in track.PluginAutomationLanes)
+                {
+                    var auto = new Controls.TimelineEditor.AutomationLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
+                    auto.Configure(track, ln, PxPerBeat, AutomLaneH, laneWidth);
+                    stack.Children.Add(auto);
+                }
+            }
         }
 
         // The lane-column content for a track: a thin filler when collapsed, else the volume sub-track + additional
@@ -1808,15 +1833,7 @@ namespace MusicTracker.Screens
             var vol = new Controls.TimelineEditor.VolumeLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
             vol.Configure(track, PxPerBeat, VolLaneH, laneWidth);
             stack.Children.Add(vol);
-            if (track.AutomationLanes != null)
-            {
-                foreach (var ln in track.AutomationLanes)
-                {
-                    var auto = new Controls.TimelineEditor.AutomationLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
-                    auto.Configure(track, ln, PxPerBeat, AutomLaneH, laneWidth);
-                    stack.Children.Add(auto);
-                }
-            }
+            AddAutomationLanes(stack, track, laneWidth);
             stack.Children.Add(MakeTrackLane(track, laneWidth, fillItems));
             return stack;
         }
@@ -1983,6 +2000,83 @@ namespace MusicTracker.Screens
             var lane = new Controls.TimelineEditor.TempoLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
             lane.Configure(width, TempoH, PxPerBeat, project.Tempo);
             return lane;
+        }
+
+        // ---- rangée « Master » : automation des paramètres des inserts du bus master --------------------------
+        //
+        // Elle n'existe que quand elle a une raison d'être : dès qu'un effet Koton est posé sur le master
+        // (clic droit sur l'en-tête pour ajouter une courbe), et tant qu'il reste une courbe. Pas de rangée
+        // permanente qui mangerait de la hauteur pour rien sur un projet sans effet master.
+
+        const double MasterEmptyH = 22;   // hauteur de la rangée quand elle n'a encore aucune courbe
+
+        bool HasMasterRow()
+        {
+            if (project == null) return false;
+            if (project.MasterAutomationLanes != null && project.MasterAutomationLanes.Count > 0) return true;
+            var ins = project.MasterInserts;
+            if (ins == null) return false;
+            foreach (var d in ins)
+                if (d != null && d.Kind == Engine.Timeline.Effects.EffectFactory.KotonKind) return true;
+            return false;
+        }
+
+        double MasterRowH()
+        {
+            int n = project.MasterAutomationLanes != null ? project.MasterAutomationLanes.Count : 0;
+            return n == 0 ? MasterEmptyH : n * AutomLaneH;
+        }
+
+        void AddMasterRow(double laneWidth)
+        {
+            if (!HasMasterRow()) return;
+            double rh = MasterRowH();
+            headerPanel.Children.Add(MakeMasterHeader(rh));
+            var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Left };
+            var lanes = project.MasterAutomationLanes;
+            if (lanes != null)
+                foreach (var ln in lanes)
+                {
+                    var auto = new Controls.TimelineEditor.AutomationLaneControl { HorizontalAlignment = HorizontalAlignment.Left };
+                    auto.Configure(null, ln, PxPerBeat, AutomLaneH, laneWidth);   // null = lane du master, pas d'une piste
+                    stack.Children.Add(auto);
+                }
+            if (stack.Children.Count == 0)
+                stack.Children.Add(new Canvas { Width = laneWidth, Height = MasterEmptyH, Background = "#0F1416".ToBrush() });
+            lanePanel.Children.Add(LaneRow(stack, rh));
+        }
+
+        Border MakeMasterHeader(double height)
+        {
+            var border = new Border { Height = height, BorderBrush = TrackSeparatorBrush, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6, 1, 4, 1) };
+            var sp = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            sp.Children.Add(new TextBlock { Text = Loc.T("MasterBus"), Foreground = Brushes.White, FontWeight = FontWeights.Bold, FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+            var add = new Button { Content = "+", Width = 18, Height = 16, Padding = new Thickness(0), FontSize = 10, Margin = new Thickness(6, 0, 0, 0), ToolTip = Loc.T("AjouterAutomation") };
+            add.Click += (s, e) => ShowMasterAutomationMenu(add);
+            sp.Children.Add(add);
+            border.Child = sp;
+            border.PreviewMouseRightButtonUp += (s, e) => { e.Handled = true; ShowMasterAutomationMenu(border); };
+            border.ToolTip = Loc.T("MasterAutomationHint");
+            return border;
+        }
+
+        void ShowMasterAutomationMenu(FrameworkElement anchor)
+        {
+            if (project.MasterAutomationLanes == null) project.MasterAutomationLanes = new List<Engine.Timeline.PluginAutomationLane>();
+            var lanes = project.MasterAutomationLanes;
+            var menu = new ContextMenu { PlacementTarget = anchor, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+
+            var add = new MenuItem { Header = Loc.T("AjouterAutomation") };
+            AppendPluginParamItems(add, Engine.Timeline.Effects.PluginAutomation.TargetsForMaster(project, AudioFormat.SampleRate), lanes, "master:autom+");
+            if (add.Items.Count == 0) add.IsEnabled = false;   // aucun effet Koton sur le master : rien à automatiser
+            menu.Items.Add(add);
+
+            var rem = new MenuItem { Header = Loc.T("SupprimerAutomation") };
+            AppendRemovePluginItems(rem, lanes, "master:autom-");
+            if (rem.Items.Count == 0) rem.IsEnabled = false;
+            menu.Items.Add(rem);
+
+            menu.IsOpen = true;
         }
 
         // Header for the chord trame lane: a title + the "auto transpose" toggle.
@@ -3098,8 +3192,9 @@ namespace MusicTracker.Screens
         // ruler if the total grew — far cheaper than a full Render for a big piece.
         void RefreshTrackLane(TimelineTrack track)
         {
-            // The chord lane shifts the lane indexing (tempo + chord before the tracks) — full Render is simplest & correct.
-            if (IsComposedArrangement()) { Render(); return; }
+            // La rangée d'accords comme celle du master décalent l'indexation des lanes (tempo + master + accords
+            // avant les pistes) — un Render complet est le plus simple ET le plus sûr dans ces cas.
+            if (IsComposedArrangement() || HasMasterRow()) { Render(); return; }
             int ti = track == null ? -1 : project.Tracks.IndexOf(track);
             int idx = ti + 1; // index 0 = the tempo lane/header
             if (ti < 0 || idx >= lanePanel.Children.Count || idx >= headerPanel.Children.Count) { Render(); return; }
@@ -3129,10 +3224,17 @@ namespace MusicTracker.Screens
                     var tk = project.Tracks[i - 1];
                     if (st.Children[0] is Controls.TimelineEditor.VolumeLaneControl vl) vl.Configure(tk, PxPerBeat, VolLaneH, laneWidth);
                     // Extra automation lanes vivent entre le volume et la lane de modules ; les élargir aussi
-                    // pour rester alignés avec la règle de mesure et le lecteur.
+                    // pour rester alignés avec la règle de mesure et le lecteur. Même ordre d'empilement que
+                    // AddAutomationLanes : les lanes MIDI d'abord, puis celles de paramètres de plugin.
+                    int midiCount = tk.AutomationLanes != null ? tk.AutomationLanes.Count : 0;
                     for (int c = 1; c < st.Children.Count - 1; c++)
-                        if (st.Children[c] is Controls.TimelineEditor.AutomationLaneControl al && tk.AutomationLanes != null && (c - 1) < tk.AutomationLanes.Count)
-                            al.Configure(tk, tk.AutomationLanes[c - 1], PxPerBeat, AutomLaneH, laneWidth);
+                    {
+                        if (!(st.Children[c] is Controls.TimelineEditor.AutomationLaneControl al)) continue;
+                        int li = c - 1;
+                        if (li < midiCount) al.Configure(tk, tk.AutomationLanes[li], PxPerBeat, AutomLaneH, laneWidth);
+                        else if (tk.PluginAutomationLanes != null && (li - midiCount) < tk.PluginAutomationLanes.Count)
+                            al.Configure(tk, tk.PluginAutomationLanes[li - midiCount], PxPerBeat, AutomLaneH, laneWidth);
+                    }
                     var last = st.Children[st.Children.Count - 1];
                     if (last is System.Windows.Controls.Canvas cv) cv.Width = laneWidth;
                 }
@@ -5083,6 +5185,7 @@ namespace MusicTracker.Screens
             Engine.Timeline.AutomationParam.ReverbSend,
             Engine.Timeline.AutomationParam.ChorusSend,
             Engine.Timeline.AutomationParam.PitchBend,
+            Engine.Timeline.AutomationParam.Staccato,
         };
 
         MenuItem BuildAddAutomationMenu(TimelineTrack track)
@@ -5103,30 +5206,86 @@ namespace MusicTracker.Screens
                 };
                 root.Items.Add(mi);
             }
+            // Puis les paramètres des plugins Koton posés sur la piste (instrument + inserts) : un sous-menu par
+            // plugin. Rien n'est ajouté si la piste n'a aucun plugin Koton — le menu garde sa forme historique.
+            if (track.PluginAutomationLanes == null) track.PluginAutomationLanes = new List<Engine.Timeline.PluginAutomationLane>();
+            AppendPluginParamItems(root, Engine.Timeline.Effects.PluginAutomation.TargetsForTrack(track, AudioFormat.SampleRate),
+                track.PluginAutomationLanes, "track:autom+");
             return root;
+        }
+
+        /// <summary>Ajoute au menu un sous-menu par plugin automatisable, avec un item par paramètre exposé
+        /// (grisé si une lane le pilote déjà). Partagé par le menu d'une piste et celui du bus master —
+        /// seule la liste de lanes destinataire change.</summary>
+        void AppendPluginParamItems(MenuItem root, List<Engine.Timeline.Effects.PluginAutomation.Target> targets,
+                                    List<Engine.Timeline.PluginAutomationLane> lanes, string undoLabel)
+        {
+            if (targets == null || targets.Count == 0) return;
+            if (root.Items.Count > 0) root.Items.Add(new Separator());
+            foreach (var t in targets)
+            {
+                var sub = new MenuItem { Header = t.PluginName };
+                foreach (var prm in t.Params)
+                {
+                    var target = t;
+                    var param = prm;
+                    var mi = new MenuItem
+                    {
+                        Header = param.Name,
+                        IsEnabled = !Engine.Timeline.Effects.PluginAutomation.Exists(lanes, target, param),
+                    };
+                    mi.Click += (s, e) =>
+                    {
+                        PushUndo(undoLabel);
+                        lanes.Add(Engine.Timeline.Effects.PluginAutomation.CreateLane(target, param));
+                        Render();
+                    };
+                    sub.Items.Add(mi);
+                }
+                root.Items.Add(sub);
+            }
         }
 
         MenuItem BuildRemoveAutomationMenu(TimelineTrack track)
         {
             var root = new MenuItem { Header = Loc.T("SupprimerAutomation") };
             var lanes = track.AutomationLanes;
-            if (lanes == null || lanes.Count == 0) { root.IsEnabled = false; return root; }
             // Copie défensive : les Click handlers vont muter la liste ; itérer directement dessus ne casserait rien
             // (les handlers ne s'exécutent pas pendant la construction) mais un tableau explicite documente l'intention.
-            var snapshot = new List<Engine.Timeline.AutomationLane>(lanes);
-            foreach (var l in snapshot)
+            if (lanes != null)
+                foreach (var l in new List<Engine.Timeline.AutomationLane>(lanes))
+                {
+                    var lane = l;
+                    var mi = new MenuItem { Header = Controls.TimelineEditor.AutomationLaneControl.LaneLabel(lane.Param) };
+                    mi.Click += (s, e) =>
+                    {
+                        PushUndo("track:autom-");
+                        track.AutomationLanes.Remove(lane);
+                        Render();
+                    };
+                    root.Items.Add(mi);
+                }
+            AppendRemovePluginItems(root, track.PluginAutomationLanes, "track:autom-");
+            if (root.Items.Count == 0) root.IsEnabled = false;
+            return root;
+        }
+
+        /// <summary>Ajoute au menu de suppression un item par lane de paramètre de plugin.</summary>
+        void AppendRemovePluginItems(MenuItem root, List<Engine.Timeline.PluginAutomationLane> lanes, string undoLabel)
+        {
+            if (lanes == null || lanes.Count == 0) return;
+            foreach (var l in new List<Engine.Timeline.PluginAutomationLane>(lanes))
             {
                 var lane = l;
-                var mi = new MenuItem { Header = Controls.TimelineEditor.AutomationLaneControl.LaneLabel(lane.Param) };
+                var mi = new MenuItem { Header = Engine.Timeline.Effects.PluginAutomation.Label(lane) };
                 mi.Click += (s, e) =>
                 {
-                    PushUndo("track:autom-");
-                    track.AutomationLanes.Remove(lane);
+                    PushUndo(undoLabel);
+                    lanes.Remove(lane);
                     Render();
                 };
                 root.Items.Add(mi);
             }
-            return root;
         }
 
         /// <summary>« Dupliquer la piste » : une copie complète et INDÉPENDANTE, insérée juste en dessous, sélectionnée.</summary>

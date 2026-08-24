@@ -142,16 +142,16 @@ namespace KotonPluginWaveMorph
 
         // LFO 1
         readonly KotonParameter _l1Rate   = new KotonParameter("l1_rate",   "LFO1 Rate",  0.05, 20, 3.5, "Hz");
-        readonly KotonParameter _l1Shape  = new KotonParameter("l1_shape",  "LFO1 Shape", 0, 5, 0);
+        readonly KotonParameter _l1Shape  = new KotonParameter("l1_shape",  "LFO1 Shape", 0, 5, 0) { Automatable = false };
         readonly KotonParameter _l1Amount = new KotonParameter("l1_amount", "LFO1 Amt",   0, 1, 0.5);
 
         // LFO 2
         readonly KotonParameter _l2Rate   = new KotonParameter("l2_rate",   "LFO2 Rate",  0.05, 20, 6.0, "Hz");
-        readonly KotonParameter _l2Shape  = new KotonParameter("l2_shape",  "LFO2 Shape", 0, 5, 1);
+        readonly KotonParameter _l2Shape  = new KotonParameter("l2_shape",  "LFO2 Shape", 0, 5, 1) { Automatable = false };
         readonly KotonParameter _l2Amount = new KotonParameter("l2_amount", "LFO2 Amt",   0, 1, 0.5);
 
         // Filtre 1 : LP 12 dB à 4.9 kHz, Q faible (défaut "brillance sans coloration forte")
-        readonly KotonParameter _f1Type   = new KotonParameter("f1_type",   "F1 Type",    0, 3, 0);
+        readonly KotonParameter _f1Type   = new KotonParameter("f1_type",   "F1 Type",    0, 3, 0) { Automatable = false };
         readonly KotonParameter _f1Slope  = new KotonParameter("f1_slope",  "F1 Slope",   0, 1, 0);  // 0 = 12 dB, 1 = 24 dB
         readonly KotonParameter _f1Cutoff = new KotonParameter("f1_cutoff", "F1 Cutoff",  20, 20000, 4900, "Hz");
         readonly KotonParameter _f1Res    = new KotonParameter("f1_res",    "F1 Res",     0, 1, 0.2);
@@ -159,7 +159,7 @@ namespace KotonPluginWaveMorph
         readonly KotonParameter _f1Mix    = new KotonParameter("f1_mix",    "F1 Mix",     0, 1, 1.0);
 
         // Filtre 2 : HP 12 dB à 80 Hz par défaut (cleanup des sub-basses)
-        readonly KotonParameter _f2Type   = new KotonParameter("f2_type",   "F2 Type",    0, 3, 1);
+        readonly KotonParameter _f2Type   = new KotonParameter("f2_type",   "F2 Type",    0, 3, 1) { Automatable = false };
         readonly KotonParameter _f2Slope  = new KotonParameter("f2_slope",  "F2 Slope",   0, 1, 0);
         readonly KotonParameter _f2Cutoff = new KotonParameter("f2_cutoff", "F2 Cutoff",  20, 20000, 80, "Hz");
         readonly KotonParameter _f2Res    = new KotonParameter("f2_res",    "F2 Res",     0, 1, 0.2);
@@ -167,18 +167,18 @@ namespace KotonPluginWaveMorph
         readonly KotonParameter _f2Mix    = new KotonParameter("f2_mix",    "F2 Mix",     0, 1, 1.0);
 
         // Routing filtres : 0 = série (F1→F2), 1 = parallèle ((F1+F2)/2)
-        readonly KotonParameter _fRouting = new KotonParameter("f_routing", "F Routing",  0, 1, 0);
+        readonly KotonParameter _fRouting = new KotonParameter("f_routing", "F Routing",  0, 1, 0) { Automatable = false };
 
         // Output
         readonly KotonParameter _outVol   = new KotonParameter("out_vol",  "Volume", -60, 6, -6, "dB");
         readonly KotonParameter _outPan   = new KotonParameter("out_pan",  "Pan",    -1, 1, 0);
         readonly KotonParameter _glide    = new KotonParameter("glide",    "Glide",  0, 500, 0, "ms");
         // Voice mode : 0 = Mono, 1 = Poly 8, 2 = Poly 16
-        readonly KotonParameter _voiceMode = new KotonParameter("voice_mode", "Voice", 0, 2, 1);
+        readonly KotonParameter _voiceMode = new KotonParameter("voice_mode", "Voice", 0, 2, 1) { Automatable = false };
         // Unison mode : 0 = Off, 1 = Classic 2, 2 = Wide 3, 3 = Shimmer 5
         // NOTE v1 : exposé pour la persistance et l'UI, mais NON IMPLÉMENTÉ dans le rendu (le voice
         // reste mono-oscillateur par instance). Un futur pass ajoutera des sub-voices detunées.
-        readonly KotonParameter _unisonMode = new KotonParameter("unison_mode", "Unison", 0, 3, 0);
+        readonly KotonParameter _unisonMode = new KotonParameter("unison_mode", "Unison", 0, 3, 0) { Automatable = false };
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;

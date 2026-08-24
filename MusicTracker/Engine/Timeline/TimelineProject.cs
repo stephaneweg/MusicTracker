@@ -71,6 +71,10 @@ namespace MusicTracker.Engine.Timeline
         ReverbSend,    // CC91  — 0..1
         ChorusSend,    // CC93  — 0..1
         PitchBend,     // 0xE0  — -1..+1 (mappé sur ±8192, plage définie par le RPN 0 côté patch, 2 demi-tons par défaut)
+        // Pas un contrôleur MIDI : une RÉ-ARTICULATION. La courbe (0..1 → 0..16 coups/s) fait rejouer
+        // les notes tenues à intervalle régulier, comme un détaché ou un trémolo joué. Appliquée au
+        // dispatch des notes, donc valable pour MeltySynth, les VSTi et les plugins Koton indifféremment.
+        Staccato,
     }
 
     /// <summary>Un point d'une courbe d'automation générique. <see cref="Value"/> a la plage propre au
@@ -87,6 +91,68 @@ namespace MusicTracker.Engine.Timeline
     public class AutomationLane
     {
         public AutomationParam Param;
+        public bool Enabled = true;
+        public List<AutomationPoint> Points = new List<AutomationPoint>();
+    }
+
+    /// <summary>Où vit le plugin Koton ciblé par une <see cref="PluginAutomationLane"/> : l'instrument de la
+    /// piste (<see cref="TimelineTrack.KotonInstrumentId"/>) ou un insert de la chaîne d'effets
+    /// (<see cref="TimelineTrack.Inserts"/> pour une piste, <see cref="TimelineProject.MasterInserts"/> pour le master).</summary>
+    public enum PluginAutomationSlot
+    {
+        Instrument,
+        Insert,
+    }
+
+    /// <summary>
+    /// Une lane d'automation qui pilote un PARAMÈTRE DE PLUGIN KOTON (<c>KotonParameter</c>) au lieu d'un
+    /// contrôleur MIDI : vibrato d'un violon, taille d'une réverbe, mix d'un shimmer… N'importe quel paramètre
+    /// exposé par un plugin est automatisable, puisque le plugin en publie déjà les métadonnées (Id, bornes,
+    /// unité) — rien à déclarer côté plugin.
+    ///
+    /// **Courbe NORMALISÉE 0..1** : <see cref="AutomationPoint.Value"/> vaut 0 = <c>Min</c> du paramètre,
+    /// 1 = <c>Max</c>. La valeur réelle est recalculée au rendu depuis les bornes VIVANTES du paramètre —
+    /// ainsi une lane survit à un plugin dont une future version élargit la plage, et l'éditeur graphique
+    /// (unipolaire 0..1) marche pour tous les paramètres sans cas particulier.
+    ///
+    /// **Avant le premier point** : la valeur retenue est <see cref="DefaultNorm"/>, c'est-à-dire la valeur
+    /// RÉGLÉE DANS LE PLUGIN au moment où l'utilisateur a créé la lane. Une lane vide ne change donc rien à ce
+    /// qu'on entendait avant de l'ajouter.
+    ///
+    /// **Cible** : le couple (<see cref="Slot"/>, <see cref="InsertIndex"/>) + <see cref="ParamId"/>.
+    /// <see cref="PluginId"/> sert de garde-fou : si l'utilisateur a remplacé l'insert par un autre plugin
+    /// depuis la dernière sauvegarde, la lane est silencieusement ignorée au rendu (jamais d'exception, et
+    /// elle reste visible dans la timeline pour que l'utilisateur comprenne et la supprime).
+    /// </summary>
+    public class PluginAutomationLane
+    {
+        public PluginAutomationSlot Slot;
+
+        /// <summary>Index dans la liste d'inserts (<c>Inserts</c> de la piste, ou <c>MasterInserts</c> du projet).
+        /// Ignoré — et laissé à -1 — quand <see cref="Slot"/> vaut <see cref="PluginAutomationSlot.Instrument"/>.</summary>
+        public int InsertIndex = -1;
+
+        /// <summary>Id du <c>KotonParameter</c> ciblé (ex. "mod_depth"). Identifiant stable inter-versions.</summary>
+        public string ParamId = "";
+
+        /// <summary>Id du plugin Koton ciblé au moment de la création — vérifié au rendu pour ne pas piloter
+        /// un paramètre homonyme d'un plugin qui aurait remplacé celui-ci entre-temps.</summary>
+        public string PluginId;
+
+        /// <summary>Libellés mémorisés (nom du paramètre / du plugin) : la timeline affiche l'étiquette de la lane
+        /// sans avoir à instancier le plugin, et l'affiche encore si le plugin a été désinstallé.</summary>
+        public string ParamName;
+        public string PluginName;
+
+        /// <summary>Bornes et unité au moment de la création — pour AFFICHER la valeur réelle sous le curseur.
+        /// Le rendu, lui, relit les bornes vivantes du paramètre.</summary>
+        public double Min, Max;
+        public string Unit;
+
+        /// <summary>Valeur normalisée (0..1) tenue avant le premier point : la valeur qu'avait le paramètre dans
+        /// le plugin quand la lane a été créée.</summary>
+        public double DefaultNorm;
+
         public bool Enabled = true;
         public List<AutomationPoint> Points = new List<AutomationPoint>();
     }
@@ -149,6 +215,25 @@ namespace MusicTracker.Engine.Timeline
         /// désérialiseur garde la liste vide (initialiseur) — aucun impact au chargement.</summary>
         public List<AutomationLane> AutomationLanes = new List<AutomationLane>();
 
+        /// <summary>Lanes d'automation de PARAMÈTRES DE PLUGIN KOTON pour cette piste : l'instrument Koton posé
+        /// dessus (<see cref="KotonInstrumentId"/>) et chacun de ses inserts Koton (<see cref="Inserts"/>).
+        /// Vide par défaut ; un .sq antérieur n'a pas ce champ (l'initialiseur laisse la liste vide).</summary>
+        public List<PluginAutomationLane> PluginAutomationLanes = new List<PluginAutomationLane>();
+
+        /// <summary>Quantité envoyée au BUS DE RÉVERBE du mixeur, de 0 (sec) à 1. Zéro par défaut,
+        /// donc un projet existant sonne exactement comme avant.
+        ///
+        /// À ne pas confondre avec <see cref="ReverbSend"/>, qui est le CC91 envoyé au SoundFont et ne
+        /// pilote QUE la réverbe interne de MeltySynth : les plugins Koton et les VSTi l'ignorent, ce qui
+        /// rendait le réglage sans effet sur eux. Ce départ-ci agit sur l'audio rendu, donc sur tout,
+        /// quelle que soit la source sonore de la piste.</summary>
+        double reverbBusSend = 0.0;
+        public double ReverbBusSend
+        {
+            get { return reverbBusSend; }
+            set { double v = value < 0 ? 0 : (value > 1 ? 1 : value); if (reverbBusSend != v) { reverbBusSend = v; Notify(); } }
+        }
+
         /// <summary>Chaîne d'effets d'insert de la piste (dans l'ordre du signal). Vide par défaut — un .sq
         /// antérieur à cette fonctionnalité n'a pas ce champ dans son JSON, l'initialiseur laisse la liste
         /// vide, donc rétro-compatibilité totale.</summary>
@@ -189,6 +274,26 @@ namespace MusicTracker.Engine.Timeline
         public string KotonInstrumentStateBlob { get; set; }
 
         public List<TimelineItem> Items = new List<TimelineItem>();
+
+        /// <summary>
+        /// Copie de SURFACE de la piste : mêmes blocs, mêmes inserts, mêmes réglages — les listes sont
+        /// partagées, pas dupliquées. Sert aux rendus d'écoute (le bouton ▶ d'un insert dans le mixeur),
+        /// qui doivent jouer la piste en n'en modifiant qu'un détail — la chaîne d'effets tronquée — sans
+        /// toucher à ce que l'utilisateur a sous les yeux.
+        ///
+        /// L'abonnement <see cref="PropertyChanged"/> est coupé sur la copie : elle n'a aucun affichage
+        /// derrière elle, et laisser la liste d'abonnés de l'original notifierait des liaisons WPF au nom
+        /// d'un objet qu'elles n'observent pas.
+        ///
+        /// La copie est en LECTURE pour le moteur : les listes étant partagées, y ajouter ou en retirer
+        /// quelque chose modifierait bel et bien la piste d'origine.
+        /// </summary>
+        public TimelineTrack ShallowCopy()
+        {
+            var c = (TimelineTrack)MemberwiseClone();
+            c.PropertyChanged = null;
+            return c;
+        }
     }
 
     /// <summary>The whole arrangement: a global tempo track + one track per instrument.</summary>
@@ -200,6 +305,22 @@ namespace MusicTracker.Engine.Timeline
         /// <summary>Chaîne d'inserts du bus master (après la sommation des pistes). Vide par défaut ; un .sq
         /// antérieur n'a pas ce champ — l'initialiseur laisse la liste vide.</summary>
         public List<Effects.TrackEffectData> MasterInserts = new List<Effects.TrackEffectData>();
+
+        /// <summary>Lanes d'automation de paramètres de plugin pour les inserts du BUS MASTER — strictement le
+        /// même mécanisme que <see cref="TimelineTrack.PluginAutomationLanes"/>, un cran plus haut dans le
+        /// graphe audio. <see cref="PluginAutomationLane.Slot"/> y vaut toujours <c>Insert</c> (le master n'a
+        /// pas d'instrument). Rendues dans la timeline sur une rangée « Master » dédiée.</summary>
+        public List<PluginAutomationLane> MasterAutomationLanes = new List<PluginAutomationLane>();
+
+        /// <summary>Effet du BUS DE RÉVERBE, alimenté par le départ de chaque piste. Une seule instance
+        /// pour tout le morceau : c'est tout l'intérêt d'un bus par rapport à une réverbe posée en insert
+        /// sur chaque piste, qui coûterait autant de fois le processeur qu'il y a de pistes et dont les
+        /// réglages divergeraient dès la première retouche.
+        ///
+        /// C'est un <see cref="Effects.TrackEffectData"/> ordinaire : on peut donc y mettre une réverbe
+        /// Koton à la place de celle de la maison si on cherche un caractère particulier.</summary>
+        public Effects.TrackEffectData ReverbBus =
+            new Effects.TrackEffectData { Kind = "reverb", Enabled = true };
 
         /// <summary>User-saved custom CHORD accompaniment styles (degree grids), authored in the chord rhythm editor and
         /// reusable across the project: they show up in the editor's "Copier" style dropdown alongside the built-ins.</summary>
@@ -276,6 +397,11 @@ namespace MusicTracker.Engine.Timeline
         // ---- mesures de géométrie, résolues DANS ce projet -------------------------------------------------
         // Elles vivaient dans TimelineHelper en statique et lisaient le résolveur global. Les porter ici leur
         // donne le bon contexte sans alourdir les appels : `project.DispLen(it)` a la même arité qu'avant.
+
+        /// <summary>Copie de SURFACE du projet — mêmes pistes, même carte de tempo, mêmes listes. Pendant
+        /// d'<see cref="TimelineTrack.ShallowCopy"/> pour les rendus d'écoute : on repart du projet réel et
+        /// on ne remplace que ce qui doit l'être (la liste des pistes, la chaîne du master).</summary>
+        public TimelineProject ShallowCopy() => (TimelineProject)MemberwiseClone();
 
         /// <summary>Longueur affichée d'un bloc, en temps (un Repeat compte pour toutes ses répétitions).</summary>
         public double DispLen(TimelineItem it) => ItemLength(it, RiffById);

@@ -54,6 +54,10 @@ namespace KotonPluginElectricViolin
         readonly KotonParameter _attackTime    = new KotonParameter("attack_time",     "Attack",          0.0, 1.5, 0.00, "s");
         readonly KotonParameter _releaseTime   = new KotonParameter("release_time",    "Release",         0.0, 1.5, 0.00, "s");
         readonly KotonParameter _volumeDb      = new KotonParameter("volume",          "Volume",          -30.0, 6.0, -3.0, "dB");
+        // Ré-attaque périodique. Modèle AUTO-OSCILLANT : on ne rejoue PAS la note (voir
+        // KotonReAttack.ArticulationSec), on met en forme la sortie.
+        readonly KotonStudio.Plugins.Shared.KotonReAttack _retrig =
+            new KotonStudio.Plugins.Shared.KotonReAttack("Détaché", 14.0, 0.0) { ArticulationSec = 0.035f };
 
         readonly List<KotonParameter> _params;
         public IReadOnlyList<KotonParameter> Parameters => _params;
@@ -79,8 +83,7 @@ namespace KotonPluginElectricViolin
                 _bodyIntensity, _warmth,
                 _grainLevel, _grainDepth, _grainDrive, _reverb,
                 _vibratoRate, _vibratoDepth, _tremoloRate, _tremoloDepth,
-                _attackTime, _releaseTime, _volumeDb,
-            };
+                _attackTime, _releaseTime, _volumeDb, _retrig.Rate };
         }
 
         public bool HasEditor => true;
@@ -99,6 +102,7 @@ namespace KotonPluginElectricViolin
             _cL4 = new float[(int)(0.0437 * sampleRate)]; _cR4 = new float[(int)(0.0461 * sampleRate)];
             _apL1 = new float[(int)(0.0053 * sampleRate)]; _apR1 = new float[(int)(0.0061 * sampleRate)];
             _apL2 = new float[(int)(0.0173 * sampleRate)]; _apR2 = new float[(int)(0.0181 * sampleRate)];
+            _retrig.Prepare(sampleRate);
         }
 
         static float ProcessCombLp(float[] buf, ref int idx, ref float lp, float input, float feedback)
@@ -120,10 +124,12 @@ namespace KotonPluginElectricViolin
         public void Reset()
         {
             if (_voices != null) foreach (var v in _voices) v.Kill();
+            _retrig.Reset();
         }
 
         public void NoteOn(int note, int velocity, int sampleOffset = 0)
         {
+            _retrig.NoteOn(note, velocity);
             if (_voices == null || velocity == 0) return;
             float vel = velocity / 127f;
             var p = ToVoiceParams();
@@ -144,6 +150,7 @@ namespace KotonPluginElectricViolin
 
         public void NoteOff(int note, int sampleOffset = 0)
         {
+            _retrig.NoteOff(note);
             if (_voices == null) return;
             for (int i = 0; i < _voices.Length; i++)
                 if (_voices[i].IsActive && _voices[i].Note == note)
@@ -168,6 +175,9 @@ namespace KotonPluginElectricViolin
             int n = left.Length;
             for (int i = 0; i < n; i++)
             {
+                _retrig.Tick();
+                float artG = _retrig.Gain;
+
                 float sum = 0f;
                 for (int v = 0; v < _voices.Length; v++)
                 {
@@ -199,6 +209,9 @@ namespace KotonPluginElectricViolin
                     left[i] = dry * volLin;
                     right[i] = dry * volLin;
                 }
+                            // Enveloppe d'articulation du coup de langue / détaché : la note continue de sonner
+                // sous-jacente, c'est la SORTIE qu'on découpe.
+                left[i] *= artG; right[i] *= artG;
             }
         }
 

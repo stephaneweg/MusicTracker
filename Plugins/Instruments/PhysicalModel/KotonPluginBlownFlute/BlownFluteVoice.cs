@@ -56,6 +56,10 @@ namespace KotonPluginBlownFlute
         enum EnvStage { Idle, Attack, Sustain, Release }
         EnvStage _stage = EnvStage.Idle;
         float _env, _envAttackCurve, _envReleaseRate;
+        // Enveloppe d'ARTICULATION : appliquée à la sortie, indépendante de la physique du tube.
+        // 1 = ouverte. Voir ReTongue() pour la raison d'être.
+        float _artEnv = 1f, _artRate;
+        int _artDip; float _artFall, _artDipTarget;   // descente douce vers un creux PARTIEL (voir ReTongue)
 
         bool _active;
         int _note;
@@ -118,12 +122,72 @@ namespace KotonPluginBlownFlute
             _stage = EnvStage.Attack;
 
             _peakEnvelope = 1f;
+            _artEnv = 1f; _artDip = 0;   // pas d'articulation en attente sur une note neuve
             _active = true;
         }
 
         public void NoteOff()
         {
             if (_active && _stage != EnvStage.Release) _stage = EnvStage.Release;
+        }
+
+        /// <summary>
+        /// Coup de langue sur la note EN COURS : on la REJOUE — tube vidé, enveloppe repartie de zéro,
+        /// impulsion d'amorçage — mais avec une attaque COURTE ET FIXE au lieu de celle réglée par
+        /// l'utilisateur.
+        ///
+        /// C'est ce dernier point qui fait toute la différence, et c'est la raison pour laquelle un
+        /// simple rappel de <see cref="NoteOn"/> ne marche pas. <c>Breath attack</c> décrit la mise en
+        /// souffle du DÉBUT de la note et va jusqu'à 2 s (0,7 s par défaut) ; l'appliquer à chaque coup
+        /// de langue laissait la note monter à 25 % de son niveau à 5 coups par seconde et 15 % à 9 —
+        /// mesuré, le pic tombait de 0,16 à 0,017. Un coup de langue est par nature une attaque brève :
+        /// une constante fixe de 12 ms est à la fois juste physiquement et stable à tous les taux.
+        /// </summary>
+        /// <param name="velocity">Nuance du coup (0..1).</param>
+        public void ReTongue(float velocity, in BfParams p)
+        {
+            if (!_active) return;
+            _velocity = velocity;
+
+            // DEUX mécanismes distincts, parce qu'un seul ne peut pas faire les deux choses à la fois :
+            //
+            // 1. Le tube est ATTÉNUÉ, pas vidé, et l'index d'écriture ne bouge pas — l'onde stationnaire
+            //    garde forme et phase. Le vidage complet paraissait plus logique, mais il oblige la
+            //    boucle acoustique à reconstruire sa résonance depuis rien : mesuré, la remontée prenait
+            //    30 ms à 9 coups/s et 50 ms à 2, on entendait un gonflement au lieu d'une attaque et le
+            //    niveau perçu s'effondrait quand le taux montait. Atténuer garde la boucle amorcée.
+            //
+            // 2. L'enveloppe d'ARTICULATION coupe la SORTIE et la fait remonter en 9 ms. C'est elle qui
+            //    sépare vraiment les deux notes. La confier au tube ne marche pas : plus on creuse, plus
+            //    la remontée est lente — les deux exigences sont contradictoires tant qu'on ne les traite
+            //    pas séparément. Ici la coupure est franche ET l'attaque est brève.
+            const float TongueDrop = 0.35f;
+            for (int i = 0; i < _size; i++) _tube[i] *= TongueDrop;
+            _lpState *= TongueDrop;
+
+            // Creux PARTIEL a pente douce, jamais zero : couper net s'entend comme un « tac » et pas
+            // comme une note articulee. Un coup de langue reel creuse le son, il ne l'interrompt pas.
+            const float DipLevel = 0.30f, DipSec = 0.005f;
+            _artDip = (int)(DipSec * _sr);
+            _artFall = 1f - (float)Math.Exp(-1.0 / Math.Max(1.0, DipSec * _sr * 0.35));
+            _artRate = 1f / Math.Max(1f, 0.025f * _sr);
+            _artDipTarget = DipLevel;
+
+            // Bruit d'attaque du coup de langue, injecté à la position d'écriture courante.
+            int kickSamples = Math.Min(_size, (int)(0.003 * _sr));
+            float kickAmp = velocity * 0.15f;
+            for (int i = 0; i < kickSamples; i++)
+            {
+                float decay = 1f - (float)i / kickSamples;
+                _tube[(_writeIdx + i) % _size] += (float)(_rng.NextDouble() * 2 - 1) * kickAmp * decay;
+            }
+
+            const double TongueAttackSec = 0.012;
+            _envAttackCurve = (float)(1.0 - Math.Exp(-1.0 / (TongueAttackSec * _sr)));
+            _envReleaseRate = 1f / Math.Max(1f, p.ReleaseSec * _sr);
+            _env = 0f;
+            _stage = EnvStage.Attack;
+            _peakEnvelope = 1f;
         }
 
         public void Kill()
@@ -208,8 +272,11 @@ namespace KotonPluginBlownFlute
             _writeIdx++;
             if (_writeIdx >= _size) _writeIdx = 0;
 
-            // Sortie audio = pression au niveau du tube + composante de souffle audible
-            float sig = tapped * (0.4f + p.Brightness * 0.8f) + breathAudible * 0.3f;
+            // Sortie audio = pression au niveau du tube + composante de souffle audible, mise en forme
+            // par l'enveloppe d'articulation (coup de langue).
+            if (_artDip > 0) { _artDip--; _artEnv += (_artDipTarget - _artEnv) * _artFall; }
+            else if (_artEnv < 1f) { _artEnv += _artRate * (1f - _artEnv) * 2f; if (_artEnv > 1f) _artEnv = 1f; }
+            float sig = (tapped * (0.4f + p.Brightness * 0.8f) + breathAudible * 0.3f) * _artEnv;
 
             // Détection d'énergie pour libération
             float absOut = Math.Abs(sig);

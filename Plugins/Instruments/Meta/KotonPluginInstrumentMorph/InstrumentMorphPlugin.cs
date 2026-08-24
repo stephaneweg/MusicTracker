@@ -47,7 +47,7 @@ namespace KotonPluginInstrumentMorph
         readonly KotonParameter _morph      = new KotonParameter("morph",      "Morph A → B",  0.0, 1.0, 0.5);
         // Mode 0 = Mix (lerp signaux, sonne comme 2 instruments a la fois),
         // Mode 1 = Spectral morph (banc de filtres + env followers, vrai timbre hybride)
-        readonly KotonParameter _mode       = new KotonParameter("mode",       "Mode",         0, 1, 1);
+        readonly KotonParameter _mode       = new KotonParameter("mode",       "Mode",         0, 1, 1) { Automatable = false };
         readonly KotonParameter _lfoRate    = new KotonParameter("lfo_rate",   "LFO rate",     0.0, 12.0, 0.0, "Hz");
         readonly KotonParameter _lfoDepth   = new KotonParameter("lfo_depth",  "LFO depth",    0.0, 1.0, 0.0);
         readonly KotonParameter _envMorph   = new KotonParameter("env_morph",  "Env morph",    -1.0, 1.0, 0.0);
