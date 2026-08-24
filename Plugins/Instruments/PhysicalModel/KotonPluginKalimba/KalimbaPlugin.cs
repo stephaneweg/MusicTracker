@@ -19,7 +19,7 @@ namespace KotonPluginKalimba
         public string Id => "koton.kalimba";
         public string DisplayName => "Kalimba";
         readonly KotonParameter _thumb    = new KotonParameter("thumb",    "Pouce (attaque)", 0.0, 1.0, 0.65);
-        readonly KotonParameter _sustain  = new KotonParameter("sustain",  "Sustain",         0.0, 1.0, 0.60);
+        readonly KotonParameter _sustain  = new KotonParameter("sustain",  "Sustain",         0.0, 1.0, 0.35);
         readonly KotonParameter _body     = new KotonParameter("body",     "Corps",           0.0, 1.0, 0.55);
         readonly KotonParameter _bright   = new KotonParameter("bright",   "Brillance",       0.0, 1.0, 0.50);
         readonly KotonParameter _volumeDb = new KotonParameter("volume",   "Volume",          -30, 6, -4, "dB");
@@ -89,8 +89,11 @@ namespace KotonPluginKalimba
                 float rank = 1f / (1f + i * 0.55f);
                 float brBoost = 1f + bright * (i / (float)NModes);
                 _amp[i] = vel * rank * brBoost * 0.4f;
-                float decaySec = 0.6f + sustain * 3.5f - i * 0.12f;
-                if (decaySec < 0.1f) decaySec = 0.1f;
+                // Kalimba = percussion à sons déterminés (lamelle métallique pincée). Décroissance
+                // naturelle plutôt courte : fondamentale ~0.4-1.9s selon sustain, partiels aigus
+                // beaucoup plus courts. Pas de long sustain comme un singing bowl ou une cloche.
+                float decaySec = 0.4f + sustain * 1.5f - i * 0.15f;
+                if (decaySec < 0.08f) decaySec = 0.08f;
                 _decay[i] = (float)Math.Exp(-1.0 / (decaySec * _sr));
             }
             // Bruit d'attaque du pouce (thumb click)
