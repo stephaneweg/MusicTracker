@@ -32,19 +32,28 @@ namespace KotonStudioUpdater
         {
             try
             {
+                // Journalisé À CHAQUE FOIS, pas seulement en cas d'échec : l'updater tourne alors que
+                // l'application s'est déjà fermée, donc rien à l'écran ne peut dire ce qu'il a reçu. Sans
+                // cette trace, un échec d'arguments est invisible et indiagnosticable.
+                Log("Lancement : " + string.Join(" | ", args));
+
                 var opts = ParseArgs(args);
                 if (opts == null) { Log("Arguments invalides. Attendu : --pid N --source DIR --target DIR --launch EXE"); return 2; }
 
                 WaitForParent(opts.ParentPid);
                 CopyOverwriting(opts.SourceDir, opts.TargetDir);
-                if (!string.IsNullOrEmpty(opts.LaunchExe) && File.Exists(opts.LaunchExe))
+
+                string launch = ResolveLaunchExe(opts.LaunchExe, opts.TargetDir);
+                if (!string.IsNullOrEmpty(launch) && File.Exists(launch))
                 {
-                    Process.Start(new ProcessStartInfo(opts.LaunchExe)
+                    Process.Start(new ProcessStartInfo(launch)
                     {
                         UseShellExecute = true,
                         WorkingDirectory = opts.TargetDir,
                     });
                 }
+                else Log("Rien à relancer : " + (launch ?? "(vide)"));
+                Log("Mise à jour appliquée : " + opts.SourceDir + " -> " + opts.TargetDir);
                 return 0;
             }
             catch (Exception ex)
@@ -62,8 +71,67 @@ namespace KotonStudioUpdater
             public string LaunchExe;
         }
 
+        /// <summary>
+        /// Répare les arguments mutilés par les versions ≤ 2.0.0.3 de Koton Studio.
+        ///
+        /// Elles construisaient la ligne de commande à la main, avec <c>--target "…\KotonStudio\"</c> :
+        /// sous Windows, la barre oblique inverse finale ÉCHAPPE le guillemet fermant, si bien que la
+        /// valeur ne se termine pas et absorbe la suite de la ligne. L'updater recevait alors un
+        /// <c>--target</c> qui n'existe pas, rejetait tout et ne mettait rien à jour.
+        ///
+        /// Le correctif côté application (ArgumentList) ne peut pas atteindre une installation DÉJÀ
+        /// déployée : c'est ce binaire-ci, livré dans la nouvelle archive, qui s'exécute. On répare donc
+        /// ici, sans quoi ces installations resteraient bloquées pour toujours sur une mise à jour
+        /// manuelle. À retirer quand plus personne ne tourne sous 2.0.0.3 ou antérieur.
+        /// </summary>
+        static string[] RepairMangledArgs(string[] args)
+        {
+            var outp = new System.Collections.Generic.List<string>();
+            foreach (string a in args)
+            {
+                int q = a.IndexOf("\" --", StringComparison.Ordinal);
+                if (q < 0) { outp.Add(a); continue; }
+
+                outp.Add(a.Substring(0, q));                  // la vraie valeur, avant le guillemet parasite
+                string rest = a.Substring(q + 1).Trim();      // « --clé valeur » recollé derrière
+                while (rest.StartsWith("--", StringComparison.Ordinal))
+                {
+                    int sp = rest.IndexOf(' ');
+                    if (sp < 0) { outp.Add(rest); break; }
+                    outp.Add(rest.Substring(0, sp));          // la clé
+                    rest = rest.Substring(sp + 1).Trim();
+                    // La valeur court jusqu'à la clé suivante — pas jusqu'au prochain espace : un chemin
+                    // d'installation contient très souvent des espaces.
+                    int next = rest.IndexOf(" --", StringComparison.Ordinal);
+                    if (next < 0) { outp.Add(rest.Trim('"')); break; }
+                    outp.Add(rest.Substring(0, next).Trim('"'));
+                    rest = rest.Substring(next + 1).Trim();
+                }
+            }
+            return outp.ToArray();
+        }
+
+        /// <summary>Choisit l'exécutable à relancer. Les versions ≤ 2.0.0.3 passaient
+        /// <c>Assembly.Location</c>, c'est-à-dire l'assembly managé <c>KotonStudio.dll</c> et non l'exe :
+        /// Windows ne sait pas lancer une DLL. On rétablit l'exe voisin, et à défaut celui de la cible.</summary>
+        static string ResolveLaunchExe(string launch, string targetDir)
+        {
+            if (!string.IsNullOrEmpty(launch) && launch.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                string exe = Path.ChangeExtension(launch, ".exe");
+                if (File.Exists(exe)) return exe;
+            }
+            if (string.IsNullOrEmpty(launch) || !File.Exists(launch))
+            {
+                string fallback = Path.Combine(targetDir, "KotonStudio.exe");
+                if (File.Exists(fallback)) return fallback;
+            }
+            return launch;
+        }
+
         static Options ParseArgs(string[] args)
         {
+            args = RepairMangledArgs(args);
             var o = new Options();
             for (int i = 0; i + 1 < args.Length; i += 2)
             {

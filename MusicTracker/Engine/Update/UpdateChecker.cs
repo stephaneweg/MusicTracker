@@ -197,10 +197,19 @@ namespace MusicTracker.Engine.Update
                 UseShellExecute = false,
                 CreateNoWindow  = true,
                 WorkingDirectory = sourceDir,
-                Arguments = string.Format(
-                    "--pid {0} --source \"{1}\" --target \"{2}\" --launch \"{3}\"",
-                    pid, sourceDir, targetDir, launchExe),
             };
+            // ArgumentList, et NON une chaîne Arguments construite à la main.
+            //
+            // targetDir vaut AppPaths.BaseDir, qui se termine par une barre oblique inverse. Écrit
+            // "…\KotonStudio\" dans une ligne de commande Windows, le \" final est un guillemet ÉCHAPPÉ :
+            // la valeur ne se referme pas et avale le reste de la ligne. L'updater recevait un --target
+            // inexistant, rejetait ses arguments et ne faisait rien — sans que l'application, déjà en
+            // train de se fermer, puisse le signaler. ArgumentList applique les règles d'échappement de
+            // Windows (dont le doublement des barres avant un guillemet) au lieu de les deviner.
+            psi.ArgumentList.Add("--pid");    psi.ArgumentList.Add(pid.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            psi.ArgumentList.Add("--source"); psi.ArgumentList.Add(sourceDir);
+            psi.ArgumentList.Add("--target"); psi.ArgumentList.Add(targetDir);
+            psi.ArgumentList.Add("--launch"); psi.ArgumentList.Add(launchExe);
             Process.Start(psi);
         }
 

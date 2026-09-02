@@ -264,7 +264,10 @@ namespace MusicTracker
                 {
                     string sourceDir = Engine.Update.UpdateChecker.ExtractPortableZip(zipDest);
                     string targetDir = AppPaths.BaseDir;
-                    string launchExe = System.Reflection.Assembly.GetEntryAssembly()?.Location
+                    // Environment.ProcessPath = l'EXE réellement lancé. Assembly.Location rendait ici
+                    // KotonStudio.dll (sous .NET, l'assembly managé n'est pas l'exécutable) : l'updater
+                    // aurait relancé une DLL, que Windows ne sait pas exécuter.
+                    string launchExe = Environment.ProcessPath
                                        ?? System.IO.Path.Combine(targetDir, "KotonStudio.exe");
                     Engine.Update.UpdateChecker.LaunchPortableUpdater(sourceDir, targetDir, launchExe);
                 }
