@@ -441,7 +441,9 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="200"/>
+                    <!-- Largeur de la colonne d'en-tête des pistes. À garder ÉGALE à celle de la grille de
+                         la lane d'accords plus bas, sinon son en-tête se décale de celui des autres pistes. -->
+                    <ColumnDefinition Width="240"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
@@ -505,7 +507,8 @@
              sync with the main lanes (rulerScroll/laneScroll), so it stays aligned but never scrolls off vertically. -->
             <Grid Grid.Row="1" Background="{StaticResource DarkBackground}">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="200"/>
+                    <!-- Doit rester égale à la colonne d'en-tête de la grille des pistes, au-dessus. -->
+                    <ColumnDefinition Width="240"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
                 <ContentControl Grid.Column="0" x:Name="chordHeaderHost" Background="{StaticResource DarkBackground}"/>

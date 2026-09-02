@@ -27,7 +27,10 @@ namespace MusicTracker.Screens
         // LaneH is sized so a Repeat's inner children (LaneH-26) keep the full standalone-leaf height
         // while still leaving a clear title strip (top 14) above them — the Repeat box is taller than
         // a plain leaf needs, but uniform lane height keeps the layout simple.
-        const double LaneH = 88, TempoH = 40, VolLaneH = 48, HeaderW = 160, ChordH = 26;
+        // La largeur de la colonne d'en-tête n'est PAS ici : c'est un ColumnDefinition du XAML, répété
+        // pour la grille principale et pour la lane d'accords ancrée. Une constante de plus ici ne ferait
+        // que mentir — la précédente (HeaderW = 160) était restée à une valeur que plus rien n'utilisait.
+        const double LaneH = 118, TempoH = 40, VolLaneH = 48, ChordH = 26;
         const double CollapsedH = 26; // a collapsed track shrinks header + lane to this minimal height (issue #5)
         const double MarkerLaneH = 18; // the section-marker band, above the 20px ruler (both inside rulerScroll)
         const double BasePxPerBeat = 60; // REFERENCE scale = 100 % zoom (a 4/4 measure ≈ 240 px); RiffThumbnail renders at this value
