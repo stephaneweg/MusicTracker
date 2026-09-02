@@ -76,7 +76,17 @@ $msbuild = Find-Tool @(
   "${env:ProgramFiles}\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe",
   "${env:ProgramFiles}\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe"
 ) 'MSBuild.exe'
-if (-not $msbuild) { throw "MSBuild introuvable (installe Visual Studio 2022 ou les Build Tools)." }
+
+# Repli sur le SDK .NET quand Visual Studio n'est pas installé. `dotnet build` EST MSBuild : sur une
+# solution SDK-style comme celle-ci il produit exactement la même sortie, et il restaure les paquets
+# au passage. Sans ce repli, publier une version demandait plusieurs gigaoctets de Build Tools pour
+# refaire ce que le SDK déjà présent sait faire.
+$dotnet = $null
+if (-not $msbuild) {
+  $dotnet = Find-Tool @() 'dotnet.exe'
+  if (-not $dotnet) { throw "Ni MSBuild (Visual Studio 2022) ni le SDK .NET introuvables. Installe l'un des deux." }
+  Write-Host "MSBuild absent : build via le SDK .NET ($dotnet)." -ForegroundColor DarkGray
+}
 
 $iscc = Find-Tool @(
   "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
@@ -116,8 +126,31 @@ $asm = [regex]::Replace($asm, 'AssemblyFileVersion\("\d+\.\d+\.\d+\.\d+"\)', "As
 
 # --- 2. build Release ---------------------------------------------------------
 Write-Host "Build Release…" -ForegroundColor Cyan
-& $msbuild $sln /t:Rebuild /p:Configuration=Release /v:minimal /nologo /m
+if ($msbuild) {
+  & $msbuild $sln /t:Rebuild /p:Configuration=Release /v:minimal /nologo /m
+}
+else {
+  # --no-incremental est l'équivalent CLI de /t:Rebuild : tout est recompilé, donc la version
+  # fraîchement écrite dans AssemblyInfo se retrouve bien dans les binaires livrés.
+  #
+  # $ErrorActionPreference = 'Stop' rend FATALE la moindre ligne écrite sur stderr par un exe natif
+  # (PowerShell 5.1 l'emballe en NativeCommandError). dotnet en écrit pour de simples avertissements,
+  # ce qui faisait échouer la publication sur un build parfaitement vert. On repasse en 'Continue' le
+  # temps de l'appel et on juge sur le SEUL signal fiable : le code de sortie.
+  $prev = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try   { & $dotnet build $sln -c Release --no-incremental -v minimal --nologo }
+  finally { $ErrorActionPreference = $prev }
+}
 if ($LASTEXITCODE -ne 0) { throw "Le build Release a échoué (code $LASTEXITCODE)." }
+
+# L'updater portable DOIT être dans la sortie : sans lui, une installation portable télécharge le zip
+# puis ne trouve pas de quoi l'appliquer, et la mise à jour échoue APRÈS le téléchargement — donc sans
+# que rien n'ait alerté côté publication. C'est exactement ce qui est arrivé à la 2.0.0.0.
+$updaterExe = Join-Path $releaseBin 'KotonStudioUpdater.exe'
+if (-not (Test-Path $updaterExe)) {
+  throw "KotonStudioUpdater.exe absent de $releaseBin - la mise a jour portable serait cassee. Verifie la cible CopyPortableUpdater de MusicTracker.csproj."
+}
 
 # --- 3. compile installer -----------------------------------------------------
 Write-Host "Compilation de l'installeur…" -ForegroundColor Cyan
@@ -183,16 +216,26 @@ Write-Host "latest.json mis à jour (version $newVer)." -ForegroundColor Green
 # --- 5. commit / push ---------------------------------------------------------
 if ($NoPush) { Write-Host "-NoPush : rien n'est commité/poussé." -ForegroundColor Yellow; return }
 
-# main repo: the version bump
-& git -C $repo add 'MusicTracker/Properties/AssemblyInfo.cs'
-& git -C $repo commit -m "Release v$newVer" -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
-& git -C $repo push
+# git écrit sa PROGRESSION sur stderr, y compris quand tout va bien ("To https://github.com/…").
+# Sous $ErrorActionPreference = 'Stop', PowerShell 5.1 emballe ça en NativeCommandError et interrompt
+# le script — un push réussi coupait la publication juste avant le dépôt releases, laissant une
+# version à moitié annoncée. Le code de sortie est le seul signal fiable.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+try {
+  # main repo: the version bump
+  & git -C $repo add 'MusicTracker/Properties/AssemblyInfo.cs'
+  & git -C $repo commit -m "Release v$newVer" -m "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+  & git -C $repo push
+  if ($LASTEXITCODE -ne 0) { throw "Le push du dépôt principal a échoué (code $LASTEXITCODE)." }
 
-# releases repo: the installer + manifest (+ the token-ignoring .gitignore if new)
-& git -C $releasesDir add -A
-& git -C $releasesDir commit -m "Release v$newVer"
-& git -C $releasesDir push
-if ($LASTEXITCODE -ne 0) { throw "Le push du dépôt releases a échoué (vérifie l'auth git sur MusicTracker_Releases)." }
+  # releases repo: the installer + manifest (+ the token-ignoring .gitignore if new)
+  & git -C $releasesDir add -A
+  & git -C $releasesDir commit -m "Release v$newVer"
+  & git -C $releasesDir push
+  if ($LASTEXITCODE -ne 0) { throw "Le push du dépôt releases a échoué (vérifie l'auth git sur MusicTracker_Releases)." }
+}
+finally { $ErrorActionPreference = $prevEap }
 
 # --- 6. site vitrine : bump config + prépend changelog + déploiement FTP -------
 # WebSite/ est GITIGNORÉ (déployé chez OVH), donc les edits ci-dessous ne partent JAMAIS sur git — ils

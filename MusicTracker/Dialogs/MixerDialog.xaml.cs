@@ -207,7 +207,11 @@ namespace MusicTracker.Dialogs
                 : Loc.T(EffectFactory.LocKey(d.Kind));
             var edit = new Button { Content = label, Style = (Style)FindResource("TinyButton"), HorizontalContentAlignment = HorizontalAlignment.Left };
             edit.Opacity = d.Enabled ? 1.0 : 0.5;
-            edit.ToolTip = Loc.T("EditEffect");
+            // Trois boutons d'action de 16 px se partagent la ligne avec le libellé dans une tranche de
+            // 120 px : sans rogner la marge interne, « Compresseur » et « Égaliseur » se tronquent. Le nom
+            // complet reste dans l'infobulle de toute façon.
+            edit.Padding = new Thickness(3, 1, 1, 1);
+            edit.ToolTip = label + " — " + Loc.T("EditEffect");
             edit.Click += (s, e) => { OpenEffectEditor(d); onChanged(); };
             Grid.SetColumn(edit, 0);
             row.Children.Add(edit);
@@ -216,7 +220,7 @@ namespace MusicTracker.Dialogs
             // JUSQU'À cet insert. Chaque ligne fait donc entendre un état différent du signal, ce qui
             // permet de juger l'apport d'un effet et pas seulement le résultat de la chaîne entière.
             int index = owner != null ? owner.IndexOf(d) : 0;
-            var play = new Button { Width = 16, Height = 18, Style = (Style)FindResource("TinyButton"), Margin = new Thickness(3, 0, 0, 0) };
+            var play = new Button { Width = 15, Height = 18, Style = (Style)FindResource("TinyButton"), Margin = new Thickness(2, 0, 0, 0) };
             Action refreshPlay = () =>
             {
                 var cur = InsertPreview.Playing;
@@ -233,13 +237,13 @@ namespace MusicTracker.Dialogs
             Grid.SetColumn(play, 1);
             row.Children.Add(play);
 
-            var onoff = new ToggleButton { Content = "•", Width = 16, Height = 18, Style = (Style)FindResource("MixToggle"), Margin = new Thickness(3, 0, 0, 0), IsChecked = d.Enabled, ToolTip = Loc.T("ToggleEffect") };
+            var onoff = new ToggleButton { Content = "•", Width = 15, Height = 18, Style = (Style)FindResource("MixToggle"), Margin = new Thickness(2, 0, 0, 0), IsChecked = d.Enabled, ToolTip = Loc.T("ToggleEffect") };
             onoff.Checked += (s, e) => { d.Enabled = true; edit.Opacity = 1.0; onChanged(); };
             onoff.Unchecked += (s, e) => { d.Enabled = false; edit.Opacity = 0.5; onChanged(); };
             Grid.SetColumn(onoff, 2);
             row.Children.Add(onoff);
 
-            var del = new Button { Content = "×", Width = 16, Height = 18, Style = (Style)FindResource("TinyButton"), Margin = new Thickness(3, 0, 0, 0), ToolTip = Loc.T("RemoveEffect") };
+            var del = new Button { Content = "×", Width = 15, Height = 18, Style = (Style)FindResource("TinyButton"), Margin = new Thickness(2, 0, 0, 0), ToolTip = Loc.T("RemoveEffect") };
             del.Click += (s, e) =>
             {
                 // Libere l'instance Koton cachee (l'insert n'existe plus, plus besoin de garder l'adapter)

@@ -169,6 +169,35 @@
     </ItemGroup>
   </Target>
 
+  <!-- ================= Updater portable, à côté de KotonStudio.exe =================
+       La mise à jour d'une installation PORTABLE extrait le zip puis passe la main à
+       KotonStudioUpdater.exe, qu'elle cherche DANS le contenu extrait (UpdateChecker.LaunchPortableUpdater).
+       L'installeur comme le zip embarquent le dossier de sortie tel quel : il suffit donc que l'exe s'y
+       trouve — mais rien ne l'y mettait. Il avait été déposé à la main dans bin\Release, et cette copie a
+       disparu avec le poste sur lequel elle avait été faite : la 2.0.0.0 est partie sans updater, et toute
+       version portable qui tentait de s'y mettre à jour téléchargeait un zip où elle ne trouvait rien.
+
+       Le ProjectReference (sans référence d'assembly : l'app n'appelle pas l'updater, elle le LANCE)
+       garantit qu'il est compilé avant que la copie ci-dessous ne cherche ses fichiers. -->
+  <ItemGroup>
+    <ProjectReference Include="..\KotonStudioUpdater\KotonStudioUpdater.csproj"
+                      ReferenceOutputAssembly="false" Private="false" />
+  </ItemGroup>
+  <Target Name="CopyPortableUpdater" AfterTargets="Build">
+    <ItemGroup>
+      <PortableUpdaterFiles Include="$(ProjectDir)..\KotonStudioUpdater\bin\$(Configuration)\KotonStudioUpdater.exe;
+                                     $(ProjectDir)..\KotonStudioUpdater\bin\$(Configuration)\KotonStudioUpdater.dll;
+                                     $(ProjectDir)..\KotonStudioUpdater\bin\$(Configuration)\KotonStudioUpdater.deps.json;
+                                     $(ProjectDir)..\KotonStudioUpdater\bin\$(Configuration)\KotonStudioUpdater.runtimeconfig.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PortableUpdaterFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true"
+          Condition="'@(PortableUpdaterFiles)' != ''" />
+    <!-- Un avertissement plutôt qu'une erreur : un build de développement doit rester possible même si
+         l'updater n'a pas encore été compilé. C'est la publication qui vérifie sa présence. -->
+    <Warning Text="KotonStudioUpdater introuvable dans ..\KotonStudioUpdater\bin\$(Configuration)\ : la mise à jour portable ne fonctionnera pas."
+             Condition="!Exists('$(ProjectDir)..\KotonStudioUpdater\bin\$(Configuration)\KotonStudioUpdater.exe')" />
+  </Target>
+
   <!-- ================= Silence VST.NET2-Host's DeployVstNet AfterBuild step =================
        The package ships a VstNetDeploy.targets that runs `vstnet.exe publish` AfterBuild to stage a
        bin/deploy folder for single-file bundles. We ship bin\Release\KotonStudio.exe directly (via
