@@ -55,6 +55,11 @@ namespace MusicTracker.Engine.Update
         /// lui-même). Commence par un point → discret dans un explorateur qui ne montre pas les fichiers cachés.</summary>
         public const string PortableStagingDirName = ".update";
 
+        /// <summary>Sous-dossier de <see cref="PortableStagingDir"/> où le zip est EXTRAIT. Le zip lui-même est
+        /// téléchargé à la racine du staging : séparer les deux est ce qui permet de nettoyer une extraction
+        /// précédente sans emporter l'archive qu'on s'apprête à ouvrir.</summary>
+        public const string PortableContentDirName = "content";
+
         /// <summary>Nom du fichier marqueur présent SEULEMENT dans le zip portable (jamais dans l'installeur Inno).
         /// Sa présence à côté de l'exe = installation portable, donc chemin de mise à jour = updater + zip.</summary>
         public const string PortableMarkerFileName = ".portable";
@@ -153,19 +158,26 @@ namespace MusicTracker.Engine.Update
         /// extraction incomplète précédente.</summary>
         public static string ExtractPortableZip(string zipPath)
         {
-            string stage = PortableStagingDir;
-            if (Directory.Exists(stage))
+            // Extraction dans un SOUS-DOSSIER du staging, et nettoyage de ce seul sous-dossier.
+            //
+            // La version précédente vidait le dossier de staging entier avant d'extraire — or c'est
+            // exactement là que l'appelant vient de télécharger le zip (MainWindow : zipDest =
+            // PortableStagingDir\<nom>.zip). Elle effaçait donc son propre fichier d'entrée, puis
+            // échouait sur « Could not find file …\.update\KotonStudioPortable-x.y.z.zip ». La mise à
+            // jour portable ne pouvait pas aboutir, quel que soit le contenu de l'archive.
+            string content = Path.Combine(PortableStagingDir, PortableContentDirName);
+            if (Directory.Exists(content))
             {
-                try { Directory.Delete(stage, recursive: true); }
+                try { Directory.Delete(content, recursive: true); }
                 catch (IOException) { }             // reste d'un run précédent partiellement verrouillé → on l'écrase par-dessus
                 catch (UnauthorizedAccessException) { }
             }
-            Directory.CreateDirectory(stage);
-            ZipFile.ExtractToDirectory(zipPath, stage);
+            Directory.CreateDirectory(content);
+            ZipFile.ExtractToDirectory(zipPath, content);
 
             // Le zip contient un unique dossier racine (KotonStudio-<ver>/). On l'identifie sans le nommer, au cas
             // où release.ps1 changerait la convention.
-            var dirs = Directory.GetDirectories(stage);
+            var dirs = Directory.GetDirectories(content);
             if (dirs.Length == 0) throw new InvalidOperationException("Le zip portable ne contient aucun dossier racine.");
             if (dirs.Length > 1)  throw new InvalidOperationException("Le zip portable contient plusieurs dossiers racine (attendu : un seul).");
             return dirs[0];
