@@ -84,6 +84,15 @@ namespace MusicTracker.Engine.Flow
             return outl;
         }
 
+        /// <summary>The concrete chord (root pitch class, quality) a candidate stands for in <paramref name="key"/>,
+        /// in its suggested colour.</summary>
+        public static void ChordOf(KeySignature key, SuggestCand c, out int rootPc, out int quality)
+        {
+            key = key ?? new KeySignature();
+            if (c.Deg >= 0) { var ch = MusicTheory.DiatonicChord(key, c.Deg, c.SuggestColour); rootPc = ch.root; quality = ch.quality; }
+            else { rootPc = (((MusicTheory.TonicPc(key) + c.RootOff) % 12) + 12) % 12; quality = c.Quality; }
+        }
+
         // Context weighting from the functional arc + cadence position.
         static double ContextMul(Base b, int cur, int prev2, bool nearCadence, bool phraseStart)
         {

@@ -66,9 +66,9 @@ namespace MusicTracker.Engine.Timeline
             // voicing précédent (au lieu de repartir en position fondamentale). L'état traverse les cellules, sinon
             // la conduite des voix repartirait de zéro à chaque répétition du motif. Tant que l'accord ne change pas,
             // on rejoue le MÊME voicing — sans cela il dériverait d'une cellule à l'autre.
-            // La chaîne est calculée UNE FOIS sur toute la suite d'accords du module, puis consommée par les deux
-            // passes (accompagnement et cellule mélodique). Sans ce partage, l'ancrage mélodique « suit le
-            // renversement » se baserait sur l'inversion brute de l'accord et contredirait le voicing réellement joué.
+            // La chaîne est calculée UNE FOIS sur toute la suite d'accords du module et sert aux deux rendus
+            // (accompagnement et cellule mélodique). Sans ce partage, l'ancrage mélodique « suit le renversement »
+            // se baserait sur l'inversion brute de l'accord et contredirait le voicing réellement joué.
             var chordRun = ChordRun(Segments(project, resolve, moduleStartBeat, total));
             var chain = VoicingChain(m, chordRun);
 
@@ -146,49 +146,25 @@ namespace MusicTracker.Engine.Timeline
                 }
 
                 Place(r, scale);
-                }
-            }
 
-            // ---- CELLULE MÉLODIQUE : une PHRASE sur toute la durée du module, pas un motif qui boucle. Elle est
-            // donc dessinée et rendue sur la durée TOTALE (contrairement à l'accompagnement, dont la cellule se
-            // répète). Ses hauteurs restent des DEGRÉS : on la rend une fois par accord traversé et on ne garde
-            // de chaque rendu que la portion couverte par cet accord — la phrase se transpose donc au fil de la grille.
-            if (m.HasMelodic)
-            {
-                var melSegs = Segments(project, resolve, moduleStartBeat, total);
-                int melGenBeats = Math.Max(1, (int)Math.Ceiling(total - 1e-9));
-                int mLastRoot = int.MinValue, mLastQuality = int.MinValue, mIdx = -1;
-                foreach (var s in melSegs)
+                // ---- CELLULE MÉLODIQUE : elle a la longueur de LA CELLULE et boucle avec elle, exactement comme
+                // l'accompagnement. Ses hauteurs sont des DEGRÉS : rendue ici sur l'accord du segment, avec le
+                // renversement RÉELLEMENT joué (chaîne de voicing) pour l'ancrage « suit le renversement », elle se
+                // transpose donc à chaque changement d'accord. Une note dessinée au-delà de la cellule (ancien
+                // modèle : une phrase sur la durée totale) tombe hors fenêtre et n'est pas jouée.
+                if (m.HasMelodic)
                 {
-                    // Même progression que l'accompagnement dans la chaîne de voicing : l'ancrage « suit le
-                    // renversement » reflète ainsi le voicing RÉELLEMENT joué, et non l'inversion brute de l'accord.
-                    if (s.Root != mLastRoot || s.Quality != mLastQuality) { mIdx++; mLastRoot = s.Root; mLastQuality = s.Quality; }
-                    int melInv = (mIdx >= 0 && mIdx < chain.Count) ? chain[mIdx].inv : s.Inversion;
-
                     var mpg = new PatternGeneratorModule
                     {
-                        Root = s.Root, Quality = s.Quality, Inversion = melInv,
+                        Root = s.Root, Quality = s.Quality, Inversion = curInv,
                         MelodicOctave = m.MelodicOctave, MelodicAnchor = m.MelodicAnchor,
                         MelodicSlicesPerQuarter = m.MelodicSlicesPerQuarter,
                         MelodicNotes = m.MelodicNotes, MelodicSlices = m.MelodicSlices,
-                        BeatsPerBar = melGenBeats, Repeats = 1,
+                        BeatsPerBar = genBeats, Repeats = 1,
                     };
                     var mel = PatternGenerator.GenerateMelodic(mpg, project?.Key ?? new Engine.Score.KeySignature());
-                    if (mel?.Notes == null) continue;
-
-                    double mScale = (double)spq / (mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : spq);
-                    int winStart = (int)Math.Round((s.Start - moduleStartBeat) * spq);   // fenêtre de CET accord
-                    int winEnd = winStart + (int)Math.Round(s.Len * spq);
-                    foreach (var n in mel.Notes)
-                    {
-                        int nStart = (int)Math.Round(n.Start * mScale);
-                        int nLen = Math.Max(1, (int)Math.Round(n.Length * mScale));
-                        if (nStart < winStart || nStart >= winEnd) continue;
-                        int len = Math.Min(nLen, winEnd - nStart);
-                        if (len <= 0 || nStart >= totalSlices) continue;
-                        len = Math.Min(len, totalSlices - nStart);
-                        if (len > 0) notes.Add(new RiffNote(n.Note, nStart, len));
-                    }
+                    if (mel != null) Place(mel, (double)spq / (mel.SlicesPerQuarter > 0 ? mel.SlicesPerQuarter : spq));
+                }
                 }
             }
 

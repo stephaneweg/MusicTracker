@@ -2739,6 +2739,42 @@ namespace MusicTracker.Screens
         }
         string Controls.IChordEditorHost.PromptText(string title, string initial) => TimelineHelper.PromptText(title, initial);
 
+        string Controls.IChordEditorHost.ChordRoman(PatternGeneratorModule pg) => ChordRoman(pg);
+
+        // The chord editor's next-chord cards (the co-pilot without the dialog).
+        static TimelineItem ItemOfModule(TimelineTrack track, FlowModule m)
+            => track?.Items?.Find(it => it != null && ReferenceEquals(it.Module, m));
+
+        System.Collections.Generic.IList<Engine.Flow.SuggestCand> Controls.IChordEditorHost.RankNextChords(TimelineTrack track, PatternGeneratorModule pg, Engine.Flow.HarmonyMood mood)
+        {
+            var item = ItemOfModule(track, pg);
+            if (item == null) return new Engine.Flow.SuggestCand[0];
+            ChordContext(track, item, out int[] prevDegs, out int barIdx, out int phraseLen);
+            if (prevDegs.Length == 0 || prevDegs[prevDegs.Length - 1] < 0) return new Engine.Flow.SuggestCand[0];
+            return Engine.Flow.HarmonySuggest.Rank(prevDegs, barIdx, phraseLen, mood, project.Key ?? new Engine.Score.KeySignature());
+        }
+
+        void Controls.IChordEditorHost.InsertSuggestedChord(TimelineTrack track, PatternGeneratorModule pg, Engine.Flow.SuggestCand c)
+        {
+            var item = ItemOfModule(track, pg);
+            if (item == null) return;
+            CommitRiffEditor();
+            var npg = NewChordLike(pg);
+            TimelineHelper.ApplyChordChoice(npg, project.Key ?? new Engine.Score.KeySignature(), pg.Degree >= 0, c);
+            string pre = BeginUndo();
+            var newItem = TimelineHelper.InsertChordAfter(track, item, npg);
+            SelectItem(track, newItem);
+            Engine.Flow.ChordDegrees.Revoice(track);
+            CommitUndo(pre, "insert:" + Id(newItem));
+            Render();
+        }
+
+        void Controls.IChordEditorHost.ChainAfter(TimelineTrack track, PatternGeneratorModule pg, int bars)
+        {
+            var item = ItemOfModule(track, pg);
+            if (item != null) ChainProgression(track, item, bars);
+        }
+
         // Build the bottom editor for an item (per type). Extracted from SelectItem so it can also be re-shown
         // when the score is dismissed (♫ unchecked) without going through SelectItem's "already selected" guard.
         void OpenModuleEditor(TimelineTrack track, TimelineItem item)
@@ -4332,7 +4368,7 @@ namespace MusicTracker.Screens
         void RefreshArticulationMelodicGrid(ContentControl host, TimelineTrack track, TimelineItem item, Engine.Flow.ChordArticulationModule ca)
         {
             var labels = new[] { "1", "2", "3", "4", "5", "6", "7", "1'", "2'", "3'", "4'", "5'", "6'", "7'", "1''", "2''", "3''", "4''", "5''", "6''", "7''" };
-            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.TotalBeats(ca)));   // la PHRASE mélodique couvre TOUT le module
+            int beats = Math.Max(1, (int)Math.Round(Engine.Timeline.ChordArticulation.CellBeats(ca)));   // la cellule mélodique boucle, comme l'accompagnement
             var key = project.Key ?? new Engine.Score.KeySignature();
 
             double startBeat = project.ItemStartBeat(track, item);
@@ -4356,7 +4392,7 @@ namespace MusicTracker.Screens
                          new string[0], (st, b) => null, PatternGenerator.SlicesPerQuarter, mk,
                          InstrumentCatalog.GetPreset(track.Instrument),
                          noteList: true, existingNotes: ca.MelodicNotes,
-                         showBeats: false);   // longueur = « Durée totale » du panneau de gauche
+                         showBeats: false);   // longueur = « Cellule (temps) » du panneau de gauche
 
             bool dirty = false;
             rg.GridChanged += () => { ca.SetMelodicNotes(rg.CurrentNotes(), rg.Spb, rg.Beats * rg.Spb); dirty = true; };
@@ -5483,9 +5519,10 @@ namespace MusicTracker.Screens
                 ChordContext(chord, lastItem, out int[] prevDegs, out int barIdx, out int phraseLen);
                 if (prevDegs.Length > 0 && prevDegs[prevDegs.Length - 1] >= 0)
                 {
-                    var dlg = new Dialogs.ChordSuggestionDialog(prevDegs, barIdx, phraseLen, key, InstrumentCatalog.GetPreset(chord.Instrument)) { Owner = Window.GetWindow(this) };
-                    if (dlg.ShowDialog() != true) return;
-                    TimelineHelper.ApplyChordChoice(pg, key, prev.Degree >= 0, dlg);
+                    // No dialog: the co-pilot's best continuation is laid down at once. The alternatives are the
+                    // cards of the chord editor (select the chord before it, click another card).
+                    var ranked = Engine.Flow.HarmonySuggest.Rank(prevDegs, barIdx, phraseLen, Engine.Flow.HarmonyMood.Auto, key);
+                    if (ranked.Count > 0) TimelineHelper.ApplyChordChoice(pg, key, prev.Degree >= 0, ranked[0]);
                 }
             }
             AppendChord(pg);

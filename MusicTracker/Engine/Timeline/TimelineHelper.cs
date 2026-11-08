@@ -426,13 +426,13 @@ namespace MusicTracker.Engine.Timeline
         // RiffById a migré sur TimelineProject : c'est ce qui garantit qu'un onglet ne résout jamais un riff
         // appartenant à un autre morceau ouvert.
 
-        // Insert a new leaf item right after `item` in the track (no gap).
+        // Insert a new leaf item right after `item` in the track (no gap). Returns the NEW item (callers select it).
         public static TimelineItem InsertChordAfter(TimelineTrack track, TimelineItem item, FlowModule module)
         {
             var newItem = new TimelineItem { Module = module };
             int idx = track.Items.IndexOf(item);
             if (idx < 0) track.Items.Add(newItem); else track.Items.Insert(idx + 1, newItem);
-            return item;
+            return newItem;
         }
 
         // Apply a catalogue selection to the module. Built-in motif → set the procedural Style; note-list motif →
@@ -489,6 +489,16 @@ namespace MusicTracker.Engine.Timeline
                 pg.Degree = keepFigured ? dlg.ChosenDegree : -1;
             }
             else { pg.Root = dlg.ChosenRoot; pg.Quality = dlg.ChosenQuality; pg.Degree = -1; pg.DiatonicColour = 0; pg.Suspension = 0; pg.ModeOverride = 0; }
+        }
+
+        // Same, straight from a ranked candidate (the chord editor's cards, no dialog): its suggested colour, no
+        // suspension, no forced mode.
+        public static void ApplyChordChoice(PatternGeneratorModule pg, Engine.Score.KeySignature key, bool keepFigured, Engine.Flow.SuggestCand c)
+        {
+            Engine.Flow.HarmonySuggest.ChordOf(key, c, out int root, out int quality);
+            pg.Root = root; pg.Quality = quality; pg.Suspension = 0; pg.ModeOverride = 0;
+            pg.DiatonicColour = c.Deg >= 0 ? c.SuggestColour : 0;
+            pg.Degree = c.Deg >= 0 && keepFigured ? c.Deg : -1;
         }
 
         // Insert `item` (length `len` beats) in the first gap >= len AT/after the selected item; else append.

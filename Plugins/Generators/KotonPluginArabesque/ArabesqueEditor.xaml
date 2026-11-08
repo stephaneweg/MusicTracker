@@ -1,0 +1,72 @@
+<UserControl x:Class="KotonPluginArabesque.ArabesqueEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinWidth="760" MinHeight="500"
+             Background="Transparent">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/KotonStudioLibrary;component/Themes/KotonPluginTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Border BorderThickness="0" Padding="14">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="110"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- le bandeau : tracé, image, graine, aperçu -->
+            <WrapPanel Grid.Row="0" Margin="0,0,0,10" VerticalAlignment="Center">
+                <TextBlock Text="Tracé" VerticalAlignment="Center" Foreground="{DynamicResource KotonText}" Margin="0,0,6,0"/>
+                <ComboBox x:Name="TraceCombo" Width="140" Margin="0,0,12,0" SelectionChanged="TraceCombo_SelectionChanged"/>
+                <TextBlock Text="Image" VerticalAlignment="Center" Foreground="{DynamicResource KotonText}" Margin="0,0,6,0"/>
+                <ComboBox x:Name="ImageCombo" Width="120" Margin="0,0,6,0" SelectionChanged="ImageCombo_SelectionChanged"/>
+                <Button Content="Nouvelle image" Padding="10,3" Margin="0,0,6,0" Click="NewMandala_Click"/>
+                <Button Content="Image..." Padding="10,3" Margin="0,0,12,0" Click="PickImage_Click"/>
+                <Button Content="🎲 Régénérer" Padding="10,3" Margin="0,0,6,0" Click="Reroll_Click"/>
+                <Button x:Name="PreviewButton" Content="▶ Aperçu" Padding="10,3" Margin="0,0,6,0" Click="Preview_Click"/>
+                <Button Content="■" Padding="10,3" Click="Stop_Click"/>
+            </WrapPanel>
+
+            <!-- l'image et le chemin, les réglages -->
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <Border BorderBrush="{DynamicResource KotonBorder}" BorderThickness="1" Width="230" Height="230">
+                        <Grid>
+                            <Image x:Name="PictureImage" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                            <Image x:Name="PathImage" Stretch="Fill"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock x:Name="InfoText" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource KotonTextDim}" FontSize="11"/>
+                </StackPanel>
+                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                    <Grid x:Name="ParamGrid">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="14"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- les notes produites, colorées par rôle -->
+            <Border Grid.Row="2" Margin="0,10,0,0" BorderBrush="{DynamicResource KotonBorder}" BorderThickness="1">
+                <Image x:Name="RollImage" Stretch="Fill"/>
+            </Border>
+            <WrapPanel Grid.Row="3" x:Name="Legend" Margin="0,6,0,0"/>
+        </Grid>
+    </Border>
+</UserControl>

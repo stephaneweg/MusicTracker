@@ -217,17 +217,20 @@ namespace MusicTracker.Dialogs
 
         // Concrete chord NAME (note + compact quality symbol), e.g. "Sol 7", "Ré m", "Fa maj7" — the smaller label under the
         // degree. The note is spelled FUNCTIONALLY (by the chord's degree + chromatic alter), so a ♭VII reads "Si♭" not "La♯".
-        string ChordName(SuggestCand c, int rootPc, int quality)
+        string ChordName(SuggestCand c, int rootPc, int quality) => ChordName(key, c, rootPc, quality);
+
+        /// <summary>Shared with the chord editor's suggestion cards.</summary>
+        public static string ChordName(KeySignature key, SuggestCand c, int rootPc, int quality)
         {
             int degree, alter;
             if (c.Deg >= 0) { degree = c.Deg; alter = 0; }        // diatonic: its own scale degree
-            else FunctionalDegree(c.RootOff, out degree, out alter); // chromatic: derive (degree, ♭/♯) from the offset
+            else FunctionalDegree(key, c.RootOff, out degree, out alter); // chromatic: derive (degree, ♭/♯) from the offset
             return Engine.Score.KeySig.SpellPc(rootPc, key, degree, alter) + QualSym(quality);
         }
 
         // Functional (letter-degree 0..6, chromatic alter) of a chromatic root RootOff semitones above the tonic: the nearest
         // scale degree (natural), else the degree a semitone ABOVE it (♭), else a semitone below (♯). So ♭VII → (VII, ♭).
-        void FunctionalDegree(int rootOff, out int degree, out int alter)
+        static void FunctionalDegree(KeySignature key, int rootOff, out int degree, out int alter)
         {
             var scale = Engine.Score.MusicalMode.Scale(Engine.Score.MusicalMode.Effective(key));
             int off = ((rootOff % 12) + 12) % 12;

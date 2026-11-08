@@ -490,20 +490,18 @@ namespace MusicTracker.Engine.AI
                         ca.SetCustomNotes(new List<RiffNote>(motif), artSpq, barTemps * artSpq);
                         ca.UserStyleName = userStyle;
                     }
-                    // La cellule mélodique couvre TOUT le bloc : le motif d'une mesure est répété sur chaque mesure
-                    // de la section, ce qui reproduit l'ancien comportement (une cellule par accord).
+                    // La cellule mélodique a la longueur de la cellule (une mesure) et boucle avec elle sur le bloc.
                     if (cell != null && cell.Count > 0)
                     {
                         int barSlices = barTemps * artSpq;
-                        var tiled = new List<RiffNote>();
-                        for (int b = 0; b < run; b++)
-                            foreach (var n in cell)
-                            {
-                                if (n.Start >= barSlices) continue;
-                                int len = Math.Min(n.Length, barSlices - n.Start);
-                                if (len >= 1) tiled.Add(new RiffNote(n.Note, b * barSlices + n.Start, len));
-                            }
-                        if (tiled.Count > 0) ca.SetMelodicNotes(tiled, artSpq, run * barSlices);
+                        var one = new List<RiffNote>();
+                        foreach (var n in cell)
+                        {
+                            if (n.Start >= barSlices) continue;
+                            int len = Math.Min(n.Length, barSlices - n.Start);
+                            if (len >= 1) one.Add(new RiffNote(n.Note, n.Start, len));
+                        }
+                        if (one.Count > 0) ca.SetMelodicNotes(one, artSpq, barSlices);
                     }
 
                     if (track == null)

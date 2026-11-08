@@ -18,6 +18,53 @@ namespace MusicTracker.Controls
         void Rerender();
         void ApplyMotifToSection(PatternGeneratorModule pg);
         string PromptText(string title, string initial);
+        /// <summary>The chord's roman numeral in the song's key, as written on its box ("iv", "V/V", "♭VII").</summary>
+        string ChordRoman(PatternGeneratorModule pg);
+        /// <summary>The ranked continuations of chord <paramref name="pg"/> where it sits on <paramref name="track"/>
+        /// (empty when it is not on a degree of the key).</summary>
+        IList<SuggestCand> RankNextChords(TimelineTrack track, PatternGeneratorModule pg, HarmonyMood mood);
+        /// <summary>Insert the candidate as a new chord right AFTER <paramref name="pg"/> and select it.</summary>
+        void InsertSuggestedChord(TimelineTrack track, PatternGeneratorModule pg, SuggestCand c);
+        /// <summary>Append the top-ranked continuation <paramref name="bars"/> times after <paramref name="pg"/>.</summary>
+        void ChainAfter(TimelineTrack track, PatternGeneratorModule pg, int bars);
+    }
+
+    /// <summary>One next-chord card of the chord editor: the candidate + what the card shows.</summary>
+    public sealed class ChordSuggestionCard
+    {
+        static readonly System.Windows.Media.Brush Tonic = Frozen(0x3F, 0x7F, 0xD9), Subdominant = Frozen(0x3F, 0xA3, 0x7F),
+            Dominant = Frozen(0xD9, 0x84, 0x3F), Chromatic = Frozen(0x8E, 0x6B, 0xC9),
+            Accent = Frozen(0x1F, 0xB6, 0xC3), Line = Frozen(0x55, 0x55, 0x60);
+        static System.Windows.Media.Brush Frozen(byte r, byte g, byte b)
+        {
+            var br = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(r, g, b));
+            br.Freeze();
+            return br;
+        }
+
+        /// <summary>Colour of a harmonic function given as a scale degree (0..6), −1 = a chord outside the key.</summary>
+        public static System.Windows.Media.Brush FunctionBrush(int degree)
+        {
+            switch (degree)
+            {
+                case 0: case 2: case 5: return Tonic;
+                case 1: case 3: return Subdominant;
+                case 4: case 6: return Dominant;
+                default: return Chromatic;
+            }
+        }
+
+        public ChordSuggestionCard(SuggestCand cand, string name) { Cand = cand; Name = name; }
+
+        public SuggestCand Cand { get; }
+        public string Roman => Cand.Label;
+        public string Name { get; }
+        public string Effect => Cand.Effect;
+        /// <summary>Colour of the degree square = the harmonic function (tonic / subdominant / dominant / chromatic).</summary>
+        public System.Windows.Media.Brush Fill
+            => Cand.Deg < 0 && Cand.Quality == 8 ? Dominant : FunctionBrush(Cand.Deg);   // V/V is a dominant, the rest is borrowed colour
+        public System.Windows.Media.Brush Border => Cand.Recommended ? Accent : Line;
+        public Thickness BorderThickness => new Thickness(Cand.Recommended ? 2 : 1);
     }
 
     /// <summary>
@@ -29,13 +76,65 @@ namespace MusicTracker.Controls
     {
         ChordEditorViewModel vm;
 
-        public ChordEditorControl() { InitializeComponent(); }
+        public ChordEditorControl() { InitializeComponent(); Unloaded += (s, e) => StopPreview(); }
 
         /// <summary>Point the editor at a chord (called when the user selects a chord object).</summary>
         public void Show(TimelineProject project, TimelineTrack track, PatternGeneratorModule pg, IChordEditorHost host)
         {
             vm = new ChordEditorViewModel(project, track, pg, host);
             DataContext = vm;
+        }
+
+        // ---- the next-chord cards ----
+        NAudio.Wave.WaveOutEvent waveOut;
+
+        static bool CardOf(object sender, out ChordSuggestionCard card)
+        {
+            card = (sender as FrameworkElement)?.DataContext as ChordSuggestionCard;
+            return card != null;
+        }
+
+        void Card_Pick(object sender, MouseButtonEventArgs e)
+        {
+            if (vm == null || !CardOf(sender, out var card)) return;
+            e.Handled = true;
+            StopPreview();
+            vm.InsertAfter(card.Cand);   // the host selects the new chord → this editor is replaced by the new chord's
+        }
+
+        void Card_Replace(object sender, MouseButtonEventArgs e)
+        {
+            if (vm == null || !CardOf(sender, out var card)) return;
+            e.Handled = true;
+            StopPreview();
+            vm.ReplaceWith(card.Cand);
+        }
+
+        void Card_Enter(object sender, MouseEventArgs e) { if (CardOf(sender, out var card)) Preview(card.Cand); }
+        void Card_Leave(object sender, MouseEventArgs e) => StopPreview();
+
+        // Hovering a card PLAYS the chord (as the former suggestion dialog did). Silent when no SoundFont is loaded:
+        // a hover must never pop the "missing SoundFont" prompt.
+        void Preview(SuggestCand c)
+        {
+            StopPreview();
+            if (vm == null || !SoundFontGuard.IsReady) return;
+            var preset = InstrumentCatalog.GetPreset(vm.Track.Instrument);
+            if (preset == null) return;
+            try
+            {
+                HarmonySuggest.ChordOf(vm.Key, c, out int rootPc, out int quality);
+                var riff = PatternGenerator.Generate(new PatternGeneratorModule { Root = rootPc, Quality = quality, Octave = 4, Style = 0, BeatsPerBar = 2, Repeats = 1 });
+                var ctx = new FlowContext { GmProgram = preset.PatchNumber, Drum = preset.BankNumber == InstrumentCatalog.DrumIndex, Bpm = 88 };
+                waveOut = new NAudio.Wave.WaveOutEvent { DesiredLatency = 120 };
+                waveOut.Init(new LoopingRiffProvider(() => riff, ctx)); waveOut.Play();
+            }
+            catch { StopPreview(); }
+        }
+
+        void StopPreview()
+        {
+            if (waveOut != null) { try { waveOut.Stop(); waveOut.Dispose(); } catch { } waveOut = null; }
         }
 
         static System.Windows.Media.Brush Br(string hex) => (System.Windows.Media.Brush)new System.Windows.Media.BrushConverter().ConvertFromString(hex);
@@ -68,6 +167,82 @@ namespace MusicTracker.Controls
             if (pg.Degree < 0) SyncColourTrio();
             RebuildStyleList();
             ApplyMotifCommand = new RelayCommand(_ => ApplyMotif());
+            ChainCommand = new RelayCommand(_ => host.ChainAfter(track, pg, 4));
+            RefreshSuggestions();
+        }
+
+        // ---- the chord on the keyboard + its name card ----
+        /// <summary>The chord AS VOICED: the inversion and octave the voice leading chose for it (see
+        /// <see cref="ChordDegrees.Revoice"/>), spread when the voicing is open.</summary>
+        public int[] KeyboardNotes => PatternGenerator.ChordNotes(pg.Root, pg.Octave, pg.Quality, pg.Inversion, pg.OpenVoicing);
+        public string ChordTitle => Engine.Score.KeySig.SpellPc(pg.Root, Key) + " " + TimelineHelper.Get(PatternGenerator.QualityNames, pg.Quality);
+        public string ChordRoman => host.ChordRoman(pg);
+        // Its function as a scale degree: the locked degree, a secondary dominant (→ dominant), the degree its root
+        // sits on, else −1 (a root outside the key).
+        int FunctionDegree
+        {
+            get
+            {
+                if (pg.Degree >= 0) return pg.Degree;
+                int rootPc = ((pg.Root % 12) + 12) % 12;
+                if (MusicTheory.SecondaryDominantTarget(Key, rootPc, pg.Quality) >= 0) return 4;
+                int d = MusicTheory.DegreeOf(Key, rootPc);
+                return ((MusicTheory.DiatonicChord(Key, d).root % 12) + 12) % 12 == rootPc ? d : -1;
+            }
+        }
+        public System.Windows.Media.Brush FunctionBrush => ChordSuggestionCard.FunctionBrush(FunctionDegree);
+        public string FunctionName
+        {
+            get
+            {
+                switch (FunctionDegree)
+                {
+                    case 0: case 2: case 5: return Loc.T("FonctionTonique");
+                    case 1: case 3: return Loc.T("FonctionSousDominante");
+                    case 4: case 6: return Loc.T("FonctionDominante");
+                    default: return Loc.T("FonctionHorsTonalite");
+                }
+            }
+        }
+        void RefreshChordView()
+        {
+            Raise(nameof(KeyboardNotes)); Raise(nameof(ChordTitle)); Raise(nameof(ChordRoman));
+            Raise(nameof(FunctionBrush)); Raise(nameof(FunctionName));
+        }
+
+        // ---- next-chord co-pilot (the cards) ----
+        public IReadOnlyList<string> MoodNames { get; } = new[] { "Auto", Loc.T("Joyeux"), Loc.T("Serein"), Loc.T("Melancolique"), Loc.T("Nostalgique"), Loc.T("Epique"), Loc.T("Lumineux"), "Jazzy" };
+        static int mood;   // kept from one chord to the next: the mood is a choice for the song, not for a chord
+        public int MoodIndex { get => mood; set { if (value < 0 || value == mood) return; mood = value; RefreshSuggestions(); } }
+        const int MaxCards = 6;
+        List<ChordSuggestionCard> suggestions = new List<ChordSuggestionCard>();
+        public IReadOnlyList<ChordSuggestionCard> Suggestions => suggestions;
+        public Visibility NoSuggestionVisibility => suggestions.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        public ICommand ChainCommand { get; }
+
+        void RefreshSuggestions()
+        {
+            var key = Key;
+            var list = new List<ChordSuggestionCard>();
+            foreach (var c in host.RankNextChords(track, pg, (HarmonyMood)mood))
+            {
+                if (list.Count == MaxCards) break;
+                HarmonySuggest.ChordOf(key, c, out int root, out int quality);
+                list.Add(new ChordSuggestionCard(c, Dialogs.ChordSuggestionDialog.ChordName(key, c, root, quality)));
+            }
+            suggestions = list;
+            Raise(nameof(Suggestions)); Raise(nameof(NoSuggestionVisibility));
+        }
+
+        /// <summary>Click on a card: that chord is added right after this one.</summary>
+        public void InsertAfter(SuggestCand c) => host.InsertSuggestedChord(track, pg, c);
+
+        /// <summary>Right-click on a card: THIS chord becomes it (an edit of the chord, like its combos).</summary>
+        public void ReplaceWith(SuggestCand c)
+        {
+            TimelineHelper.ApplyChordChoice(pg, Key, pg.Degree >= 0, c);
+            Raise(string.Empty);   // every combo re-reads the chord
+            Changed();
         }
 
         public PatternGeneratorModule Pg => pg;
@@ -249,7 +424,7 @@ namespace MusicTracker.Controls
         }
 
         // A field changed: voice-lead the chain, rebuild both grids (melodic pitches depend on the chord), re-render.
-        void Changed() { ChordDegrees.Revoice(track); GridRefreshNeeded?.Invoke(); MelodicRefreshNeeded?.Invoke(); host.Rerender(); }
+        void Changed() { ChordDegrees.Revoice(track); GridRefreshNeeded?.Invoke(); MelodicRefreshNeeded?.Invoke(); host.Rerender(); RefreshChordView(); RefreshSuggestions(); }
         // A melodic-only field changed: just rebuild the melodic grid + re-render (no need to touch the chord chain).
         void MelodicChanged() { MelodicRefreshNeeded?.Invoke(); host.Rerender(); }
 
