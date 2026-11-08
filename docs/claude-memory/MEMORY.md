@@ -1,0 +1,79 @@
+- [Licence policy](licence-policy.md) — toute licence libre OK, GPL viral compris ; seul refus = payant
+- [Point de reprise 2026-11](project-state-2026-11.md) — v2.0.1.0 publiée (installeur+portable+site), arbre propre ; liste des chantiers ouverts
+- [Vibraphone signature sound](vibraphone-signature-sound.md) — preset vibra du plugin Mallets aimé par user+épouse (« rêveur ») ; à préserver
+- [Electric Violin preferred preset](electric-violin-preferred-preset.md) — sweet spot 2026-08-21 : bow 0.75/0.75/0.08, body 0.70, warmth 0.75, scratch 0.31, reverb 0.48
+- [User debugging intuition](user-debugging-intuition.md) — les hypothèses de l'user sur les bugs battent souvent l'analyse protocolaire : à investiguer en priorité
+- [Fixes directly on main](fixes-directly-on-main.md) — corrections d'issues = commit+push direct sur main, pas de branche ni de PR (dépôt solo)
+- [PS UTF-8 round-trip corruption](ps-utf8-roundtrip-corruption.md) — ⚠️ jamais Get-Content/Set-Content pour éditer du source (mojibake cp1252) ; utiliser Edit/Write
+- [Legacy csproj — add new files](legacy-csproj-add-files.md) — OBSOLÈTE : csproj SDK-style, .cs/.xaml auto-inclus, ne plus l'éditer à la main
+- [Riff.Slices soude les coups adjacents](riff-slices-setter-merges.md) — ⚠️ un générateur ne rend jamais son riff via `Slices =` ; poser Notes+LengthSlices. Signature du bug : juste en MIDI, faux à l'audition
+- [New module → 3 resolvers](new-module-three-resolvers.md) — ⚠️ un FlowModule producteur de notes doit entrer dans TROIS switch (player / partition+exports / MIDI) sinon il sort en silence
+- [Automation params plugin](plugin-param-automation.md) — ⚠️ courbe stockée NORMALISÉE 0..1 (dépliée sur Min/Max vivants), écriture via `SetFromAutomation` jamais `Value` ; inserts pilotés APRÈS `Load(d.Params)`
+- [Harnais audio plugin Koton](koton-plugin-audio-harness.md) — rendre un plugin en WAV hors app pour le mesurer ; ⚠️ ProjectReference impossible (.ksl casse CoreCLR), passer par copie .dll + Reference
+- [Harnais dialogue WPF en process](wpf-dialog-inprocess-harness.md) — photographier/tester un dialogue sans lancer l'app : new App()+InitializeComponent, RenderTargetBitmap, build_run_wpf.ps1
+- [App data paths](app-data-paths.md) — settings/recent/userdata/SoundFont via AppPaths.Local (dossier de l'assembly), pas le working dir
+- [AIClient HttpClient per call](aiclient-httpclient-per-call.md) — un HttpClient PAR appel, volontaire (évite le blocage « already started a request ») ; ne pas « corriger » en static partagé
+- [Rebrand Koton Studio](koton-studio-rebrand.md) — « Koton Studio » à l'AFFICHAGE seulement ; identité interne (namespace, exe, dossiers, repos) reste MusicTracker pour ne pas casser l'auto-update
+- [Localization (multilingue)](localization.md) — 7 langues par CLÉS ({loc:Tr}/Loc.T) + un lang.xx.json découvert au runtime (ajouter une langue = déposer un fichier)
+- [Déploiement du site](website-deploy.md) — OVH FTP simple obligatoire (FTPS = 500 AUTH TLS), mdp DPAPI, installer/deploy-website.ps1
+- [Site vitrine PHP](website-vitrine.md) — WebSite/ (gitignoré, déployé à la main), PHP pur FR/EN thème teal ; config+changelog à MAJ à chaque release
+- [Release + update infra](release-update-infra.md) — repo privé MusicTracker_Releases + màj auto au démarrage (latest.json) ; SoundFont auto-download au 1er lancement
+- [Bug report → GitHub](bug-report-github.md) — « Signaler un bug » ouvre une issue GitHub + garde-crash ; token injecté au build (XOR+base64, jamais committé)
+- [Daily feature automation](daily-feature-automation.md) — pipeline multi-agents 20h : fonctionnel→technique→dev→test → commit + release + site ; docs/features/
+- [Daily UI test automation](daily-ui-test-automation.md) — tâche planifiée 21h30 : build + scénarios UI FlaUI (AutoTest/) → issues GitHub label auto-test
+- [UI redesign (n-Track)](ui-redesign-ntrack.md) — dark + accent teal #1FB6C3, flat, Segoe UI ; clés conservées dans Colors.xaml ; TODO dialogs + transport bar
+- [Custom file dialog](custom-file-dialog.md) — FileBrowserDialog maison (API Microsoft.Win32-compatible) à la place des dialogues natifs
+- [Tabbed shell](tabbed-shell.md) — MainWindow = TabControl : onglet Accueil permanent + un TimelineScreen par morceau ouvert
+- [Home redesign + templates](home-redesign-templates.md) — accueil : bannière crossfade piano-roll↔batterie + templates code-gen + boutons responsive
+- [Guided tour (tutoriel)](guided-tour.md) — visite guidée coach-marks (Controls/GuidedTour.cs) ; étapes dans TimelineScreen.StartTutorial()
+- [Undo/redo timeline](undo-redo.md) — snapshots .sq + coalescing + neutralisation ; Ctrl+Z/Y ; UndoManager.cs
+- [Koton Live](koton-live.md) — 2e exe (rack temps réel micro/MIDI→instrument→effets) ; fenêtre dans l'assembly du séquenceur, init dans AppBootstrap
+- [Multi API keys](multi-api-keys.md) — plusieurs clés nommées par fournisseur (AppSettings.ApiKeys + ApiKeysDialog) ; migration clé-unique→« Défaut »
+- [Timeline mode](timeline-mode.md) — éditeur d'arrangement (pistes horizontales de modules) remplaçant le séquenceur
+- [Timeline playback latency](timeline-playback-latency.md) — LookaheadBuffer (thread producteur + prime) + Read parallèle par piste + réutilisation de voix
+- [Sequencer = Photoshop layers](sequencer-photoshop-layers.md) — un instrument = un calque, les autres affichés en transparence
+- [Chords track](chords-track.md) — piste « Accords » permanente (TimelineTrackType.Chord), épinglée en bas, non supprimable ; EnsureChordTrack migre au chargement
+- [Anacrusis / levée](anacrusis-pickup.md) — project.PickupBeats + grille de barres déphasée dans ScoreView + alignement des temps forts ; règle et PDF pas encore déphasés
+- [Meter & snap rules](meter-and-snap-rules.md) — /4 snap 1/8, /8 snap 1/6 ; snap à l'import ; ternaire 4/4→6/8 en échelle d'AFFICHAGE ×1.5 ; re-segmentation au changement de métrique
+- [Riff note-list model](riff-note-list-model.md) — migration de la grille binaire vers une liste RiffNote canonique (distingue deux notes identiques adjacentes)
+- [Score view](score-view.md) — bouton ♫ par piste : notes en partition (portée/clef par instrument) avec curseur de lecture
+- [MuseScore export tag order](musescore-export-tag-order.md) — dans le .mscx, `<dots>` AVANT `<durationType>` ; ne pas réordonner
+- [MIDI pitch bend](midi-pitch-bend.md) — molette détectée à l'import → courbe BendPoint par RiffNote → glide de fréquence échantillon par échantillon
+- [Editable arrangement](editable-arrangement.md) — trame d'accords + sections + thème persistés ; éditer régénère les parties dérivées
+- [Drum model rework](drum-model-rework.md) — 47 lanes GM + éditeur de notes façon riff (couleurs par famille) ; DrumPatternModule = une phrase one-shot
+- [Drum motif catalog](drum-motif-catalog.md) — Data/drums/catalog.json + DrumCatalog loader ; TODO sélecteur dans l'éditeur batterie
+- [Melodic line feature](melodic-line-feature.md) — piste rythme-seul (≤3 voix), le moteur choisit les notes dans l'accord actif ; sauvegarde par nom + « Préserver »
+- [Melodic-line improvements](melodic-line-improvements.md) — Continuity (voice-leading + report inter-modules), TensionSlope, Variation (Split/Gate/Retrograde/Mirror re-snappés)
+- [Chord melodic cell](chord-melodic-cell.md) — 2e voix attachée à un accord (grille 14 degrés diatoniques, transposée par accord) ; TODO portée supplémentaire
+- [Euclidean rhythm idea](euclidean-rhythm-generation-idea.md) — batterie et ligne mélodique polyrythmiques (anneau = voix) FAITES et validées à l'oreille
+- [Generators & cadence](generators-and-cadence.md) — tables de styles accords/batterie (Personnalisé… en dernier) + générateur de cadences diatoniques
+- [Generative templates](generative-templates.md) — modèles GÉNÉRATIFS (banques de matière par section, l'app pioche par seed) ; TemplateSpec/TemplateComposer
+- [Procedural instrument synthesis](procedural-instrument-synthesis.md) — timbres acoustiques réalistes : filtre biquad + preset violon ; comment ajouter un type WaveFunction
+- [MeltySynth audio engine](meltysynth-audio-engine.md) — rendu via le Synthesizer officiel MeltySynth (SF2 + DAHDSR) ; étape 1 faite, branchements 2-4 à faire
+- [Didgeridoo acoustique](didgeridoo-acoustics.md) — les 3 faits qui font sonner un didge (lèvres fermées ½ cycle, harmoniques impaires, conduit vocal = CREUX)
+- [Violin audio capture](violin-audio-capture.md) — usage phare : violon live → notes par entrée audio ; réglage de latence dans WaveNoteSourceProvider
+- [Flow-graph composition](flow-graph-composition.md) — mode graphe SUPPRIMÉ (2026-06-14) ; fiche conservée pour l'historique du moteur partagé
+- [Kanban backlog](kanban-backlog.md) — backlog dans KANBAN.md à la racine
+- [Feature roadmap 2026-07](feature-roadmap-2026-07.md) — tri de features ; reste : swing, exports batterie/MusicXML/PDF, tap-tempo, filet basse IA
+- [ComposerV3 + Orchestrateur rewrite](composerv3-orchestrateur-rewrite.md) — EN COURS : emitters Base/Bach/Vivaldi/Ghibli + Orchestrateur (formes+humeur) ; phase 1 faite
+- [Theme library seed engine](theme-library-seed-engine.md) — bibliothèque de thèmes JSON par famille qui AMORCE l'Orchestrateur ; matrice complète + moteur de diversité ; phase D (API factory) pas encore lancée
+- [Posed-form composer hybrid](posed-form-composer-hybrid.md) — « forme posée » = forme V1 Ghibli + thème/accords appris V2 ; workflow de ré-analyse (analyze_*.ps1 → JSON dans bin/Debug)
+- [Melody chord-degree context](melody-chord-degree-context.md) — modèle mélodie conditionné au degré EXACT avant/pendant/après ; étape 2 = résolveur Viterbi (en attente)
+- [Algorithmic composition (Nierhaus)](algorithmic-composition-nierhaus.md) — moteur purement algorithmique ; levier n°1 = CRITIQUE objective, TOUJOURS à construire ; catalogue abandonné
+- [Ghibli melody-rhythm feedback](ghibli-melody-rhythm-feedback.md) — test à l'oreille : harmonie et intention mélodiques bonnes, RYTHME brouillon → GeneratePhraseRhythm cohérent à la phrase
+- [Ghibli Composer V2](ghibli-composer-v2.md) — reconstruction from scratch ; phase A (analyseur → Markov à repli 4 niveaux) faite, générateur différé
+- [Bach solo Composer V2](bach-solo-composer-v2.md) — 2e style sur le moteur V2 (polyphonie implicite / moto perpetuo / cycle de quintes / continuo)
+- [Structure→melodic-line refactor](structure-melodic-line-refactor.md) — PLANIFIÉ : « Créer structure » émettrait des MelodicLineModule au lieu de riffs ; PoC ghibli_valse.sq
+- [Mistral AI arrangement](mistral-ai-arrangement.md) — relance IA 2026-07-18 : dialogue → JSON Mistral (accords/sections/articulation/motifs) → posé sur la timeline ; pas encore testé à l'oreille
+- [AI per-element generation](ai-per-element-generation.md) — « 🤖 Générer (IA)… » par module (batterie ✓, riff ✓, ligne mélodique TODO) via AiProviders + AiElementDialog
+- [Groq/LLM live arrangement](groq-live-arrangement.md) — ⛔ CLOS 2026-07-05 : voie LLM complète explorée puis CODE SUPPRIMÉ. Historique seulement
+- [MuseCoco offline generation](musecoco-offline-generation.md) — piste exploratoire : génération symbolique hors-ligne (MuseCoco) réinjectée via MidiImporter ; NOTES-compo-llm-handoff.md
+- [Bach corpus analysis](bach-wtc-corpus-analysis.md) — WTC + Art de la fugue + Goldberg + chorals + suites digérés ; refonte complète du compositeur Bach construite dessus
+- [Vivaldi corpus analysis](vivaldi-corpus-analysis.md) — 80 MIDI ; vs Bach : grand ensemble, moteur de notes répétées, ritornello tutti/solo, tierces/sixtes parallèles, basse marchante
+- [Hisaishi/Ghibli analysis](hisaishi-ghibli-analysis.md) — mélodie PENTATONIQUE (78 %), motivique, phrases carrées ; harmonie COULEUR (sus/add9/maj7) + emprunts modaux, cadences plagales. Recette proposée, pas implémentée
+- [Ghibli corpus mood layout](ghibli-corpus-mood-layout.md) — corpus rangé en 6 dossiers d'humeur ; LEÇON : les features audio ne prédisent pas l'humeur chez Hisaishi
+- [Contemporain music1 analysis](contemporain-music1-analysis.md) — ballade tonale lente, sans batterie, texture doublée → style compositeur « Ballade / film » (index 7)
+- [Harpe modale analysis](harpe-modale-analysis.md) — harmonie MODALE par médiantes (I-vi-♭III-IV, sans dominante) → cadence 27 + style 8 + articulation 27
+- [Sonate ex_class2 analysis](sonate-exclass2-analysis.md) — forme sonate en ut mineur → système de FORMES (Composer.ComposeForm : sonate/rondeau/variations/fugue/contrepoint)
+- [Hand-composed .mscx pieces](hand-composed-mscx-pieces.md) — scripts Claude-compositeur produisant un morceau Ghibli directement en .mscx ; recette + pièges 6/8 et PS 5.1
+- [Theme variations generator](theme-variations-generator.md) — gen_variations_mscx.ps1 : theme.mscz → ~31 variations → .mscx 2 portées ; règles de longueur et de registre

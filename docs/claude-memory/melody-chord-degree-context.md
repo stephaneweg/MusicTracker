@@ -1,0 +1,29 @@
+---
+name: melody-chord-degree-context
+description: V2 melody model now conditions on EXACT chord degree before/during/after a note (not just T/S/D); Viterbi note-resolver is the planned step 2
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: c03f675f-77f6-49a1-bda6-bb071ec8ac56
+---
+
+User goal (2026-06-19): make the melody analyzer "resolve probable notes" from the chord **degree** played before/during/after the note X, plus surrounding notes.
+
+**Done — step 1 (chord-degree neighbourhood context).** The V2 melody back-off ladder already conditioned on T/S/D `func`/`nfunc` + chord-relative `role`. Added EXACT chord-degree tiers anchored on the note being predicted (X):
+- `pdeg|cdeg|ndeg` = previous-DISTINCT / current / next-DISTINCT chord root degree (0-11, tonic-relative) around X. New tiers `d1|pdeg|cdeg|ndeg|role` and `d1|cdeg|role`.
+- Added in BOTH sides (must stay byte-identical labels): analyzer [CorpusAnalyzerV2.cs](MusicTracker/Engine/ComposerV2/CorpusAnalyzerV2.cs) melody loop (+ `prevDistinctRoot`/`nextDistinctRoot` closures after per-bar chord detection) AND generator [BaseComposerV3.cs](MusicTracker/Engine/ComposerV3/BaseComposerV3.cs) `GetNote` else-branch (~line 623).
+- Builds clean (MSBuild VS2022 Enterprise, Debug).
+
+**Why safe:** `Dist` in BaseComposerV3 (~line 1005) does back-off by matching each model tier's stored Context **label string**, NOT by index — so adding/removing tiers is backward-compatible (old models just lack the new tiers; new labels the model never learned are skipped). Only two melody-ladder sites exist (analyzer + Base generator); MathComposerV3 overrides GetNote without the learned ladder.
+
+**To activate:** models must be RE-ANALYZED to populate the new tiers (analyze_*.ps1 → copy JSON to bin/Debug, see [[posed-form-composer-hybrid]]). Until then behaviour is unchanged.
+
+**Step 2 — DONE: Viterbi note-resolver.** [MelodyResolverV2.cs](MusicTracker/Engine/ComposerV2/MelodyResolverV2.cs) (new, registered in MusicTracker.csproj — OLD-STYLE csproj, new .cs MUST be added as `<Compile Include=...>` or it silently won't compile). Viterbi over the slot sequence; state = degree at a slot, deeper history reconstructed from backpointers; transition = the SAME melody ladder/Dist as analyzer+generator (byte-identical labels incl. the new pdeg/cdeg/ndeg), chord-fit folded in; light emission prior (chord-tone>>diatonic>>chromatic). Bidirectional → uses notes BEFORE *and* AFTER (reaching the next known note forces the bridge). `Resolve(model,minor,Chord[],Slot[],Options)` + `EvaluateFile`/`EvaluateFolderReport` (hold-out every Nth interior note, top-1/top-3/meanCircErr).
+Harness: repo-root [resolve_test.ps1](resolve_test.ps1) (reflection like analyze_*.ps1; NOTE added an AssemblyResolve handler because ReadFromPath uses System.Text.Json whose deps need App.config binding redirects PowerShell lacks — analyze_*.ps1 dodge it via MiniJson). `-Bin` param to load an alt build folder when bin\Debug is locked by a running/debugged app.
+**Validation:** in-sample (Ghibli on Ghibli) top1 98%/top3 99.7% = n-gram memorization (not generalization). Cross-style out-of-sample (Ghibli on midi/ Bach/harp/ballade) top1 28.6%/top3 60.6%. SAME-STYLE held-out (re-analyzed Ghibli minus 6 files, tested on those 6 via _holdout.ps1): top1 ~27%/top3 ~63% — barely better than cross-style. All ≫ random 8% / diatonic 14%; meanErr ~2.3 semitones.
+**Tuning + ABLATION findings (sweep via _sweep.ps1 / SweepReport):** the new exact chord-degree tiers add ~0 at N=4 (isolated holes) but +1.5% top1 / +2.1% top3 at N=2 (dense/consecutive holes) — small but real, biggest when melodic context is sparse. EmissionWeight (chord-fit prior) ~neutral (emW>0 trades a little top1 for top3); diatonic-only candidates ~neutral. **Bottom line: next-note prediction is dominated by the melodic n-gram; harmony is a secondary signal at this granularity.** Good defaults: emW 0.5-1.0, degTiers on. top-1 ~25% means a SUGGEST-top-3 UI (top3 ~60%), not auto-fill.
+Resolver Options now also has UseChordDegreeTiers (ablation) + RestrictToScale. Temp artifacts (bin\ResolveTest, _holdout\) are deleted; regenerate via _holdout.ps1. UI integration (right-click note in RiffGridControl → top-3 popup) is the remaining piece — needs plumbing ComposedArrangement(trame)+KeySignature+chosen model from TimelineScreen into RiffEditorWindow (standalone riff editor lacks them).
+
+**Models REGENERATED 2026-06-19** with the new analyzer: all 5 bundled models (ghibli/vivaldi/bach_clavier/bach_solo/yiruma _model_v2.json) now CONTAIN the pdeg|cdeg|ndeg tiers (verified: grep "pdeg" finds all 5; sizes grew ~+1.5MB). Written to BOTH source `MusicTracker\Data\models` AND runtime `bin\Debug\Data\models`; all had `"Orders": {}` (default, nothing lost); reproducible from corpus (git is the safety net). Driver = repo-root [_regen_models.ps1](_regen_models.ps1) (same corpus paths/methods as analyze_*.ps1: ghibli=corpus\Ghibli, vivaldi=vivaldi_full+season, bach_clavier=bach\wtc, bach_solo=3 solo dirs, yiruma=corpus\Yiruma). `Yiruma.json` (separate, newer, in-app-made) left untouched. NOTE: the running VS-debugged app uses the OLD bin\Debug exe + cached OLD models — user must stop debugging → rebuild → restart to actually use the new code (resolver/style-distance/motif-default) AND new model data.
+
+**Celeritas eval (the lib the user heard about):** REAL — [github.com/sheinv78/Celeritas](https://github.com/sheinv78/Celeritas), .NET symbolic music engine (K-S key detect, chord recog, Viterbi auto-harmonization, MIDI I/O). NOT adopted: requires **.NET 10** (project is .NET Framework 4.8 → cannot reference) + BSL-1.1 (commercial use needs licence till 2030). Borrowed its Viterbi/DP idea for step 2. Related: [[ghibli-composer-v2]], [[composerv3-orchestrateur-rewrite]].
